@@ -271,7 +271,6 @@ Storyboard scene
   -> VisualDirectionContext
   -> VisualDirector
   -> DirectedPrompt
-  -> SafeVisualPolicy
   -> ImageBuilder
   -> image backend prompt injection
   -> image manifest
@@ -281,12 +280,11 @@ Responsibilities:
 
 - enrich scene prompts with composition, camera, lighting, color, orientation, realism, detail, and negative prompt guidance;
 - preserve scene meaning and the original `visual_idea`;
-- enforce safe-for-work visual policy before backend prompt injection;
 - produce inspectable prompt metadata in the image manifest;
 - remain backend-neutral and avoid any direct ComfyUI dependency;
 - fall back to the legacy prompt if prompt direction fails.
 
-`SafeVisualPolicy` is applied globally inside `ImageBuilder`, after Visual Director or legacy prompt construction and before the image backend receives the prompt. It appends safe clothing guidance for human subjects, merges the global negative prompt, rewrites unsafe positive prompt terms into fully clothed equivalents, validates the safe positive prompt, and records policy metadata in the image manifest.
+`ImageBuilder` receives either the directed prompt or the legacy fallback prompt, adds a short general cinematic identity, keeps neutral restrictions against text, logos, watermarks, illustration styles, clutter, and broad visual errors, injects the final prompt into the configured image backend workflow, and records prompt metadata in the image manifest.
 
 Visual Director does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
 

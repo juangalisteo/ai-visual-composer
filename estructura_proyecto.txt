@@ -1,4 +1,5 @@
 ﻿MC_IA/
++--- .agents
 +--- app
 |   +--- controllers
 |   |   \--- run_controller.py
@@ -18,6 +19,9 @@
 |   |   |   +--- audio_mixer.py
 |   |   |   +--- music_selector.py
 |   |   |   \--- voice_builder.py
+|   |   +--- image
+|   |   |   \--- config
+|   |   |       \--- image_config.py
 |   |   +--- images
 |   |   |   +--- __init__.py
 |   |   |   \--- image_builder.py
@@ -46,13 +50,56 @@
 |   |   +--- thumbnail
 |   |   |   \--- __init__.py
 |   |   +--- video
+|   |   |   +--- assets
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- asset_selector.py
+|   |   |   |   \--- temporal_asset_builder.py
+|   |   |   +--- config
+|   |   |   |   +--- loaders
+|   |   |   |   |   +--- __init__.py
+|   |   |   |   |   +--- fade_loader.py
+|   |   |   |   |   +--- layer_config_loader.py
+|   |   |   |   |   +--- motion_loader.py
+|   |   |   |   |   +--- overlay_loader.py
+|   |   |   |   |   +--- subtitle_loader.py
+|   |   |   |   |   +--- transition_loader.py
+|   |   |   |   |   +--- validation_loader.py
+|   |   |   |   |   \--- visual_effect_loader.py
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- fade_config.py
+|   |   |   |   +--- layer_config_validator.py
+|   |   |   |   +--- motion_config.py
+|   |   |   |   +--- overlay_config.py
+|   |   |   |   +--- subtitle_config.py
+|   |   |   |   +--- transition_config.py
+|   |   |   |   +--- transition_contract.py
+|   |   |   |   +--- validation_config.py
+|   |   |   |   \--- visual_effect_config.py
 |   |   |   +--- ffmpeg
+|   |   |   |   +--- filters
+|   |   |   |   |   \--- video_overlay_filter.py
+|   |   |   |   +--- graphs
+|   |   |   |   |   +--- __init__.py
+|   |   |   |   |   +--- base_graph_builder.py
+|   |   |   |   |   +--- fade_graph_builder.py
+|   |   |   |   |   +--- graph_context.py
+|   |   |   |   |   +--- graph_result.py
+|   |   |   |   |   +--- layer_compositor.py
+|   |   |   |   |   +--- motion_graph_builder.py
+|   |   |   |   |   +--- overlay_graph_builder.py
+|   |   |   |   |   +--- subtitle_graph_builder.py
+|   |   |   |   |   +--- transition_graph_builder.py
+|   |   |   |   |   \--- visual_effect_graph_builder.py
 |   |   |   |   +--- __init__.py
 |   |   |   |   +--- command_builder.py
+|   |   |   |   +--- command_plan.py
 |   |   |   |   +--- filter_builder.py
+|   |   |   |   +--- filter_context.py
+|   |   |   |   +--- filter_pipeline.py
 |   |   |   |   \--- runner.py
 |   |   |   +--- media
 |   |   |   |   +--- __init__.py
+|   |   |   |   +--- audio_resolver.py
 |   |   |   |   +--- media_loader.py
 |   |   |   |   \--- timeline_builder.py
 |   |   |   +--- motion
@@ -63,13 +110,28 @@
 |   |   |   |   +--- __init__.py
 |   |   |   |   +--- overlay_builder.py
 |   |   |   |   \--- overlay_selector.py
+|   |   |   +--- subtitles
+|   |   |   |   \--- subtitle_style_builder.py
 |   |   |   +--- transitions
 |   |   |   |   +--- __init__.py
 |   |   |   |   +--- transition_builder.py
 |   |   |   |   \--- transition_selector.py
+|   |   |   +--- visual_effects
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- visual_effect_builder.py
+|   |   |   |   \--- visual_effect_selector.py
 |   |   |   +--- __init__.py
+|   |   |   +--- video_build_context.py
+|   |   |   +--- video_build_context_factory.py
 |   |   |   +--- video_builder.py
-|   |   |   \--- video_config.py
+|   |   |   +--- video_component_factory.py
+|   |   |   +--- video_config.py
+|   |   |   +--- video_filter_context_factory.py
+|   |   |   +--- video_render_service.py
+|   |   |   \--- video_validator.py
+|   |   +--- visual_director
+|   |   |   +--- __init__.py
+|   |   |   \--- visual_director.py
 |   |   \--- __init__.py
 |   +--- providers
 |   |   +--- __init__.py
@@ -332,7 +394,89 @@
 |       +--- intros
 |       +--- outros
 |       +--- overlays
-|       \--- transitions
+|       +--- transitions
+|       \--- visual_effects
+|           \--- LightLeak
+|               +--- LightLeak 1.mov
+|               +--- LightLeak 10.mov
+|               +--- LightLeak 11.mov
+|               +--- LightLeak 12.mov
+|               +--- LightLeak 13.mov
+|               +--- LightLeak 14.mov
+|               +--- LightLeak 15.mov
+|               +--- LightLeak 16.mov
+|               +--- LightLeak 17.mov
+|               +--- LightLeak 18.mov
+|               +--- LightLeak 19.mov
+|               +--- LightLeak 2.mov
+|               +--- LightLeak 20.mov
+|               +--- LightLeak 21.mov
+|               +--- LightLeak 22.mov
+|               +--- LightLeak 23.mov
+|               +--- LightLeak 24.mov
+|               +--- LightLeak 25.mov
+|               +--- LightLeak 26.mov
+|               +--- LightLeak 27.mov
+|               +--- LightLeak 28.mov
+|               +--- LightLeak 29.mov
+|               +--- LightLeak 3.mov
+|               +--- LightLeak 30.mov
+|               +--- LightLeak 31.mov
+|               +--- LightLeak 32.mov
+|               +--- LightLeak 33.mov
+|               +--- LightLeak 34.mov
+|               +--- LightLeak 35.mov
+|               +--- LightLeak 36.mov
+|               +--- LightLeak 37.mov
+|               +--- LightLeak 38.mov
+|               +--- LightLeak 39.mov
+|               +--- LightLeak 4.mov
+|               +--- LightLeak 40.mov
+|               +--- LightLeak 41.mov
+|               +--- LightLeak 42.mov
+|               +--- LightLeak 43.mov
+|               +--- LightLeak 44.mov
+|               +--- LightLeak 45.mov
+|               +--- LightLeak 46.mov
+|               +--- LightLeak 47.mov
+|               +--- LightLeak 48.mov
+|               +--- LightLeak 49.mov
+|               +--- LightLeak 5.mov
+|               +--- LightLeak 50.mov
+|               +--- LightLeak 51.mov
+|               +--- LightLeak 52.mov
+|               +--- LightLeak 53.mov
+|               +--- LightLeak 54.mov
+|               +--- LightLeak 55.mov
+|               +--- LightLeak 56.mov
+|               +--- LightLeak 57.mov
+|               +--- LightLeak 58.mov
+|               +--- LightLeak 59.mov
+|               +--- LightLeak 6.mov
+|               +--- LightLeak 60.mov
+|               +--- LightLeak 61.mov
+|               +--- LightLeak 62.mov
+|               +--- LightLeak 63.mov
+|               +--- LightLeak 64.mov
+|               +--- LightLeak 65.mov
+|               +--- LightLeak 66.mov
+|               +--- LightLeak 67.mov
+|               +--- LightLeak 68.mov
+|               +--- LightLeak 69.mov
+|               +--- LightLeak 7.mov
+|               +--- LightLeak 70.mov
+|               +--- LightLeak 71.mov
+|               +--- LightLeak 72.mov
+|               +--- LightLeak 73.mov
+|               +--- LightLeak 74.mov
+|               +--- LightLeak 75.mov
+|               +--- LightLeak 76.mov
+|               +--- LightLeak 77.mov
+|               +--- LightLeak 78.mov
+|               +--- LightLeak 79.mov
+|               +--- LightLeak 8.mov
+|               +--- LightLeak 80.mov
+|               \--- LightLeak 9.mov
 +--- backup_codificacion_20260713_191524
 |   +--- controllers
 |   |   \--- run_controller.py
@@ -422,6 +566,9 @@
 |   |   +--- progress_logger.py
 |   |   \--- time_formatter.py
 |   \--- __init__.py
++--- CODEX
+|   +--- BITACORA.md
+|   \--- CHATGPT.md
 +--- config
 |   +--- profiles
 |   |   +--- instagram
@@ -441,11 +588,17 @@
 |   +--- render.json
 |   \--- voice.json
 +--- docs
-|   +--- ComfyUI.md
-|   +--- estructura_proyecto.md
-|   +--- models.md
-|   +--- profiles.md
-|   \--- pront_music.md
+|   +--- architecture
+|   |   \--- visual_director.md
+|   +--- decisions
+|   |   \--- README.md
+|   +--- reference
+|   |   +--- comfyui.md
+|   |   +--- estructura_proyecto.md
+|   |   +--- models.md
+|   |   +--- profiles.md
+|   |   \--- prompt_music.md
+|   \--- README.md
 +--- input
 |   +--- guion.txt
 |   \--- tema.txt
@@ -465,10 +618,28 @@
 |   \--- tones
 |       \--- modo_conciencia.txt
 +--- tests
+|   +--- __init__.py
+|   +--- test_image_builder_visual_director.py
+|   +--- test_text_encoding_quality.py
+|   +--- test_video_asset_selectors.py
+|   +--- test_video_build_factories.py
+|   +--- test_video_builder_orchestration.py
+|   +--- test_video_command_builder.py
+|   +--- test_video_filter_pipeline.py
+|   +--- test_video_layer_compositor.py
+|   +--- test_video_layer_config_loaders.py
+|   +--- test_video_temporal_asset_builders.py
+|   +--- test_video_transitions_contract.py
+|   \--- test_visual_director.py
 +--- .env
++--- .gitattributes
 +--- .gitignore
++--- ARCHITECTURE.md
++--- CHANGELOG.md
 +--- estructura_proyecto.txt
++--- LICENSE
 +--- main.py
 +--- README.md
 +--- requirements.txt
-\--- requirements_actual.txt
++--- requirements_actual.txt
+\--- ROADMAP.md

@@ -19,7 +19,6 @@ The project is currently focused on a stable video composition core. The engine 
 
 - Profile-driven video configuration.
 - Visual Director prompt enrichment for image generation.
-- Global safe visual policy for image prompts.
 - Modular video pipeline.
 - Motion support for image scenes.
 - FFmpeg `xfade` transitions.
@@ -53,7 +52,7 @@ Configs
 
 Each layer is responsible for one part of the composition process. Profiles define what is enabled and how each module behaves. Builders prepare selected operations. Graph builders turn those operations into FFmpeg filter graph fragments. The pipeline assembles those stages in a fixed order. The command layer produces the final FFmpeg command, which is then executed and validated.
 
-The image generation path also includes Visual Director, a backend-neutral prompt enrichment subsystem that runs after storyboard scene prompts are loaded and before prompts are sent to the image backend. A global safe visual policy is applied before backend prompt injection so generated assets remain safe for work by default. This does not alter the video render pipeline.
+The image generation path also includes Visual Director, a backend-neutral prompt enrichment subsystem that runs after storyboard scene prompts are loaded and before prompts are sent to the image backend. ImageBuilder then adds a brief general cinematic identity and neutral prompt restrictions before backend injection. This does not alter the video render pipeline.
 
 ## Engine Flow
 

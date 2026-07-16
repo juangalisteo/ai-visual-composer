@@ -87,6 +87,14 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                 manifest[0]["prompt"]
             )
             self.assertIn(
+                "professional cinematic realism",
+                manifest[0]["prompt"]
+            )
+            self.assertIn(
+                "coherent production design",
+                manifest[0]["prompt"]
+            )
+            self.assertIn(
                 "positive_prompt",
                 manifest[0]
             )
@@ -94,20 +102,21 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                 "negative_prompt",
                 manifest[0]
             )
-            self.assertIn(
-                "safe_visual_policy",
-                manifest[0]
-            )
-            self.assertTrue(
-                manifest[0]["safe_visual_policy"]["applied"]
-            )
-            self.assertIn(
-                "fully clothed",
-                manifest[0]["prompt"]
-            )
-            self.assertIn(
-                "nudity",
-                manifest[0]["negative_prompt"]
+            self.assertEqual(
+                {
+                    "scene",
+                    "prompt",
+                    "positive_prompt",
+                    "negative_prompt",
+                    "visual_director",
+                    "image",
+                    "width",
+                    "height",
+                    "duration"
+                },
+                set(
+                    manifest[0].keys()
+                )
             )
             self.assertFalse(
                 manifest[0]["visual_director"]["fallback"]
@@ -193,9 +202,6 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                     workflow_path=workflow_path,
                     visual_director=FailingVisualDirector()
                 )
-                legacy_prompt = builder._build_prompt(
-                    "A person looking at a quiet dawn"
-                )
 
                 with patch.object(
                     ImageBuilder,
@@ -214,16 +220,12 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
             )
 
             self.assertIn(
-                "A person looking at a quiet dawn",
+                "A quiet dawn over a valley",
                 manifest[0]["prompt"]
             )
             self.assertIn(
-                "fully clothed",
+                "professional cinematic realism",
                 manifest[0]["prompt"]
-            )
-            self.assertIn(
-                "nudity",
-                manifest[0]["negative_prompt"]
             )
             self.assertTrue(
                 manifest[0]["visual_director"]["enabled"]
@@ -266,9 +268,6 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                 builder = ImageBuilder(
                     workflow_path=workflow_path
                 )
-                legacy_prompt = builder._build_prompt(
-                    "A person looking at a quiet dawn"
-                )
 
                 with patch.object(
                     ImageBuilder,
@@ -287,16 +286,12 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
             )
 
             self.assertIn(
-                "A person looking at a quiet dawn",
+                "A quiet dawn over a valley",
                 manifest[0]["prompt"]
             )
             self.assertIn(
-                "fully clothed",
+                "professional cinematic realism",
                 manifest[0]["prompt"]
-            )
-            self.assertIn(
-                "nudity",
-                manifest[0]["negative_prompt"]
             )
             self.assertFalse(
                 manifest[0]["visual_director"]["enabled"]
@@ -342,99 +337,19 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                     0
                 )
 
-    def test_safe_visual_policy_rewrites_unsafe_scene_before_backend(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(
-                temp_dir
-            )
-            storyboard_path = root / "storyboard.json"
-            storyboard_path.write_text(
-                json.dumps(
-                    [
-                        {
-                            "scene": 1,
-                            "text": (
-                                "Una persona aparece en una escena "
-                                "cinematografica."
-                            ),
-                            "visual_idea": (
-                                "A nude woman in transparent clothing, "
-                                "suggestive pose, dramatic lighting"
-                            ),
-                            "duration": 3.0
-                        }
-                    ],
-                    ensure_ascii=False
-                ),
-                encoding="utf-8"
-            )
-            manifest_path = root / "images_manifest.json"
-            output_dir = root / "images"
-            workflow_path = self._write_workflow(
-                root
-            )
+    def test_legacy_prompt_separates_8k_from_text_restrictions(self):
+        prompt = ImageBuilder()._build_prompt(
+            "A quiet architectural corridor"
+        )
 
-            with self._patched_environment(
-                manifest_path=manifest_path,
-                profile={
-                    "format": "horizontal",
-                    "video_style": {
-                        "width": 640,
-                        "height": 360
-                    }
-                }
-            ):
-                builder = ImageBuilder(
-                    workflow_path=workflow_path
-                )
-
-                with patch.object(
-                    ImageBuilder,
-                    "_generate_image",
-                    side_effect=self._fake_generate_image
-                ):
-                    builder.build(
-                        storyboard_path=storyboard_path,
-                        output_dir=output_dir
-                    )
-
-            manifest = json.loads(
-                manifest_path.read_text(
-                    encoding="utf-8"
-                )
-            )
-            prompt = manifest[0]["prompt"].lower()
-            positive_prompt = (
-                manifest[0]["positive_prompt"].lower()
-            )
-
-            self.assertTrue(
-                manifest[0]["safe_visual_policy"]["rewritten"]
-            )
-            self.assertIn(
-                "nude",
-                manifest[0]["safe_visual_policy"]["violations"]
-            )
-            self.assertNotIn(
-                "nude woman",
-                positive_prompt
-            )
-            self.assertNotIn(
-                "transparent clothing",
-                positive_prompt
-            )
-            self.assertNotIn(
-                "suggestive pose",
-                positive_prompt
-            )
-            self.assertIn(
-                "fully clothed",
-                positive_prompt
-            )
-            self.assertIn(
-                "nudity",
-                manifest[0]["negative_prompt"]
-            )
+        self.assertIn(
+            "premium film still, 8k, no text",
+            prompt
+        )
+        self.assertNotIn(
+            "8kno text",
+            prompt
+        )
 
     def _write_storyboard(
         self,
@@ -447,11 +362,11 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                     {
                         "scene": 1,
                         "text": (
-                            "La persona observa el amanecer "
-                            "y comprende su miedo."
+                            "La luz aparece sobre el valle "
+                            "y transforma la atmosfera."
                         ),
                         "visual_idea": (
-                            "A person looking at a quiet dawn"
+                            "A quiet dawn over a valley"
                         ),
                         "duration": 3.5
                     },
