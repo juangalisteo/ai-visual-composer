@@ -4,6 +4,18 @@ All notable changes to AI Video Composer will be documented in this file.
 
 This project follows a conventional Open Source changelog structure. Dates are intentionally omitted until release tagging is formalized.
 
+## [Unreleased]
+
+### Added
+
+- First functional Visual Director subsystem for backend-neutral image prompt enrichment.
+- Directed prompt metadata in the image manifest, including positive prompt, negative prompt, fallback state, and visual directives.
+- Characterization tests for Visual Director and its ImageBuilder integration.
+
+### Changed
+
+- ImageBuilder now enriches scene prompts through Visual Director before image backend prompt injection, while preserving the legacy prompt as fallback.
+
 ## [1.0.0] - Motor Core Completed
 
 ### Summary

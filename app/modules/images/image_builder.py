@@ -8,6 +8,10 @@ import uuid
 from app.managers.project_manager import ProjectManager
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
+from app.modules.visual_director import (
+    VisualDirectionContext,
+    VisualDirector
+)
 
 
 class ImageBuilder:
@@ -15,12 +19,18 @@ class ImageBuilder:
     def __init__(
         self,
         comfyui_url="http://127.0.0.1:8188",
-        workflow_path="config/comfyui_flux_workflow_api.json"
+        workflow_path="config/comfyui_flux_workflow_api.json",
+        visual_director=None
     ):
         self.comfyui_url = comfyui_url
 
         self.workflow_path = Path(
             workflow_path
+        )
+
+        self.visual_director = (
+            visual_director
+            or VisualDirector()
         )
 
     def build(
@@ -113,6 +123,13 @@ class ImageBuilder:
         )
 
         generated_images = []
+        previous_directives = {}
+        visual_director_elapsed = 0.0
+        visual_director_enabled = (
+            self._is_visual_director_enabled(
+                profile
+            )
+        )
 
         for index, scene in enumerate(
             scenes,
@@ -136,8 +153,28 @@ class ImageBuilder:
                     f"no contiene visual_idea."
                 )
 
-            prompt = self._build_prompt(
-                visual_idea
+            (
+                prompt,
+                prompt_metadata,
+                previous_directives,
+                elapsed
+            ) = self._build_directed_prompt(
+                scene=scene,
+                visual_idea=visual_idea,
+                scene_number=scene_number,
+                scene_index=index,
+                scene_count=scene_count,
+                profile=profile,
+                visual_director_enabled=(
+                    visual_director_enabled
+                ),
+                previous_directives=(
+                    previous_directives
+                )
+            )
+
+            visual_director_elapsed += (
+                elapsed
             )
 
             image_path = (
@@ -153,6 +190,21 @@ class ImageBuilder:
             generated_images.append({
                 "scene": scene_number,
                 "prompt": prompt,
+                "positive_prompt": (
+                    prompt_metadata[
+                        "positive_prompt"
+                    ]
+                ),
+                "negative_prompt": (
+                    prompt_metadata[
+                        "negative_prompt"
+                    ]
+                ),
+                "visual_director": (
+                    prompt_metadata[
+                        "visual_director"
+                    ]
+                ),
                 "image": str(image_path),
                 "width": width,
                 "height": height,
@@ -164,6 +216,11 @@ class ImageBuilder:
             ProgressLogger.info(
                 f"{index}/{scene_count} imágenes"
             )
+
+        ProgressLogger.info(
+            "Visual Director: "
+            f"{visual_director_elapsed:.2f} segundos"
+        )
 
         manifest_path = (
             project.images_manifest_path()
@@ -257,6 +314,163 @@ class ImageBuilder:
             )
 
         return width, height
+
+    def _is_visual_director_enabled(
+        self,
+        profile
+    ):
+        visual_director = profile.get(
+            "visual_director",
+            {}
+        )
+
+        if not isinstance(
+            visual_director,
+            dict
+        ):
+            return True
+
+        return bool(
+            visual_director.get(
+                "enabled",
+                True
+            )
+        )
+
+    def _build_directed_prompt(
+        self,
+        scene,
+        visual_idea,
+        scene_number,
+        scene_index,
+        scene_count,
+        profile,
+        visual_director_enabled,
+        previous_directives
+    ):
+        legacy_prompt = self._build_prompt(
+            visual_idea
+        )
+
+        if not visual_director_enabled:
+            return (
+                legacy_prompt,
+                self._legacy_prompt_metadata(
+                    legacy_prompt=legacy_prompt,
+                    enabled=False,
+                    fallback_reason=None
+                ),
+                previous_directives,
+                0.0
+            )
+
+        start = time.perf_counter()
+
+        try:
+            directed_prompt = (
+                self.visual_director.direct(
+                    VisualDirectionContext(
+                        scene_text=str(
+                            scene.get(
+                                "text",
+                                ""
+                            )
+                        ).strip(),
+                        visual_idea=visual_idea,
+                        duration=float(
+                            scene.get(
+                                "duration",
+                                0
+                            )
+                            or 0
+                        ),
+                        scene_index=scene_index,
+                        scene_count=scene_count,
+                        orientation=str(
+                            profile.get(
+                                "format",
+                                ""
+                            )
+                        ).strip().lower(),
+                        previous_directives=(
+                            previous_directives
+                        )
+                    )
+                )
+            )
+
+        except Exception as error:
+            ProgressLogger.warning(
+                "Visual Director falló en la escena "
+                f"{scene_number}. Se usa prompt legacy. "
+                f"Motivo: {error}"
+            )
+
+            elapsed = (
+                time.perf_counter()
+                - start
+            )
+
+            return (
+                legacy_prompt,
+                self._legacy_prompt_metadata(
+                    legacy_prompt=legacy_prompt,
+                    enabled=True,
+                    fallback_reason=str(
+                        error
+                    )
+                ),
+                previous_directives,
+                elapsed
+            )
+
+        elapsed = (
+            time.perf_counter()
+            - start
+        )
+
+        metadata = {
+            "positive_prompt": (
+                directed_prompt.positive_prompt
+            ),
+            "negative_prompt": (
+                directed_prompt.negative_prompt
+            ),
+            "visual_director": {
+                "enabled": True,
+                "fallback": False,
+                "scene": scene_number,
+                "directives": (
+                    directed_prompt.directives
+                )
+            }
+        }
+
+        return (
+            directed_prompt.final_prompt,
+            metadata,
+            directed_prompt.directives,
+            elapsed
+        )
+
+    def _legacy_prompt_metadata(
+        self,
+        legacy_prompt,
+        enabled,
+        fallback_reason
+    ):
+        return {
+            "positive_prompt": legacy_prompt,
+            "negative_prompt": "",
+            "visual_director": {
+                "enabled": enabled,
+                "fallback": (
+                    fallback_reason is not None
+                ),
+                "fallback_reason": fallback_reason,
+                "directives": {}
+            }
+        }
 
     def _build_prompt(
         self,

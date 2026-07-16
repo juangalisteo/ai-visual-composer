@@ -18,6 +18,7 @@ The project is currently focused on a stable video composition core. The engine 
 ## Main Features
 
 - Profile-driven video configuration.
+- Visual Director prompt enrichment for image generation.
 - Modular video pipeline.
 - Motion support for image scenes.
 - FFmpeg `xfade` transitions.
@@ -50,6 +51,8 @@ Configs
 ```
 
 Each layer is responsible for one part of the composition process. Profiles define what is enabled and how each module behaves. Builders prepare selected operations. Graph builders turn those operations into FFmpeg filter graph fragments. The pipeline assembles those stages in a fixed order. The command layer produces the final FFmpeg command, which is then executed and validated.
+
+The image generation path also includes Visual Director, a backend-neutral prompt enrichment subsystem that runs after storyboard scene prompts are loaded and before prompts are sent to the image backend. It does not generate images and does not alter the video render pipeline.
 
 ## Engine Flow
 
@@ -97,6 +100,9 @@ ai-video-composer/
   config/
     profiles/
   docs/
+    architecture/
+    decisions/
+    reference/
   input/
   output/
   tests/
@@ -239,6 +245,7 @@ print(output)
 - Performance
 - New Effects
 - Automation
+- Visual Director evolution
 - Plugins
 - Testing
 - Documentation

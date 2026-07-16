@@ -14,6 +14,10 @@ Future work line.
 
 Future work line.
 
+## Visual Director
+
+Future evolution line.
+
 ## AI Assistant
 
 Future work line.

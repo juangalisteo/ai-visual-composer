@@ -259,6 +259,33 @@ Profile JSON
   -> Output video
 ```
 
+## Image Prompt Direction
+
+Visual Director is part of the image generation path, not the video render core.
+
+Current image prompt flow:
+
+```text
+Storyboard scene
+  -> visual_idea and scene text
+  -> VisualDirectionContext
+  -> VisualDirector
+  -> DirectedPrompt
+  -> ImageBuilder
+  -> image backend prompt injection
+  -> image manifest
+```
+
+Responsibilities:
+
+- enrich scene prompts with composition, camera, lighting, color, orientation, realism, detail, and negative prompt guidance;
+- preserve scene meaning and the original `visual_idea`;
+- produce inspectable prompt metadata in the image manifest;
+- remain backend-neutral and avoid any direct ComfyUI dependency;
+- fall back to the legacy prompt if prompt direction fails.
+
+Visual Director does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
+
 ## Profile Control
 
 Profiles control the current visual behavior:
