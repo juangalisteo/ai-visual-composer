@@ -77,6 +77,41 @@ class VisualDirectorTest(unittest.TestCase):
             "no watermark",
             result.negative_prompt
         )
+        self.assertIn(
+            "nudity",
+            result.negative_prompt
+        )
+        self.assertIn(
+            "nsfw",
+            result.negative_prompt
+        )
+
+    def test_human_subject_receives_safe_clothing_guidance(self):
+        director = VisualDirector()
+
+        result = director.direct(
+            VisualDirectionContext(
+                scene_text="Una persona camina en silencio.",
+                visual_idea="A woman walking through a quiet station",
+                duration=3.0,
+                scene_index=1,
+                scene_count=1,
+                orientation="horizontal"
+            )
+        )
+
+        self.assertIn(
+            "fully clothed",
+            result.positive_prompt
+        )
+        self.assertIn(
+            "modest clothing",
+            result.positive_prompt
+        )
+        self.assertIn(
+            "cinematic wardrobe",
+            result.positive_prompt
+        )
 
     def test_uses_vertical_orientation_guidance(self):
         director = VisualDirector()

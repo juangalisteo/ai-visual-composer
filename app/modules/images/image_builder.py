@@ -6,6 +6,7 @@ import urllib.request
 import uuid
 
 from app.managers.project_manager import ProjectManager
+from app.modules.images.safe_visual_policy import SafeVisualPolicy
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 from app.modules.visual_director import (
@@ -20,7 +21,8 @@ class ImageBuilder:
         self,
         comfyui_url="http://127.0.0.1:8188",
         workflow_path="config/comfyui_flux_workflow_api.json",
-        visual_director=None
+        visual_director=None,
+        safe_visual_policy=None
     ):
         self.comfyui_url = comfyui_url
 
@@ -31,6 +33,11 @@ class ImageBuilder:
         self.visual_director = (
             visual_director
             or VisualDirector()
+        )
+
+        self.safe_visual_policy = (
+            safe_visual_policy
+            or SafeVisualPolicy()
         )
 
     def build(
@@ -177,6 +184,17 @@ class ImageBuilder:
                 elapsed
             )
 
+            safe_prompt_result = (
+                self._apply_safe_visual_policy(
+                    prompt=prompt,
+                    prompt_metadata=prompt_metadata
+                )
+            )
+
+            prompt = (
+                safe_prompt_result.final_prompt
+            )
+
             image_path = (
                 self._generate_image(
                     prompt=prompt,
@@ -205,6 +223,20 @@ class ImageBuilder:
                         "visual_director"
                     ]
                 ),
+                "safe_visual_policy": {
+                    "applied": (
+                        safe_prompt_result.applied
+                    ),
+                    "rewritten": (
+                        safe_prompt_result.rewritten
+                    ),
+                    "human_subject": (
+                        safe_prompt_result.human_subject
+                    ),
+                    "violations": list(
+                        safe_prompt_result.violations
+                    )
+                },
                 "image": str(image_path),
                 "width": width,
                 "height": height,
@@ -336,6 +368,45 @@ class ImageBuilder:
                 True
             )
         )
+
+    def _apply_safe_visual_policy(
+        self,
+        prompt,
+        prompt_metadata
+    ):
+        positive_prompt = (
+            prompt_metadata.get(
+                "positive_prompt"
+            )
+            or prompt
+        )
+
+        negative_prompt = (
+            prompt_metadata.get(
+                "negative_prompt"
+            )
+            or ""
+        )
+
+        safe_prompt = (
+            self.safe_visual_policy.apply(
+                positive_prompt=positive_prompt,
+                negative_prompt=negative_prompt
+            )
+        )
+
+        self.safe_visual_policy.validate(
+            safe_prompt.positive_prompt
+        )
+
+        prompt_metadata["positive_prompt"] = (
+            safe_prompt.positive_prompt
+        )
+        prompt_metadata["negative_prompt"] = (
+            safe_prompt.negative_prompt
+        )
+
+        return safe_prompt
 
     def _build_directed_prompt(
         self,

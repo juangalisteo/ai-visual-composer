@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 import re
 
+from app.modules.images.safe_visual_policy import SafeVisualPolicy
+
 
 @dataclass(frozen=True)
 class VisualDirectionContext:
@@ -25,13 +27,21 @@ class DirectedPrompt:
 
 class VisualDirector:
 
-    negative_prompt = (
+    safe_visual_policy = SafeVisualPolicy()
+
+    base_negative_prompt = (
         "no text, no letters, no words, no typography, "
         "no captions, no subtitles, no logos, no watermark, "
         "no readable signs, no readable screens, "
         "no handwritten text, no printed text, "
         "no cartoon, no anime, no illustration, "
         "no distorted anatomy, no cluttered composition"
+    )
+
+    negative_prompt = (
+        safe_visual_policy.merge_negative_prompt(
+            base_negative_prompt
+        )
     )
 
     stop_words = {
@@ -454,6 +464,18 @@ class VisualDirector:
                 "professional art direction, atmospheric depth"
             )
         ]
+
+        combined_text = (
+            f"{visual_idea} {scene_text} "
+            f"{directives['subject']}"
+        )
+
+        if self.safe_visual_policy.has_human_subject(
+            combined_text
+        ):
+            parts.append(
+                self.safe_visual_policy.clothing_guidance
+            )
 
         return ", ".join(
             self._dedupe(

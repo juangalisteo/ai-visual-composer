@@ -11,10 +11,13 @@ This project follows a conventional Open Source changelog structure. Dates are i
 - First functional Visual Director subsystem for backend-neutral image prompt enrichment.
 - Directed prompt metadata in the image manifest, including positive prompt, negative prompt, fallback state, and visual directives.
 - Characterization tests for Visual Director and its ImageBuilder integration.
+- Global Safe Visual Policy for image generation prompts.
+- Safe visual policy metadata in the image manifest.
 
 ### Changed
 
 - ImageBuilder now enriches scene prompts through Visual Director before image backend prompt injection, while preserving the legacy prompt as fallback.
+- ImageBuilder now applies safe-for-work prompt enforcement before every image backend request.
 
 ## [1.0.0] - Motor Core Completed
 

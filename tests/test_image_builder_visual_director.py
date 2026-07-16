@@ -94,6 +94,21 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                 "negative_prompt",
                 manifest[0]
             )
+            self.assertIn(
+                "safe_visual_policy",
+                manifest[0]
+            )
+            self.assertTrue(
+                manifest[0]["safe_visual_policy"]["applied"]
+            )
+            self.assertIn(
+                "fully clothed",
+                manifest[0]["prompt"]
+            )
+            self.assertIn(
+                "nudity",
+                manifest[0]["negative_prompt"]
+            )
             self.assertFalse(
                 manifest[0]["visual_director"]["fallback"]
             )
@@ -198,9 +213,17 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                 )
             )
 
-            self.assertEqual(
-                legacy_prompt,
+            self.assertIn(
+                "A person looking at a quiet dawn",
                 manifest[0]["prompt"]
+            )
+            self.assertIn(
+                "fully clothed",
+                manifest[0]["prompt"]
+            )
+            self.assertIn(
+                "nudity",
+                manifest[0]["negative_prompt"]
             )
             self.assertTrue(
                 manifest[0]["visual_director"]["enabled"]
@@ -263,9 +286,17 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                 )
             )
 
-            self.assertEqual(
-                legacy_prompt,
+            self.assertIn(
+                "A person looking at a quiet dawn",
                 manifest[0]["prompt"]
+            )
+            self.assertIn(
+                "fully clothed",
+                manifest[0]["prompt"]
+            )
+            self.assertIn(
+                "nudity",
+                manifest[0]["negative_prompt"]
             )
             self.assertFalse(
                 manifest[0]["visual_director"]["enabled"]
@@ -310,6 +341,100 @@ class ImageBuilderVisualDirectorTest(unittest.TestCase):
                     height,
                     0
                 )
+
+    def test_safe_visual_policy_rewrites_unsafe_scene_before_backend(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = root / "storyboard.json"
+            storyboard_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "scene": 1,
+                            "text": (
+                                "Una persona aparece en una escena "
+                                "cinematografica."
+                            ),
+                            "visual_idea": (
+                                "A nude woman in transparent clothing, "
+                                "suggestive pose, dramatic lighting"
+                            ),
+                            "duration": 3.0
+                        }
+                    ],
+                    ensure_ascii=False
+                ),
+                encoding="utf-8"
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                profile={
+                    "format": "horizontal",
+                    "video_style": {
+                        "width": 640,
+                        "height": 360
+                    }
+                }
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir
+                    )
+
+            manifest = json.loads(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+            prompt = manifest[0]["prompt"].lower()
+            positive_prompt = (
+                manifest[0]["positive_prompt"].lower()
+            )
+
+            self.assertTrue(
+                manifest[0]["safe_visual_policy"]["rewritten"]
+            )
+            self.assertIn(
+                "nude",
+                manifest[0]["safe_visual_policy"]["violations"]
+            )
+            self.assertNotIn(
+                "nude woman",
+                positive_prompt
+            )
+            self.assertNotIn(
+                "transparent clothing",
+                positive_prompt
+            )
+            self.assertNotIn(
+                "suggestive pose",
+                positive_prompt
+            )
+            self.assertIn(
+                "fully clothed",
+                positive_prompt
+            )
+            self.assertIn(
+                "nudity",
+                manifest[0]["negative_prompt"]
+            )
 
     def _write_storyboard(
         self,

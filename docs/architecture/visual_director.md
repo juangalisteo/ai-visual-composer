@@ -119,7 +119,32 @@ The current version enriches prompts with:
 - color guidance;
 - orientation guidance for horizontal or vertical output;
 - realism and detail guidance;
-- negative prompt constraints against text, logos, watermarks, captions, illustration styles, and clutter.
+- negative prompt constraints against text, logos, watermarks, captions, illustration styles, clutter, and unsafe visual content;
+- safe clothing guidance for detected human subjects.
+
+## Safe Visual Policy
+
+AI Video Composer applies a global safe visual policy before any prompt is sent to the image backend.
+
+The policy is implemented in:
+
+```text
+app/modules/images/safe_visual_policy.py
+```
+
+It is applied from `ImageBuilder`, after either Visual Director or the legacy prompt path has produced a prompt.
+
+Responsibilities:
+
+- keep generated assets safe for work by default;
+- ensure human subjects are fully clothed;
+- append elegant, modest, non-revealing clothing guidance for human subjects;
+- append the global negative prompt to every image generation;
+- rewrite unsafe positive prompt terms into safe fully clothed equivalents;
+- validate the safe positive prompt before backend injection;
+- preserve cinematic quality while avoiding NSFW, fetish, erotic, nude, partially nude, transparent clothing, underwear, lingerie, bikini, and explicit content.
+
+The policy also protects the fallback path. If Visual Director fails or is disabled, the legacy prompt is still passed through `SafeVisualPolicy` before image generation.
 
 ## Orientation
 
@@ -181,6 +206,12 @@ Additional fields:
       "detail": "...",
       "realism": "..."
     }
+  },
+  "safe_visual_policy": {
+    "applied": true,
+    "rewritten": false,
+    "human_subject": true,
+    "violations": []
   }
 }
 ```
@@ -257,6 +288,8 @@ Characterization tests cover:
 - ImageBuilder integration;
 - fallback to legacy prompts;
 - optional profile disabling;
+- safe visual policy enforcement;
+- unsafe prompt rewrite before backend injection;
 - preservation of scene duration and manifest structure.
 
 ## Future Evolution
