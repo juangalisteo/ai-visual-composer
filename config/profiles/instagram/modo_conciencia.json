@@ -40,7 +40,7 @@
         },
 
         "storyboard": {
-            "seconds_per_image": 8
+            "seconds_per_image": 10
         },
 
         "motion": {
