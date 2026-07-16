@@ -1,6 +1,6 @@
 # AI Video Composer
 
-A modular, profile-driven AI video composition engine.
+A profile-driven AI video composition engine.
 
 AI Video Composer is a Python-based video composition engine designed around explicit configuration profiles. Its core renders videos by combining images, audio, subtitles, motion, transitions, overlays, visual effects, fade stages, and FFmpeg command generation through a modular pipeline.
 
@@ -247,8 +247,10 @@ See [ROADMAP.md](ROADMAP.md) for the project roadmap.
 
 ## License
 
-The final license has not been selected yet. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
 
 ## Author
 
-Project owner: <LOCAL_USER>.
+Juan Bautista Galisteo Marqués
+
+Creator and maintainer of AI Video Composer.

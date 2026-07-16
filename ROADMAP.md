@@ -2,7 +2,7 @@
 
 # AI Video Composer
 
-A modular, profile-driven AI video composition engine.
+A profile-driven AI video composition engine.
 
 This roadmap lists future lines of work. It does not define dates, commitments, or implementation order.
 
