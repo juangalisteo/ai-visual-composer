@@ -1,0 +1,8 @@
+{
+  "alias": "masculina",
+  "name": "Voz masculina",
+  "engine": "edge_tts",
+  "voice": "es-ES-AlvaroNeural",
+  "rate": "-5%",
+  "volume": "+15%"
+}

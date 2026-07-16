@@ -1,0 +1,148 @@
+{
+    "platform": "instagram",
+    "format": "vertical",
+    "resolution": "1080x1920",
+    "duration": 10,
+    "tone": "modo_conciencia",
+
+    "subtitle_config": "word_by_word",
+
+    "builders": {
+        "script": true,
+        "voice": true,
+        "subtitles": true,
+        "storyboard": true,
+        "images": true,
+        "video": true
+    },
+
+    "video_style": {
+        "width": 1080,
+        "height": 1920,
+        "fps": 30,
+
+        "subtitles": {
+            "font": "unisans",
+            "font_size": 14,
+            "bold": false,
+
+            "primary_colour": "&H00FFFFFF",
+            "outline_colour": "&H80000000",
+            "back_colour": "&H00000000",
+
+            "border_style": 1,
+            "outline": 0,
+            "shadow": 1,
+
+            "alignment": 2,
+            "margin_v": 55,
+            "offset": -0.06
+        },
+
+        "storyboard": {
+            "seconds_per_image": 8
+        },
+
+        "motion": {
+            "enabled": true,
+
+            "internal_scale": 2,
+
+            "base_zoom": 0.05,
+            "zoom_amount": 0.30,
+
+            "pan_zoom_enabled": true,
+            "pan_zoom_start": 0.05,
+
+            "selection": "random",
+            "avoid_repeats": true,
+
+            "types": [
+                "zoom_in",
+                "zoom_out",
+                "pan_left",
+                "pan_right",
+                "pan_up",
+                "pan_down"
+            ],
+
+            "weights": {
+                "zoom_in": 2,
+                "zoom_out": 2,
+                "pan_left": 1,
+                "pan_right": 1,
+                "pan_up": 1,
+                "pan_down": 1
+            }
+        },
+
+        "transitions": {
+            "enabled": true,
+
+            "selection": "random",
+            "avoid_repeats": true,
+
+            "duration": 0.40,
+
+            "types": [
+                "fade",
+                "smoothleft"
+            ],
+
+            "weights": {
+                "fade": 2,
+                "smoothleft": 1
+            }
+        },
+
+        "fade": {
+            "enabled": true,
+            "fade_in": false,
+            "fade_out": true,
+            "duration": 0.40
+        },
+
+        "overlays": {
+            "enabled": false,
+            "types": []
+        },
+
+        "visual_effects": {
+            "enabled": true,
+            "directory": "assets/videos/visual_effects/LightLeak",
+            "mode": "overlay",
+            "selection": "random",
+            "repeat_mode": "interval",
+            "min_seconds": 6,
+            "max_seconds": 12,
+            "loop_file": true,
+            "avoid_repeats": true,
+            "opacity": 0.15,
+            "blend_mode": "screen",
+            "probability": 1.0,
+            "folders": [],
+            "types": [],
+            "extensions": [
+                ".mov"
+            ],
+            "weights": {}
+        }
+    },
+
+    "validation": {
+        "max_duration_difference": 0.20
+    },
+
+    "video": {
+        "codec": "libx264",
+        "preset": "medium",
+        "crf": 18,
+        "pixel_format": "yuv420p",
+        "movflags": "+faststart"
+    },
+
+    "audio": {
+        "codec": "aac",
+        "bitrate": "192k"
+    }
+}

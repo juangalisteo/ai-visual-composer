@@ -1,0 +1,474 @@
+﻿MC_IA/
++--- app
+|   +--- controllers
+|   |   \--- run_controller.py
+|   +--- core
+|   |   +--- __init__.py
+|   |   +--- prompt_engine.py
+|   |   +--- start.py
+|   |   \--- workflow.py
+|   +--- managers
+|   |   +--- font_manager.py
+|   |   +--- output_manager.py
+|   |   +--- pipeline_summary.py
+|   |   \--- project_manager.py
+|   +--- modules
+|   |   +--- audio
+|   |   |   +--- __init__.py
+|   |   |   +--- audio_mixer.py
+|   |   |   +--- music_selector.py
+|   |   |   \--- voice_builder.py
+|   |   +--- images
+|   |   |   +--- __init__.py
+|   |   |   \--- image_builder.py
+|   |   +--- publish
+|   |   |   \--- __init__.py
+|   |   +--- script
+|   |   |   +--- __init__.py
+|   |   |   \--- script_builder.py
+|   |   +--- storyboard
+|   |   |   +--- __init__.py
+|   |   |   +--- scene_splitter.py
+|   |   |   +--- storyboard_ai_builder.py
+|   |   |   +--- storyboard_builder.py
+|   |   |   +--- storyboard_composer.py
+|   |   |   +--- storyboard_response_parser.py
+|   |   |   \--- storyboard_validator.py
+|   |   +--- subtitles
+|   |   |   +--- models
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- base_subtitle_model.py
+|   |   |   |   +--- single_line_model.py
+|   |   |   |   \--- word_by_word_model.py
+|   |   |   +--- __init__.py
+|   |   |   +--- srt_optimizer.py
+|   |   |   \--- subtitle_builder.py
+|   |   +--- thumbnail
+|   |   |   \--- __init__.py
+|   |   +--- video
+|   |   |   +--- ffmpeg
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- command_builder.py
+|   |   |   |   +--- filter_builder.py
+|   |   |   |   \--- runner.py
+|   |   |   +--- media
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- media_loader.py
+|   |   |   |   \--- timeline_builder.py
+|   |   |   +--- motion
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- motion_builder.py
+|   |   |   |   \--- motion_selector.py
+|   |   |   +--- overlays
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- overlay_builder.py
+|   |   |   |   \--- overlay_selector.py
+|   |   |   +--- transitions
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- transition_builder.py
+|   |   |   |   \--- transition_selector.py
+|   |   |   +--- __init__.py
+|   |   |   +--- video_builder.py
+|   |   |   \--- video_config.py
+|   |   \--- __init__.py
+|   +--- providers
+|   |   +--- __init__.py
+|   |   +--- elevenlabs_provider.py
+|   |   +--- instagram_provider.py
+|   |   +--- ollama_provider.py
+|   |   +--- telegram_provider.py
+|   |   +--- twitter_provider.py
+|   |   \--- youtube_provider.py
+|   +--- shared
+|   |   +--- __init__.py
+|   |   +--- config_manager.py
+|   |   +--- file_manager.py
+|   |   +--- json_manager.py
+|   |   +--- media_probe.py
+|   |   +--- progress_logger.py
+|   |   \--- time_formatter.py
+|   \--- __init__.py
++--- assets
+|   +--- audio
+|   |   +--- intros
+|   |   +--- outros
+|   |   +--- sfx
+|   |   \--- transitions
+|   +--- fonts
+|   |   +--- Gotham Narrow Bold.otf
+|   |   \--- Uni Sans Heavy.otf
+|   +--- images
+|   |   +--- backgrounds
+|   |   +--- icons
+|   |   +--- logos
+|   |   +--- overlays
+|   |   \--- watermarks
+|   +--- music
+|   |   +--- action
+|   |   |   +--- action_001.mp3
+|   |   |   +--- action_002.mp3
+|   |   |   +--- action_003.mp3
+|   |   |   +--- action_004.mp3
+|   |   |   +--- action_005.mp3
+|   |   |   +--- action_006.mp3
+|   |   |   +--- action_007.mp3
+|   |   |   +--- action_008.mp3
+|   |   |   +--- action_009.mp3
+|   |   |   +--- action_010.mp3
+|   |   |   +--- action_011.mp3
+|   |   |   +--- action_012.mp3
+|   |   |   +--- action_013.mp3
+|   |   |   +--- action_014.mp3
+|   |   |   +--- action_015.mp3
+|   |   |   +--- action_016.mp3
+|   |   |   +--- action_017.mp3
+|   |   |   +--- action_018.mp3
+|   |   |   +--- action_019.mp3
+|   |   |   \--- action_020.mp3
+|   |   +--- ambient
+|   |   |   +--- ambient_001.mp3
+|   |   |   +--- ambient_002.mp3
+|   |   |   +--- ambient_003.mp3
+|   |   |   +--- ambient_004.mp3
+|   |   |   +--- ambient_005.mp3
+|   |   |   +--- ambient_006.mp3
+|   |   |   +--- ambient_007.mp3
+|   |   |   +--- ambient_008.mp3
+|   |   |   +--- ambient_009.mp3
+|   |   |   +--- ambient_010.mp3
+|   |   |   +--- ambient_011.mp3
+|   |   |   +--- ambient_012.mp3
+|   |   |   +--- ambient_013.mp3
+|   |   |   +--- ambient_014.mp3
+|   |   |   +--- ambient_015.mp3
+|   |   |   +--- ambient_016.mp3
+|   |   |   +--- ambient_017.mp3
+|   |   |   +--- ambient_018.mp3
+|   |   |   +--- ambient_019.mp3
+|   |   |   \--- ambient_020.mp3
+|   |   +--- calm
+|   |   |   +--- calm_001.mp3
+|   |   |   +--- calm_002.mp3
+|   |   |   +--- calm_003.mp3
+|   |   |   +--- calm_004.mp3
+|   |   |   +--- calm_005.mp3
+|   |   |   +--- calm_006.mp3
+|   |   |   +--- calm_007.mp3
+|   |   |   +--- calm_008.mp3
+|   |   |   +--- calm_009.mp3
+|   |   |   +--- calm_010.mp3
+|   |   |   +--- calm_011.mp3
+|   |   |   +--- calm_012.mp3
+|   |   |   +--- calm_013.mp3
+|   |   |   +--- calm_014.mp3
+|   |   |   +--- calm_015.mp3
+|   |   |   +--- calm_016.mp3
+|   |   |   +--- calm_017.mp3
+|   |   |   +--- calm_018.mp3
+|   |   |   +--- calm_019.mp3
+|   |   |   \--- calm_020.mp3
+|   |   +--- cinematic
+|   |   |   +--- cinematic_001.mp3
+|   |   |   +--- cinematic_002.mp3
+|   |   |   +--- cinematic_003.mp3
+|   |   |   +--- cinematic_004.mp3
+|   |   |   +--- cinematic_005.mp3
+|   |   |   +--- cinematic_006.mp3
+|   |   |   +--- cinematic_007.mp3
+|   |   |   +--- cinematic_008.mp3
+|   |   |   +--- cinematic_009.mp3
+|   |   |   +--- cinematic_010.mp3
+|   |   |   +--- cinematic_011.mp3
+|   |   |   +--- cinematic_012.mp3
+|   |   |   +--- cinematic_013.mp3
+|   |   |   +--- cinematic_014.mp3
+|   |   |   +--- cinematic_015.mp3
+|   |   |   +--- cinematic_016.mp3
+|   |   |   +--- cinematic_017.mp3
+|   |   |   +--- cinematic_018.mp3
+|   |   |   +--- cinematic_019.mp3
+|   |   |   \--- cinematic_020.mp3
+|   |   +--- documentary
+|   |   |   +--- documentary_001.mp3
+|   |   |   +--- documentary_002.mp3
+|   |   |   +--- documentary_003.mp3
+|   |   |   +--- documentary_004.mp3
+|   |   |   +--- documentary_005.mp3
+|   |   |   +--- documentary_006.mp3
+|   |   |   +--- documentary_007.mp3
+|   |   |   +--- documentary_008.mp3
+|   |   |   +--- documentary_009.mp3
+|   |   |   +--- documentary_010(1).mp3
+|   |   |   +--- documentary_010.mp3
+|   |   |   +--- documentary_011.mp3
+|   |   |   +--- documentary_012.mp3
+|   |   |   +--- documentary_013.mp3
+|   |   |   +--- documentary_014.mp3
+|   |   |   +--- documentary_015.mp3
+|   |   |   +--- documentary_016.mp3
+|   |   |   +--- documentary_017.mp3
+|   |   |   +--- documentary_018.mp3
+|   |   |   +--- documentary_019.mp3
+|   |   |   \--- documentary_020.mp3
+|   |   +--- electronic
+|   |   |   +--- electronic_001.mp3
+|   |   |   +--- electronic_002.mp3
+|   |   |   +--- electronic_003.mp3
+|   |   |   +--- electronic_004.mp3
+|   |   |   +--- electronic_005.mp3
+|   |   |   +--- electronic_006.mp3
+|   |   |   +--- electronic_007.mp3
+|   |   |   +--- electronic_008.mp3
+|   |   |   +--- electronic_009.mp3
+|   |   |   +--- electronic_010.mp3
+|   |   |   +--- electronic_011.mp3
+|   |   |   +--- electronic_012.mp3
+|   |   |   +--- electronic_013.mp3
+|   |   |   +--- electronic_014.mp3
+|   |   |   +--- electronic_015.mp3
+|   |   |   +--- electronic_016.mp3
+|   |   |   +--- electronic_017.mp3
+|   |   |   +--- electronic_018.mp3
+|   |   |   +--- electronic_019.mp3
+|   |   |   \--- electronic_020.mp3
+|   |   +--- emotional
+|   |   |   +--- emotional_001.mp3
+|   |   |   +--- emotional_002.mp3
+|   |   |   +--- emotional_003.mp3
+|   |   |   +--- emotional_004.mp3
+|   |   |   +--- emotional_005.mp3
+|   |   |   +--- emotional_006.mp3
+|   |   |   +--- emotional_007.mp3
+|   |   |   +--- emotional_008.mp3
+|   |   |   +--- emotional_009.mp3
+|   |   |   +--- emotional_010.mp3
+|   |   |   +--- emotional_011.mp3
+|   |   |   +--- emotional_012.mp3
+|   |   |   +--- emotional_013.mp3
+|   |   |   +--- emotional_014.mp3
+|   |   |   +--- emotional_015.mp3
+|   |   |   +--- emotional_016.mp3
+|   |   |   +--- emotional_017.mp3
+|   |   |   +--- emotional_018.mp3
+|   |   |   +--- emotional_019.mp3
+|   |   |   \--- emotional_020.mp3
+|   |   +--- epic
+|   |   |   +--- epic_001.mp3
+|   |   |   +--- epic_002.mp3
+|   |   |   +--- epic_003.mp3
+|   |   |   +--- epic_004.mp3
+|   |   |   +--- epic_005.mp3
+|   |   |   +--- epic_006.mp3
+|   |   |   +--- epic_007.mp3
+|   |   |   +--- epic_008.mp3
+|   |   |   +--- epic_009.mp3
+|   |   |   +--- epic_010.mp3
+|   |   |   +--- epic_011.mp3
+|   |   |   +--- epic_012.mp3
+|   |   |   +--- epic_013.mp3
+|   |   |   +--- epic_014.mp3
+|   |   |   +--- epic_015.mp3
+|   |   |   +--- epic_016.mp3
+|   |   |   +--- epic_017.mp3
+|   |   |   +--- epic_018.mp3
+|   |   |   +--- epic_019.mp3
+|   |   |   \--- epic_020.mp3
+|   |   +--- meditation
+|   |   |   +--- meditation_001.mp3
+|   |   |   +--- meditation_002.mp3
+|   |   |   +--- meditation_003.mp3
+|   |   |   +--- meditation_004.mp3
+|   |   |   +--- meditation_005.mp3
+|   |   |   +--- meditation_006.mp3
+|   |   |   +--- meditation_007.mp3
+|   |   |   +--- meditation_008.mp3
+|   |   |   +--- meditation_009.mp3
+|   |   |   +--- meditation_010.mp3
+|   |   |   +--- meditation_011.mp3
+|   |   |   +--- meditation_012.mp3
+|   |   |   +--- meditation_013.mp3
+|   |   |   +--- meditation_014.mp3
+|   |   |   +--- meditation_015.mp3
+|   |   |   +--- meditation_016.mp3
+|   |   |   +--- meditation_017.mp3
+|   |   |   +--- meditation_018.mp3
+|   |   |   +--- meditation_019.mp3
+|   |   |   \--- meditation_020.mp3
+|   |   \--- mystery
+|   |       +--- mystery_001.mp3
+|   |       +--- mystery_002.mp3
+|   |       +--- mystery_003.mp3
+|   |       +--- mystery_004.mp3
+|   |       +--- mystery_005.mp3
+|   |       +--- mystery_006.mp3
+|   |       +--- mystery_007.mp3
+|   |       +--- mystery_008.mp3
+|   |       +--- mystery_009.mp3
+|   |       +--- mystery_010.mp3
+|   |       +--- mystery_011.mp3
+|   |       +--- mystery_012.mp3
+|   |       +--- mystery_013.mp3
+|   |       +--- mystery_014.mp3
+|   |       +--- mystery_015.mp3
+|   |       +--- mystery_016.mp3
+|   |       +--- mystery_017.mp3
+|   |       +--- mystery_018.mp3
+|   |       +--- mystery_019.mp3
+|   |       +--- mystery_020.mp3
+|   |       +--- mystery_021.mp3
+|   |       +--- mystery_022.mp3
+|   |       +--- mystery_023.mp3
+|   |       +--- mystery_024.mp3
+|   |       +--- mystery_025.mp3
+|   |       +--- mystery_026.mp3
+|   |       +--- mystery_027.mp3
+|   |       +--- mystery_028.mp3
+|   |       +--- mystery_029.mp3
+|   |       \--- mystery_030.mp3
+|   +--- templates
+|   |   \--- psd
+|   \--- videos
+|       +--- icons
+|       +--- intros
+|       +--- outros
+|       +--- overlays
+|       \--- transitions
++--- backup_codificacion_20260713_191524
+|   +--- controllers
+|   |   \--- run_controller.py
+|   +--- core
+|   |   +--- __init__.py
+|   |   +--- prompt_engine.py
+|   |   +--- start.py
+|   |   \--- workflow.py
+|   +--- managers
+|   |   +--- font_manager.py
+|   |   +--- output_manager.py
+|   |   +--- pipeline_summary.py
+|   |   \--- project_manager.py
+|   +--- modules
+|   |   +--- audio
+|   |   |   +--- __init__.py
+|   |   |   +--- audio_mixer.py
+|   |   |   +--- music_selector.py
+|   |   |   \--- voice_builder.py
+|   |   +--- images
+|   |   |   +--- __init__.py
+|   |   |   \--- image_builder.py
+|   |   +--- publish
+|   |   |   \--- __init__.py
+|   |   +--- script
+|   |   |   +--- __init__.py
+|   |   |   \--- script_builder.py
+|   |   +--- storyboard
+|   |   |   +--- __init__.py
+|   |   |   +--- scene_splitter.py
+|   |   |   +--- storyboard_ai_builder.py
+|   |   |   +--- storyboard_builder.py
+|   |   |   +--- storyboard_composer.py
+|   |   |   +--- storyboard_response_parser.py
+|   |   |   \--- storyboard_validator.py
+|   |   +--- subtitles
+|   |   |   +--- models
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- base_subtitle_model.py
+|   |   |   |   +--- single_line_model.py
+|   |   |   |   \--- word_by_word_model.py
+|   |   |   +--- __init__.py
+|   |   |   +--- srt_optimizer.py
+|   |   |   \--- subtitle_builder.py
+|   |   +--- thumbnail
+|   |   |   \--- __init__.py
+|   |   +--- video
+|   |   |   +--- ffmpeg
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- command_builder.py
+|   |   |   |   +--- filter_builder.py
+|   |   |   |   \--- runner.py
+|   |   |   +--- media
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- media_loader.py
+|   |   |   |   \--- timeline_builder.py
+|   |   |   +--- motion
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- motion_builder.py
+|   |   |   |   \--- motion_selector.py
+|   |   |   +--- overlays
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- overlay_builder.py
+|   |   |   |   \--- overlay_selector.py
+|   |   |   +--- transitions
+|   |   |   |   +--- __init__.py
+|   |   |   |   +--- transition_builder.py
+|   |   |   |   \--- transition_selector.py
+|   |   |   +--- __init__.py
+|   |   |   +--- video_builder.py
+|   |   |   \--- video_config.py
+|   |   \--- __init__.py
+|   +--- providers
+|   |   +--- __init__.py
+|   |   +--- elevenlabs_provider.py
+|   |   +--- instagram_provider.py
+|   |   +--- ollama_provider.py
+|   |   +--- telegram_provider.py
+|   |   +--- twitter_provider.py
+|   |   \--- youtube_provider.py
+|   +--- shared
+|   |   +--- __init__.py
+|   |   +--- config_manager.py
+|   |   +--- file_manager.py
+|   |   +--- json_manager.py
+|   |   +--- media_probe.py
+|   |   +--- progress_logger.py
+|   |   \--- time_formatter.py
+|   \--- __init__.py
++--- config
+|   +--- profiles
+|   |   +--- instagram
+|   |   |   \--- modo_conciencia.json
+|   |   \--- youtube
+|   |       \--- modo_conciencia.json
+|   +--- subtitle_configs
+|   |   +--- single_line.json
+|   |   \--- word_by_word.json
+|   +--- voice_configs
+|   |   +--- femenina.json
+|   |   \--- masculina.json
+|   +--- ai.json
+|   +--- app.json
+|   +--- comfyui_flux_workflow_api.json
+|   +--- publish.json
+|   +--- render.json
+|   \--- voice.json
++--- docs
+|   +--- ComfyUI.md
+|   +--- estructura_proyecto.md
+|   +--- models.md
+|   +--- profiles.md
+|   \--- pront_music.md
++--- input
+|   +--- guion.txt
+|   \--- tema.txt
++--- prompts
+|   +--- formats
+|   |   +--- horizontal.txt
+|   |   \--- vertical.txt
+|   +--- platforms
+|   |   +--- instagram.txt
+|   |   \--- youtube.txt
+|   +--- rules
+|   |   +--- language.txt
+|   |   \--- restrictions.txt
+|   +--- tasks
+|   |   +--- script.txt
+|   |   \--- storyboard.txt
+|   \--- tones
+|       \--- modo_conciencia.txt
++--- tests
++--- .env
++--- .gitignore
++--- estructura_proyecto.txt
++--- main.py
++--- README.md
++--- requirements.txt
+\--- requirements_actual.txt

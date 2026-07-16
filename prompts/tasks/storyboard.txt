@@ -1,0 +1,62 @@
+Genera el storyboard visual completo de un vídeo.
+
+Analiza todas las escenas antes de responder y diseña el conjunto como una secuencia visual coherente, profesional y cinematográfica.
+
+Cada escena debe:
+
+- representar fielmente el significado del texto correspondiente
+- ser claramente diferente del resto de escenas
+- mantener continuidad estética y narrativa con todo el vídeo
+- evitar repetir protagonistas, escenarios, fondos, acciones, símbolos o composiciones
+- tener un estilo cinematográfico, realista y simbólico
+- ser impactante, clara y fácil de interpretar visualmente
+- incluir un sujeto o elemento principal claramente identificable
+- incluir una acción, estado o intención visual concreta
+- incluir un entorno coherente con el contenido
+- incluir una composición limpia y profesional
+- incluir una iluminación expresiva
+- incluir una atmósfera definida
+- incluir un elemento visual distintivo que refuerce el mensaje
+- evitar imágenes genéricas, vagas o repetitivas
+- evitar escenas excesivamente recargadas
+- priorizar composiciones visuales memorables antes que descripciones largas
+- pensar como un director de fotografía y un diseñador conceptual
+- diseñar cada escena como un fotograma de una producción cinematográfica de alto nivel
+- mantener suficiente variedad visual entre figura humana, arquitectura, naturaleza, espacios simbólicos, entornos cósmicos, objetos conceptuales y abstracciones comprensibles
+- evitar que todas las escenas consistan en una persona centrada rodeada de partículas
+- describir únicamente elementos que puedan representarse claramente en una imagen generada con IA
+
+No incluyas:
+
+- texto dentro de la imagen
+- logotipos
+- subtítulos
+- marcas de agua
+- interfaces
+- cámaras
+- lentes
+- parámetros técnicos
+- explicaciones sobre tus decisiones
+- títulos
+- comentarios
+- listas fuera del JSON
+- contenido adicional fuera del resultado solicitado
+
+Cada idea visual debe ser breve, concreta y profesional.
+
+Devuelve exclusivamente un JSON válido con todas las escenas.
+
+La respuesta debe comenzar con [ y terminar con ].
+
+Cada objeto debe contener únicamente:
+
+- "scene"
+- "visual_idea"
+
+Respeta exactamente la numeración recibida.
+
+No omitas escenas.
+
+No añadas escenas nuevas.
+
+No escribas absolutamente nada antes ni después del JSON.

@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test and type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+
+# Runtime outputs and logs
+output/
+logs/
+*.log
+
+# Local user inputs and generated media
+input/
+assets/images/generated/
+assets/audio/voices/
+
+# Local third-party runtimes and backups
+ComfyUI/
+backup_codificacion_*/
+
+# Codex/agent local state
+.agents/
+.codex/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.swp

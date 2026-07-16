@@ -1,0 +1,317 @@
+from pathlib import Path
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+from app.modules.video.video_build_context import (
+    VideoBuildArtifacts,
+    VideoBuildComponents,
+    VideoBuildContext
+)
+from app.modules.video.video_builder import VideoBuilder
+
+
+class VideoBuilderOrchestrationTest(
+    unittest.TestCase
+):
+
+    def make_context(
+        self,
+        output_path="out.mp4"
+    ):
+        return VideoBuildContext(
+            config=SimpleNamespace(),
+            media=SimpleNamespace(
+                output_path=Path(
+                    output_path
+                )
+            ),
+            timeline=SimpleNamespace()
+        )
+
+    def make_components(
+        self
+    ):
+        return VideoBuildComponents(
+            motion_builder=object(),
+            transition_builder=object(),
+            overlay_builder=object(),
+            visual_effect_builder=object()
+        )
+
+    def test_build_keeps_public_api_and_returns_output_path(
+        self
+    ):
+        order = []
+        context = self.make_context(
+            "final.mp4"
+        )
+        components = self.make_components()
+        filter_context = object()
+        artifacts = VideoBuildArtifacts(
+            filter_complex="[vout]",
+            command=[
+                "ffmpeg"
+            ]
+        )
+
+        with patch(
+            "app.modules.video.video_builder"
+            ".VideoBuildContextFactory"
+        ) as context_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoComponentFactory"
+        ) as component_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoFilterContextFactory"
+        ) as filter_context_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoRenderService"
+        ) as render_service_class:
+            context_factory = (
+                context_factory_class.return_value
+            )
+            component_factory = (
+                component_factory_class.return_value
+            )
+            filter_context_factory = (
+                filter_context_factory_class.return_value
+            )
+            render_service = (
+                render_service_class.return_value
+            )
+
+            def build_context(
+                **kwargs
+            ):
+                order.append(
+                    "context"
+                )
+                return context
+
+            def create_components(
+                video_config
+            ):
+                order.append(
+                    "components"
+                )
+                self.assertIs(
+                    video_config,
+                    context.config
+                )
+                return components
+
+            def build_filter_context(
+                build_context,
+                components
+            ):
+                order.append(
+                    "filter_context"
+                )
+                self.assertIs(
+                    build_context,
+                    context
+                )
+                return filter_context
+
+            def build_artifacts(
+                build_context,
+                filter_context,
+                components
+            ):
+                order.append(
+                    "artifacts"
+                )
+                return artifacts
+
+            def run_command(
+                command
+            ):
+                order.append(
+                    "run"
+                )
+                self.assertEqual(
+                    command,
+                    artifacts.command
+                )
+
+            def validate(
+                build_context
+            ):
+                order.append(
+                    "validate"
+                )
+                self.assertIs(
+                    build_context,
+                    context
+                )
+
+            context_factory.build.side_effect = (
+                build_context
+            )
+            component_factory.create.side_effect = (
+                create_components
+            )
+            filter_context_factory.build.side_effect = (
+                build_filter_context
+            )
+            render_service.build_artifacts.side_effect = (
+                build_artifacts
+            )
+            render_service.run.side_effect = (
+                run_command
+            )
+            render_service.validate.side_effect = (
+                validate
+            )
+
+            output = VideoBuilder().build(
+                audio_path="audio.mp3",
+                subtitle_path="subtitles.srt",
+                images_manifest_path="images.json",
+                output_path="final.mp4"
+            )
+
+        self.assertEqual(
+            output,
+            Path("final.mp4")
+        )
+        self.assertEqual(
+            order,
+            [
+                "context",
+                "components",
+                "filter_context",
+                "artifacts",
+                "run",
+                "validate"
+            ]
+        )
+        context_factory.build.assert_called_once_with(
+            audio_path="audio.mp3",
+            subtitle_path="subtitles.srt",
+            images_manifest_path="images.json",
+            output_path="final.mp4"
+        )
+
+    def test_exception_from_context_preparation_propagates(
+        self
+    ):
+        with patch(
+            "app.modules.video.video_builder"
+            ".VideoBuildContextFactory"
+        ) as context_factory_class:
+            context_factory_class.return_value.build.side_effect = (
+                RuntimeError(
+                    "boom"
+                )
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "boom"
+            ):
+                VideoBuilder().build()
+
+    def test_same_video_builder_instance_does_not_share_state(
+        self
+    ):
+        contexts = [
+            self.make_context(
+                "first.mp4"
+            ),
+            self.make_context(
+                "second.mp4"
+            )
+        ]
+        components = [
+            self.make_components(),
+            self.make_components()
+        ]
+        filter_contexts = [
+            object(),
+            object()
+        ]
+        artifacts = [
+            VideoBuildArtifacts(
+                filter_complex="[first]",
+                command=[
+                    "first"
+                ]
+            ),
+            VideoBuildArtifacts(
+                filter_complex="[second]",
+                command=[
+                    "second"
+                ]
+            )
+        ]
+        seen_commands = []
+
+        with patch(
+            "app.modules.video.video_builder"
+            ".VideoBuildContextFactory"
+        ) as context_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoComponentFactory"
+        ) as component_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoFilterContextFactory"
+        ) as filter_context_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoRenderService"
+        ) as render_service_class:
+            context_factory_class.return_value.build.side_effect = (
+                contexts
+            )
+            component_factory_class.return_value.create.side_effect = (
+                components
+            )
+            filter_context_factory_class.return_value.build.side_effect = (
+                filter_contexts
+            )
+            render_service_class.return_value.build_artifacts.side_effect = (
+                artifacts
+            )
+            render_service_class.return_value.run.side_effect = (
+                lambda command: seen_commands.append(
+                    list(command)
+                )
+            )
+
+            builder = VideoBuilder()
+
+            first_output = builder.build()
+            second_output = builder.build()
+
+        self.assertEqual(
+            first_output,
+            Path("first.mp4")
+        )
+        self.assertEqual(
+            second_output,
+            Path("second.mp4")
+        )
+        self.assertEqual(
+            seen_commands,
+            [
+                [
+                    "first"
+                ],
+                [
+                    "second"
+                ]
+            ]
+        )
+        self.assertIsNot(
+            components[0].overlay_builder,
+            components[1].overlay_builder
+        )
+        self.assertIsNot(
+            components[0].visual_effect_builder,
+            components[1].visual_effect_builder
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,8 @@
+{
+  "alias": "femenina_2",
+  "name": "Voz femenina 2",
+  "engine": "edge_tts",
+  "voice": "es-ES-XimenaNeural",
+  "rate": "-5%",
+  "volume": "+15%"
+}
