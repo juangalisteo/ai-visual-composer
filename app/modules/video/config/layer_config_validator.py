@@ -31,7 +31,7 @@ class LayerConfigValidator:
             not in self.allowed_selection_modes
         ):
             raise ValueError(
-                "La selecciÃ³n de carpetas debe ser "
+                "La selección de carpetas debe ser "
                 "'sequence' o 'random'."
             )
 
@@ -40,7 +40,7 @@ class LayerConfigValidator:
             not in self.allowed_selection_modes
         ):
             raise ValueError(
-                "La selecciÃ³n de archivos debe ser "
+                "La selección de archivos debe ser "
                 "'sequence' o 'random'."
             )
 
@@ -49,7 +49,7 @@ class LayerConfigValidator:
             not in self.allowed_repeat_modes
         ):
             raise ValueError(
-                "El modo de repeticiÃ³n debe ser "
+                "El modo de repetición debe ser "
                 "'full_video', 'interval' o 'scene'."
             )
 
@@ -58,7 +58,7 @@ class LayerConfigValidator:
             not in self.allowed_blend_modes
         ):
             raise ValueError(
-                "El modo de mezcla no es vÃ¡lido."
+                "El modo de mezcla no es válido."
             )
 
         if config.min_seconds <= 0:
@@ -102,7 +102,7 @@ class LayerConfigValidator:
         if not config.extensions:
             raise ValueError(
                 "Debe existir al menos "
-                "una extensiÃ³n permitida."
+                "una extensión permitida."
             )
 
         for extension in config.extensions:

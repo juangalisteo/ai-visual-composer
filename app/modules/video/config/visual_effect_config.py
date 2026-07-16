@@ -55,15 +55,15 @@ class VisualEffectConfig:
         LayerConfigValidator().validate(
             config=self,
             min_seconds_message=(
-                "La duraciÃ³n mÃ­nima del efecto "
+                "La duración mínima del efecto "
                 "debe ser superior a cero."
             ),
             max_seconds_message=(
-                "La duraciÃ³n mÃ¡xima del efecto "
+                "La duración máxima del efecto "
                 "debe ser superior a cero."
             ),
             max_less_than_min_message=(
-                "La duraciÃ³n mÃ¡xima no puede ser "
-                "inferior a la mÃ­nima."
+                "La duración máxima no puede ser "
+                "inferior a la mínima."
             )
         )

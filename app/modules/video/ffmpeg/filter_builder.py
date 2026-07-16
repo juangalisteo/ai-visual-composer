@@ -38,8 +38,8 @@ class FilterBuilder:
 
         if not context.media.image_paths:
             raise ValueError(
-                "No hay imÃ¡genes para construir "
-                "el vÃ­deo."
+                "No hay imágenes para construir "
+                "el vídeo."
             )
 
         graph = FilterPipeline(
@@ -55,7 +55,7 @@ class FilterBuilder:
         ).run()
 
         ProgressLogger.info(
-            f"DuraciÃ³n esperada del montaje: "
+            f"Duración esperada del montaje: "
             f"{graph.context.timeline.audio_duration:.2f} segundos"
         )
 

@@ -21,7 +21,7 @@ class VisualEffectConfigLoader:
             profile=profile,
             section_name="visual_effects",
             section_error_message=(
-                "La configuraciÃ³n "
+                "La configuración "
                 "video_style.visual_effects "
                 "debe ser un diccionario."
             )

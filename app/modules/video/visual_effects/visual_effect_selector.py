@@ -22,11 +22,11 @@ class VisualEffectSelector(
                 "una carpeta: "
             ),
             invalid_scene_count_message=(
-                "El nÃºmero de escenas debe ser "
+                "El número de escenas debe ser "
                 "superior a cero."
             ),
             invalid_scene_index_message=(
-                "El Ã­ndice de escena no puede ser "
+                "El índice de escena no puede ser "
                 "negativo."
             )
         )

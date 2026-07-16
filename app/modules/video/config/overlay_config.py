@@ -38,15 +38,15 @@ class OverlayConfig:
         LayerConfigValidator().validate(
             config=self,
             min_seconds_message=(
-                "La duraciÃ³n mÃ­nima del overlay "
+                "La duración mínima del overlay "
                 "debe ser superior a cero."
             ),
             max_seconds_message=(
-                "La duraciÃ³n mÃ¡xima del overlay "
+                "La duración máxima del overlay "
                 "debe ser superior a cero."
             ),
             max_less_than_min_message=(
-                "La duraciÃ³n mÃ¡xima del overlay "
-                "no puede ser inferior a la mÃ­nima."
+                "La duración máxima del overlay "
+                "no puede ser inferior a la mínima."
             )
         )

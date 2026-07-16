@@ -1,13 +1,65 @@
+import sys
+
 from app.shared.time_formatter import TimeFormatter
 
 
 class ProgressLogger:
+    _stdout_configured = False
+    _stdout_stream = None
+
+    @staticmethod
+    def _configure_stdout():
+        stream = sys.stdout
+
+        if ProgressLogger._stdout_configured:
+            if ProgressLogger._stdout_stream is stream:
+                return
+
+        reconfigure = getattr(
+            stream,
+            "reconfigure",
+            None
+        )
+
+        if callable(reconfigure):
+            try:
+                reconfigure(
+                    encoding="utf-8",
+                    errors="replace"
+                )
+            except (TypeError, ValueError, OSError):
+                pass
+
+        ProgressLogger._stdout_configured = True
+        ProgressLogger._stdout_stream = stream
+
+    @staticmethod
+    def _safe_print(message):
+        ProgressLogger._configure_stdout()
+
+        try:
+            print(message)
+        except UnicodeEncodeError:
+            stream = sys.stdout
+            encoding = getattr(
+                stream,
+                "encoding",
+                None
+            ) or "utf-8"
+            safe_message = str(message).encode(
+                encoding,
+                errors="backslashreplace"
+            ).decode(
+                encoding,
+                errors="replace"
+            )
+            print(safe_message)
 
     @staticmethod
     def start(
         message
     ):
-        print(
+        ProgressLogger._safe_print(
             f"\n{message}..."
         )
 
@@ -15,7 +67,7 @@ class ProgressLogger:
     def info(
         message
     ):
-        print(
+        ProgressLogger._safe_print(
             message
         )
 
@@ -24,7 +76,7 @@ class ProgressLogger:
         message,
         elapsed
     ):
-        print(
+        ProgressLogger._safe_print(
             f"{message} "
             f"({TimeFormatter.format(elapsed)})"
         )
@@ -33,7 +85,7 @@ class ProgressLogger:
     def warning(
         message
     ):
-        print(
+        ProgressLogger._safe_print(
             f"ADVERTENCIA: {message}"
         )
 
@@ -41,6 +93,6 @@ class ProgressLogger:
     def error(
         message
     ):
-        print(
+        ProgressLogger._safe_print(
             f"ERROR: {message}"
         )

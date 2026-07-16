@@ -61,7 +61,7 @@ class CommandPlanBuilder:
 
         if image_count <= 0:
             raise ValueError(
-                "No hay imÃ¡genes para construir "
+                "No hay imágenes para construir "
                 "el comando de FFmpeg."
             )
 
