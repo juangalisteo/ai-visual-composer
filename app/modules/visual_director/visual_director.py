@@ -35,7 +35,8 @@ class VisualDirector:
         "no readable signs, no readable screens, "
         "no handwritten text, no printed text, "
         "no cartoon, no anime, no illustration, "
-        "no distorted anatomy, no cluttered composition"
+        "no distorted anatomy, no cluttered composition, "
+        "no waxy skin, no mannequin faces, no artificial people"
     )
 
     negative_prompt = (
@@ -89,6 +90,22 @@ class VisualDirector:
             "desert",
             "valley"
         },
+        "interior environment": {
+            "home",
+            "casa",
+            "interior",
+            "room",
+            "habitacion",
+            "office",
+            "oficina",
+            "studio",
+            "workshop",
+            "taller",
+            "window",
+            "ventana",
+            "door",
+            "puerta"
+        },
         "urban environment": {
             "city",
             "ciudad",
@@ -96,12 +113,9 @@ class VisualDirector:
             "calle",
             "building",
             "edificio",
-            "room",
-            "habitacion",
-            "window",
-            "ventana",
-            "door",
-            "puerta"
+            "plaza",
+            "station",
+            "estacion"
         },
         "cosmic symbolic space": {
             "stars",
@@ -180,6 +194,14 @@ class VisualDirector:
         "high angle observational view"
     )
 
+    lens_styles = (
+        "35mm cinematic lens language",
+        "50mm natural perspective",
+        "85mm portrait compression",
+        "24mm environmental depth",
+        "documentary lens realism"
+    )
+
     compositions = (
         "layered foreground, midground and background",
         "strong leading lines toward the subject",
@@ -202,6 +224,23 @@ class VisualDirector:
         "muted documentary palette",
         "deep contrast with restrained saturation",
         "clean luminous color separation"
+    )
+
+    human_art_direction = (
+        "human art direction, credible human presence, natural body "
+        "language, balanced posture, believable anatomy, subtle facial "
+        "expression, coherent gaze, realistic skin and hair, "
+        "context-appropriate wardrobe with natural fabric behavior"
+    )
+
+    human_context_direction = (
+        "identity, interaction and styling shaped by setting, action, "
+        "light and emotional tone"
+    )
+
+    art_direction = (
+        "editorial art direction, professional cinematography, cohesive "
+        "light-space integration, refined production design"
     )
 
     def direct(
@@ -233,7 +272,7 @@ class VisualDirector:
             "environment": self._match_group(
                 keywords=keywords,
                 groups=self.environments,
-                default="clear symbolic environment"
+                default="scene-defined environment"
             ),
             "emotion": self._match_group(
                 keywords=keywords,
@@ -254,6 +293,13 @@ class VisualDirector:
                     "camera"
                 )
             ),
+            "lens": self._select_varied(
+                options=self.lens_styles,
+                scene_index=context.scene_index,
+                previous=context.previous_directives.get(
+                    "lens"
+                )
+            ),
             "lighting": self._select_varied(
                 options=self.lighting_styles,
                 scene_index=context.scene_index,
@@ -269,8 +315,19 @@ class VisualDirector:
                 )
             ),
             "orientation": orientation,
-            "detail": "high detail, sharp focus, realistic textures",
-            "realism": "photorealistic cinematic still"
+            "human_art_direction": self._human_art_direction(
+                combined_text=(
+                    f"{scene_text} {visual_idea}"
+                )
+            ),
+            "human_context_direction": self._human_context_direction(
+                combined_text=(
+                    f"{scene_text} {visual_idea}"
+                )
+            ),
+            "art_direction": self.art_direction,
+            "detail": "natural detail, sharp focal plane, tactile textures",
+            "realism": "photoreal cinematic still"
         }
 
         positive_prompt = self._assemble_positive_prompt(
@@ -362,14 +419,11 @@ class VisualDirector:
     ):
         if keywords:
             return (
-                "main subject built around "
-                + ", ".join(
-                    keywords[:5]
-                )
+                "primary subject staged with clear narrative purpose"
             )
 
         return (
-            "main subject clearly derived from "
+            "primary subject staged from "
             f"{visual_idea}"
         )
 
@@ -437,6 +491,28 @@ class VisualDirector:
 
         return selected
 
+    def _human_art_direction(
+        self,
+        combined_text
+    ):
+        if not self.safe_visual_policy.has_human_subject(
+            combined_text
+        ):
+            return ""
+
+        return self.human_art_direction
+
+    def _human_context_direction(
+        self,
+        combined_text
+    ):
+        if not self.safe_visual_policy.has_human_subject(
+            combined_text
+        ):
+            return ""
+
+        return self.human_context_direction
+
     def _assemble_positive_prompt(
         self,
         visual_idea,
@@ -446,7 +522,7 @@ class VisualDirector:
         parts = [
             visual_idea,
             (
-                "visual interpretation of the scene meaning: "
+                "narrative context: "
                 f"{scene_text}"
             ),
             directives["subject"],
@@ -454,14 +530,17 @@ class VisualDirector:
             directives["emotion"],
             directives["composition"],
             directives["camera"],
+            directives["lens"],
             directives["lighting"],
             directives["color"],
             directives["orientation"],
+            directives["human_art_direction"],
+            directives["human_context_direction"],
+            directives["art_direction"],
             directives["realism"],
             directives["detail"],
             (
-                "clear readable visual storytelling, "
-                "professional art direction, atmospheric depth"
+                "clear visual storytelling, atmospheric depth"
             )
         ]
 
