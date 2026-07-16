@@ -298,10 +298,6 @@ class LayerConfigLoaderTest(
             ),
             Path(
                 "config/profiles/youtube/modo_conciencia.json"
-            ),
-            Path(
-                "output/codex_overlay_validation/profiles/"
-                "horizontal_overlay.json"
             )
         ]
 

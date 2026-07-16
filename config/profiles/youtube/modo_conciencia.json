@@ -105,20 +105,8 @@
         "overlays": {
             "enabled": false,
             "directory": "assets/videos/overlays",
-            "selection": "random",
-            "avoid_repeats": true,
-            "opacity": 0.15,
-            "blend_mode": "screen",
-            "probability": 1.0,
-            "types": [],
-            "weights": {}
-        },
-
-        "visual_effects": {
-            "enabled": true,
-            "directory": "assets/videos/visual_effects/LightLeak",
-            "mode": "overlay",
-            "selection": "random",
+            "folder_selection": "random",
+            "file_selection": "random",
             "repeat_mode": "interval",
             "min_seconds": 6,
             "max_seconds": 12,
@@ -130,9 +118,38 @@
             "folders": [],
             "types": [],
             "extensions": [
+                ".mov",
+                ".mp4"
+            ],
+            "folder_weights": {},
+            "file_weights": {}
+        },
+
+        "visual_effects": {
+            "enabled": false,
+            "directory": "assets/videos/visual_effects",
+            "mode": "overlay",
+            "folder_selection": "random",
+            "file_selection": "random",
+            "repeat_mode": "interval",
+            "min_seconds": 6,
+            "max_seconds": 12,
+            "loop_file": true,
+            "avoid_repeats": true,
+            "opacity": 0.15,
+            "blend_mode": "screen",
+            "probability": 1.0,
+            "folders": [
+                "LightLeak"
+            ],
+            "types": [],
+            "extensions": [
                 ".mov"
             ],
-            "weights": {}
+            "folder_weights": {
+                "LightLeak": 1.0
+            },
+            "file_weights": {}
         }
     },
 
