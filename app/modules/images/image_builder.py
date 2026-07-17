@@ -6,6 +6,10 @@ import urllib.request
 import uuid
 
 from app.managers.project_manager import ProjectManager
+from app.domain.adapters import (
+    LegacyGenerationResultAdapter,
+    LegacyStoryboardSceneAdapter
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 from app.modules.visual_director import (
@@ -141,17 +145,22 @@ class ImageBuilder:
             scenes,
             start=1
         ):
-            scene_number = scene.get(
-                "scene",
-                index
+            storyboard_scene = (
+                LegacyStoryboardSceneAdapter.from_dict(
+                    scene=scene,
+                    default_scene_number=index
+                )
             )
 
-            visual_idea = str(
-                scene.get(
-                    "visual_idea",
-                    ""
+            scene_number = (
+                storyboard_scene.scene_number
+            )
+
+            visual_idea = (
+                LegacyStoryboardSceneAdapter.visual_idea(
+                    scene
                 )
-            ).strip()
+            )
 
             if not visual_idea:
                 raise ValueError(
@@ -165,7 +174,7 @@ class ImageBuilder:
                 previous_directives,
                 elapsed
             ) = self._build_directed_prompt(
-                scene=scene,
+                storyboard_scene=storyboard_scene,
                 visual_idea=visual_idea,
                 scene_number=scene_number,
                 scene_index=index,
@@ -204,8 +213,17 @@ class ImageBuilder:
                 )
             )
 
+            generation_result = (
+                LegacyGenerationResultAdapter.from_image_result(
+                    image_path=image_path,
+                    storyboard_scene=storyboard_scene,
+                    width=width,
+                    height=height
+                )
+            )
+
             generated_images.append({
-                "scene": scene_number,
+                "scene": generation_result.scene_number,
                 "prompt": prompt,
                 "positive_prompt": (
                     prompt_metadata[
@@ -223,11 +241,9 @@ class ImageBuilder:
                     ]
                 ),
                 "image": str(image_path),
-                "width": width,
-                "height": height,
-                "duration": scene.get(
-                    "duration"
-                )
+                "width": generation_result.width,
+                "height": generation_result.height,
+                "duration": generation_result.duration
             })
 
             ProgressLogger.info(
@@ -356,7 +372,7 @@ class ImageBuilder:
 
     def _build_directed_prompt(
         self,
-        scene,
+        storyboard_scene,
         visual_idea,
         scene_number,
         scene_index,
@@ -387,18 +403,10 @@ class ImageBuilder:
             directed_prompt = (
                 self.visual_director.direct(
                     VisualDirectionContext(
-                        scene_text=str(
-                            scene.get(
-                                "text",
-                                ""
-                            )
-                        ).strip(),
+                        scene_text=storyboard_scene.text,
                         visual_idea=visual_idea,
                         duration=float(
-                            scene.get(
-                                "duration",
-                                0
-                            )
+                            storyboard_scene.duration
                             or 0
                         ),
                         scene_index=scene_index,
