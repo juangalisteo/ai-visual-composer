@@ -16,21 +16,19 @@ from app.modules.visual_director import (
     VisualDirectionContext,
     VisualDirector
 )
+from app.modules.images.prompt_system import ImagePromptSystem
 
 
 class ImageBuilder:
 
-    base_visual_identity = (
-        "professional cinematic realism, grounded documentary aesthetic, "
-        "natural believable appearance, coherent production design, "
-        "professional visual quality"
-    )
+    base_visual_identity = ImagePromptSystem.base_visual_identity
 
     def __init__(
         self,
         comfyui_url="http://127.0.0.1:8188",
         workflow_path="config/comfyui_flux_workflow_api.json",
-        visual_director=None
+        visual_director=None,
+        prompt_system=None
     ):
         self.comfyui_url = comfyui_url
 
@@ -41,6 +39,11 @@ class ImageBuilder:
         self.visual_director = (
             visual_director
             or VisualDirector()
+        )
+
+        self.prompt_system = (
+            prompt_system
+            or ImagePromptSystem()
         )
 
     def build(
@@ -193,7 +196,7 @@ class ImageBuilder:
             )
 
             prompt = (
-                self._compose_backend_prompt(
+                self.prompt_system.compose_backend_prompt(
                     positive_prompt=prompt_metadata[
                         "positive_prompt"
                     ],
@@ -501,27 +504,8 @@ class ImageBuilder:
         self,
         visual_idea
     ):
-        return (
-            f"{visual_idea}, "
-            "ultra realistic cinematic image, "
-            "photorealistic, documentary style, "
-            "golden volumetric lighting, "
-            "deep shadows, natural colors, "
-            "high detail, sharp focus, "
-            "epic composition, atmospheric depth, "
-            "no cartoon, no anime, no illustration, "
-            "premium film still, 8k, "
-            "no text, no letters, no words, "
-            "no typography, no captions, "
-            "no subtitles, no logos, "
-            "no watermarks, no signs, "
-            "no readable characters, "
-            "no handwritten text, "
-            "no printed text, "
-            "no text on books, "
-            "no text on screens, "
-            "no text on walls, "
-            "no text on objects"
+        return self.prompt_system.build_legacy_prompt(
+            visual_idea
         )
 
     def _compose_backend_prompt(
@@ -529,51 +513,18 @@ class ImageBuilder:
         positive_prompt,
         negative_prompt=""
     ):
-        prompt = ", ".join(
-            self._dedupe_prompt_parts(
-                (
-                    positive_prompt,
-                    self.base_visual_identity
-                )
-            )
+        return self.prompt_system.compose_backend_prompt(
+            positive_prompt=positive_prompt,
+            negative_prompt=negative_prompt
         )
-
-        if negative_prompt:
-            prompt = (
-                f"{prompt}, avoid: {negative_prompt}"
-            )
-
-        return prompt
 
     def _dedupe_prompt_parts(
         self,
         parts
     ):
-        seen = set()
-        result = []
-
-        for part in parts:
-            part = str(
-                part
-                or ""
-            ).strip()
-
-            if not part:
-                continue
-
-            key = part.lower()
-
-            if key in seen:
-                continue
-
-            seen.add(
-                key
-            )
-            result.append(
-                part
-            )
-
-        return result
+        return self.prompt_system.dedupe_prompt_parts(
+            parts
+        )
 
     def _generate_image(
         self,
