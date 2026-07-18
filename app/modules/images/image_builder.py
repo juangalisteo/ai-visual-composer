@@ -14,6 +14,7 @@ from app.modules.visual_director import (
     VisualDirectionContext,
     VisualDirector
 )
+from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
 
 
@@ -27,7 +28,8 @@ class ImageBuilder:
         workflow_path="config/comfyui_flux_workflow_api.json",
         visual_director=None,
         prompt_system=None,
-        backend=None
+        backend=None,
+        manifest_writer=None
     ):
         self.comfyui_url = comfyui_url
 
@@ -51,6 +53,11 @@ class ImageBuilder:
                 comfyui_url=self.comfyui_url,
                 workflow_path=self.workflow_path
             )
+        )
+
+        self.manifest_writer = (
+            manifest_writer
+            or ImageManifestWriter()
         )
 
     def build(
@@ -232,29 +239,14 @@ class ImageBuilder:
                 )
             )
 
-            generated_images.append({
-                "scene": generation_result.scene_number,
-                "prompt": prompt,
-                "positive_prompt": (
-                    prompt_metadata[
-                        "positive_prompt"
-                    ]
-                ),
-                "negative_prompt": (
-                    prompt_metadata[
-                        "negative_prompt"
-                    ]
-                ),
-                "visual_director": (
-                    prompt_metadata[
-                        "visual_director"
-                    ]
-                ),
-                "image": str(image_path),
-                "width": generation_result.width,
-                "height": generation_result.height,
-                "duration": generation_result.duration
-            })
+            generated_images.append(
+                self.manifest_writer.build_entry(
+                    generation_result=generation_result,
+                    prompt=prompt,
+                    prompt_metadata=prompt_metadata,
+                    image_path=image_path
+                )
+            )
 
             ProgressLogger.info(
                 f"{index}/{scene_count} imágenes"
@@ -269,27 +261,12 @@ class ImageBuilder:
             project.images_manifest_path()
         )
 
-        manifest_path.write_text(
-            json.dumps(
-                generated_images,
-                ensure_ascii=False,
-                indent=4
-            ),
-            encoding="utf-8"
+        manifest_path = (
+            self.manifest_writer.write(
+                manifest_path=manifest_path,
+                entries=generated_images
+            )
         )
-
-        if not manifest_path.exists():
-            raise FileNotFoundError(
-                "No se encontró el manifiesto "
-                "de imágenes esperado: "
-                f"{manifest_path}"
-            )
-
-        if manifest_path.stat().st_size <= 0:
-            raise RuntimeError(
-                "El manifiesto de imágenes "
-                "está vacío."
-            )
 
         total_elapsed = (
             time.perf_counter()
