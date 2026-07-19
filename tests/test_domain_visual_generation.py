@@ -2,50 +2,56 @@ import unittest
 from dataclasses import FrozenInstanceError
 
 from app.domain import (
+    ColorPlan,
+    CompositionPlan,
     GenerationResult,
-    GlobalIntention,
-    LocalIntention,
-    NarrativeAnalysis,
+    GenerationTranslation,
+    GlobalIntent,
+    LightingPlan,
+    MotionSense,
+    NarrativeReading,
+    PhotographyPlan,
+    SceneIntent,
+    StagingPlan,
     StoryboardScene,
     VisualBrief,
-    VisualPlan,
+    VisualStrategy,
 )
 
 
 class VisualGenerationDomainModelsTest(unittest.TestCase):
 
     def test_models_are_passive_immutable_domain_structures(self):
-        analysis = NarrativeAnalysis(
-            source_text="La ley de correspondencia.",
-            concepts=("correspondence",)
+        reading = NarrativeReading(
+            event="La ley de correspondencia.",
+            relevant_concepts=("correspondence",)
         )
 
         self.assertEqual(
-            analysis.concepts,
+            reading.relevant_concepts,
             ("correspondence",)
         )
 
         with self.assertRaises(
             FrozenInstanceError
         ):
-            analysis.source_text = "changed"
+            reading.event = "changed"
 
-    def test_intention_models_keep_global_and_local_responsibilities(self):
-        global_intention = GlobalIntention(
-            purpose="Reveal a hidden relation."
+    def test_intent_models_keep_global_and_scene_responsibilities(self):
+        global_intent = GlobalIntent(
+            expressive_purpose="Reveal a hidden relation."
         )
 
-        local_intention = LocalIntention(
-            global_intention=global_intention,
-            scene_function="Show the discovery."
+        scene_intent = SceneIntent(
+            emotional_function="Show the discovery."
         )
 
-        self.assertIs(
-            local_intention.global_intention,
-            global_intention
+        self.assertEqual(
+            global_intent.expressive_purpose,
+            "Reveal a hidden relation."
         )
         self.assertEqual(
-            local_intention.scene_function,
+            scene_intent.emotional_function,
             "Show the discovery."
         )
 
@@ -55,17 +61,14 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
             text="A reflective scene."
         )
 
-        plan = VisualPlan(
-            storyboard_scene=scene,
-            staging=("quiet interior",),
-            photography=("soft directional light",)
-        )
-
         brief = VisualBrief(
-            storyboard_scene=scene,
-            visual_plan=plan,
-            subject="study table",
-            constraints=("no readable text",)
+            visible_content="study table",
+            visual_strategy=VisualStrategy(
+                representation_approach="quiet symbolic realism"
+            ),
+            staging=StagingPlan(
+                main_subject="study table"
+            )
         )
 
         result = GenerationResult(
@@ -76,12 +79,210 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
 
         self.assertEqual(
-            brief.visual_plan,
-            plan
+            brief.visible_content,
+            "study table"
         )
         self.assertEqual(
             result.status,
             "completed"
+        )
+
+    def test_cognitive_language_models_can_be_composed(self):
+        reading = NarrativeReading(
+            event="A principle is explained.",
+            meaning="Patterns repeat across scales.",
+            central_idea="correspondence",
+            relevant_concepts=(
+                "reflection",
+                "scale"
+            ),
+            possible_symbols=(
+                "nested geometry",
+            ),
+            symbols_to_avoid=(
+                "literal galaxy portal",
+            )
+        )
+        global_intent = GlobalIntent(
+            expressive_purpose="Reveal an invisible order.",
+            dominant_emotion="wonder",
+            global_energy="calm"
+        )
+        scene_intent = SceneIntent(
+            emotional_function="quiet revelation",
+            emotion="awe",
+            emotional_intensity="low"
+        )
+        strategy = VisualStrategy(
+            representation_approach="cinematic abstraction",
+            realism_level="grounded",
+            symbolism_degree="restrained",
+            scale_treatment="macro and micro echo"
+        )
+        staging = StagingPlan(
+            main_subject="geometric pattern",
+            environment="minimal contemplative space",
+            action_or_state="still reflection"
+        )
+        photography = PhotographyPlan(
+            point_of_view="observational",
+            emotional_distance="measured",
+            photographic_atmosphere="quiet"
+        )
+        composition = CompositionPlan(
+            visual_hierarchy="pattern first",
+            framing="centered",
+            figure_ground_relationship="clear separation"
+        )
+        lighting = LightingPlan(
+            source="soft motivated side light",
+            quality="diffuse",
+            contrast="gentle"
+        )
+        color = ColorPlan(
+            temperature="neutral warm",
+            palette=(
+                "deep graphite",
+                "soft gold"
+            )
+        )
+        motion = MotionSense(
+            latent_energy="contained",
+            rhythm="slow",
+            visual_breathing="spacious"
+        )
+        brief = VisualBrief(
+            visible_content="nested geometric reflections",
+            felt_experience="calm discovery",
+            visual_strategy=strategy,
+            staging=staging,
+            photography=photography,
+            composition=composition,
+            lighting=lighting,
+            color=color,
+            motion=motion,
+            continuity_relationship="continues the contemplative arc"
+        )
+        translation = GenerationTranslation(
+            target_backend="generic image generator",
+            translation_priorities=(
+                "preserve visual hierarchy",
+            ),
+            translation_restrictions=(
+                "no backend-specific syntax",
+            ),
+            translated_directives=(
+                "structured visual directive",
+            ),
+            trace_references=(
+                "VisualBrief.visible_content",
+            )
+        )
+
+        self.assertEqual(
+            reading.central_idea,
+            "correspondence"
+        )
+        self.assertEqual(
+            global_intent.global_energy,
+            "calm"
+        )
+        self.assertEqual(
+            scene_intent.emotional_intensity,
+            "low"
+        )
+        self.assertIs(
+            brief.visual_strategy,
+            strategy
+        )
+        self.assertIs(
+            brief.staging,
+            staging
+        )
+        self.assertIs(
+            brief.photography,
+            photography
+        )
+        self.assertIs(
+            brief.composition,
+            composition
+        )
+        self.assertIs(
+            brief.lighting,
+            lighting
+        )
+        self.assertIs(
+            brief.color,
+            color
+        )
+        self.assertIs(
+            brief.motion,
+            motion
+        )
+        self.assertEqual(
+            translation.trace_references,
+            (
+                "VisualBrief.visible_content",
+            )
+        )
+
+    def test_cognitive_language_models_are_immutable(self):
+        intent = SceneIntent(
+            emotional_function="pause"
+        )
+
+        with self.assertRaises(
+            FrozenInstanceError
+        ):
+            intent.emotional_function = "changed"
+
+    def test_visual_brief_is_not_a_prompt_or_backend_payload(self):
+        field_names = set(
+            VisualBrief.__dataclass_fields__
+        )
+
+        forbidden = {
+            "prompt",
+            "positive_prompt",
+            "negative_prompt",
+            "payload",
+            "workflow",
+            "nodes",
+            "file_path",
+            "output_path",
+            "constraints",
+            "negative_constraints"
+        }
+
+        self.assertTrue(
+            forbidden.isdisjoint(
+                field_names
+            )
+        )
+
+    def test_generation_translation_does_not_own_creative_decisions(self):
+        field_names = set(
+            GenerationTranslation.__dataclass_fields__
+        )
+
+        forbidden = {
+            "narrative_reading",
+            "global_intent",
+            "scene_intent",
+            "visual_brief",
+            "visual_strategy",
+            "staging",
+            "photography",
+            "composition",
+            "lighting",
+            "color",
+            "motion"
+        }
+
+        self.assertTrue(
+            forbidden.isdisjoint(
+                field_names
+            )
         )
 
 
