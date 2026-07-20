@@ -8,6 +8,10 @@ from app.domain import (
     GlobalIntent,
     LightingPlan,
     MotionSense,
+    NarrativeContext,
+    NarrativeEvent,
+    NarrativeFacts,
+    NarrativeFunction,
     NarrativeReading,
     PhotographyPlan,
     SceneIntent,
@@ -133,14 +137,30 @@ class LegacyCognitiveAdapter:
         storyboard_scene: StoryboardScene
     ) -> NarrativeReading:
         return NarrativeReading(
-            event=LegacyCognitiveAdapter._clean(
-                storyboard_scene.text
+            facts=NarrativeFacts(
+                stated=_tuple_if_present(
+                    LegacyCognitiveAdapter._clean(
+                        storyboard_scene.text
+                    )
+                )
             ),
-            scene_function=LegacyCognitiveAdapter._clean(
-                storyboard_scene.narrative_role
+            event=NarrativeEvent(
+                action=LegacyCognitiveAdapter._clean(
+                    storyboard_scene.action
+                ),
+                subject=LegacyCognitiveAdapter._clean(
+                    storyboard_scene.subject
+                )
             ),
-            relation_to_whole=LegacyCognitiveAdapter._clean(
-                storyboard_scene.narrative_moment
+            context=NarrativeContext(
+                known_context=LegacyCognitiveAdapter._clean(
+                    storyboard_scene.narrative_moment
+                )
+            ),
+            function=NarrativeFunction(
+                primary=LegacyCognitiveAdapter._clean(
+                    storyboard_scene.narrative_role
+                )
             )
         )
 
@@ -304,3 +324,13 @@ class LegacyCognitiveAdapter:
         return str(
             value
         ).strip()
+
+
+def _tuple_if_present(
+    value: str
+) -> tuple[str, ...]:
+    if not value:
+        return ()
+    return (
+        value,
+    )

@@ -110,15 +110,15 @@ class LegacyCognitiveAdapterTest(unittest.TestCase):
 
         self.assertEqual(
             "Texto narrativo.",
-            adapted.narrative_reading.event
+            adapted.narrative_reading.facts.stated[0]
         )
         self.assertEqual(
             "setup",
-            adapted.narrative_reading.scene_function
+            adapted.narrative_reading.function.primary
         )
         self.assertEqual(
             "first beat",
-            adapted.narrative_reading.relation_to_whole
+            adapted.narrative_reading.context.known_context
         )
         self.assertEqual(
             "table",

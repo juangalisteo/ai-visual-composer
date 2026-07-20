@@ -1,0 +1,46 @@
+schema_version: 1
+id: modo_conciencia.work
+version: "1.0.0"
+type: work
+title: Modo Conciencia Narrative Reading
+extends: null
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  source: manual
+  description: Global narrative reading for the work.
+trace:
+  source_document: input/guion.txt
+narrative_reading:
+  context:
+    known_context: the work explores correspondence between visible reality and hidden patterns
+    continuity: each scene should relate concrete experience with larger structures
+    confidence: contextual
+  function:
+    primary: conceptual exploration
+    secondary:
+      - establish the main idea
+    structural_role: global frame
+    confidence: contextual
+  relations:
+    relations:
+      - small patterns reflect larger patterns
+    confidence: contextual
+  conflict:
+    conflict_type: conceptual
+    description: the visible world hides structural correspondences
+    tension: distance between appearance and underlying order
+    confidence: contextual
+  concepts:
+    explicit:
+      - correspondence
+    contextual:
+      - scale
+      - reflection
+      - hidden order
+  continuity:
+    continues:
+      - search for relation between scales
+    prepares:
+      - concrete examples of correspondence
+    confidence: contextual

@@ -3,18 +3,6 @@ from typing import Any
 
 
 @dataclass(frozen=True)
-class NarrativeReading:
-    event: str
-    meaning: str = ""
-    central_idea: str = ""
-    scene_function: str = ""
-    relevant_concepts: tuple[str, ...] = field(default_factory=tuple)
-    possible_symbols: tuple[str, ...] = field(default_factory=tuple)
-    symbols_to_avoid: tuple[str, ...] = field(default_factory=tuple)
-    relation_to_whole: str = ""
-
-
-@dataclass(frozen=True)
 class GlobalIntent:
     expressive_purpose: str
     dominant_emotion: str = ""

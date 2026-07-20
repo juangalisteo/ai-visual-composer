@@ -10,6 +10,7 @@ from app.domain import (
     GlobalIntent,
     LightingPlan,
     MotionSense,
+    NarrativeFacts,
     NarrativeReading,
     PhotographyPlan,
     SceneIntent,
@@ -76,7 +77,11 @@ class CognitiveLanguageDomainTest(unittest.TestCase):
 
         instances = (
             NarrativeReading(
-                event="A thought is presented."
+                facts=NarrativeFacts(
+                    stated=(
+                        "A thought is presented.",
+                    )
+                )
             ),
             GlobalIntent(
                 expressive_purpose="Create contemplative clarity."
@@ -117,13 +122,17 @@ class CognitiveLanguageDomainTest(unittest.TestCase):
 
     def test_models_are_immutable(self):
         reading = NarrativeReading(
-            event="A scene happens."
+            facts=NarrativeFacts(
+                stated=(
+                    "A scene happens.",
+                )
+            )
         )
 
         with self.assertRaises(
             FrozenInstanceError
         ):
-            reading.event = "changed"
+            reading.facts = NarrativeFacts()
 
     def test_public_domain_imports_expose_cognitive_models(self):
         for model in COGNITIVE_MODELS:
