@@ -1,0 +1,31 @@
+schema_version: 1
+id: modo_conciencia.sequence.correspondencia_intro
+version: "1.0.0"
+type: sequence
+title: Correspondencia Intro
+extends: modo_conciencia.episode.correspondencia_universal
+composes:
+  - reference: modo_conciencia.platform.instagram
+    role: platform
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  description: Intro sequence variation.
+inheritance_policy:
+  locked:
+  appendable:
+    - symbolic_system.recurring_symbols
+  overridable:
+    - cinematic_language.rhythm
+    - composition.hierarchy
+    - continuity.atmosphere
+visual_bible:
+  cinematic_language:
+    rhythm: very slow
+  composition:
+    hierarchy: symmetrical pattern first
+  continuity:
+    atmosphere: silent and contemplative
+  symbolic_system:
+    recurring_symbols:
+      - reflection within reflection

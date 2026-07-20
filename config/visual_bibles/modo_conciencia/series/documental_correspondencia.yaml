@@ -1,0 +1,34 @@
+schema_version: 1
+id: modo_conciencia.series.documental_correspondencia
+version: "1.0.0"
+type: series
+title: Documental Correspondencia
+extends: modo_conciencia.root
+composes:
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  description: Documentary specialization for correspondence themes.
+inheritance_policy:
+  locked:
+  appendable:
+    - symbolic_system.recurring_symbols
+    - creative_limits.cliches
+  overridable:
+    - cinematic_language.rhythm
+    - composition.density
+    - photography.emotional_distance
+visual_bible:
+  cinematic_language:
+    rhythm: observational and slow
+  composition:
+    density: medium low
+  photography:
+    emotional_distance: documentary distance
+  symbolic_system:
+    recurring_symbols:
+      - mirrored patterns
+      - nested scale
+  creative_limits:
+    cliches:
+      - literal cosmic tunnel
