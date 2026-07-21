@@ -1,0 +1,26 @@
+schema_version: 1
+id: modo_conciencia.intention.beat.scene_001_acceptance
+version: "1.0.0"
+type: beat
+title: Key Acceptance Beat Intention
+extends: modo_conciencia.intention.scene.scene_001_key_transfer
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  source: manual
+  description: Microintention for the acceptance beat.
+trace:
+  source_beat: scene_001_acceptance
+  relationship_to_parent: contrast
+  justification: the beat adds hesitation while preserving the responsibility of the scene
+intention:
+  emotional:
+    desired_effect: brief hesitation
+    emotional_quality: restrained uncertainty
+  transformative:
+    before: offered responsibility
+    after: accepted responsibility
+    shift: hesitation becomes acceptance
+  attentional:
+    focus: the moment of acceptance
+    priority: inner consent

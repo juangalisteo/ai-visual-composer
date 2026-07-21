@@ -122,6 +122,19 @@ class StoryboardScene:
 class VisualBrief:
     visible_content: str
     felt_experience: str = ""
+    narrative_composition: str = ""
+    visual_priority: str = ""
+    primary_subject: str = ""
+    secondary_subject: str = ""
+    attention_focus: str = ""
+    dominant_visual_intention: str = ""
+    visual_reading: str = ""
+    scene_rhythm: str = ""
+    symbolic_weight: str = ""
+    visual_continuity: str = ""
+    visual_bible_coherence: str = ""
+    narrative_coherence: str = ""
+    intention_coherence: str = ""
     visual_strategy: VisualStrategy | None = None
     staging: StagingPlan | None = None
     photography: PhotographyPlan | None = None

@@ -1,0 +1,56 @@
+schema_version: 1
+id: modo_conciencia.intention.scene.scene_001_key_transfer
+version: "1.0.0"
+type: scene
+title: Key Transfer Intention
+extends:
+  id: modo_conciencia.intention.sequence.correspondencia_intro
+  version: "1.x"
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  source: manual
+  description: Scene intention for the old key transfer.
+trace:
+  source_scene: scene_001_key_transfer
+  related_narrative_reading: Una persona entrega una llave antigua a otra.
+  relationship_to_parent: specialization
+  justification: the scene concretizes the sequence threshold through responsibility
+intention:
+  communicative:
+    understanding: receiving the key implies accepting access or responsibility
+    key_message: the transfer matters more than possession
+  emotional:
+    desired_effect: contained solemnity
+    emotional_quality: charged stillness
+  cognitive:
+    question: what consequence has just been activated
+    operation: reinterpret the object through responsibility
+  narrative:
+    purpose: initiate a new responsibility
+    function: threshold event
+  symbolic:
+    meaning: the key acts as threshold and burden
+    allowed_readings:
+      - access
+      - responsibility
+      - burden
+    ambiguity: whether the gesture protects or compromises remains open
+  transformative:
+    before: physical exchange
+    after: point of no return
+    shift: from object transfer to accepted consequence
+  attentional:
+    focus: the act of accepting
+    priority: consequence over object
+    de_emphasize:
+      - casual exchange
+  negative:
+    avoid_interpretations:
+      - casual handoff
+      - romantic gesture
+      - commercial transaction
+    avoid_effects:
+      - lightness
+    avoid_meaning_drift:
+      - the key as decoration only

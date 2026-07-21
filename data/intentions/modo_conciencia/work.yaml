@@ -1,0 +1,53 @@
+schema_version: 1
+id: modo_conciencia.intention.work
+version: "1.0.0"
+type: work
+title: Modo Conciencia Work Intention
+extends: null
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  source: manual
+  description: Global expressive horizon for the work.
+trace:
+  source_document: input/guion.txt
+intention:
+  communicative:
+    understanding: reality reflects patterns across different scales
+    key_message: correspondence is a principle of relation
+    emphasis:
+      - relation over isolation
+  emotional:
+    desired_effect: contemplative clarity
+    emotional_quality: calm attention
+    intensity: restrained
+  cognitive:
+    question: how can one pattern reveal another
+    operation: connect concrete experience with abstract principle
+    insight: scale changes without breaking relation
+  narrative:
+    purpose: guide the viewer from observation to recognition
+    function: global orientation
+    arc_relation: opens the search for correspondence
+  symbolic:
+    meaning: visible forms can disclose hidden structure
+    allowed_readings:
+      - reflection
+      - scale
+    ambiguity: symbolic but legible
+  transformative:
+    before: fragmented perception
+    after: relational perception
+    shift: from isolated facts to correspondence
+  attentional:
+    focus: relation between scales
+    priority: meaning of connection
+    de_emphasize:
+      - spectacle
+  negative:
+    avoid_interpretations:
+      - decorative mysticism
+    avoid_effects:
+      - empty spectacle
+    avoid_meaning_drift:
+      - magic as literal explanation

@@ -1,0 +1,33 @@
+schema_version: 1
+id: modo_conciencia.intention.sequence.correspondencia_intro
+version: "1.0.0"
+type: sequence
+title: Correspondencia Intro Intention
+extends: modo_conciencia.intention.work
+metadata:
+  owner: Modo Conciencia
+  status: draft
+  source: manual
+  description: Expressive phase for the introduction sequence.
+trace:
+  source_sequence: correspondencia_intro
+  relationship_to_parent: specialization
+  justification: the sequence turns the global principle into a first concrete intuition
+intention:
+  communicative:
+    understanding: an ordinary discovery can introduce a larger principle
+    emphasis:
+      - concrete sign before abstract explanation
+  emotional:
+    desired_effect: quiet anticipation
+  cognitive:
+    question: why does this object matter beyond its literal use
+  narrative:
+    purpose: prepare the first threshold of recognition
+    function: introduction
+  symbolic:
+    allowed_readings:
+      - threshold
+      - access
+  attentional:
+    priority: the emergence of significance
