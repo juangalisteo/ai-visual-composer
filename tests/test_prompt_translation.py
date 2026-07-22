@@ -3,6 +3,10 @@ import unittest
 from dataclasses import FrozenInstanceError, is_dataclass
 from pathlib import Path
 
+from app.cinematic_direction import create_cinematic_direction_set
+from app.color_direction import ColorDirection
+from app.composition_direction import CompositionDirection
+from app.continuity_direction import ContinuityDirection
 from app.domain import (
     ColorPlan,
     CompositionPlan,
@@ -13,6 +17,9 @@ from app.domain import (
     VisualBrief,
     VisualStrategy,
 )
+from app.lighting_direction import LightingDirection
+from app.movement_direction import MovementDirection
+from app.photography_direction import PhotographyDirection
 from app.prompt_translation import (
     BackendPrompt,
     BackendPromptInstruction,
@@ -90,6 +97,35 @@ def effective_visual_brief():
         fingerprint="visual-brief-fingerprint",
         source_id="scene_001",
         source_version="1.0.0",
+    )
+
+
+def cinematic_direction_set():
+    return create_cinematic_direction_set(
+        photography=PhotographyDirection(
+            dominant_photographic_language="observational intimacy",
+            fingerprint="photography-fingerprint"
+        ),
+        lighting=LightingDirection(
+            dominant_lighting="motivated soft source",
+            fingerprint="lighting-fingerprint"
+        ),
+        composition=CompositionDirection(
+            dominant_composition="hands first",
+            fingerprint="composition-fingerprint"
+        ),
+        color=ColorDirection(
+            dominant_palette="muted amber",
+            fingerprint="color-fingerprint"
+        ),
+        movement=MovementDirection(
+            dominant_movement="inward movement",
+            fingerprint="movement-fingerprint"
+        ),
+        continuity=ContinuityDirection(
+            visual_continuity="recurring object",
+            fingerprint="continuity-fingerprint"
+        ),
     )
 
 
@@ -195,6 +231,132 @@ class PromptTranslationTest(unittest.TestCase):
             second
         )
         self.assertEqual(
+            first.fingerprint,
+            second.fingerprint
+        )
+
+    def test_cinematic_set_is_ignored_when_disabled(self):
+        effective = effective_visual_brief()
+
+        legacy = PromptTranslator().translate(
+            effective
+        )
+        disabled = PromptTranslator().translate(
+            effective,
+            cinematic_direction_set=cinematic_direction_set(),
+            cinematic_enabled=False,
+        )
+
+        self.assertEqual(
+            legacy,
+            disabled
+        )
+        self.assertEqual(
+            legacy.fingerprint,
+            disabled.fingerprint
+        )
+
+    def test_cinematic_set_enriches_translation_when_enabled(self):
+        prompt = PromptTranslator().translate(
+            effective_visual_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+            cinematic_enabled=True,
+        )
+        by_source = {
+            instruction.source_field: instruction
+            for instruction in prompt.instructions
+        }
+
+        self.assertEqual(
+            by_source["CinematicDirectionSet.photography.dominant_photographic_language"].value,
+            "observational intimacy"
+        )
+        self.assertEqual(
+            by_source["CinematicDirectionSet.photography.dominant_photographic_language"].category,
+            "cinematic_photography"
+        )
+        self.assertEqual(
+            by_source["CinematicDirectionSet.color.dominant_palette"].value,
+            "muted amber"
+        )
+        self.assertIn(
+            "VisualBrief.visible_content",
+            by_source
+        )
+
+    def test_cinematic_translation_trace_keeps_direction_and_set_fingerprints(self):
+        direction_set = cinematic_direction_set()
+        prompt = PromptTranslator().translate(
+            effective_visual_brief(),
+            cinematic_direction_set=direction_set,
+            cinematic_enabled=True,
+        )
+        trace = {
+            item.instruction_id: item
+            for item in prompt.trace.items
+        }
+
+        self.assertEqual(
+            trace["cinematic_photography_dominant_photographic_language"].source_fields,
+            (
+                "CinematicDirectionSet.photography.dominant_photographic_language",
+                "CinematicDirectionSet.photography.fingerprint",
+                "CinematicDirectionSet.fingerprint",
+            )
+        )
+        self.assertEqual(
+            trace["cinematic_photography_dominant_photographic_language"].transformation,
+            "translate_cinematic_direction_field"
+        )
+        self.assertNotEqual(
+            direction_set.fingerprint,
+            ""
+        )
+
+    def test_cinematic_translation_is_deterministic(self):
+        effective = effective_visual_brief()
+        direction_set = cinematic_direction_set()
+
+        first = PromptTranslator().translate(
+            effective,
+            cinematic_direction_set=direction_set,
+            cinematic_enabled=True,
+        )
+        second = PromptTranslator().translate(
+            effective,
+            cinematic_direction_set=direction_set,
+            cinematic_enabled=True,
+        )
+
+        self.assertEqual(
+            first,
+            second
+        )
+        self.assertEqual(
+            first.fingerprint,
+            second.fingerprint
+        )
+
+    def test_cinematic_translation_fingerprint_changes_when_direction_set_changes(self):
+        effective = effective_visual_brief()
+        first = PromptTranslator().translate(
+            effective,
+            cinematic_direction_set=cinematic_direction_set(),
+            cinematic_enabled=True,
+        )
+        changed_set = create_cinematic_direction_set(
+            photography=PhotographyDirection(
+                dominant_photographic_language="distant observation",
+                fingerprint="changed-photography-fingerprint"
+            )
+        )
+        second = PromptTranslator().translate(
+            effective,
+            cinematic_direction_set=changed_set,
+            cinematic_enabled=True,
+        )
+
+        self.assertNotEqual(
             first.fingerprint,
             second.fingerprint
         )

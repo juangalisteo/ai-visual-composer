@@ -5,6 +5,7 @@ from dataclasses import asdict, fields, is_dataclass
 from enum import Enum
 from typing import Any
 
+from app.cinematic_direction import CinematicDirectionSet
 from app.prompt_translation.models import (
     BackendPrompt,
     BackendPromptInstruction,
@@ -44,7 +45,9 @@ FIELD_CATEGORIES = {
 class PromptTranslator:
     def translate(
         self,
-        effective_visual_brief: EffectiveVisualBrief
+        effective_visual_brief: EffectiveVisualBrief,
+        cinematic_direction_set: CinematicDirectionSet | None = None,
+        cinematic_enabled: bool = False,
     ) -> BackendPrompt:
         visual_brief = effective_visual_brief.visual_brief
         instructions: list[BackendPromptInstruction] = []
@@ -63,6 +66,12 @@ class PromptTranslator:
                 trace_items,
                 source_field,
                 value
+            )
+        if cinematic_enabled and cinematic_direction_set is not None:
+            self._collect_cinematic_instructions(
+                instructions,
+                trace_items,
+                cinematic_direction_set
             )
 
         trace = BackendPromptTrace(
@@ -155,6 +164,87 @@ class PromptTranslator:
                     f"VisualBrief.{source_field}",
                 ),
                 transformation=transformation,
+            )
+        )
+
+    def _collect_cinematic_instructions(
+        self,
+        instructions: list[BackendPromptInstruction],
+        trace_items: list[BackendPromptTraceItem],
+        cinematic_direction_set: CinematicDirectionSet,
+    ) -> None:
+        for component in (
+            "photography",
+            "lighting",
+            "composition",
+            "color",
+            "movement",
+            "continuity",
+        ):
+            direction = getattr(
+                cinematic_direction_set,
+                component
+            )
+            if direction is None:
+                continue
+            for field in fields(
+                direction
+            ):
+                if field.name in (
+                    "trace",
+                    "source_id",
+                    "source_version",
+                    "fingerprint",
+                ):
+                    continue
+                source_field = f"{component}.{field.name}"
+                value = getattr(
+                    direction,
+                    field.name
+                )
+                self._add_cinematic_instruction(
+                    instructions,
+                    trace_items,
+                    cinematic_direction_set,
+                    component,
+                    source_field,
+                    value
+                )
+
+    def _add_cinematic_instruction(
+        self,
+        instructions: list[BackendPromptInstruction],
+        trace_items: list[BackendPromptTraceItem],
+        cinematic_direction_set: CinematicDirectionSet,
+        component: str,
+        source_field: str,
+        value: Any
+    ) -> None:
+        normalized, _ = _normalize_value(
+            value
+        )
+        if not normalized:
+            return
+        instruction_id = _instruction_id(
+            f"cinematic.{source_field}"
+        )
+        instructions.append(
+            BackendPromptInstruction(
+                id=instruction_id,
+                category=f"cinematic_{component}",
+                source_field=f"CinematicDirectionSet.{source_field}",
+                value=normalized,
+            )
+        )
+        trace_items.append(
+            BackendPromptTraceItem(
+                instruction_id=instruction_id,
+                source_fields=(
+                    f"CinematicDirectionSet.{source_field}",
+                    f"CinematicDirectionSet.{component}.fingerprint",
+                    "CinematicDirectionSet.fingerprint",
+                ),
+                transformation="translate_cinematic_direction_field",
             )
         )
 
