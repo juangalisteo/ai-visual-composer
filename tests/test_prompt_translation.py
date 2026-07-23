@@ -473,8 +473,8 @@ class PromptTranslationTest(unittest.TestCase):
                     source
                 )
 
-    def test_runtime_does_not_import_prompt_translation(self):
-        source = ""
+    def test_runtime_imports_prompt_translation_only_from_image_builder(self):
+        paths_with_import = []
         for directory in (
             "app/modules",
             "app/managers",
@@ -486,13 +486,19 @@ class PromptTranslationTest(unittest.TestCase):
             ).rglob(
                 "*.py"
             ):
-                source += path.read_text(
+                source = path.read_text(
                     encoding="utf-8"
                 )
+                if "app.prompt_translation" in source:
+                    paths_with_import.append(
+                        path.as_posix()
+                    )
 
-        self.assertNotIn(
-            "app.prompt_translation",
-            source
+        self.assertEqual(
+            [
+                "app/modules/images/image_builder.py",
+            ],
+            paths_with_import
         )
 
 

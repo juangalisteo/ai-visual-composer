@@ -1,9 +1,12 @@
 ﻿from pathlib import Path
 import json
+import hashlib
 import time
 
+from app.cinematic_direction import CinematicDirectionOrchestrator
 from app.managers.project_manager import ProjectManager
 from app.domain.adapters import (
+    LegacyCognitiveAdapter,
     LegacyGenerationResultAdapter,
     LegacyStoryboardSceneAdapter
 )
@@ -16,6 +19,11 @@ from app.modules.visual_director import (
 )
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
+from app.prompt_translation import PromptTranslator
+from app.visual_direction import (
+    EffectiveVisualBrief,
+    VisualBriefTrace
+)
 
 
 class ImageBuilder:
@@ -29,7 +37,9 @@ class ImageBuilder:
         visual_director=None,
         prompt_system=None,
         backend=None,
-        manifest_writer=None
+        manifest_writer=None,
+        prompt_translator=None,
+        cinematic_orchestrator=None
     ):
         self.comfyui_url = comfyui_url
 
@@ -60,10 +70,14 @@ class ImageBuilder:
             or ImageManifestWriter()
         )
 
+        self.prompt_translator = prompt_translator
+        self.cinematic_orchestrator = cinematic_orchestrator
+
     def build(
         self,
         storyboard_path=None,
-        output_dir=None
+        output_dir=None,
+        cinematic_enabled=False
     ):
         total_start = time.perf_counter()
 
@@ -205,6 +219,19 @@ class ImageBuilder:
                 )
             )
 
+            cinematic_runtime = (
+                self._build_cinematic_runtime_metadata(
+                    storyboard_scene=storyboard_scene,
+                    visual_idea=visual_idea,
+                    cinematic_enabled=cinematic_enabled
+                )
+            )
+
+            if cinematic_runtime is not None:
+                prompt_metadata[
+                    "cinematic_runtime"
+                ] = cinematic_runtime
+
             visual_director_elapsed += (
                 elapsed
             )
@@ -334,6 +361,126 @@ class ImageBuilder:
             )
 
         return width, height
+
+    def _build_cinematic_runtime_metadata(
+        self,
+        storyboard_scene,
+        visual_idea,
+        cinematic_enabled
+    ):
+        if not cinematic_enabled:
+            return None
+
+        effective_visual_brief = (
+            self._build_runtime_effective_visual_brief(
+                storyboard_scene=storyboard_scene,
+                visual_idea=visual_idea
+            )
+        )
+        cinematic_direction_set = (
+            self._cinematic_orchestrator().resolve(
+                effective_visual_brief
+            )
+        )
+        backend_prompt = (
+            self._prompt_translator().translate(
+                effective_visual_brief,
+                cinematic_direction_set=cinematic_direction_set,
+                cinematic_enabled=True
+            )
+        )
+
+        return {
+            "enabled": True,
+            "effective_visual_brief_fingerprint": (
+                effective_visual_brief.fingerprint
+            ),
+            "cinematic_direction_set_fingerprint": (
+                cinematic_direction_set.fingerprint
+            ),
+            "backend_prompt_fingerprint": (
+                backend_prompt.fingerprint
+            )
+        }
+
+    def _build_runtime_effective_visual_brief(
+        self,
+        storyboard_scene,
+        visual_idea
+    ):
+        adaptation = (
+            LegacyCognitiveAdapter.from_storyboard_scene(
+                storyboard_scene=storyboard_scene,
+                visual_idea=visual_idea
+            )
+        )
+        source_id = (
+            f"scene_{storyboard_scene.scene_number:03d}"
+        )
+        source_version = (
+            "legacy-runtime-v1"
+        )
+        fingerprint = (
+            self._runtime_visual_brief_fingerprint(
+                visual_brief=adaptation.visual_brief,
+                source_id=source_id,
+                source_version=source_version
+            )
+        )
+
+        return EffectiveVisualBrief(
+            visual_brief=adaptation.visual_brief,
+            trace=VisualBriefTrace(),
+            conflicts=(),
+            fingerprint=fingerprint,
+            source_id=source_id,
+            source_version=source_version
+        )
+
+    def _runtime_visual_brief_fingerprint(
+        self,
+        visual_brief,
+        source_id,
+        source_version
+    ):
+        canonical = {
+            "visual_brief": visual_brief,
+            "source_id": source_id,
+            "source_version": source_version
+        }
+        return hashlib.sha256(
+            json.dumps(
+                canonical,
+                default=_json_default,
+                sort_keys=True,
+                separators=(
+                    ",",
+                    ":"
+                )
+            ).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+
+    def _prompt_translator(
+        self
+    ):
+        if self.prompt_translator is None:
+            self.prompt_translator = (
+                PromptTranslator()
+            )
+
+        return self.prompt_translator
+
+    def _cinematic_orchestrator(
+        self
+    ):
+        if self.cinematic_orchestrator is None:
+            self.cinematic_orchestrator = (
+                CinematicDirectionOrchestrator()
+            )
+
+        return self.cinematic_orchestrator
 
     def _is_visual_director_enabled(
         self,
@@ -577,3 +724,24 @@ class ImageBuilder:
             workflow=workflow,
             prompt=prompt
         )
+
+
+def _json_default(
+    value
+):
+    if hasattr(
+        value,
+        "__dataclass_fields__"
+    ):
+        return {
+            field: getattr(
+                value,
+                field
+            )
+            for field in value.__dataclass_fields__
+        }
+
+    raise TypeError(
+        f"Object of type {type(value).__name__} "
+        "is not JSON serializable"
+    )
