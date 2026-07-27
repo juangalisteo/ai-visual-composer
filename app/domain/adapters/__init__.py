@@ -1,17 +1,17 @@
-from app.domain.adapters.legacy_generation_result_adapter import (
-    LegacyGenerationResultAdapter,
+from app.domain.adapters.generation_result_adapter import (
+    GenerationResultAdapter,
 )
-from app.domain.adapters.legacy_cognitive_adapter import (
-    LegacyCognitiveAdapter,
-    LegacyCognitiveSceneAdaptation,
+from app.domain.adapters.runtime_cognitive_adapter import (
+    RuntimeCognitiveAdapter,
+    RuntimeCognitiveSceneAdaptation,
 )
-from app.domain.adapters.legacy_storyboard_adapter import (
-    LegacyStoryboardSceneAdapter,
+from app.domain.adapters.storyboard_scene_adapter import (
+    StoryboardSceneAdapter,
 )
 
 __all__ = [
-    "LegacyCognitiveAdapter",
-    "LegacyCognitiveSceneAdaptation",
-    "LegacyGenerationResultAdapter",
-    "LegacyStoryboardSceneAdapter",
+    "GenerationResultAdapter",
+    "RuntimeCognitiveAdapter",
+    "RuntimeCognitiveSceneAdaptation",
+    "StoryboardSceneAdapter",
 ]

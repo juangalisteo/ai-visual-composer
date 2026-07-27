@@ -1,7 +1,7 @@
 from app.domain import StoryboardScene
 
 
-class LegacyStoryboardSceneAdapter:
+class StoryboardSceneAdapter:
 
     @staticmethod
     def from_dict(
@@ -31,7 +31,7 @@ class LegacyStoryboardSceneAdapter:
             ValueError
         ) as error:
             raise ValueError(
-                "El número de escena no es válido."
+                "El numero de escena no es valido."
             ) from error
 
         duration = scene.get(

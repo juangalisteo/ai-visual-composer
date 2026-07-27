@@ -6,53 +6,44 @@ class ImagePromptSystem:
         "professional visual quality"
     )
 
-    def build_legacy_prompt(
-        self,
-        visual_idea
-    ):
-        return (
-            f"{visual_idea}, "
-            "ultra realistic cinematic image, "
-            "photorealistic, documentary style, "
-            "golden volumetric lighting, "
-            "deep shadows, natural colors, "
-            "high detail, sharp focus, "
-            "epic composition, atmospheric depth, "
-            "no cartoon, no anime, no illustration, "
-            "premium film still, 8k, "
-            "no text, no letters, no words, "
-            "no typography, no captions, "
-            "no subtitles, no logos, "
-            "no watermarks, no signs, "
-            "no readable characters, "
-            "no handwritten text, "
-            "no printed text, "
-            "no text on books, "
-            "no text on screens, "
-            "no text on walls, "
-            "no text on objects"
-        )
+    cinematic_operational_identity = (
+        "photorealistic film still, natural anatomy, accurate hands, "
+        "coherent faces, stable character identity when repeated across scenes, "
+        "preserve described face, age, hairstyle, body type and clothing across "
+        "scene sequence, consistent wardrobe and setting, "
+        "motivated cinematic lighting, balanced composition, atmospheric depth, "
+        "sharp subject detail"
+    )
 
-    def compose_backend_prompt(
+    cinematic_operational_restrictions = (
+        "fully clothed, context appropriate non revealing wardrobe, "
+        "modest full coverage clothing, no exposed back, no bare shoulders, "
+        "covered shoulders, covered back, high neckline, "
+        "no plunging neckline, no crop top, no sexualization, "
+        "blank pages, blank screens, blank boards, unmarked uniforms, "
+        "unmarked signs, no badges with writing, "
+        "no text, no letters, no words, no typography, "
+        "no captions, no subtitles, no logos, no watermarks, "
+        "no readable characters, no handwritten text, no printed text, "
+        "no text on books, no text on screens, no text on walls, "
+        "no text on objects, no text on signs, no text on uniforms, "
+        "no readable badges, no writing on boards"
+    )
+
+    def compose_cinematic_backend_prompt(
         self,
-        positive_prompt,
-        negative_prompt=""
+        positive_prompt
     ):
-        prompt = ", ".join(
+        return ", ".join(
             self.dedupe_prompt_parts(
                 (
                     positive_prompt,
-                    self.base_visual_identity
+                    self.base_visual_identity,
+                    self.cinematic_operational_identity,
+                    self.cinematic_operational_restrictions
                 )
             )
         )
-
-        if negative_prompt:
-            prompt = (
-                f"{prompt}, avoid: {negative_prompt}"
-            )
-
-        return prompt
 
     def dedupe_prompt_parts(
         self,

@@ -3,7 +3,7 @@ from pathlib import Path
 from app.domain import GenerationResult, StoryboardScene
 
 
-class LegacyGenerationResultAdapter:
+class GenerationResultAdapter:
 
     @staticmethod
     def from_image_result(

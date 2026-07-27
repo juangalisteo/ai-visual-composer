@@ -1,34 +1,79 @@
 # Changelog
 
-All notable changes to AI Video Composer will be documented in this file.
+All notable changes to AI Visual Composer will be documented in this file.
 
-This project follows a conventional Open Source changelog structure. Dates are intentionally omitted until release tagging is formalized.
-
-## [Unreleased]
-
-### Added
-
-- First functional Visual Director subsystem for backend-neutral image prompt enrichment.
-- Directed prompt metadata in the image manifest, including positive prompt, negative prompt, fallback state, and visual directives.
-- Characterization tests for Visual Director and its ImageBuilder integration.
-
-### Changed
-
-- ImageBuilder now enriches scene prompts through Visual Director before image backend prompt injection, while preserving the legacy prompt as fallback.
-- ImageBuilder now adds a brief general cinematic identity and neutral visual restrictions before image backend prompt injection.
-
-### Removed
-
-- Removed the previous image prompt policy layer, its manifest metadata, and its conditional prompt rewriting.
-
-## [1.0.0] - Motor Core Completed
+## [1.0.0] - AI Visual Composer v1.0.0
 
 ### Summary
 
-- Core engine completed.
+- First official release candidate base for AI Visual Composer.
+- Image Component 1.0 certified as `IMAGE_COMPONENT_1_0_READY`.
+- AI Visual Composer product entry added.
+- Image Pipeline established as the first official product pipeline.
+- Video Pipeline exposed only as a future option.
+- Final Project Cleanup completed.
+
+### Added
+
+- Single cinematic Image Component runtime.
+- Runtime adapters for storyboard scenes, cognitive input, and generation results.
+- Cinematic direction orchestration.
+- Prompt Translator and `BackendPrompt`.
+- ComfyUI backend adapter integration.
+- Visual Quality contracts, gate, image validator, retry policy, and certification support.
+- Image Component certification suite.
+- Real certification campaign infrastructure.
+- AI Visual Composer pipeline selector.
+- Product documentation for external dependencies and runtime setup.
+
+### Changed
+
+- Project identity updated to AI Visual Composer.
+- Repository target name updated to `ai-visual-composer`.
+- ImageBuilder now coordinates the single certified Image Component runtime.
+- Prompt construction now flows through backend-neutral contracts before ComfyUI execution.
+- Documentation simplified to one official README and one active reference document.
+- `.gitignore` now explicitly excludes local AI models, checkpoints, downloads, generated outputs, logs, local secrets, and external runtimes.
+
+### Removed
+
+- Legacy image runtime path.
+- Legacy domain adapters.
+- Legacy Visual Director runtime module.
+- `VideoOverlayFilter` dead code.
+- Obsolete Visual Director tests.
+- Obsolete legacy adapter tests.
+- Duplicated and temporary documentation.
+- Temporary project structure document.
+- Redundant frozen requirements snapshot.
+- Generated outputs and debug logs from the working tree.
+
+### Preserved
+
+- Public video render facade.
+- Profile-driven video configuration.
+- FFmpeg video composition core.
+- Motion, Transitions, Overlays, Visual Effects, Fade, and Subtitles pipeline order.
+- Image manifest compatibility with downstream video assembly.
+- Existing profile system.
+- Existing ComfyUI workflow configuration.
+
+### Validated
+
+- Unit test suite.
+- Python compilation for `app`, `tests`, and `certification`.
+- `git diff --check`.
+- Image Component RC0 quick real smoke campaign.
+- Product entry flow through `AI VISUAL COMPOSER -> Image Pipeline`.
+
+## [0.1.0] - Motor Core Completed
+
+### Summary
+
+- Original video core completed.
 - Architecture stabilized.
 - Pipeline stabilized.
-- Final audit completed.
+- Final core audit completed.
 
 ### Added
 
@@ -62,16 +107,3 @@ This project follows a conventional Open Source changelog structure. Dates are i
 - Horizontal render validation.
 - Vertical render validation.
 - Combined layer render validation.
-
-### Validated
-
-- Unit test suite.
-- Python compilation.
-- Real horizontal renders.
-- Real vertical renders.
-- Overlay renders.
-- Visual effect renders.
-- Combined overlay and visual effect renders.
-- Transition-specific renders.
-- FFmpeg metadata probing.
-- Visual frame inspection.

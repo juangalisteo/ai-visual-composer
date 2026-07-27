@@ -47,7 +47,6 @@ class PromptTranslator:
         self,
         effective_visual_brief: EffectiveVisualBrief,
         cinematic_direction_set: CinematicDirectionSet | None = None,
-        cinematic_enabled: bool = False,
     ) -> BackendPrompt:
         visual_brief = effective_visual_brief.visual_brief
         instructions: list[BackendPromptInstruction] = []
@@ -67,7 +66,7 @@ class PromptTranslator:
                 source_field,
                 value
             )
-        if cinematic_enabled and cinematic_direction_set is not None:
+        if cinematic_direction_set is not None:
             self._collect_cinematic_instructions(
                 instructions,
                 trace_items,

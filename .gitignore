@@ -48,6 +48,17 @@ assets/audio/voices/
 ComfyUI/
 backup_codificacion_*/
 
+# Local AI models and heavyweight external assets
+models/
+checkpoints/
+downloads/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.gguf
+
 # Codex/agent local state
 .agents/
 .codex/

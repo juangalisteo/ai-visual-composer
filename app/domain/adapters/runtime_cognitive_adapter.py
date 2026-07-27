@@ -23,7 +23,7 @@ from app.domain import (
 
 
 @dataclass(frozen=True)
-class LegacyCognitiveSceneAdaptation:
+class RuntimeCognitiveSceneAdaptation:
     storyboard_scene: StoryboardScene
     narrative_reading: NarrativeReading
     global_intent: GlobalIntent
@@ -39,73 +39,79 @@ class LegacyCognitiveSceneAdaptation:
     trace_references: tuple[str, ...]
 
 
-class LegacyCognitiveAdapter:
+class RuntimeCognitiveAdapter:
 
     @staticmethod
     def from_storyboard_scene(
         storyboard_scene: StoryboardScene,
-        visual_idea: str = ""
-    ) -> LegacyCognitiveSceneAdaptation:
+        visual_idea: str = "",
+        orientation: str = ""
+    ) -> RuntimeCognitiveSceneAdaptation:
         trace_references = (
-            LegacyCognitiveAdapter.trace_storyboard_scene(
+            RuntimeCognitiveAdapter.trace_storyboard_scene(
                 storyboard_scene
             )
         )
 
         narrative_reading = (
-            LegacyCognitiveAdapter.narrative_reading_from_scene(
+            RuntimeCognitiveAdapter.narrative_reading_from_scene(
                 storyboard_scene
             )
         )
         global_intent = (
-            LegacyCognitiveAdapter.global_intent_from_scene(
+            RuntimeCognitiveAdapter.global_intent_from_scene(
                 storyboard_scene
             )
         )
         scene_intent = (
-            LegacyCognitiveAdapter.scene_intent_from_scene(
+            RuntimeCognitiveAdapter.scene_intent_from_scene(
                 storyboard_scene
             )
         )
         visual_strategy = (
-            LegacyCognitiveAdapter.visual_strategy_from_scene(
+            RuntimeCognitiveAdapter.visual_strategy_from_scene(
                 storyboard_scene
             )
         )
         staging = (
-            LegacyCognitiveAdapter.staging_from_scene(
+            RuntimeCognitiveAdapter.staging_from_scene(
                 storyboard_scene
             )
         )
         photography = (
-            LegacyCognitiveAdapter.photography_from_scene(
+            RuntimeCognitiveAdapter.photography_from_scene(
                 storyboard_scene
             )
         )
         composition = (
-            LegacyCognitiveAdapter.composition_from_scene(
+            RuntimeCognitiveAdapter.composition_from_scene(
                 storyboard_scene
             )
         )
         lighting = (
-            LegacyCognitiveAdapter.lighting_from_scene(
+            RuntimeCognitiveAdapter.lighting_from_scene(
                 storyboard_scene
             )
         )
         color = (
-            LegacyCognitiveAdapter.color_from_scene(
+            RuntimeCognitiveAdapter.color_from_scene(
                 storyboard_scene
             )
         )
         motion = (
-            LegacyCognitiveAdapter.motion_from_scene(
+            RuntimeCognitiveAdapter.motion_from_scene(
                 storyboard_scene
             )
         )
 
         visual_brief = VisualBrief(
-            visible_content=LegacyCognitiveAdapter._clean(
+            visible_content=RuntimeCognitiveAdapter._clean(
                 visual_idea
+            ),
+            narrative_composition=(
+                RuntimeCognitiveAdapter.composition_guidance_from_orientation(
+                    orientation
+                )
             ),
             visual_strategy=visual_strategy,
             staging=staging,
@@ -116,7 +122,7 @@ class LegacyCognitiveAdapter:
             motion=motion
         )
 
-        return LegacyCognitiveSceneAdaptation(
+        return RuntimeCognitiveSceneAdaptation(
             storyboard_scene=storyboard_scene,
             narrative_reading=narrative_reading,
             global_intent=global_intent,
@@ -139,26 +145,26 @@ class LegacyCognitiveAdapter:
         return NarrativeReading(
             facts=NarrativeFacts(
                 stated=_tuple_if_present(
-                    LegacyCognitiveAdapter._clean(
+                    RuntimeCognitiveAdapter._clean(
                         storyboard_scene.text
                     )
                 )
             ),
             event=NarrativeEvent(
-                action=LegacyCognitiveAdapter._clean(
+                action=RuntimeCognitiveAdapter._clean(
                     storyboard_scene.action
                 ),
-                subject=LegacyCognitiveAdapter._clean(
+                subject=RuntimeCognitiveAdapter._clean(
                     storyboard_scene.subject
                 )
             ),
             context=NarrativeContext(
-                known_context=LegacyCognitiveAdapter._clean(
+                known_context=RuntimeCognitiveAdapter._clean(
                     storyboard_scene.narrative_moment
                 )
             ),
             function=NarrativeFunction(
-                primary=LegacyCognitiveAdapter._clean(
+                primary=RuntimeCognitiveAdapter._clean(
                     storyboard_scene.narrative_role
                 )
             )
@@ -193,13 +199,13 @@ class LegacyCognitiveAdapter:
         storyboard_scene: StoryboardScene
     ) -> StagingPlan:
         return StagingPlan(
-            main_subject=LegacyCognitiveAdapter._clean(
+            main_subject=RuntimeCognitiveAdapter._clean(
                 storyboard_scene.subject
             ),
-            environment=LegacyCognitiveAdapter._clean(
+            environment=RuntimeCognitiveAdapter._clean(
                 storyboard_scene.setting
             ),
-            action_or_state=LegacyCognitiveAdapter._clean(
+            action_or_state=RuntimeCognitiveAdapter._clean(
                 storyboard_scene.action
             )
         )
@@ -245,16 +251,29 @@ class LegacyCognitiveAdapter:
         )
 
     @staticmethod
+    def composition_guidance_from_orientation(
+        orientation: str
+    ) -> str:
+        orientation = RuntimeCognitiveAdapter._clean(
+            orientation
+        ).lower()
+        if orientation == "vertical":
+            return "vertical 9:16"
+        if orientation == "horizontal":
+            return "wide horizontal 16:9"
+        return ""
+
+    @staticmethod
     def generation_translation_from_result(
         generation_result: GenerationResult,
         target_backend: str = ""
     ) -> GenerationTranslation:
         return GenerationTranslation(
-            target_backend=LegacyCognitiveAdapter._clean(
+            target_backend=RuntimeCognitiveAdapter._clean(
                 target_backend
             ),
             trace_references=(
-                LegacyCognitiveAdapter.trace_generation_result(
+                RuntimeCognitiveAdapter.trace_generation_result(
                     generation_result
                 )
             )

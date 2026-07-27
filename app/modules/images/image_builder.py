@@ -3,20 +3,17 @@ import json
 import hashlib
 import time
 
+from app.backend_adapters import ComfyUIAdapter
 from app.cinematic_direction import CinematicDirectionOrchestrator
 from app.managers.project_manager import ProjectManager
 from app.domain.adapters import (
-    LegacyCognitiveAdapter,
-    LegacyGenerationResultAdapter,
-    LegacyStoryboardSceneAdapter
+    GenerationResultAdapter,
+    RuntimeCognitiveAdapter,
+    StoryboardSceneAdapter
 )
 from app.modules.images.backends import ComfyUIBackend
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
-from app.modules.visual_director import (
-    VisualDirectionContext,
-    VisualDirector
-)
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
 from app.prompt_translation import PromptTranslator
@@ -24,6 +21,7 @@ from app.visual_direction import (
     EffectiveVisualBrief,
     VisualBriefTrace
 )
+from app.visual_quality import ImageQualityFlowCoordinator
 
 
 class ImageBuilder:
@@ -34,22 +32,18 @@ class ImageBuilder:
         self,
         comfyui_url="http://127.0.0.1:8188",
         workflow_path="config/comfyui_flux_workflow_api.json",
-        visual_director=None,
         prompt_system=None,
         backend=None,
         manifest_writer=None,
         prompt_translator=None,
-        cinematic_orchestrator=None
+        cinematic_orchestrator=None,
+        backend_adapter=None,
+        image_quality_flow=None
     ):
         self.comfyui_url = comfyui_url
 
         self.workflow_path = Path(
             workflow_path
-        )
-
-        self.visual_director = (
-            visual_director
-            or VisualDirector()
         )
 
         self.prompt_system = (
@@ -72,12 +66,13 @@ class ImageBuilder:
 
         self.prompt_translator = prompt_translator
         self.cinematic_orchestrator = cinematic_orchestrator
+        self.backend_adapter = backend_adapter
+        self.image_quality_flow = image_quality_flow
 
     def build(
         self,
         storyboard_path=None,
-        output_dir=None,
-        cinematic_enabled=False
+        output_dir=None
     ):
         total_start = time.perf_counter()
 
@@ -164,20 +159,13 @@ class ImageBuilder:
         )
 
         generated_images = []
-        previous_directives = {}
-        visual_director_elapsed = 0.0
-        visual_director_enabled = (
-            self._is_visual_director_enabled(
-                profile
-            )
-        )
 
         for index, scene in enumerate(
             scenes,
             start=1
         ):
             storyboard_scene = (
-                LegacyStoryboardSceneAdapter.from_dict(
+                StoryboardSceneAdapter.from_dict(
                     scene=scene,
                     default_scene_number=index
                 )
@@ -188,7 +176,7 @@ class ImageBuilder:
             )
 
             visual_idea = (
-                LegacyStoryboardSceneAdapter.visual_idea(
+                StoryboardSceneAdapter.visual_idea(
                     scene
                 )
             )
@@ -199,53 +187,46 @@ class ImageBuilder:
                     f"no contiene visual_idea."
                 )
 
-            (
-                prompt,
-                prompt_metadata,
-                previous_directives,
-                elapsed
-            ) = self._build_directed_prompt(
-                storyboard_scene=storyboard_scene,
-                visual_idea=visual_idea,
-                scene_number=scene_number,
-                scene_index=index,
-                scene_count=scene_count,
-                profile=profile,
-                visual_director_enabled=(
-                    visual_director_enabled
-                ),
-                previous_directives=(
-                    previous_directives
-                )
-            )
-
-            cinematic_runtime = (
+            runtime_metadata = (
                 self._build_cinematic_runtime_metadata(
                     storyboard_scene=storyboard_scene,
                     visual_idea=visual_idea,
-                    cinematic_enabled=cinematic_enabled
+                    profile=profile,
                 )
             )
+            prompt = (
+                runtime_metadata[
+                    "operational_prompt"
+                ]
+            )
+            prompt_metadata = {
+                "positive_prompt": (
+                    runtime_metadata[
+                        "backend_payload_prompt"
+                    ]
+                ),
+                "negative_prompt": "",
+                "visual_director": {
+                    "enabled": False,
+                    "fallback": False,
+                    "directives": {}
+                },
+                "cinematic_runtime": (
+                    runtime_metadata
+                )
+            }
 
-            if cinematic_runtime is not None:
+            if scene_count:
                 prompt_metadata[
                     "cinematic_runtime"
-                ] = cinematic_runtime
-
-            visual_director_elapsed += (
-                elapsed
-            )
-
-            prompt = (
-                self.prompt_system.compose_backend_prompt(
-                    positive_prompt=prompt_metadata[
-                        "positive_prompt"
-                    ],
-                    negative_prompt=prompt_metadata[
-                        "negative_prompt"
-                    ]
-                )
-            )
+                ][
+                    "scene_count"
+                ] = scene_count
+                prompt_metadata[
+                    "cinematic_runtime"
+                ][
+                    "scene_index"
+                ] = index
 
             image_path = (
                 self._generate_image(
@@ -257,8 +238,57 @@ class ImageBuilder:
                 )
             )
 
+            if self._is_image_validation_enabled(
+                profile
+            ):
+                retry_paths = {}
+
+                def generate_quality_attempt(
+                    attempt_number,
+                    seed
+                ):
+                    attempt_dir = (
+                        output_dir
+                        / "_quality_attempts"
+                        / f"scene_{scene_number:03d}"
+                        / f"attempt_{attempt_number:03d}"
+                    )
+                    attempt_path = (
+                        self._generate_image(
+                            prompt=prompt,
+                            scene_number=scene_number,
+                            output_dir=attempt_dir,
+                            width=width,
+                            height=height
+                        )
+                    )
+                    retry_paths[
+                        attempt_number
+                    ] = attempt_path
+                    return attempt_path
+
+                quality_result = (
+                    self._image_quality_flow().evaluate(
+                        image_path=image_path,
+                        scene_number=scene_number,
+                        width=width,
+                        height=height,
+                        generate_attempt=generate_quality_attempt
+                    )
+                )
+                if quality_result.status != "approved":
+                    raise RuntimeError(
+                        "La validacion de imagen requiere "
+                        "intervencion antes de continuar: "
+                        f"{quality_result.status}"
+                    )
+                image_path = retry_paths.get(
+                    quality_result.generated_asset.attempt_number,
+                    image_path
+                )
+
             generation_result = (
-                LegacyGenerationResultAdapter.from_image_result(
+                GenerationResultAdapter.from_image_result(
                     image_path=image_path,
                     storyboard_scene=storyboard_scene,
                     width=width,
@@ -278,11 +308,6 @@ class ImageBuilder:
             ProgressLogger.info(
                 f"{index}/{scene_count} imágenes"
             )
-
-        ProgressLogger.info(
-            "Visual Director: "
-            f"{visual_director_elapsed:.2f} segundos"
-        )
 
         manifest_path = (
             project.images_manifest_path()
@@ -366,15 +391,13 @@ class ImageBuilder:
         self,
         storyboard_scene,
         visual_idea,
-        cinematic_enabled
+        profile=None
     ):
-        if not cinematic_enabled:
-            return None
-
         effective_visual_brief = (
             self._build_runtime_effective_visual_brief(
                 storyboard_scene=storyboard_scene,
-                visual_idea=visual_idea
+                visual_idea=visual_idea,
+                profile=profile
             )
         )
         cinematic_direction_set = (
@@ -385,8 +408,17 @@ class ImageBuilder:
         backend_prompt = (
             self._prompt_translator().translate(
                 effective_visual_brief,
-                cinematic_direction_set=cinematic_direction_set,
-                cinematic_enabled=True
+                cinematic_direction_set=cinematic_direction_set
+            )
+        )
+        payload = (
+            self._backend_adapter().adapt(
+                backend_prompt
+            )
+        )
+        operational_prompt = (
+            self.prompt_system.compose_cinematic_backend_prompt(
+                payload.prompt
             )
         )
 
@@ -400,25 +432,45 @@ class ImageBuilder:
             ),
             "backend_prompt_fingerprint": (
                 backend_prompt.fingerprint
-            )
+            ),
+            "backend_adapter_payload_fingerprint": (
+                payload.fingerprint
+            ),
+            "operational_prompt_fingerprint": (
+                self._text_fingerprint(
+                    operational_prompt
+                )
+            ),
+            "backend_payload_prompt": payload.prompt,
+            "operational_prompt": operational_prompt
         }
 
     def _build_runtime_effective_visual_brief(
         self,
         storyboard_scene,
-        visual_idea
+        visual_idea,
+        profile=None
     ):
         adaptation = (
-            LegacyCognitiveAdapter.from_storyboard_scene(
+            RuntimeCognitiveAdapter.from_storyboard_scene(
                 storyboard_scene=storyboard_scene,
-                visual_idea=visual_idea
+                visual_idea=visual_idea,
+                orientation=str(
+                    (
+                        profile
+                        or {}
+                    ).get(
+                        "format",
+                        ""
+                    )
+                )
             )
         )
         source_id = (
             f"scene_{storyboard_scene.scene_number:03d}"
         )
         source_version = (
-            "legacy-runtime-v1"
+            "image-component-runtime-v1"
         )
         fingerprint = (
             self._runtime_visual_brief_fingerprint(
@@ -482,171 +534,59 @@ class ImageBuilder:
 
         return self.cinematic_orchestrator
 
-    def _is_visual_director_enabled(
+    def _backend_adapter(
+        self
+    ):
+        if self.backend_adapter is None:
+            self.backend_adapter = (
+                ComfyUIAdapter()
+            )
+
+        return self.backend_adapter
+
+    def _image_quality_flow(
+        self
+    ):
+        if self.image_quality_flow is None:
+            self.image_quality_flow = (
+                ImageQualityFlowCoordinator()
+            )
+
+        return self.image_quality_flow
+
+    def _text_fingerprint(
+        self,
+        value
+    ):
+        return hashlib.sha256(
+            str(
+                value
+                or ""
+            ).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+
+    def _is_image_validation_enabled(
         self,
         profile
     ):
-        visual_director = profile.get(
-            "visual_director",
+        image_validation = profile.get(
+            "image_validation",
             {}
         )
 
         if not isinstance(
-            visual_director,
+            image_validation,
             dict
         ):
-            return True
+            return False
 
         return bool(
-            visual_director.get(
+            image_validation.get(
                 "enabled",
-                True
+                False
             )
-        )
-
-    def _build_directed_prompt(
-        self,
-        storyboard_scene,
-        visual_idea,
-        scene_number,
-        scene_index,
-        scene_count,
-        profile,
-        visual_director_enabled,
-        previous_directives
-    ):
-        legacy_prompt = self._build_prompt(
-            visual_idea
-        )
-
-        if not visual_director_enabled:
-            return (
-                legacy_prompt,
-                self._legacy_prompt_metadata(
-                    legacy_prompt=legacy_prompt,
-                    enabled=False,
-                    fallback_reason=None
-                ),
-                previous_directives,
-                0.0
-            )
-
-        start = time.perf_counter()
-
-        try:
-            directed_prompt = (
-                self.visual_director.direct(
-                    VisualDirectionContext(
-                        scene_text=storyboard_scene.text,
-                        visual_idea=visual_idea,
-                        duration=float(
-                            storyboard_scene.duration
-                            or 0
-                        ),
-                        scene_index=scene_index,
-                        scene_count=scene_count,
-                        orientation=str(
-                            profile.get(
-                                "format",
-                                ""
-                            )
-                        ).strip().lower(),
-                        previous_directives=(
-                            previous_directives
-                        )
-                    )
-                )
-            )
-
-        except Exception as error:
-            ProgressLogger.warning(
-                "Visual Director falló en la escena "
-                f"{scene_number}. Se usa prompt legacy. "
-                f"Motivo: {error}"
-            )
-
-            elapsed = (
-                time.perf_counter()
-                - start
-            )
-
-            return (
-                legacy_prompt,
-                self._legacy_prompt_metadata(
-                    legacy_prompt=legacy_prompt,
-                    enabled=True,
-                    fallback_reason=str(
-                        error
-                    )
-                ),
-                previous_directives,
-                elapsed
-            )
-
-        elapsed = (
-            time.perf_counter()
-            - start
-        )
-
-        metadata = {
-            "positive_prompt": (
-                directed_prompt.positive_prompt
-            ),
-            "negative_prompt": (
-                directed_prompt.negative_prompt
-            ),
-            "visual_director": {
-                "enabled": True,
-                "fallback": False,
-                "scene": scene_number,
-                "directives": (
-                    directed_prompt.directives
-                )
-            }
-        }
-
-        return (
-            directed_prompt.final_prompt,
-            metadata,
-            directed_prompt.directives,
-            elapsed
-        )
-
-    def _legacy_prompt_metadata(
-        self,
-        legacy_prompt,
-        enabled,
-        fallback_reason
-    ):
-        return {
-            "positive_prompt": legacy_prompt,
-            "negative_prompt": "",
-            "visual_director": {
-                "enabled": enabled,
-                "fallback": (
-                    fallback_reason is not None
-                ),
-                "fallback_reason": fallback_reason,
-                "directives": {}
-            }
-        }
-
-    def _build_prompt(
-        self,
-        visual_idea
-    ):
-        return self.prompt_system.build_legacy_prompt(
-            visual_idea
-        )
-
-    def _compose_backend_prompt(
-        self,
-        positive_prompt,
-        negative_prompt=""
-    ):
-        return self.prompt_system.compose_backend_prompt(
-            positive_prompt=positive_prompt,
-            negative_prompt=negative_prompt
         )
 
     def _dedupe_prompt_parts(

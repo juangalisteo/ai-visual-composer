@@ -12,25 +12,76 @@ from app.modules.images.image_builder import ImageBuilder
 from app.photography_direction import PhotographyDirection
 from app.prompt_translation import BackendPrompt, BackendPromptTrace
 from app.visual_direction import EffectiveVisualBrief
+from app.visual_quality import (
+    ImageQualityFlowCoordinator,
+    ImageValidator,
+    ValidationCheck,
+    create_validation_failure,
+)
 
 
-class FailingCinematicRuntime:
+class FailingImageQualityFlow:
 
-    def resolve(
-        self,
-        effective_visual_brief
-    ):
-        raise AssertionError(
-            "cinematic runtime should be disabled"
-        )
-
-    def translate(
+    def evaluate(
         self,
         *args,
         **kwargs
     ):
         raise AssertionError(
-            "prompt translator should be disabled"
+            "image validation should be disabled"
+        )
+
+
+class RecordingImageQualityFlow:
+
+    def __init__(
+        self,
+        status="approved"
+    ):
+        self.status = status
+        self.calls = []
+
+    def evaluate(
+        self,
+        **kwargs
+    ):
+        self.calls.append(
+            kwargs
+        )
+        return SimpleNamespace(
+            status=self.status,
+            generated_asset=SimpleNamespace(
+                attempt_number=1
+            )
+        )
+
+
+class FailUntilAttemptCheck(ValidationCheck):
+    name = "text_detected"
+    check_category = "semantic"
+
+    def __init__(
+        self,
+        accepted_attempt
+    ):
+        self.accepted_attempt = accepted_attempt
+
+    def check(
+        self,
+        asset,
+        context
+    ):
+        if asset.attempt_number >= self.accepted_attempt:
+            return ()
+        return (
+            create_validation_failure(
+                failure_type="text_detected",
+                severity="high",
+                confidence=0.9,
+                evidence="visible marks",
+                technical_message="detected visible text",
+                retry_relevant=True,
+            ),
         )
 
 
@@ -68,13 +119,11 @@ class RecordingPromptTranslator:
         self,
         effective_visual_brief,
         cinematic_direction_set=None,
-        cinematic_enabled=False
     ):
         self.calls.append(
             (
                 effective_visual_brief,
                 cinematic_direction_set,
-                cinematic_enabled
             )
         )
         return BackendPrompt(
@@ -90,9 +139,33 @@ class RecordingPromptTranslator:
         )
 
 
+class RecordingBackendAdapter:
+
+    def __init__(
+        self
+    ):
+        self.backend_prompts = []
+
+    def adapt(
+        self,
+        backend_prompt
+    ):
+        self.backend_prompts.append(
+            backend_prompt
+        )
+        return SimpleNamespace(
+            prompt="cinematic operative prompt",
+            fingerprint="payload-fingerprint"
+        )
+
+
 class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
-    def test_legacy_build_does_not_invoke_cinematic_runtime_by_default(self):
+    def test_build_invokes_single_cinematic_runtime_by_default(self):
+        orchestrator = RecordingCinematicOrchestrator()
+        translator = RecordingPromptTranslator()
+        backend_adapter = RecordingBackendAdapter()
+
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
                 temp_dir
@@ -111,8 +184,10 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
-                    cinematic_orchestrator=FailingCinematicRuntime(),
-                    prompt_translator=FailingCinematicRuntime()
+                    cinematic_orchestrator=orchestrator,
+                    prompt_translator=translator,
+                    backend_adapter=backend_adapter,
+                    image_quality_flow=FailingImageQualityFlow()
                 )
 
                 with patch.object(
@@ -148,13 +223,206 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 )
             )
             self.assertIn(
-                "A quiet dawn over a valley",
+                "cinematic operative prompt",
                 manifest[0]["prompt"]
             )
+            self.assertEqual(
+                1,
+                len(orchestrator.effective_visual_briefs)
+            )
+            self.assertEqual(
+                1,
+                len(translator.calls)
+            )
+            self.assertEqual(
+                1,
+                len(backend_adapter.backend_prompts)
+            )
 
-    def test_cinematic_flag_invokes_orchestrator_and_prompt_translator(self):
+    def test_image_validation_disabled_by_default_does_not_invoke_quality_flow(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = self._write_storyboard(
+                root
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+
+            with self._patched_environment(
+                manifest_path=manifest_path
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    image_quality_flow=FailingImageQualityFlow()
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir
+                    )
+
+            self.assertTrue(
+                manifest_path.exists()
+            )
+
+    def test_image_validation_enabled_invokes_quality_flow(self):
+        quality_flow = RecordingImageQualityFlow()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = self._write_storyboard(
+                root
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                image_validation_enabled=True
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    image_quality_flow=quality_flow
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir
+                    )
+
+        self.assertEqual(
+            1,
+            len(
+                quality_flow.calls
+            )
+        )
+        self.assertEqual(
+            1,
+            quality_flow.calls[0]["scene_number"]
+        )
+        self.assertEqual(
+            640,
+            quality_flow.calls[0]["width"]
+        )
+
+    def test_image_validation_blocks_non_approved_flow_result(self):
+        quality_flow = RecordingImageQualityFlow(
+            status="manual_review"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = self._write_storyboard(
+                root
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                image_validation_enabled=True
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    image_quality_flow=quality_flow
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    with self.assertRaises(
+                        RuntimeError
+                    ):
+                        builder.build(
+                            storyboard_path=storyboard_path,
+                            output_dir=output_dir
+                        )
+
+    def test_image_validation_retry_uses_approved_retry_path_in_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = self._write_storyboard(
+                root
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                image_validation_enabled=True
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    image_quality_flow=ImageQualityFlowCoordinator(
+                        validator=ImageValidator(
+                            checks=(
+                                FailUntilAttemptCheck(
+                                    accepted_attempt=2
+                                ),
+                            )
+                        )
+                    )
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir
+                    )
+
+            manifest = json.loads(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertIn(
+            "_quality_attempts",
+            manifest[0]["image"]
+        )
+        self.assertIn(
+            "attempt_002",
+            manifest[0]["image"]
+        )
+
+    def test_runtime_invokes_orchestrator_and_prompt_translator(self):
         orchestrator = RecordingCinematicOrchestrator()
         translator = RecordingPromptTranslator()
+        backend_adapter = RecordingBackendAdapter()
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -175,7 +443,8 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     cinematic_orchestrator=orchestrator,
-                    prompt_translator=translator
+                    prompt_translator=translator,
+                    backend_adapter=backend_adapter
                 )
 
                 with patch.object(
@@ -185,9 +454,14 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 ):
                     builder.build(
                         storyboard_path=storyboard_path,
-                        output_dir=output_dir,
-                        cinematic_enabled=True
+                        output_dir=output_dir
                     )
+
+            manifest = json.loads(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
 
         self.assertEqual(
             1,
@@ -201,8 +475,14 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 translator.calls
             )
         )
+        self.assertEqual(
+            1,
+            len(
+                backend_adapter.backend_prompts
+            )
+        )
 
-        effective_visual_brief, direction_set, enabled = (
+        effective_visual_brief, direction_set = (
             translator.calls[0]
         )
 
@@ -214,12 +494,25 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             direction_set,
             orchestrator.direction_set
         )
-        self.assertTrue(
-            enabled
-        )
         self.assertEqual(
             "A quiet dawn over a valley",
             effective_visual_brief.visual_brief.visible_content
+        )
+        self.assertEqual(
+            "backend-prompt-fingerprint",
+            backend_adapter.backend_prompts[0].fingerprint
+        )
+        self.assertIn(
+            "cinematic operative prompt",
+            manifest[0]["prompt"]
+        )
+        self.assertIn(
+            "professional cinematic realism",
+            manifest[0]["prompt"]
+        )
+        self.assertIn(
+            "no text",
+            manifest[0]["prompt"]
         )
         self.assertEqual(
             "backend-prompt-fingerprint",
@@ -229,8 +522,43 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                     text="La escena conserva su texto."
                 ),
                 visual_idea="A quiet dawn over a valley",
-                cinematic_enabled=True
             )["backend_prompt_fingerprint"]
+        )
+
+    def test_cinematic_metadata_records_backend_adapter_traceability(self):
+        builder = ImageBuilder(
+            cinematic_orchestrator=RecordingCinematicOrchestrator(),
+            prompt_translator=RecordingPromptTranslator(),
+            backend_adapter=RecordingBackendAdapter()
+        )
+
+        metadata = builder._build_cinematic_runtime_metadata(
+            storyboard_scene=StoryboardScene(
+                scene_number=1,
+                text="La escena conserva su texto."
+            ),
+            visual_idea="A quiet dawn over a valley",
+        )
+
+        self.assertEqual(
+            "payload-fingerprint",
+            metadata["backend_adapter_payload_fingerprint"]
+        )
+        self.assertIn(
+            "cinematic operative prompt",
+            metadata["operational_prompt"]
+        )
+        self.assertIn(
+            "natural anatomy",
+            metadata["operational_prompt"]
+        )
+        self.assertIn(
+            "no text on books",
+            metadata["operational_prompt"]
+        )
+        self.assertEqual(
+            "cinematic operative prompt",
+            metadata["backend_payload_prompt"]
         )
 
     def test_runtime_effective_visual_brief_fingerprint_is_deterministic(self):
@@ -321,7 +649,8 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
     def _patched_environment(
         self,
-        manifest_path
+        manifest_path,
+        image_validation_enabled=False
     ):
         project = SimpleNamespace(
             images_manifest_path=lambda: manifest_path
@@ -335,6 +664,9 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 },
                 "visual_director": {
                     "enabled": False
+                },
+                "image_validation": {
+                    "enabled": image_validation_enabled
                 }
             }
         )

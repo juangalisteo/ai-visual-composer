@@ -1,14 +1,14 @@
 # Architecture
 
-# AI Video Composer
+# AI Visual Composer
 
-A profile-driven AI video composition engine.
+Professional AI Visual Generation Platform
 
-This document describes the current architecture of the video composition core.
+This document describes the current architecture of AI Visual Composer v1.0.0: the certified Image Component runtime and the stabilized video composition core.
 
 ## Overview
 
-AI Video Composer builds a video through a profile-driven FFmpeg pipeline. The system separates configuration, asset selection, temporal operation building, FFmpeg graph generation, command planning, command execution, and output validation.
+AI Visual Composer v1.0.0 exposes the Image Pipeline as the first official product pipeline. The repository also includes a stabilized profile-driven FFmpeg video composition core. The system separates configuration, asset selection, temporal operation building, FFmpeg graph generation, command planning, command execution, and output validation.
 
 The architecture follows this flow:
 
@@ -259,34 +259,40 @@ Profile JSON
   -> Output video
 ```
 
-## Image Prompt Direction
+## Image Component Runtime
 
-Visual Director is part of the image generation path, not the video render core.
+The Image Component uses a single cinematic runtime. It is part of the image generation path, not the video render core.
 
-Current image prompt flow:
+Current image flow:
 
 ```text
 Storyboard scene
   -> visual_idea and scene text
-  -> VisualDirectionContext
-  -> VisualDirector
-  -> DirectedPrompt
+  -> EffectiveVisualBrief
+  -> CinematicDirectionOrchestrator
+  -> CinematicDirectionSet
+  -> PromptTranslator
+  -> BackendPrompt
+  -> ComfyUIAdapter
+  -> ComfyUIBackend
+  -> Visual Quality
   -> ImageBuilder
-  -> image backend prompt injection
   -> image manifest
 ```
 
 Responsibilities:
 
-- enrich scene prompts with composition, camera, lighting, color, orientation, realism, detail, and negative prompt guidance;
-- preserve scene meaning and the original `visual_idea`;
-- produce inspectable prompt metadata in the image manifest;
-- remain backend-neutral and avoid any direct ComfyUI dependency;
-- fall back to the legacy prompt if prompt direction fails.
+- adapt the current storyboard scene into the domain contracts required by the runtime;
+- resolve cinematic direction deterministically;
+- translate the effective brief and cinematic directions into `BackendPrompt`;
+- adapt `BackendPrompt` to the configured backend payload;
+- generate images through the backend;
+- validate generated assets through Visual Quality when enabled;
+- write the approved asset into the image manifest.
 
-`ImageBuilder` receives either the directed prompt or the legacy fallback prompt, adds a short general cinematic identity, keeps neutral restrictions against text, logos, watermarks, illustration styles, clutter, and broad visual errors, injects the final prompt into the configured image backend workflow, and records prompt metadata in the image manifest.
+`ImageBuilder` coordinates the component. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component.
 
-Visual Director does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
+The Image Component does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
 
 ## Profile Control
 

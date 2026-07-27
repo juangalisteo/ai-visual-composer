@@ -247,8 +247,8 @@ class BackendAdapterTest(unittest.TestCase):
                     source
                 )
 
-    def test_runtime_does_not_import_backend_adapters(self):
-        source = ""
+    def test_runtime_imports_backend_adapters_only_from_image_builder(self):
+        paths_with_import = []
         for directory in (
             "app/modules",
             "app/managers",
@@ -260,13 +260,19 @@ class BackendAdapterTest(unittest.TestCase):
             ).rglob(
                 "*.py"
             ):
-                source += path.read_text(
+                source = path.read_text(
                     encoding="utf-8"
                 )
+                if "app.backend_adapters" in source:
+                    paths_with_import.append(
+                        path.as_posix()
+                    )
 
-        self.assertNotIn(
-            "app.backend_adapters",
-            source
+        self.assertEqual(
+            [
+                "app/modules/images/image_builder.py",
+            ],
+            paths_with_import
         )
 
 

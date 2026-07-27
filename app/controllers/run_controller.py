@@ -4,6 +4,7 @@
 class RunController:
 
     def run(self):
+        visual_pipeline = self.select_visual_pipeline()
         pipeline_mode = self.select_pipeline_mode()
         profile = self.select_profile()
         subtitle_config = self.select_subtitle_config()
@@ -13,6 +14,7 @@ class RunController:
         clear_output = self.ask_clear_output()
 
         return {
+            "visual_pipeline": visual_pipeline,
             "pipeline_mode": pipeline_mode,
             "profile_path": str(profile["path"]),
             "subtitle_config": subtitle_config,
@@ -21,6 +23,50 @@ class RunController:
             "project_name": project_name,
             "clear_output": clear_output
         }
+
+    def select_visual_pipeline(self):
+        pipelines = [
+            {
+                "name": "Image Pipeline",
+                "pipeline": "image"
+            },
+            {
+                "name": "Video Pipeline (Próximamente)",
+                "pipeline": "video",
+                "available": False
+            }
+        ]
+
+        print("\nAI VISUAL COMPOSER\n")
+        print("¿Qué pipeline deseas utilizar?\n")
+
+        for i, pipeline in enumerate(
+            pipelines,
+            start=1
+        ):
+            print(
+                f"{i}. {pipeline['name']}"
+            )
+
+        while True:
+            selected = self._select_from_list(
+                pipelines,
+                "Selecciona un pipeline"
+            )
+
+            if selected.get(
+                "available",
+                True
+            ):
+                return selected[
+                    "pipeline"
+                ]
+
+            print(
+                "Video Pipeline estará disponible "
+                "próximamente. Selecciona Image Pipeline "
+                "para continuar."
+            )
 
     def select_pipeline_mode(self):
         modes = [

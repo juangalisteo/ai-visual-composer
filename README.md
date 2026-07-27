@@ -1,40 +1,58 @@
-# AI Video Composer
+# AI Visual Composer
 
-A profile-driven AI video composition engine.
+Professional AI Visual Generation Platform
 
-AI Video Composer is a Python-based video composition engine designed around explicit configuration profiles. Its core renders videos by combining images, audio, subtitles, motion, transitions, overlays, visual effects, fade stages, and FFmpeg command generation through a modular pipeline.
+AI Visual Composer is a profile-driven visual generation and composition platform. Version 1.0.0 ships a certified Image Component runtime and a stabilized video composition core that can assemble generated images, audio, subtitles, motion, transitions, overlays, visual effects, fade stages, and FFmpeg command generation into final videos.
 
-The project is currently focused on a stable video composition core. The engine does not make hidden visual decisions by default: visual behavior is driven by profile configuration.
+The project is designed around explicit configuration, deterministic contracts, and independent components. The current official product entry is the Image Pipeline. Video Pipeline is visible as a future expansion, but is not implemented in this release.
 
 ## Project Goals
 
-- Provide a modular video composition engine controlled by profiles.
-- Keep visual behavior explicit and configurable.
-- Separate configuration, selection, graph building, command planning, rendering, and validation.
-- Support horizontal and vertical render workflows.
-- Maintain a stable core that can grow through independent components.
-- Preserve reliable FFmpeg command generation and validation.
+- Provide a modular visual generation platform controlled by profiles.
+- Keep visual behavior explicit, inspectable, and configurable.
+- Preserve a certified Image Component runtime.
+- Preserve a stable FFmpeg-based video composition core.
+- Keep external runtimes, models, generated outputs, logs, and local secrets outside the repository.
+- Prepare the project for future AI Visual Composer product pipelines without changing the certified Image Component core.
 
 ## Main Features
 
+- Official AI Visual Composer entry point.
+- Image Pipeline as the first available product pipeline.
+- Single cinematic Image Component runtime.
+- Backend-neutral cognitive and cinematic contracts.
+- Prompt translation through `BackendPrompt`.
+- ComfyUI backend adapter and ComfyUI runtime integration.
+- Optional Visual Quality validation and controlled retry infrastructure.
+- Image manifest generation compatible with downstream video assembly.
 - Profile-driven video configuration.
-- Visual Director prompt enrichment for image generation.
-- Modular video pipeline.
-- Motion support for image scenes.
-- FFmpeg `xfade` transitions.
-- Overlay layer support.
-- Visual effect layer support.
-- Fade in and fade out stage support.
-- Subtitle styling and rendering.
+- Modular video pipeline: Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles.
 - FFmpeg `filter_complex` generation.
-- Command planning and command serialization.
-- Render execution through FFmpeg.
-- Output validation with expected duration checks.
-- Unit test coverage for the stabilized core.
+- FFmpeg command planning, execution, and output validation.
+- Unit and certification test coverage.
 
 ## Architecture Summary
 
-The video core is organized as a sequence of small responsibilities:
+The Image Component runtime follows this flow:
+
+```text
+Storyboard scene
+  -> StoryboardSceneAdapter
+  -> RuntimeCognitiveAdapter
+  -> EffectiveVisualBrief
+  -> CinematicDirectionOrchestrator
+  -> CinematicDirectionSet
+  -> PromptTranslator
+  -> BackendPrompt
+  -> ComfyUIAdapter
+  -> ImagePromptSystem cinematic operational identity
+  -> ComfyUIBackend
+  -> Visual Quality, when enabled
+  -> GenerationResultAdapter
+  -> ImageManifestWriter
+```
+
+The video core remains a separate FFmpeg composition pipeline:
 
 ```text
 Configs
@@ -50,13 +68,7 @@ Configs
   -> VideoValidator
 ```
 
-Each layer is responsible for one part of the composition process. Profiles define what is enabled and how each module behaves. Builders prepare selected operations. Graph builders turn those operations into FFmpeg filter graph fragments. The pipeline assembles those stages in a fixed order. The command layer produces the final FFmpeg command, which is then executed and validated.
-
-The image generation path also includes Visual Director, a backend-neutral prompt enrichment subsystem that runs after storyboard scene prompts are loaded and before prompts are sent to the image backend. ImageBuilder then adds a brief general cinematic identity and neutral prompt restrictions before backend injection. This does not alter the video render pipeline.
-
-## Engine Flow
-
-The current video pipeline order is:
+The current video filter order is fixed:
 
 1. Motion
 2. Transitions
@@ -65,46 +77,28 @@ The current video pipeline order is:
 5. Fade
 6. Subtitles
 
-The effective render flow is:
-
-```text
-Profile
-  -> Media loading
-  -> Timeline calculation
-  -> Component creation
-  -> FilterContext creation
-  -> FilterPipeline execution
-  -> filter_complex generation
-  -> FFmpeg command planning
-  -> FFmpeg command execution
-  -> Output validation
-```
-
 ## Project Structure
 
 ```text
-ai-video-composer/
+ai-visual-composer/
   app/
+    backend_adapters/
+    cinematic_direction/
+    domain/
     modules/
+      images/
       video/
-        assets/
-        config/
-        ffmpeg/
-        media/
-        motion/
-        overlays/
-        subtitles/
-        transitions/
-        visual_effects/
+    prompt_translation/
+    visual_quality/
   assets/
+  certification/
   config/
     profiles/
+  data/
   docs/
-    architecture/
-    decisions/
     reference/
-  input/
-  output/
+      prompt_music.md
+  prompts/
   tests/
   CODEX/
     BITACORA.md
@@ -118,55 +112,49 @@ ai-video-composer/
   requirements.txt
 ```
 
-`CODEX/BITACORA.md` and `CODEX/CHATGPT.md` are temporary development documents used to preserve technical context, decisions, audits, and milestones while the project continues to grow.
+`output/`, `logs/`, `.env`, `input/`, `ComfyUI/`, local models, checkpoints, and generated media are intentionally excluded from the repository.
 
 ## Current Status
 
-Version: `v1.0.0` core completed.
+Release: `AI Visual Composer v1.0.0`
 
-The video engine core has been completed and validated through tests, compile checks, real horizontal renders, real vertical renders, transition-specific renders, overlay renders, visual effect renders, combined renders, FFmpeg probing, and visual frame inspection.
+Status:
 
-Current core status:
-
-- Architecture stabilized.
-- Pipeline stabilized.
-- Visual Effects validated.
-- Overlays validated.
-- Motion validated within the pipeline.
-- Transitions aligned with FFmpeg `xfade`.
-- CommandBuilder stabilized.
-- VideoBuilder reduced to a lightweight facade.
-- Final core audit completed.
-
-## Technologies
-
-- Python
-- FFmpeg
-- FFmpeg `filter_complex`
-- FFmpeg `xfade`
-- libass subtitles through FFmpeg
-- JSON configuration profiles
-- `unittest`
-
-The broader repository also contains AI, image, audio, publishing, storyboard, thumbnail, and subtitle modules. This README documents the currently stabilized video composition core.
+- Image Component 1.0 certified as `IMAGE_COMPONENT_1_0_READY`.
+- Product Integration completed.
+- Final Project Cleanup completed.
+- Video composition core stabilized.
+- Runtime legacy image path removed.
+- Visual Quality infrastructure included.
+- First official product entry available through `python main.py`.
 
 ## Requirements
+
+Repository requirements:
 
 - Python 3.13 or compatible Python 3 runtime.
 - FFmpeg available on `PATH`.
 - Python dependencies installed from `requirements.txt`.
-- Input audio file.
-- Subtitle file.
-- Image manifest with at least one image.
-- A valid video profile under `config/profiles/`.
+
+External runtime requirements:
+
+- ComfyUI installed outside the repository.
+- Required ComfyUI models and checkpoints installed outside the repository.
+- A compatible ComfyUI workflow available through local configuration.
+- Ollama installed and running when using the local LLM provider.
+- Required Ollama model pulled locally.
+- Edge TTS network access for voice generation.
+- Environment variables configured in a local `.env` file.
+
+These external dependencies are not committed to the repository.
 
 ## Installation
 
 Clone the repository:
 
 ```bash
-git clone <repository-url> ai-video-composer
-cd ai-video-composer
+git clone <repository-url> ai-visual-composer
+cd ai-visual-composer
 ```
 
 Create and activate a virtual environment:
@@ -176,7 +164,7 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-Install dependencies:
+Install Python dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -188,15 +176,40 @@ Verify FFmpeg:
 ffmpeg -version
 ```
 
+Prepare external tools:
+
+1. Install ComfyUI outside this repository.
+2. Install required image models and checkpoints in the ComfyUI environment.
+3. Start ComfyUI and verify that it is reachable by the configured backend URL.
+4. Install Ollama if using the local LLM provider.
+5. Pull the configured Ollama model locally.
+6. Ensure Edge TTS can access the network for voice generation.
+7. Create a local `.env` file for secrets and machine-specific settings.
+
 ## Execution
 
-The project entry point is:
+Run the product entry point:
 
 ```bash
 python main.py
 ```
 
-The video engine can also be used directly from Python:
+The application starts with:
+
+```text
+AI VISUAL COMPOSER
+
+¿Qué pipeline deseas utilizar?
+
+1. Image Pipeline
+2. Video Pipeline (Próximamente)
+```
+
+Select `Image Pipeline` to use the certified Image Component flow. `Video Pipeline` is visible only as a future expansion.
+
+## Direct Video Core Usage
+
+The video core can still be used directly from Python:
 
 ```python
 from app.modules.video.video_builder import VideoBuilder
@@ -209,48 +222,14 @@ VideoBuilder().build(
 )
 ```
 
-## Basic Example
+## Official Documentation
 
-A basic render requires:
-
-- an audio file;
-- an SRT subtitle file;
-- an image manifest;
-- a selected video profile;
-- an output path.
-
-The selected profile controls resolution, FPS, motion, transitions, overlays, visual effects, fade behavior, subtitle styling, codecs, and validation tolerance.
-
-Example:
-
-```python
-from app.modules.video.video_builder import VideoBuilder
-
-output = VideoBuilder().build(
-    audio_path="input/audio.mp3",
-    subtitle_path="input/subtitles.srt",
-    images_manifest_path="input/images_manifest.json",
-    output_path="output/video.mp4",
-)
-
-print(output)
-```
-
-## Roadmap Summary
-
-- Image Enhancement
-- Thumbnail Generator
-- AI Assistant
-- Multi-layer Rendering
-- Performance
-- New Effects
-- Automation
-- Visual Director evolution
-- Plugins
-- Testing
-- Documentation
-
-See [ROADMAP.md](ROADMAP.md) for the project roadmap.
+- `README.md`: official project overview and installation guide.
+- `ARCHITECTURE.md`: current architecture.
+- `CHANGELOG.md`: release history.
+- `ROADMAP.md`: future work.
+- `CODEX/CHATGPT.md`: living architecture and planning memory.
+- `CODEX/BITACORA.md`: chronological development log.
 
 ## License
 
@@ -260,4 +239,4 @@ MIT License. See [LICENSE](LICENSE).
 
 Juan Bautista Galisteo Marqués
 
-Creator and maintainer of AI Video Composer.
+Creator and maintainer of AI Visual Composer.

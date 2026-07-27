@@ -235,32 +235,10 @@ class PromptTranslationTest(unittest.TestCase):
             second.fingerprint
         )
 
-    def test_cinematic_set_is_ignored_when_disabled(self):
-        effective = effective_visual_brief()
-
-        legacy = PromptTranslator().translate(
-            effective
-        )
-        disabled = PromptTranslator().translate(
-            effective,
-            cinematic_direction_set=cinematic_direction_set(),
-            cinematic_enabled=False,
-        )
-
-        self.assertEqual(
-            legacy,
-            disabled
-        )
-        self.assertEqual(
-            legacy.fingerprint,
-            disabled.fingerprint
-        )
-
-    def test_cinematic_set_enriches_translation_when_enabled(self):
+    def test_cinematic_set_enriches_translation_when_provided(self):
         prompt = PromptTranslator().translate(
             effective_visual_brief(),
             cinematic_direction_set=cinematic_direction_set(),
-            cinematic_enabled=True,
         )
         by_source = {
             instruction.source_field: instruction
@@ -289,7 +267,6 @@ class PromptTranslationTest(unittest.TestCase):
         prompt = PromptTranslator().translate(
             effective_visual_brief(),
             cinematic_direction_set=direction_set,
-            cinematic_enabled=True,
         )
         trace = {
             item.instruction_id: item
@@ -320,12 +297,10 @@ class PromptTranslationTest(unittest.TestCase):
         first = PromptTranslator().translate(
             effective,
             cinematic_direction_set=direction_set,
-            cinematic_enabled=True,
         )
         second = PromptTranslator().translate(
             effective,
             cinematic_direction_set=direction_set,
-            cinematic_enabled=True,
         )
 
         self.assertEqual(
@@ -342,7 +317,6 @@ class PromptTranslationTest(unittest.TestCase):
         first = PromptTranslator().translate(
             effective,
             cinematic_direction_set=cinematic_direction_set(),
-            cinematic_enabled=True,
         )
         changed_set = create_cinematic_direction_set(
             photography=PhotographyDirection(
@@ -353,7 +327,6 @@ class PromptTranslationTest(unittest.TestCase):
         second = PromptTranslator().translate(
             effective,
             cinematic_direction_set=changed_set,
-            cinematic_enabled=True,
         )
 
         self.assertNotEqual(
