@@ -118,6 +118,7 @@ class StoryboardScene:
     notes: str = ""
     visible_subject: str = ""
     visible_action: str = ""
+    visible_environment: str = ""
     time_context: str = ""
     key_objects: tuple[str, ...] = field(default_factory=tuple)
     spatial_relationships: tuple[str, ...] = field(default_factory=tuple)

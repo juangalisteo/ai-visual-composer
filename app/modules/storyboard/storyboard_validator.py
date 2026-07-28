@@ -1,4 +1,17 @@
 class StoryboardValidator:
+    REQUIRED_VISUAL_TRUTH_FIELDS = (
+        "visible_subject",
+        "visible_action",
+        "visible_environment",
+        "filmable_interpretation",
+    )
+
+    SEQUENCE_FIELDS = (
+        "key_objects",
+        "spatial_relationships",
+        "continuity_links",
+        "visual_constraints",
+    )
 
     def validate(
         self,
@@ -18,7 +31,7 @@ class StoryboardValidator:
             visual_scenes
         ) != expected_scene_count:
             raise ValueError(
-                f"Ollama devolvió "
+                f"Ollama devolvio "
                 f"{len(visual_scenes)} escenas, "
                 f"pero se esperaban "
                 f"{expected_scene_count}."
@@ -42,12 +55,6 @@ class StoryboardValidator:
                     "el campo 'scene'."
                 )
 
-            if "visual_idea" not in item:
-                raise ValueError(
-                    "Una escena no contiene "
-                    "el campo 'visual_idea'."
-                )
-
             try:
                 scene_number = int(
                     item["scene"]
@@ -58,22 +65,30 @@ class StoryboardValidator:
                 ValueError
             ) as error:
                 raise ValueError(
-                    "El número de escena "
-                    "no es válido."
+                    "El numero de escena "
+                    "no es valido."
                 ) from error
 
-            visual_idea = str(
-                item["visual_idea"]
-            ).strip()
+            visual_truth = self._validate_visual_truth(
+                item=item,
+                scene_number=scene_number
+            )
+
+            visual_idea = self._clean(
+                item.get(
+                    "visual_idea",
+                    ""
+                )
+            )
 
             if not visual_idea:
-                raise ValueError(
-                    f"La escena {scene_number} "
-                    f"no contiene una idea visual."
-                )
+                visual_idea = visual_truth[
+                    "filmable_interpretation"
+                ]
 
             validated_scenes.append({
                 "scene": scene_number,
+                **visual_truth,
                 "visual_idea": visual_idea
             })
 
@@ -91,11 +106,111 @@ class StoryboardValidator:
 
         if received_numbers != expected_numbers:
             raise ValueError(
-                "La numeración de escenas devuelta "
+                "La numeracion de escenas devuelta "
                 "por Ollama no coincide con la esperada."
             )
 
         return sorted(
             validated_scenes,
             key=lambda item: item["scene"]
+        )
+
+    def _validate_visual_truth(
+        self,
+        item,
+        scene_number
+    ):
+        visual_truth = {}
+
+        for field in self.REQUIRED_VISUAL_TRUTH_FIELDS:
+            value = self._clean(
+                item.get(
+                    field,
+                    ""
+                )
+            )
+            if not value:
+                raise ValueError(
+                    f"La escena {scene_number} "
+                    f"no contiene {field}."
+                )
+            visual_truth[field] = value
+
+        visual_truth["time_context"] = self._clean(
+            item.get(
+                "time_context",
+                ""
+            )
+        )
+
+        for field in self.SEQUENCE_FIELDS:
+            visual_truth[field] = self._clean_sequence(
+                item.get(
+                    field,
+                    ()
+                )
+            )
+
+        visual_truth["abstract_source"] = self._clean(
+            item.get(
+                "abstract_source",
+                ""
+            )
+        )
+
+        visual_truth["visual_truth_status"] = (
+            self._clean(
+                item.get(
+                    "visual_truth_status",
+                    ""
+                )
+            )
+            or "structured"
+        )
+
+        return visual_truth
+
+    def _clean(
+        self,
+        value
+    ):
+        if value is None:
+            return ""
+        return str(
+            value
+        ).strip()
+
+    def _clean_sequence(
+        self,
+        value
+    ):
+        if value is None:
+            return ()
+
+        if isinstance(
+            value,
+            str
+        ):
+            values = (
+                value,
+            )
+        else:
+            try:
+                values = tuple(
+                    value
+                )
+            except TypeError:
+                values = (
+                    value,
+                )
+
+        return tuple(
+            item
+            for item in (
+                self._clean(
+                    entry
+                )
+                for entry in values
+            )
+            if item
         )

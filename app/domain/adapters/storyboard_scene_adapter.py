@@ -96,6 +96,12 @@ class StoryboardSceneAdapter:
                     ""
                 )
             ),
+            visible_environment=StoryboardSceneAdapter._clean(
+                scene.get(
+                    "visible_environment",
+                    ""
+                )
+            ),
             time_context=StoryboardSceneAdapter._clean(
                 scene.get(
                     "time_context",

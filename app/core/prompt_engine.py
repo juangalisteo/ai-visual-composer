@@ -224,7 +224,8 @@ CRITERIOS DE DISEÑO:
   entornos cósmicos,
   objetos conceptuales
   y composiciones abstractas comprensibles.
-- Incluye en cada idea:
+- Estructura cada escena como Visual Truth 2.0.
+- Incluye en cada escena:
   sujeto o elemento principal,
   acción o estado,
   entorno,
@@ -246,7 +247,8 @@ CRITERIOS DE DISEÑO:
 - No incluyas subtítulos.
 - Evita cualquier objeto que pueda inducir al modelo a generar texto visible.
 - No menciones cámaras, lentes, resolución ni parámetros técnicos.
-- Cada visual_idea debe tener entre 30 y 55 palabras.
+- `filmable_interpretation` debe describir la imagen filmable final.
+- `visual_idea` se mantiene solo como compatibilidad temporal y debe derivar de `filmable_interpretation`.
 - No escribas párrafos largos.
 - No expliques las decisiones visuales.
 
@@ -260,8 +262,19 @@ SALIDA OBLIGATORIA:
 - Respeta exactamente la numeración de las escenas.
 - No omitas escenas.
 - No añadas escenas nuevas.
-- Cada objeto solo debe contener:
-  "scene"
+- Cada objeto debe contener exactamente:
+  "scene",
+  "visible_subject",
+  "visible_action",
+  "visible_environment",
+  "time_context",
+  "key_objects",
+  "spatial_relationships",
+  "continuity_links",
+  "abstract_source",
+  "filmable_interpretation",
+  "visual_constraints",
+  "visual_truth_status"
   y
   "visual_idea".
 
@@ -358,10 +371,34 @@ FORMATO EXACTO:
                 (
                     "    {\n"
                     f'        "scene": {scene_number},\n'
+                    '        "visible_subject": '
+                    '"Sujeto o elemento visible principal",\n'
+                    '        "visible_action": '
+                    '"Accion, estado o cambio visible",\n'
+                    '        "visible_environment": '
+                    '"Entorno fisico observable",\n'
+                    '        "time_context": '
+                    '"Momento temporal observable",\n'
+                    '        "key_objects": [\n'
+                    '            "Objeto visual clave"\n'
+                    "        ],\n"
+                    '        "spatial_relationships": [\n'
+                    '            "Relacion espacial observable"\n'
+                    "        ],\n"
+                    '        "continuity_links": [\n'
+                    '            "Elemento de continuidad con otras escenas"\n'
+                    "        ],\n"
+                    '        "abstract_source": '
+                    '"Idea abstracta de origen si existe",\n'
+                    '        "filmable_interpretation": '
+                    '"Descripcion filmable concreta de la escena",\n'
+                    '        "visual_constraints": [\n'
+                    '            "Sin texto legible"\n'
+                    "        ],\n"
+                    '        "visual_truth_status": "structured",\n'
                     '        "visual_idea": '
-                    '"Descripción visual profesional, '
-                    'clara, cinematográfica y diferente '
-                    'para esta escena."\n'
+                    '"Descripcion breve derivada de '
+                    'filmable_interpretation para compatibilidad."\n'
                     "    }"
                 )
             )

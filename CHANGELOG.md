@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Migrated storyboard generation to Visual Truth 2.0 as the primary visual source while preserving `visual_idea` as temporary compatibility data.
 - Adopted the private AVCES v1.0 engineering standard for repository governance.
 - Foundation completed: public UTF-8 verification, official asset policy, private AVCES policy, and planned RuntimeCognitiveAdapter 2.0 status.
 - Certified final repository identity and documentation compliance with private AVCES v1.0 governance.

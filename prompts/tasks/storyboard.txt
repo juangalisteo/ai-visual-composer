@@ -1,62 +1,98 @@
-Genera el storyboard visual completo de un vídeo.
+Genera el storyboard visual completo de un video.
 
-Analiza todas las escenas antes de responder y diseña el conjunto como una secuencia visual coherente, profesional y cinematográfica.
+Analiza todas las escenas antes de responder y disena el conjunto como una secuencia visual coherente, profesional y cinematografica.
+
+Cada escena debe nacer como Visual Truth 2.0.
+
+Visual Truth 2.0 describe exactamente que debe verse en pantalla.
+
+No es un prompt.
+
+No es una explicacion narrativa.
+
+No es un payload tecnico.
+
+Cada escena debe separar claramente:
+
+- sujeto visible;
+- accion visible;
+- entorno visible;
+- contexto temporal;
+- objetos clave;
+- relaciones espaciales;
+- enlaces de continuidad;
+- origen abstracto cuando exista;
+- interpretacion filmable;
+- restricciones visuales.
 
 Cada escena debe:
 
-- representar fielmente el significado del texto correspondiente
-- ser claramente diferente del resto de escenas
-- mantener continuidad estética y narrativa con todo el vídeo
-- evitar repetir protagonistas, escenarios, fondos, acciones, símbolos o composiciones
-- tener un estilo cinematográfico, realista y simbólico
-- ser impactante, clara y fácil de interpretar visualmente
-- incluir un sujeto o elemento principal claramente identificable
-- incluir una acción, estado o intención visual concreta
-- incluir un entorno coherente con el contenido
-- incluir una composición limpia y profesional
-- incluir una iluminación expresiva
-- incluir una atmósfera definida
-- incluir un elemento visual distintivo que refuerce el mensaje
-- evitar imágenes genéricas, vagas o repetitivas
-- evitar escenas excesivamente recargadas
-- priorizar composiciones visuales memorables antes que descripciones largas
-- pensar como un director de fotografía y un diseñador conceptual
-- diseñar cada escena como un fotograma de una producción cinematográfica de alto nivel
-- mantener suficiente variedad visual entre figura humana, arquitectura, naturaleza, espacios simbólicos, entornos cósmicos, objetos conceptuales y abstracciones comprensibles
-- evitar que todas las escenas consistan en una persona centrada rodeada de partículas
-- describir únicamente elementos que puedan representarse claramente en una imagen generada con IA
+- representar fielmente el significado del texto correspondiente;
+- ser claramente diferente del resto de escenas;
+- mantener continuidad estetica y narrativa con todo el video;
+- evitar repetir protagonistas, escenarios, fondos, acciones, simbolos o composiciones;
+- tener un estilo cinematografico, realista y simbolico;
+- ser impactante, clara y facil de interpretar visualmente;
+- incluir un sujeto o elemento principal claramente identificable;
+- incluir una accion, estado o intencion visual concreta;
+- incluir un entorno coherente con el contenido;
+- incluir una composicion limpia y profesional;
+- incluir una iluminacion expresiva;
+- incluir una atmosfera definida;
+- incluir un elemento visual distintivo que refuerce el mensaje;
+- evitar imagenes genericas, vagas o repetitivas;
+- evitar escenas excesivamente recargadas;
+- priorizar composiciones visuales memorables antes que descripciones largas;
+- pensar como un director de fotografia y un disenador conceptual;
+- disenar cada escena como un fotograma de una produccion cinematografica de alto nivel;
+- mantener suficiente variedad visual entre figura humana, arquitectura, naturaleza, espacios simbolicos, entornos cosmicos, objetos conceptuales y abstracciones comprensibles;
+- evitar que todas las escenas consistan en una persona centrada rodeada de particulas;
+- describir unicamente elementos que puedan representarse claramente en una imagen generada con IA.
 
 No incluyas:
 
-- texto dentro de la imagen
-- logotipos
-- subtítulos
-- marcas de agua
-- interfaces
-- cámaras
-- lentes
-- parámetros técnicos
-- explicaciones sobre tus decisiones
-- títulos
-- comentarios
-- listas fuera del JSON
-- contenido adicional fuera del resultado solicitado
+- texto dentro de la imagen;
+- logotipos;
+- subtitulos;
+- marcas de agua;
+- interfaces;
+- camaras;
+- lentes;
+- parametros tecnicos;
+- explicaciones sobre tus decisiones;
+- titulos;
+- comentarios;
+- listas fuera del JSON;
+- contenido adicional fuera del resultado solicitado.
 
-Cada idea visual debe ser breve, concreta y profesional.
+`filmable_interpretation` debe describir la imagen filmable final.
 
-Devuelve exclusivamente un JSON válido con todas las escenas.
+`visual_idea` debe mantenerse unicamente como compatibilidad temporal y debe derivar de `filmable_interpretation`.
+
+Devuelve exclusivamente un JSON valido con todas las escenas.
 
 La respuesta debe comenzar con [ y terminar con ].
 
-Cada objeto debe contener únicamente:
+Cada objeto debe contener unicamente:
 
 - "scene"
+- "visible_subject"
+- "visible_action"
+- "visible_environment"
+- "time_context"
+- "key_objects"
+- "spatial_relationships"
+- "continuity_links"
+- "abstract_source"
+- "filmable_interpretation"
+- "visual_constraints"
+- "visual_truth_status"
 - "visual_idea"
 
-Respeta exactamente la numeración recibida.
+Respeta exactamente la numeracion recibida.
 
 No omitas escenas.
 
-No añadas escenas nuevas.
+No anadas escenas nuevas.
 
-No escribas absolutamente nada antes ni después del JSON.
+No escribas absolutamente nada antes ni despues del JSON.

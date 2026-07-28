@@ -118,7 +118,9 @@ class RuntimeCognitiveAdapter:
                 storyboard_scene.visible_action
             ),
             visible_environment=RuntimeCognitiveAdapter._clean(
-                storyboard_scene.setting
+                RuntimeCognitiveAdapter.visible_environment_from_scene(
+                    storyboard_scene
+                )
             ),
             time_context=RuntimeCognitiveAdapter._clean(
                 storyboard_scene.time_context
@@ -285,7 +287,9 @@ class RuntimeCognitiveAdapter:
                 (
                     storyboard_scene.visible_subject,
                     storyboard_scene.visible_action,
-                    storyboard_scene.setting
+                    RuntimeCognitiveAdapter.visible_environment_from_scene(
+                        storyboard_scene
+                    )
                     if RuntimeCognitiveAdapter.has_visual_truth_content(
                         storyboard_scene
                     )
@@ -315,6 +319,9 @@ class RuntimeCognitiveAdapter:
                 ),
                 RuntimeCognitiveAdapter._clean(
                     storyboard_scene.visible_action
+                ),
+                RuntimeCognitiveAdapter._clean(
+                    storyboard_scene.visible_environment
                 ),
                 RuntimeCognitiveAdapter._clean(
                     storyboard_scene.time_context
@@ -362,8 +369,13 @@ class RuntimeCognitiveAdapter:
     def visible_environment_from_scene(
         storyboard_scene: StoryboardScene
     ) -> str:
-        return RuntimeCognitiveAdapter._clean(
-            storyboard_scene.setting
+        return (
+            RuntimeCognitiveAdapter._clean(
+                storyboard_scene.visible_environment
+            )
+            or RuntimeCognitiveAdapter._clean(
+                storyboard_scene.setting
+            )
         )
 
     @staticmethod
@@ -470,6 +482,7 @@ class RuntimeCognitiveAdapter:
         visual_truth_fields = (
             "visible_subject",
             "visible_action",
+            "visible_environment",
             "setting",
             "time_context",
             "key_objects",

@@ -182,10 +182,15 @@ class ImageBuilder:
                 )
             )
 
-            if not visual_idea:
+            if (
+                not visual_idea
+                and not RuntimeCognitiveAdapter.has_visual_truth_content(
+                    storyboard_scene
+                )
+            ):
                 raise ValueError(
                     f"La escena {scene_number} "
-                    f"no contiene visual_idea."
+                    f"no contiene informacion visual."
                 )
 
             runtime_metadata = (
@@ -523,7 +528,9 @@ class ImageBuilder:
             ),
             (
                 "VisualBrief.visible_environment",
-                "StoryboardScene.setting",
+                self._visible_environment_source_path(
+                    adaptation.storyboard_scene
+                ),
                 visual_brief.visible_environment,
             ),
             (
@@ -592,12 +599,21 @@ class ImageBuilder:
         if (
             visual_brief.visible_subject
             or visual_brief.visible_action
+            or visual_brief.visible_environment
             or visual_brief.time_context
         ):
             return "StoryboardScene.visual_truth"
         if visual_idea:
             return "StoryboardScene.visual_idea"
         return "StoryboardScene.text"
+
+    def _visible_environment_source_path(
+        self,
+        storyboard_scene
+    ):
+        if storyboard_scene.visible_environment:
+            return "StoryboardScene.visible_environment"
+        return "StoryboardScene.setting"
 
     def _add_runtime_origin(
         self,

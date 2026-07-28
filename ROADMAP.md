@@ -21,11 +21,13 @@ Completed:
 - `IP2.0-1 - StoryboardScene 2.0`
 - `IP2.0-2 - StoryboardSceneAdapter 2.0`
 - `QF-0 - Quality Foundation`
+- `IP2.0-3 - RuntimeCognitiveAdapter 2.0`
+- `IP2.0-4 - Storyboard Visual Truth Source Migration`
 
 Next planned phase:
 
 ```text
-IP2.0-3 - RuntimeCognitiveAdapter 2.0
+To be defined by the project owner after IP2.0-4 validation.
 ```
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline 2.0 phase is explicitly requested.

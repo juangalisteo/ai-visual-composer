@@ -266,7 +266,7 @@ The Image Component uses a single cinematic runtime. It is part of the image gen
 Current image flow:
 
 ```text
-Storyboard scene
+Visual Truth 2.0 storyboard scene
   -> StoryboardSceneAdapter
   -> RuntimeCognitiveAdapter
   -> EffectiveVisualBrief
@@ -284,6 +284,7 @@ Storyboard scene
 
 Responsibilities:
 
+- produce storyboard scenes using Visual Truth 2.0 as the primary visual contract;
 - adapt the current storyboard scene into the domain contracts required by the runtime;
 - resolve cinematic direction deterministically;
 - translate the effective brief and cinematic directions into `BackendPrompt`;
