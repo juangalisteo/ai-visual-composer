@@ -306,6 +306,15 @@ class NarrativeReadingDomainTest(unittest.TestCase):
                 "object",
                 "initial_state",
                 "final_state",
+                "environment",
+                "time_context",
+                "key_objects",
+                "spatial_relationships",
+                "continuity_links",
+                "abstract_source",
+                "visual_constraints",
+                "visual_truth_status",
+                "source_model",
                 "confidence",
             )
         )

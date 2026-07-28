@@ -24,6 +24,15 @@ class NarrativeEvent:
     object: str = ""
     initial_state: str = ""
     final_state: str = ""
+    environment: str = ""
+    time_context: str = ""
+    key_objects: tuple[str, ...] = field(default_factory=tuple)
+    spatial_relationships: tuple[str, ...] = field(default_factory=tuple)
+    continuity_links: tuple[str, ...] = field(default_factory=tuple)
+    abstract_source: str = ""
+    visual_constraints: tuple[str, ...] = field(default_factory=tuple)
+    visual_truth_status: str = ""
+    source_model: str = ""
     confidence: NarrativeConfidence = NarrativeConfidence.EXPLICIT
 
 

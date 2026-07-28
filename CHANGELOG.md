@@ -6,6 +6,8 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Migrated runtime narrative reading to use Visual Truth 2.0 as its primary source while keeping legacy storyboard fields isolated as compatibility fallback.
+- Extended `NarrativeEvent` with passive Visual Truth context fields for environment, time, objects, spatial relationships, continuity, constraints, status, and source model.
 - Migrated storyboard generation to Visual Truth 2.0 as the primary visual source while preserving `visual_idea` as temporary compatibility data.
 - Adopted the private AVCES v1.0 engineering standard for repository governance.
 - Foundation completed: public UTF-8 verification, official asset policy, private AVCES policy, and planned RuntimeCognitiveAdapter 2.0 status.

@@ -326,6 +326,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             setting="archivo subterraneo",
             visible_subject="investigadora con abrigo gris",
             visible_action="recibe una llave antigua",
+            visible_environment="archivo subterraneo",
             time_context="noche lluviosa",
             key_objects=(
                 "llave antigua",
@@ -370,7 +371,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             brief.visible_action,
         )
         self.assertEqual(
-            scene.setting,
+            scene.visible_environment,
             brief.visible_environment,
         )
         self.assertEqual(
@@ -430,7 +431,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             brief.staging.action_or_state,
         )
         self.assertEqual(
-            scene.setting,
+            scene.visible_environment,
             brief.staging.environment,
         )
         self.assertEqual(
@@ -460,6 +461,145 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
         self.assertIn(
             "StoryboardScene.visual_constraints",
             adaptation.trace_references,
+        )
+
+    def test_runtime_narrative_reading_uses_visual_truth_as_primary_source(self):
+        scene = StoryboardScene(
+            scene_number=9,
+            text="Una entrega cambia la relacion entre dos personas.",
+            subject="legacy subject must not be used",
+            action="legacy action must not be used",
+            setting="legacy setting must not be used",
+            narrative_role="revelacion",
+            narrative_moment="punto de giro",
+            visible_subject="archivista con guantes blancos",
+            visible_action="entrega una llave antigua",
+            visible_environment="sala de archivo subterranea",
+            time_context="medianoche",
+            key_objects=(
+                "llave antigua",
+                "sobre lacrado",
+            ),
+            spatial_relationships=(
+                "la llave queda entre ambas manos",
+                "el sobre permanece sobre la mesa",
+            ),
+            continuity_links=(
+                "misma archivista",
+                "misma llave antigua",
+            ),
+            abstract_source="confianza transferida",
+            filmable_interpretation=(
+                "una llave antigua cambia de manos en silencio"
+            ),
+            visual_constraints=(
+                "sin texto legible",
+            ),
+            visual_truth_status="structured",
+        )
+
+        reading = RuntimeCognitiveAdapter.narrative_reading_from_scene(
+            scene
+        )
+
+        self.assertEqual(
+            "archivista con guantes blancos",
+            reading.event.subject,
+        )
+        self.assertEqual(
+            "entrega una llave antigua",
+            reading.event.action,
+        )
+        self.assertEqual(
+            "llave antigua",
+            reading.event.object,
+        )
+        self.assertEqual(
+            "sala de archivo subterranea",
+            reading.event.environment,
+        )
+        self.assertEqual(
+            "medianoche",
+            reading.event.time_context,
+        )
+        self.assertEqual(
+            scene.key_objects,
+            reading.event.key_objects,
+        )
+        self.assertEqual(
+            scene.spatial_relationships,
+            reading.event.spatial_relationships,
+        )
+        self.assertEqual(
+            scene.continuity_links,
+            reading.event.continuity_links,
+        )
+        self.assertEqual(
+            "confianza transferida",
+            reading.event.abstract_source,
+        )
+        self.assertEqual(
+            scene.visual_constraints,
+            reading.event.visual_constraints,
+        )
+        self.assertEqual(
+            "structured",
+            reading.event.visual_truth_status,
+        )
+        self.assertEqual(
+            "visual_truth_2_0",
+            reading.event.source_model,
+        )
+        self.assertEqual(
+            (
+                "una llave antigua cambia de manos en silencio",
+            ),
+            reading.facts.shown,
+        )
+        self.assertEqual(
+            (
+                "archivista con guantes blancos",
+                "sala de archivo subterranea",
+                "llave antigua",
+                "sobre lacrado",
+            ),
+            reading.facts.existing_elements,
+        )
+        self.assertEqual(
+            scene.visual_constraints,
+            reading.facts.conditions,
+        )
+        self.assertEqual(
+            (
+                "sala de archivo subterranea",
+            ),
+            reading.entities.places,
+        )
+        self.assertEqual(
+            scene.spatial_relationships,
+            reading.relations.relations,
+        )
+        self.assertEqual(
+            scene.continuity_links,
+            reading.continuity.continues,
+        )
+        self.assertEqual(
+            (
+                "confianza transferida",
+            ),
+            reading.concepts.explicit,
+        )
+        self.assertEqual(
+            scene.key_objects,
+            reading.explicit_symbols.symbols,
+        )
+        self.assertNotIn(
+            "legacy subject must not be used",
+            reading.facts.existing_elements,
+        )
+        self.assertNotEqual(
+            "legacy action must not be used",
+            reading.event.action,
         )
 
     def test_runtime_cognitive_adapter_preserves_legacy_fallbacks(self):
@@ -498,6 +638,140 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
         self.assertEqual(
             "pasillo",
             brief.staging.environment,
+        )
+        self.assertEqual(
+            "legacy",
+            adaptation.narrative_reading.event.source_model,
+        )
+        self.assertEqual(
+            "persona legacy",
+            adaptation.narrative_reading.event.subject,
+        )
+        self.assertEqual(
+            "camina",
+            adaptation.narrative_reading.event.action,
+        )
+        self.assertEqual(
+            "pasillo",
+            adaptation.narrative_reading.event.environment,
+        )
+        self.assertIn(
+            "LegacyStoryboardScene.subject",
+            adaptation.trace_references,
+        )
+        self.assertIn(
+            "LegacyStoryboardScene.action",
+            adaptation.trace_references,
+        )
+        self.assertIn(
+            "LegacyStoryboardScene.setting",
+            adaptation.trace_references,
+        )
+
+    def test_runtime_visual_truth_scene_does_not_mix_legacy_fallbacks(self):
+        scene = StoryboardScene(
+            scene_number=10,
+            text="Una escena parcialmente estructurada.",
+            subject="legacy subject",
+            action="legacy action",
+            setting="legacy setting",
+            filmable_interpretation="un objeto espera sobre una mesa",
+            visual_truth_status="structured",
+        )
+
+        adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
+            storyboard_scene=scene,
+            legacy_visual_idea="legacy idea",
+        )
+
+        self.assertEqual(
+            "un objeto espera sobre una mesa",
+            adaptation.visual_brief.visible_content,
+        )
+        self.assertEqual(
+            "",
+            adaptation.visual_brief.primary_subject,
+        )
+        self.assertEqual(
+            "",
+            adaptation.visual_brief.staging.main_subject,
+        )
+        self.assertEqual(
+            "",
+            adaptation.visual_brief.staging.action_or_state,
+        )
+        self.assertEqual(
+            "",
+            adaptation.visual_brief.staging.environment,
+        )
+        self.assertEqual(
+            "",
+            adaptation.narrative_reading.event.subject,
+        )
+        self.assertEqual(
+            "",
+            adaptation.narrative_reading.event.action,
+        )
+        self.assertEqual(
+            "",
+            adaptation.narrative_reading.event.environment,
+        )
+        self.assertEqual(
+            "visual_truth_2_0",
+            adaptation.narrative_reading.event.source_model,
+        )
+        self.assertNotIn(
+            "LegacyStoryboardScene.subject",
+            adaptation.trace_references,
+        )
+        self.assertNotIn(
+            "LegacyStoryboardScene.action",
+            adaptation.trace_references,
+        )
+        self.assertNotIn(
+            "LegacyStoryboardScene.setting",
+            adaptation.trace_references,
+        )
+
+    def test_runtime_narrative_reading_is_deterministic_and_does_not_mutate_scene(self):
+        scene = StoryboardScene(
+            scene_number=11,
+            text="Una escena determinista.",
+            visible_subject="figura ante una puerta",
+            visible_action="abre una puerta metalica",
+            visible_environment="pasillo industrial",
+            key_objects=(
+                "puerta metalica",
+            ),
+            spatial_relationships=(
+                "la figura queda frente a la puerta",
+            ),
+            continuity_links=(
+                "misma puerta",
+            ),
+            visual_truth_status="structured",
+        )
+
+        first = RuntimeCognitiveAdapter.narrative_reading_from_scene(
+            scene
+        )
+        second = RuntimeCognitiveAdapter.narrative_reading_from_scene(
+            scene
+        )
+
+        self.assertEqual(
+            first,
+            second,
+        )
+        self.assertEqual(
+            "figura ante una puerta",
+            scene.visible_subject,
+        )
+        self.assertEqual(
+            (
+                "puerta metalica",
+            ),
+            scene.key_objects,
         )
 
     def test_orientation_guidance_is_deterministic_and_explicit(self):

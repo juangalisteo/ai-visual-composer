@@ -23,11 +23,13 @@ Completed:
 - `QF-0 - Quality Foundation`
 - `IP2.0-3 - RuntimeCognitiveAdapter 2.0`
 - `IP2.0-4 - Storyboard Visual Truth Source Migration`
+- `IP2.0-5 - ImageBuilder Visual Truth Consumer Migration`
+- `IP2.0-6 - Narrative Runtime Visual Truth Migration`
 
 Next planned phase:
 
 ```text
-To be defined by the project owner after IP2.0-4 validation.
+To be defined by the project owner after IP2.0-6 validation.
 ```
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline 2.0 phase is explicitly requested.

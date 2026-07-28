@@ -9,10 +9,15 @@ from app.domain import (
     LightingPlan,
     MotionSense,
     NarrativeContext,
+    NarrativeContinuity,
+    NarrativeConcepts,
+    NarrativeEntities,
     NarrativeEvent,
     NarrativeFacts,
     NarrativeFunction,
     NarrativeReading,
+    NarrativeRelations,
+    ExplicitSymbols,
     PhotographyPlan,
     SceneIntent,
     StagingPlan,
@@ -191,31 +196,130 @@ class RuntimeCognitiveAdapter:
     def narrative_reading_from_scene(
         storyboard_scene: StoryboardScene
     ) -> NarrativeReading:
+        visual_truth_scene = (
+            RuntimeCognitiveAdapter.has_visual_truth_content(
+                storyboard_scene
+            )
+        )
+        visible_subject = (
+            RuntimeCognitiveAdapter.visible_subject_from_scene(
+                storyboard_scene
+            )
+        )
+        visible_action = (
+            RuntimeCognitiveAdapter.visible_action_from_scene(
+                storyboard_scene
+            )
+        )
+        visible_environment = (
+            RuntimeCognitiveAdapter.visible_environment_from_scene(
+                storyboard_scene
+            )
+        )
+        key_objects = tuple(
+            storyboard_scene.key_objects
+        )
+        spatial_relationships = tuple(
+            storyboard_scene.spatial_relationships
+        )
+        continuity_links = tuple(
+            storyboard_scene.continuity_links
+        )
+        visual_constraints = tuple(
+            storyboard_scene.visual_constraints
+        )
+        abstract_source = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.abstract_source
+        )
+        filmable_interpretation = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.filmable_interpretation
+        )
+        time_context = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.time_context
+        )
+        visual_truth_status = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.visual_truth_status
+        )
+        source_model = (
+            "visual_truth_2_0"
+            if visual_truth_scene
+            else "legacy"
+        )
+
         return NarrativeReading(
             facts=NarrativeFacts(
                 stated=_tuple_if_present(
                     RuntimeCognitiveAdapter._clean(
                         storyboard_scene.text
                     )
-                )
+                ),
+                shown=_tuple_if_present(
+                    filmable_interpretation
+                ),
+                existing_elements=_dedupe_tuple(
+                    (
+                        visible_subject,
+                        visible_environment,
+                    )
+                    + key_objects
+                ),
+                conditions=visual_constraints,
             ),
             event=NarrativeEvent(
-                action=RuntimeCognitiveAdapter._clean(
-                    storyboard_scene.action
+                action=visible_action,
+                subject=visible_subject,
+                object=_first(
+                    key_objects
                 ),
-                subject=RuntimeCognitiveAdapter._clean(
-                    storyboard_scene.subject
-                )
+                environment=visible_environment,
+                time_context=time_context,
+                key_objects=key_objects,
+                spatial_relationships=spatial_relationships,
+                continuity_links=continuity_links,
+                abstract_source=abstract_source,
+                visual_constraints=visual_constraints,
+                visual_truth_status=visual_truth_status,
+                source_model=source_model,
             ),
             context=NarrativeContext(
-                known_context=RuntimeCognitiveAdapter._clean(
-                    storyboard_scene.narrative_moment
+                known_context=RuntimeCognitiveAdapter._join(
+                    (
+                        storyboard_scene.narrative_moment,
+                        time_context,
+                        visible_environment,
+                    )
+                ),
+                continuity=RuntimeCognitiveAdapter._join(
+                    continuity_links
                 )
             ),
             function=NarrativeFunction(
                 primary=RuntimeCognitiveAdapter._clean(
                     storyboard_scene.narrative_role
                 )
+            ),
+            entities=NarrativeEntities(
+                characters=_tuple_if_present(
+                    visible_subject
+                ),
+                objects=key_objects,
+                places=_tuple_if_present(
+                    visible_environment
+                ),
+            ),
+            relations=NarrativeRelations(
+                relations=spatial_relationships,
+            ),
+            concepts=NarrativeConcepts(
+                explicit=_tuple_if_present(
+                    abstract_source
+                ),
+            ),
+            explicit_symbols=ExplicitSymbols(
+                symbols=key_objects,
+            ),
+            continuity=NarrativeContinuity(
+                continues=continuity_links,
             )
         )
 
@@ -343,39 +447,51 @@ class RuntimeCognitiveAdapter:
     def visible_subject_from_scene(
         storyboard_scene: StoryboardScene
     ) -> str:
-        return (
-            RuntimeCognitiveAdapter._clean(
-                storyboard_scene.visible_subject
-            )
-            or RuntimeCognitiveAdapter._clean(
-                storyboard_scene.subject
-            )
+        visible_subject = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.visible_subject
+        )
+        if visible_subject:
+            return visible_subject
+        if RuntimeCognitiveAdapter.has_visual_truth_content(
+            storyboard_scene
+        ):
+            return ""
+        return RuntimeCognitiveAdapter._clean(
+            storyboard_scene.subject
         )
 
     @staticmethod
     def visible_action_from_scene(
         storyboard_scene: StoryboardScene
     ) -> str:
-        return (
-            RuntimeCognitiveAdapter._clean(
-                storyboard_scene.visible_action
-            )
-            or RuntimeCognitiveAdapter._clean(
-                storyboard_scene.action
-            )
+        visible_action = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.visible_action
+        )
+        if visible_action:
+            return visible_action
+        if RuntimeCognitiveAdapter.has_visual_truth_content(
+            storyboard_scene
+        ):
+            return ""
+        return RuntimeCognitiveAdapter._clean(
+            storyboard_scene.action
         )
 
     @staticmethod
     def visible_environment_from_scene(
         storyboard_scene: StoryboardScene
     ) -> str:
-        return (
-            RuntimeCognitiveAdapter._clean(
-                storyboard_scene.visible_environment
-            )
-            or RuntimeCognitiveAdapter._clean(
-                storyboard_scene.setting
-            )
+        visible_environment = RuntimeCognitiveAdapter._clean(
+            storyboard_scene.visible_environment
+        )
+        if visible_environment:
+            return visible_environment
+        if RuntimeCognitiveAdapter.has_visual_truth_content(
+            storyboard_scene
+        ):
+            return ""
+        return RuntimeCognitiveAdapter._clean(
+            storyboard_scene.setting
         )
 
     @staticmethod
@@ -483,7 +599,6 @@ class RuntimeCognitiveAdapter:
             "visible_subject",
             "visible_action",
             "visible_environment",
-            "setting",
             "time_context",
             "key_objects",
             "spatial_relationships",
@@ -503,6 +618,22 @@ class RuntimeCognitiveAdapter:
                 references.append(
                     f"StoryboardScene.{field}"
                 )
+        if not RuntimeCognitiveAdapter.has_visual_truth_content(
+            storyboard_scene
+        ):
+            for field in (
+                "subject",
+                "action",
+                "setting",
+            ):
+                value = getattr(
+                    storyboard_scene,
+                    field
+                )
+                if value:
+                    references.append(
+                        f"LegacyStoryboardScene.{field}"
+                    )
         return tuple(
             references
         )
@@ -573,4 +704,33 @@ def _tuple_if_present(
         return ()
     return (
         value,
+    )
+
+
+def _first(
+    values: tuple[str, ...]
+) -> str:
+    if values:
+        return values[0]
+    return ""
+
+
+def _dedupe_tuple(
+    values: tuple[str, ...]
+) -> tuple[str, ...]:
+    seen = set()
+    result = []
+    for value in values:
+        cleaned = RuntimeCognitiveAdapter._clean(
+            value
+        )
+        if cleaned and cleaned not in seen:
+            seen.add(
+                cleaned
+            )
+            result.append(
+                cleaned
+            )
+    return tuple(
+        result
     )
