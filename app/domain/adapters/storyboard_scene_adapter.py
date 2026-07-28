@@ -156,7 +156,7 @@ class StoryboardSceneAdapter:
         )
 
     @staticmethod
-    def visual_idea(
+    def legacy_visual_idea(
         scene
     ) -> str:
         return StoryboardSceneAdapter._clean(

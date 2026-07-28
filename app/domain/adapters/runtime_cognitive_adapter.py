@@ -44,7 +44,7 @@ class RuntimeCognitiveAdapter:
     @staticmethod
     def from_storyboard_scene(
         storyboard_scene: StoryboardScene,
-        visual_idea: str = "",
+        legacy_visual_idea: str = "",
         orientation: str = ""
     ) -> RuntimeCognitiveSceneAdaptation:
         trace_references = (
@@ -108,7 +108,7 @@ class RuntimeCognitiveAdapter:
             visible_content=(
                 RuntimeCognitiveAdapter.visible_content_from_scene(
                     storyboard_scene,
-                    visual_idea
+                    legacy_visual_idea
                 )
             ),
             visible_subject=RuntimeCognitiveAdapter._clean(
@@ -277,7 +277,7 @@ class RuntimeCognitiveAdapter:
     @staticmethod
     def visible_content_from_scene(
         storyboard_scene: StoryboardScene,
-        visual_idea: str = ""
+        legacy_visual_idea: str = ""
     ) -> str:
         visual_truth_content = (
             RuntimeCognitiveAdapter._clean(
@@ -301,7 +301,7 @@ class RuntimeCognitiveAdapter:
         return (
             visual_truth_content
             or RuntimeCognitiveAdapter._clean(
-                visual_idea
+                legacy_visual_idea
             )
             or RuntimeCognitiveAdapter._clean(
                 storyboard_scene.text

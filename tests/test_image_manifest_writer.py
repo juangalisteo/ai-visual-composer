@@ -297,7 +297,25 @@ class ImageManifestWriterTest(unittest.TestCase):
                         {
                             "scene": 1,
                             "text": "La escena conserva su texto.",
-                            "visual_idea": "A quiet dawn over a valley",
+                            "visible_subject": "quiet valley",
+                            "visible_action": "dawn light spreads slowly",
+                            "visible_environment": "mountain landscape",
+                            "time_context": "dawn",
+                            "key_objects": [
+                                "mist",
+                            ],
+                            "spatial_relationships": [
+                                "mist rests below the ridge",
+                            ],
+                            "continuity_links": [],
+                            "abstract_source": "beginning",
+                            "filmable_interpretation": (
+                                "A quiet dawn over a valley"
+                            ),
+                            "visual_constraints": [
+                                "no readable text",
+                            ],
+                            "visual_truth_status": "structured",
                             "duration": 3
                         }
                     ],

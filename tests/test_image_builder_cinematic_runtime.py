@@ -498,6 +498,18 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             "A quiet dawn over a valley",
             effective_visual_brief.visual_brief.visible_content
         )
+        source_paths = {
+            origin.source_path
+            for origin in effective_visual_brief.trace.field_origins
+        }
+        self.assertNotIn(
+            "StoryboardScene.visual_idea",
+            source_paths,
+        )
+        self.assertIn(
+            "StoryboardScene.visible_environment",
+            source_paths,
+        )
         self.assertEqual(
             "backend-prompt-fingerprint",
             backend_adapter.backend_prompts[0].fingerprint
@@ -519,9 +531,14 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             builder._build_cinematic_runtime_metadata(
                 storyboard_scene=StoryboardScene(
                     scene_number=1,
-                    text="La escena conserva su texto."
+                    text="La escena conserva su texto.",
+                    visible_subject="quiet valley",
+                    visible_action="dawn light spreads slowly",
+                    visible_environment="mountain landscape",
+                    filmable_interpretation="A quiet dawn over a valley",
+                    visual_truth_status="structured",
                 ),
-                visual_idea="A quiet dawn over a valley",
+                legacy_visual_idea="",
             )["backend_prompt_fingerprint"]
         )
 
@@ -535,9 +552,14 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         metadata = builder._build_cinematic_runtime_metadata(
             storyboard_scene=StoryboardScene(
                 scene_number=1,
-                text="La escena conserva su texto."
+                text="La escena conserva su texto.",
+                visible_subject="quiet valley",
+                visible_action="dawn light spreads slowly",
+                visible_environment="mountain landscape",
+                filmable_interpretation="A quiet dawn over a valley",
+                visual_truth_status="structured",
             ),
-            visual_idea="A quiet dawn over a valley",
+            legacy_visual_idea="",
         )
 
         self.assertEqual(
@@ -568,9 +590,9 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             storyboard_scene=StoryboardScene(
                 scene_number=9,
                 text="Una idea invisible se vuelve accion.",
-                setting="archivo subterraneo",
                 visible_subject="investigadora con abrigo gris",
                 visible_action="recibe una llave antigua",
+                visible_environment="archivo subterraneo",
                 time_context="noche",
                 key_objects=(
                     "llave antigua",
@@ -589,7 +611,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 ),
                 visual_truth_status="structured",
             ),
-            visual_idea="legacy visual idea",
+            legacy_visual_idea="",
             profile={
                 "format": "horizontal",
             },
@@ -615,8 +637,12 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             origins["VisualBrief.visible_content"].source_path,
         )
         self.assertEqual(
-            "copy",
+            "preserve_visual_truth",
             origins["VisualBrief.visible_subject"].action,
+        )
+        self.assertEqual(
+            "StoryboardScene.visible_environment",
+            origins["VisualBrief.visible_environment"].source_path,
         )
         self.assertEqual(
             "StoryboardScene.visual_constraints",
@@ -631,16 +657,21 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         builder = ImageBuilder()
         storyboard_scene = StoryboardScene(
             scene_number=1,
-            text="La escena conserva su texto."
+            text="La escena conserva su texto.",
+            visible_subject="quiet valley",
+            visible_action="dawn light spreads slowly",
+            visible_environment="mountain landscape",
+            filmable_interpretation="A quiet dawn over a valley",
+            visual_truth_status="structured",
         )
 
         first = builder._build_runtime_effective_visual_brief(
             storyboard_scene=storyboard_scene,
-            visual_idea="A quiet dawn over a valley"
+            legacy_visual_idea=""
         )
         second = builder._build_runtime_effective_visual_brief(
             storyboard_scene=storyboard_scene,
-            visual_idea="A quiet dawn over a valley"
+            legacy_visual_idea=""
         )
 
         self.assertEqual(
@@ -692,7 +723,25 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                     {
                         "scene": 1,
                         "text": "La escena conserva su texto.",
-                        "visual_idea": "A quiet dawn over a valley",
+                        "visible_subject": "quiet valley",
+                        "visible_action": "dawn light spreads slowly",
+                        "visible_environment": "mountain landscape",
+                        "time_context": "dawn",
+                        "key_objects": [
+                            "mist",
+                        ],
+                        "spatial_relationships": [
+                            "mist rests below the ridge",
+                        ],
+                        "continuity_links": [],
+                        "abstract_source": "beginning",
+                        "filmable_interpretation": (
+                            "A quiet dawn over a valley"
+                        ),
+                        "visual_constraints": [
+                            "no readable text",
+                        ],
+                        "visual_truth_status": "structured",
                         "duration": 3
                     }
                 ],

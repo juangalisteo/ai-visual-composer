@@ -201,9 +201,32 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                             "La luz aparece sobre el valle "
                             "y transforma la atmosfera."
                         ),
-                        "visual_idea": (
+                        "visible_subject": (
+                            "wide valley under first morning light"
+                        ),
+                        "visible_action": (
+                            "light spreads across the mist"
+                        ),
+                        "visible_environment": (
+                            "quiet mountain valley"
+                        ),
+                        "time_context": "dawn",
+                        "key_objects": (
+                            "low mist",
+                            "distant ridge",
+                        ),
+                        "spatial_relationships": (
+                            "mist sits below the ridge",
+                        ),
+                        "continuity_links": (),
+                        "abstract_source": "transformation begins",
+                        "filmable_interpretation": (
                             "A quiet dawn over a valley"
                         ),
+                        "visual_constraints": (
+                            "no readable text",
+                        ),
+                        "visual_truth_status": "structured",
                         "duration": 3.5
                     },
                     {
@@ -211,9 +234,33 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                         "text": (
                             "La luz se abre en el horizonte."
                         ),
-                        "visual_idea": (
+                        "visible_subject": (
+                            "bright horizon line"
+                        ),
+                        "visible_action": (
+                            "soft light opens across the sky"
+                        ),
+                        "visible_environment": (
+                            "open landscape horizon"
+                        ),
+                        "time_context": "early morning",
+                        "key_objects": (
+                            "horizon",
+                        ),
+                        "spatial_relationships": (
+                            "light rises behind the landscape",
+                        ),
+                        "continuity_links": (
+                            "same morning light",
+                        ),
+                        "abstract_source": "expansion",
+                        "filmable_interpretation": (
                             "A soft light opening on the horizon"
                         ),
+                        "visual_constraints": (
+                            "no readable text",
+                        ),
+                        "visual_truth_status": "structured",
                         "duration": 4.0
                     }
                 ]

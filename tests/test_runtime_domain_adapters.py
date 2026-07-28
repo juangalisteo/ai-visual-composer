@@ -44,7 +44,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
         )
         self.assertEqual(
             "A quiet dawn over a valley",
-            StoryboardSceneAdapter.visual_idea(
+            StoryboardSceneAdapter.legacy_visual_idea(
                 {
                     "visual_idea": "A quiet dawn over a valley",
                 }
@@ -284,7 +284,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
                 duration=5.0,
                 source_index=1,
             ),
-            visual_idea="A person observing an old key",
+            legacy_visual_idea="A person observing an old key",
             orientation="horizontal",
         )
 
@@ -352,7 +352,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
 
         adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
             storyboard_scene=scene,
-            visual_idea="legacy idea should not replace visual truth",
+            legacy_visual_idea="legacy idea should not replace visual truth",
             orientation="vertical",
         )
         brief = adaptation.visual_brief
@@ -471,7 +471,7 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
                 action="camina",
                 setting="pasillo",
             ),
-            visual_idea="legacy visual idea",
+            legacy_visual_idea="legacy visual idea",
         )
         brief = adaptation.visual_brief
 
