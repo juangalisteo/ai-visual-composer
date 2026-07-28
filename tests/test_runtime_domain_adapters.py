@@ -51,42 +51,203 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             ),
         )
 
-    def test_storyboard_adapter_does_not_populate_storyboard_scene_2_fields_yet(self):
+    def test_storyboard_adapter_preserves_storyboard_scene_2_fields(self):
         scene = StoryboardSceneAdapter.from_dict(
             scene={
                 "scene": "3",
                 "text": "La escena conserva su texto.",
                 "visual_idea": "A quiet dawn over a valley",
-                "visible_subject": "campo futuro",
-                "visible_action": "campo futuro",
-                "time_context": "campo futuro",
+                "narrative_role": "revelacion",
+                "narrative_moment": "inicio",
+                "subject": "una investigadora",
+                "action": "observa una llave",
+                "setting": "biblioteca antigua",
+                "notes": "mantener calma",
+                "visible_subject": "investigadora adulta",
+                "visible_action": "observa una llave de bronce",
+                "time_context": "noche",
                 "key_objects": [
-                    "objeto futuro",
+                    "llave de bronce",
+                    "",
+                    None,
                 ],
+                "spatial_relationships": [
+                    "la llave esta sobre la mesa",
+                ],
+                "continuity_links": (
+                    "misma investigadora",
+                ),
+                "abstract_source": "ley de correspondencia",
+                "filmable_interpretation": (
+                    "una llave fisica expresa una relacion invisible"
+                ),
+                "visual_constraints": "sin texto legible",
                 "visual_truth_status": "structured",
             },
             default_scene_number=1,
         )
 
         self.assertEqual(
-            "",
+            "revelacion",
+            scene.narrative_role,
+        )
+        self.assertEqual(
+            "inicio",
+            scene.narrative_moment,
+        )
+        self.assertEqual(
+            "una investigadora",
+            scene.subject,
+        )
+        self.assertEqual(
+            "observa una llave",
+            scene.action,
+        )
+        self.assertEqual(
+            "biblioteca antigua",
+            scene.setting,
+        )
+        self.assertEqual(
+            "mantener calma",
+            scene.notes,
+        )
+        self.assertEqual(
+            "investigadora adulta",
             scene.visible_subject,
         )
         self.assertEqual(
-            "",
+            "observa una llave de bronce",
             scene.visible_action,
         )
         self.assertEqual(
-            "",
+            "noche",
             scene.time_context,
+        )
+        self.assertEqual(
+            (
+                "llave de bronce",
+            ),
+            scene.key_objects,
+        )
+        self.assertEqual(
+            (
+                "la llave esta sobre la mesa",
+            ),
+            scene.spatial_relationships,
+        )
+        self.assertEqual(
+            (
+                "misma investigadora",
+            ),
+            scene.continuity_links,
+        )
+        self.assertEqual(
+            "ley de correspondencia",
+            scene.abstract_source,
+        )
+        self.assertEqual(
+            "una llave fisica expresa una relacion invisible",
+            scene.filmable_interpretation,
+        )
+        self.assertEqual(
+            (
+                "sin texto legible",
+            ),
+            scene.visual_constraints,
+        )
+        self.assertEqual(
+            "structured",
+            scene.visual_truth_status,
+        )
+
+    def test_storyboard_adapter_keeps_legacy_status_when_field_is_absent(self):
+        scene = StoryboardSceneAdapter.from_dict(
+            scene={
+                "scene": "4",
+                "text": "Escena legacy.",
+            },
+            default_scene_number=1,
+        )
+
+        self.assertEqual(
+            "legacy",
+            scene.visual_truth_status,
         )
         self.assertEqual(
             (),
             scene.key_objects,
         )
+
+    def test_storyboard_adapter_is_deterministic_and_does_not_mutate_input(self):
+        raw_scene = {
+            "scene": "5",
+            "text": " Escena determinista. ",
+            "key_objects": [
+                " objeto ",
+            ],
+            "visual_constraints": [
+                " sin texto ",
+            ],
+            "visual_truth_status": " partially_structured ",
+        }
+        original = {
+            key: (
+                tuple(
+                    value
+                )
+                if isinstance(
+                    value,
+                    list
+                )
+                else value
+            )
+            for key, value in raw_scene.items()
+        }
+
+        first = StoryboardSceneAdapter.from_dict(
+            scene=raw_scene,
+            default_scene_number=1,
+        )
+        second = StoryboardSceneAdapter.from_dict(
+            scene=raw_scene,
+            default_scene_number=1,
+        )
+
         self.assertEqual(
-            "legacy",
-            scene.visual_truth_status,
+            first,
+            second,
+        )
+        self.assertEqual(
+            (
+                "objeto",
+            ),
+            first.key_objects,
+        )
+        self.assertEqual(
+            (
+                "sin texto",
+            ),
+            first.visual_constraints,
+        )
+        self.assertEqual(
+            "partially_structured",
+            first.visual_truth_status,
+        )
+        self.assertEqual(
+            original,
+            {
+                key: (
+                    tuple(
+                        value
+                    )
+                    if isinstance(
+                        value,
+                        list
+                    )
+                    else value
+                )
+                for key, value in raw_scene.items()
+            },
         )
 
     def test_generation_result_adapter_preserves_manifest_inputs(self):
