@@ -7,7 +7,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 ### Changed
 
 - Adopted the private AVCES v1.0 engineering standard for repository governance.
-- Closed Foundation observations: public UTF-8 verification, official asset policy, private AVCES policy, and planned RuntimeCognitiveAdapter 2.0 status.
+- Foundation completed: public UTF-8 verification, official asset policy, private AVCES policy, and planned RuntimeCognitiveAdapter 2.0 status.
 - Certified final repository identity and documentation compliance with private AVCES v1.0 governance.
 - Defined the private development environment policy.
 - Updated public documentation to keep `CODEX/` outside the public repository and official releases.
