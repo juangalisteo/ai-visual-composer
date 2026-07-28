@@ -8,7 +8,9 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 - Adopted AVCES v1.0 as the active engineering standard for repository governance.
 - Certified final repository identity and documentation compliance with AVCES v1.0.
-- Updated official documentation metadata to preserve the approved CODEX responsibilities.
+- Defined the private development environment policy.
+- Updated public documentation to keep `CODEX/` outside the public repository and official releases.
+- Extended `.gitignore` for private development memory, external runtimes, LoRAs, VAE files, embeddings, and ControlNet resources.
 
 ## [1.0.0] - AI Visual Composer v1.0.0
 
@@ -53,7 +55,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 - Obsolete legacy adapter tests.
 - Duplicated and temporary documentation.
 - Temporary project structure document.
-- Redundant frozen requirements snapshot.
+- Redundant frozen requirements file.
 - Generated outputs and debug logs from the working tree.
 
 ### Preserved

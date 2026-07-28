@@ -100,9 +100,6 @@ ai-visual-composer/
       prompt_music.md
   prompts/
   tests/
-  CODEX/
-    BITACORA.md
-    CHATGPT.md
   main.py
   README.md
   ARCHITECTURE.md
@@ -112,7 +109,7 @@ ai-visual-composer/
   requirements.txt
 ```
 
-`output/`, `logs/`, `.env`, `input/`, `ComfyUI/`, local models, checkpoints, and generated media are intentionally excluded from the repository.
+`output/`, `logs/`, `.env`, `input/`, `CODEX/`, `ComfyUI/`, local models, checkpoints, LoRAs, VAE files, embeddings, ControlNet resources, external runtimes, and generated media are intentionally excluded from the public repository.
 
 ## Current Status
 
@@ -228,8 +225,8 @@ VideoBuilder().build(
 - `ARCHITECTURE.md`: current architecture.
 - `CHANGELOG.md`: release history.
 - `ROADMAP.md`: future work.
-- `CODEX/CHATGPT.md`: current project-state snapshot and active engineering standard status.
-- `CODEX/BITACORA.md`: chronological development log.
+
+Private development memory lives in `CODEX/` and is intentionally excluded from the public repository and official releases.
 
 ## License
 
