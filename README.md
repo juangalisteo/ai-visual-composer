@@ -228,7 +228,7 @@ VideoBuilder().build(
 - `ARCHITECTURE.md`: current architecture.
 - `CHANGELOG.md`: release history.
 - `ROADMAP.md`: future work.
-- `CODEX/CHATGPT.md`: living architecture and planning memory.
+- `CODEX/CHATGPT.md`: current project-state snapshot and active engineering standard status.
 - `CODEX/BITACORA.md`: chronological development log.
 
 ## License

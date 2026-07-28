@@ -2,6 +2,13 @@
 
 All notable changes to AI Visual Composer will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Adopted AVCES v1.0 as the active engineering standard for repository governance.
+- Updated official documentation metadata to preserve the approved CODEX responsibilities.
+
 ## [1.0.0] - AI Visual Composer v1.0.0
 
 ### Summary
