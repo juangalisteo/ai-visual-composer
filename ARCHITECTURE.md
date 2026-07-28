@@ -267,17 +267,19 @@ Current image flow:
 
 ```text
 Storyboard scene
-  -> visual_idea and scene text
+  -> StoryboardSceneAdapter
+  -> RuntimeCognitiveAdapter
   -> EffectiveVisualBrief
   -> CinematicDirectionOrchestrator
   -> CinematicDirectionSet
   -> PromptTranslator
   -> BackendPrompt
   -> ComfyUIAdapter
+  -> ImagePromptSystem cinematic operational identity
   -> ComfyUIBackend
-  -> Visual Quality
-  -> ImageBuilder
-  -> image manifest
+  -> Visual Quality, when enabled
+  -> GenerationResultAdapter
+  -> ImageManifestWriter
 ```
 
 Responsibilities:
@@ -290,7 +292,7 @@ Responsibilities:
 - validate generated assets through Visual Quality when enabled;
 - write the approved asset into the image manifest.
 
-`ImageBuilder` coordinates the component. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component.
+`ImageBuilder` coordinates the component as the public facade. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component. After generation, Visual Quality can validate the asset when enabled, the result is adapted into the current generation contract, and `ImageManifestWriter` persists the manifest consumed by downstream video assembly.
 
 The Image Component does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
 

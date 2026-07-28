@@ -8,6 +8,28 @@ This roadmap lists future lines of work after `AI Visual Composer v1.0.0`. It do
 
 AI Visual Composer is a modular system where users choose products and the platform selects the appropriate profile, pipeline, registry entry, and visual components. Version 1.0.0 ships the certified Image Pipeline as the first official product pipeline.
 
+## Current Active Development
+
+Current line:
+
+```text
+Image Pipeline 2.0
+```
+
+Completed:
+
+- `IP2.0-1 - StoryboardScene 2.0`
+- `IP2.0-2 - StoryboardSceneAdapter 2.0`
+- `QF-0 - Quality Foundation`
+
+Next planned phase:
+
+```text
+IP2.0-3 - RuntimeCognitiveAdapter 2.0
+```
+
+Do not open Video Pipeline or future visual products until the current Image Pipeline 2.0 phase is explicitly requested.
+
 ## Image Enhancement
 
 Future work line.
