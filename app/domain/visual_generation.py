@@ -116,6 +116,16 @@ class StoryboardScene:
     duration: float | None = None
     source_index: int | None = None
     notes: str = ""
+    visible_subject: str = ""
+    visible_action: str = ""
+    time_context: str = ""
+    key_objects: tuple[str, ...] = field(default_factory=tuple)
+    spatial_relationships: tuple[str, ...] = field(default_factory=tuple)
+    continuity_links: tuple[str, ...] = field(default_factory=tuple)
+    abstract_source: str = ""
+    filmable_interpretation: str = ""
+    visual_constraints: tuple[str, ...] = field(default_factory=tuple)
+    visual_truth_status: str = "legacy"
 
 
 @dataclass(frozen=True)

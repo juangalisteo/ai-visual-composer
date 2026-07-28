@@ -35,12 +35,58 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             ),
         )
         self.assertEqual(
+            "legacy",
+            scene.visual_truth_status,
+        )
+        self.assertEqual(
+            "",
+            scene.visible_subject,
+        )
+        self.assertEqual(
             "A quiet dawn over a valley",
             StoryboardSceneAdapter.visual_idea(
                 {
                     "visual_idea": "A quiet dawn over a valley",
                 }
             ),
+        )
+
+    def test_storyboard_adapter_does_not_populate_storyboard_scene_2_fields_yet(self):
+        scene = StoryboardSceneAdapter.from_dict(
+            scene={
+                "scene": "3",
+                "text": "La escena conserva su texto.",
+                "visual_idea": "A quiet dawn over a valley",
+                "visible_subject": "campo futuro",
+                "visible_action": "campo futuro",
+                "time_context": "campo futuro",
+                "key_objects": [
+                    "objeto futuro",
+                ],
+                "visual_truth_status": "structured",
+            },
+            default_scene_number=1,
+        )
+
+        self.assertEqual(
+            "",
+            scene.visible_subject,
+        )
+        self.assertEqual(
+            "",
+            scene.visible_action,
+        )
+        self.assertEqual(
+            "",
+            scene.time_context,
+        )
+        self.assertEqual(
+            (),
+            scene.key_objects,
+        )
+        self.assertEqual(
+            "legacy",
+            scene.visual_truth_status,
         )
 
     def test_generation_result_adapter_preserves_manifest_inputs(self):

@@ -1,5 +1,5 @@
 import unittest
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, asdict, fields
 
 from app.domain import (
     ColorPlan,
@@ -91,6 +91,373 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         self.assertEqual(
             result.status,
             "completed"
+        )
+        self.assertEqual(
+            scene.visual_truth_status,
+            "legacy"
+        )
+
+    def test_storyboard_scene_supports_legacy_construction(self):
+        scene = StoryboardScene(
+            scene_number=1,
+            text="Texto de la escena",
+            duration=5.0,
+            source_index=0,
+        )
+
+        self.assertEqual(
+            scene.scene_number,
+            1
+        )
+        self.assertEqual(
+            scene.text,
+            "Texto de la escena"
+        )
+        self.assertEqual(
+            scene.duration,
+            5.0
+        )
+        self.assertEqual(
+            scene.source_index,
+            0
+        )
+        self.assertEqual(
+            scene.visible_subject,
+            ""
+        )
+        self.assertEqual(
+            scene.key_objects,
+            ()
+        )
+        self.assertEqual(
+            scene.visual_truth_status,
+            "legacy"
+        )
+
+    def test_storyboard_scene_keeps_positional_compatibility(self):
+        scene = StoryboardScene(
+            1,
+            "Texto",
+            "funcion narrativa",
+            "momento narrativo",
+            "sujeto",
+            "accion",
+            "entorno",
+            4.0,
+            2,
+            "notas",
+        )
+
+        self.assertEqual(
+            scene.scene_number,
+            1
+        )
+        self.assertEqual(
+            scene.notes,
+            "notas"
+        )
+        self.assertEqual(
+            scene.visible_subject,
+            ""
+        )
+        self.assertEqual(
+            scene.visual_truth_status,
+            "legacy"
+        )
+
+    def test_storyboard_scene_supports_structured_filmable_scene(self):
+        scene = StoryboardScene(
+            scene_number=7,
+            text="La correspondencia se vuelve observable.",
+            subject="una investigadora",
+            action="observa una llave antigua",
+            setting="biblioteca historica",
+            visible_subject="investigadora adulta junto a una mesa",
+            visible_action="observa una llave de bronce",
+            time_context="noche silenciosa",
+            key_objects=(
+                "llave de bronce",
+                "mesa de madera",
+            ),
+            spatial_relationships=(
+                "la llave esta entre la investigadora y una lampara",
+            ),
+            continuity_links=(
+                "misma investigadora de la escena anterior",
+            ),
+            abstract_source="ley de correspondencia",
+            filmable_interpretation=(
+                "una llave fisica conecta el patron de un mapa "
+                "con la decision de la investigadora"
+            ),
+            visual_constraints=(
+                "sin texto legible",
+                "mantener ropa sobria",
+            ),
+            visual_truth_status="structured",
+        )
+
+        self.assertEqual(
+            scene.visible_subject,
+            "investigadora adulta junto a una mesa"
+        )
+        self.assertEqual(
+            scene.visible_action,
+            "observa una llave de bronce"
+        )
+        self.assertEqual(
+            scene.time_context,
+            "noche silenciosa"
+        )
+        self.assertEqual(
+            scene.key_objects,
+            (
+                "llave de bronce",
+                "mesa de madera",
+            )
+        )
+        self.assertEqual(
+            scene.visual_truth_status,
+            "structured"
+        )
+
+    def test_storyboard_scene_defaults_are_not_shared(self):
+        first = StoryboardScene(
+            scene_number=1,
+            text="Primera escena",
+        )
+        second = StoryboardScene(
+            scene_number=2,
+            text="Segunda escena",
+        )
+
+        self.assertIsInstance(
+            first.key_objects,
+            tuple
+        )
+        self.assertEqual(
+            first.key_objects,
+            second.key_objects
+        )
+        self.assertIsInstance(
+            first.spatial_relationships,
+            tuple
+        )
+        self.assertIsInstance(
+            first.continuity_links,
+            tuple
+        )
+        self.assertIsInstance(
+            first.visual_constraints,
+            tuple
+        )
+
+        with self.assertRaises(
+            AttributeError
+        ):
+            first.key_objects.append(
+                "objeto"
+            )
+
+    def test_storyboard_scene_is_immutable(self):
+        scene = StoryboardScene(
+            scene_number=1,
+            text="Escena",
+        )
+
+        with self.assertRaises(
+            FrozenInstanceError
+        ):
+            scene.visible_subject = "otro sujeto"
+
+    def test_storyboard_scene_equality_is_deterministic(self):
+        first = StoryboardScene(
+            scene_number=1,
+            text="Escena",
+            visible_subject="sujeto visible",
+            key_objects=(
+                "objeto",
+            ),
+        )
+        second = StoryboardScene(
+            scene_number=1,
+            text="Escena",
+            visible_subject="sujeto visible",
+            key_objects=(
+                "objeto",
+            ),
+        )
+
+        self.assertEqual(
+            first,
+            second
+        )
+        self.assertEqual(
+            asdict(
+                first
+            ),
+            asdict(
+                second
+            )
+        )
+
+    def test_storyboard_scene_legacy_serialization_keeps_existing_fields(self):
+        serialized = asdict(
+            StoryboardScene(
+                scene_number=1,
+                text="Escena legacy",
+                duration=5.0,
+                source_index=0,
+            )
+        )
+
+        self.assertEqual(
+            serialized["scene_number"],
+            1
+        )
+        self.assertEqual(
+            serialized["text"],
+            "Escena legacy"
+        )
+        self.assertEqual(
+            serialized["duration"],
+            5.0
+        )
+        self.assertEqual(
+            serialized["source_index"],
+            0
+        )
+        self.assertEqual(
+            serialized["visual_truth_status"],
+            "legacy"
+        )
+
+    def test_storyboard_scene_rich_serialization_preserves_visual_truth_fields(self):
+        serialized = asdict(
+            StoryboardScene(
+                scene_number=1,
+                text="Escena rica",
+                visible_subject="persona observable",
+                visible_action="abre una puerta",
+                key_objects=(
+                    "puerta",
+                ),
+                spatial_relationships=(
+                    "la persona esta frente a la puerta",
+                ),
+                continuity_links=(
+                    "continua desde el pasillo",
+                ),
+                abstract_source="transicion interior",
+                filmable_interpretation="una puerta se abre fisicamente",
+                visual_constraints=(
+                    "sin texto",
+                ),
+                visual_truth_status="partially_structured",
+            )
+        )
+
+        self.assertEqual(
+            serialized["visible_subject"],
+            "persona observable"
+        )
+        self.assertEqual(
+            serialized["visible_action"],
+            "abre una puerta"
+        )
+        self.assertEqual(
+            serialized["key_objects"],
+            (
+                "puerta",
+            )
+        )
+        self.assertEqual(
+            serialized["abstract_source"],
+            "transicion interior"
+        )
+        self.assertEqual(
+            serialized["filmable_interpretation"],
+            "una puerta se abre fisicamente"
+        )
+
+    def test_storyboard_scene_is_exported_from_domain_package(self):
+        from app.domain import StoryboardScene as ExportedStoryboardScene
+
+        self.assertIs(
+            ExportedStoryboardScene,
+            StoryboardScene
+        )
+
+    def test_storyboard_scene_does_not_include_backend_dependencies(self):
+        field_names = set(
+            StoryboardScene.__dataclass_fields__
+        )
+
+        forbidden = {
+            "prompt",
+            "positive_prompt",
+            "negative_prompt",
+            "model",
+            "workflow",
+            "sampler",
+            "scheduler",
+            "guidance",
+            "steps",
+            "payload",
+            "nodes",
+            "comfyui",
+            "backend",
+            "codec",
+            "lens",
+            "focal_length",
+            "color_grading",
+            "camera_movement",
+        }
+
+        self.assertTrue(
+            forbidden.isdisjoint(
+                field_names
+            )
+        )
+
+    def test_storyboard_scene_does_not_duplicate_setting(self):
+        field_names = [
+            field.name
+            for field in fields(
+                StoryboardScene
+            )
+        ]
+
+        self.assertEqual(
+            field_names.count(
+                "setting"
+            ),
+            1
+        )
+        self.assertNotIn(
+            "visible_setting",
+            field_names
+        )
+
+    def test_abstract_source_and_filmable_interpretation_can_coexist(self):
+        scene = StoryboardScene(
+            scene_number=1,
+            text="Escena abstracta",
+            abstract_source="correspondencia universal",
+            filmable_interpretation=(
+                "una hoja y un mapa estelar muestran "
+                "un patron fisico similar"
+            ),
+            visual_truth_status="partially_structured",
+        )
+
+        self.assertEqual(
+            scene.abstract_source,
+            "correspondencia universal"
+        )
+        self.assertIn(
+            "hoja",
+            scene.filmable_interpretation
         )
 
     def test_cognitive_language_models_can_be_composed(self):
