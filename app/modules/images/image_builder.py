@@ -19,6 +19,7 @@ from app.modules.images.prompt_system import ImagePromptSystem
 from app.prompt_translation import PromptTranslator
 from app.visual_direction import (
     EffectiveVisualBrief,
+    VisualBriefFieldOrigin,
     VisualBriefTrace
 )
 from app.visual_quality import ImageQualityFlowCoordinator
@@ -482,11 +483,136 @@ class ImageBuilder:
 
         return EffectiveVisualBrief(
             visual_brief=adaptation.visual_brief,
-            trace=VisualBriefTrace(),
+            trace=self._runtime_visual_brief_trace(
+                adaptation=adaptation,
+                visual_idea=visual_idea
+            ),
             conflicts=(),
             fingerprint=fingerprint,
             source_id=source_id,
             source_version=source_version
+        )
+
+    def _runtime_visual_brief_trace(
+        self,
+        adaptation,
+        visual_idea
+    ):
+        origins = []
+        visual_brief = adaptation.visual_brief
+
+        self._add_runtime_origin(
+            origins,
+            field="VisualBrief.visible_content",
+            source_path=self._visible_content_source_path(
+                visual_brief,
+                visual_idea
+            ),
+            action="preserve_visual_truth"
+        )
+        direct_mappings = (
+            (
+                "VisualBrief.visible_subject",
+                "StoryboardScene.visible_subject",
+                visual_brief.visible_subject,
+            ),
+            (
+                "VisualBrief.visible_action",
+                "StoryboardScene.visible_action",
+                visual_brief.visible_action,
+            ),
+            (
+                "VisualBrief.visible_environment",
+                "StoryboardScene.setting",
+                visual_brief.visible_environment,
+            ),
+            (
+                "VisualBrief.time_context",
+                "StoryboardScene.time_context",
+                visual_brief.time_context,
+            ),
+            (
+                "VisualBrief.key_objects",
+                "StoryboardScene.key_objects",
+                visual_brief.key_objects,
+            ),
+            (
+                "VisualBrief.spatial_relationships",
+                "StoryboardScene.spatial_relationships",
+                visual_brief.spatial_relationships,
+            ),
+            (
+                "VisualBrief.continuity_links",
+                "StoryboardScene.continuity_links",
+                visual_brief.continuity_links,
+            ),
+            (
+                "VisualBrief.abstract_source",
+                "StoryboardScene.abstract_source",
+                visual_brief.abstract_source,
+            ),
+            (
+                "VisualBrief.filmable_interpretation",
+                "StoryboardScene.filmable_interpretation",
+                visual_brief.filmable_interpretation,
+            ),
+            (
+                "VisualBrief.visual_constraints",
+                "StoryboardScene.visual_constraints",
+                visual_brief.visual_constraints,
+            ),
+            (
+                "VisualBrief.visual_truth_status",
+                "StoryboardScene.visual_truth_status",
+                visual_brief.visual_truth_status,
+            ),
+        )
+        for field, source_path, value in direct_mappings:
+            if value:
+                self._add_runtime_origin(
+                    origins,
+                    field=field,
+                    source_path=source_path,
+                    action="copy"
+                )
+
+        return VisualBriefTrace(
+            field_origins=tuple(
+                origins
+            )
+        )
+
+    def _visible_content_source_path(
+        self,
+        visual_brief,
+        visual_idea
+    ):
+        if visual_brief.filmable_interpretation:
+            return "StoryboardScene.filmable_interpretation"
+        if (
+            visual_brief.visible_subject
+            or visual_brief.visible_action
+            or visual_brief.time_context
+        ):
+            return "StoryboardScene.visual_truth"
+        if visual_idea:
+            return "StoryboardScene.visual_idea"
+        return "StoryboardScene.text"
+
+    def _add_runtime_origin(
+        self,
+        origins,
+        field,
+        source_path,
+        action
+    ):
+        origins.append(
+            VisualBriefFieldOrigin(
+                field=field,
+                source_layer="RuntimeCognitiveAdapter",
+                source_path=source_path,
+                action=action
+            )
         )
 
     def _runtime_visual_brief_fingerprint(

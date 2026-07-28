@@ -317,6 +317,189 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             adaptation.trace_references,
         )
 
+    def test_runtime_cognitive_adapter_preserves_visual_truth_2_fields(self):
+        scene = StoryboardScene(
+            scene_number=7,
+            text="Una idea abstracta se vuelve visible.",
+            subject="una investigadora",
+            action="recibe una llave",
+            setting="archivo subterraneo",
+            visible_subject="investigadora con abrigo gris",
+            visible_action="recibe una llave antigua",
+            time_context="noche lluviosa",
+            key_objects=(
+                "llave antigua",
+                "sobre lacrado",
+            ),
+            spatial_relationships=(
+                "la llave queda entre ambas manos",
+                "el sobre permanece sobre la mesa",
+            ),
+            continuity_links=(
+                "misma investigadora de la escena anterior",
+                "misma llave antigua",
+            ),
+            abstract_source="confianza entregada",
+            filmable_interpretation=(
+                "una llave antigua cambia de manos en silencio"
+            ),
+            visual_constraints=(
+                "sin texto legible",
+                "sin ropa moderna brillante",
+            ),
+            visual_truth_status="structured",
+        )
+
+        adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
+            storyboard_scene=scene,
+            visual_idea="legacy idea should not replace visual truth",
+            orientation="vertical",
+        )
+        brief = adaptation.visual_brief
+
+        self.assertEqual(
+            "una llave antigua cambia de manos en silencio",
+            brief.visible_content,
+        )
+        self.assertEqual(
+            scene.visible_subject,
+            brief.visible_subject,
+        )
+        self.assertEqual(
+            scene.visible_action,
+            brief.visible_action,
+        )
+        self.assertEqual(
+            scene.setting,
+            brief.visible_environment,
+        )
+        self.assertEqual(
+            scene.time_context,
+            brief.time_context,
+        )
+        self.assertEqual(
+            scene.key_objects,
+            brief.key_objects,
+        )
+        self.assertEqual(
+            scene.spatial_relationships,
+            brief.spatial_relationships,
+        )
+        self.assertEqual(
+            scene.continuity_links,
+            brief.continuity_links,
+        )
+        self.assertEqual(
+            scene.abstract_source,
+            brief.abstract_source,
+        )
+        self.assertEqual(
+            scene.filmable_interpretation,
+            brief.filmable_interpretation,
+        )
+        self.assertEqual(
+            scene.visual_constraints,
+            brief.visual_constraints,
+        )
+        self.assertEqual(
+            scene.visual_truth_status,
+            brief.visual_truth_status,
+        )
+        self.assertEqual(
+            "vertical 9:16",
+            brief.narrative_composition,
+        )
+        self.assertEqual(
+            scene.visible_subject,
+            brief.primary_subject,
+        )
+        self.assertEqual(
+            scene.filmable_interpretation,
+            brief.visual_reading,
+        )
+        self.assertEqual(
+            "misma investigadora de la escena anterior | misma llave antigua",
+            brief.visual_continuity,
+        )
+        self.assertEqual(
+            scene.visible_subject,
+            brief.staging.main_subject,
+        )
+        self.assertEqual(
+            scene.visible_action,
+            brief.staging.action_or_state,
+        )
+        self.assertEqual(
+            scene.setting,
+            brief.staging.environment,
+        )
+        self.assertEqual(
+            "la llave queda entre ambas manos | el sobre permanece sobre la mesa",
+            brief.staging.spatial_relationship,
+        )
+        self.assertEqual(
+            scene.key_objects,
+            brief.staging.significant_objects,
+        )
+        self.assertEqual(
+            scene.visual_constraints,
+            brief.visual_strategy.visual_limits,
+        )
+        self.assertEqual(
+            "",
+            brief.visual_strategy.representation_approach,
+        )
+        self.assertIn(
+            "StoryboardScene.visible_subject",
+            adaptation.trace_references,
+        )
+        self.assertIn(
+            "StoryboardScene.filmable_interpretation",
+            adaptation.trace_references,
+        )
+        self.assertIn(
+            "StoryboardScene.visual_constraints",
+            adaptation.trace_references,
+        )
+
+    def test_runtime_cognitive_adapter_preserves_legacy_fallbacks(self):
+        adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
+            storyboard_scene=StoryboardScene(
+                scene_number=8,
+                text="Escena legacy.",
+                subject="persona legacy",
+                action="camina",
+                setting="pasillo",
+            ),
+            visual_idea="legacy visual idea",
+        )
+        brief = adaptation.visual_brief
+
+        self.assertEqual(
+            "legacy visual idea",
+            brief.visible_content,
+        )
+        self.assertEqual(
+            "",
+            brief.visible_subject,
+        )
+        self.assertEqual(
+            "legacy",
+            brief.visual_truth_status,
+        )
+        self.assertEqual(
+            "persona legacy",
+            brief.staging.main_subject,
+        )
+        self.assertEqual(
+            "camina",
+            brief.staging.action_or_state,
+        )
+        self.assertEqual(
+            "pasillo",
+            brief.staging.environment,
+        )
+
     def test_orientation_guidance_is_deterministic_and_explicit(self):
         self.assertEqual(
             "vertical 9:16",

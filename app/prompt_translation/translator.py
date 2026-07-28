@@ -17,6 +17,16 @@ from app.visual_direction import EffectiveVisualBrief
 
 FIELD_CATEGORIES = {
     "visible_content": "content",
+    "visible_subject": "content",
+    "visible_action": "content",
+    "visible_environment": "content",
+    "time_context": "context",
+    "key_objects": "content",
+    "spatial_relationships": "staging",
+    "continuity_links": "continuity",
+    "abstract_source": "source",
+    "filmable_interpretation": "content",
+    "visual_constraints": "constraints",
     "felt_experience": "experience",
     "narrative_composition": "composition",
     "visual_priority": "priority",
@@ -104,6 +114,8 @@ class PromptTranslator:
         source_field: str,
         value: Any
     ) -> None:
+        if source_field in NON_OPERATIONAL_FIELDS:
+            return
         if value is None:
             return
         if is_dataclass(
@@ -405,3 +417,8 @@ def _canonical_mapping(
             for item in value
         ]
     return value
+
+
+NON_OPERATIONAL_FIELDS = {
+    "visual_truth_status",
+}

@@ -131,6 +131,17 @@ class StoryboardScene:
 @dataclass(frozen=True)
 class VisualBrief:
     visible_content: str
+    visible_subject: str = ""
+    visible_action: str = ""
+    visible_environment: str = ""
+    time_context: str = ""
+    key_objects: tuple[str, ...] = field(default_factory=tuple)
+    spatial_relationships: tuple[str, ...] = field(default_factory=tuple)
+    continuity_links: tuple[str, ...] = field(default_factory=tuple)
+    abstract_source: str = ""
+    filmable_interpretation: str = ""
+    visual_constraints: tuple[str, ...] = field(default_factory=tuple)
+    visual_truth_status: str = ""
     felt_experience: str = ""
     narrative_composition: str = ""
     visual_priority: str = ""

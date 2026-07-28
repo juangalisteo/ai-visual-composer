@@ -37,6 +37,26 @@ def effective_visual_brief():
     return EffectiveVisualBrief(
         visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
+            visible_subject="person receiving an old key",
+            visible_action="old key changes hands",
+            visible_environment="quiet interior",
+            time_context="late evening",
+            key_objects=(
+                "old key",
+                "sealed letter",
+            ),
+            spatial_relationships=(
+                "key between both hands",
+            ),
+            continuity_links=(
+                "same old key",
+            ),
+            abstract_source="responsibility transferred",
+            filmable_interpretation="a key changes hands in silence",
+            visual_constraints=(
+                "no readable text",
+            ),
+            visual_truth_status="structured",
             felt_experience="contained solemnity",
             narrative_composition="threshold event",
             visual_priority="consequence over object",
@@ -172,6 +192,26 @@ class PromptTranslationTest(unittest.TestCase):
         self.assertEqual(
             by_source["VisualBrief.visible_content"].value,
             "A person receives an old key."
+        )
+        self.assertEqual(
+            by_source["VisualBrief.visible_subject"].value,
+            "person receiving an old key"
+        )
+        self.assertEqual(
+            by_source["VisualBrief.key_objects"].value,
+            "old key | sealed letter"
+        )
+        self.assertEqual(
+            by_source["VisualBrief.visual_constraints"].category,
+            "constraints"
+        )
+        self.assertEqual(
+            by_source["VisualBrief.filmable_interpretation"].value,
+            "a key changes hands in silence"
+        )
+        self.assertNotIn(
+            "VisualBrief.visual_truth_status",
+            by_source,
         )
         self.assertEqual(
             by_source["VisualBrief.photography.point_of_view"].category,

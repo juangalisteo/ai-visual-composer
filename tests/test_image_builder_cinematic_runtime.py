@@ -561,6 +561,72 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             metadata["backend_payload_prompt"]
         )
 
+    def test_runtime_effective_visual_brief_preserves_visual_truth_trace(self):
+        builder = ImageBuilder()
+
+        effective = builder._build_runtime_effective_visual_brief(
+            storyboard_scene=StoryboardScene(
+                scene_number=9,
+                text="Una idea invisible se vuelve accion.",
+                setting="archivo subterraneo",
+                visible_subject="investigadora con abrigo gris",
+                visible_action="recibe una llave antigua",
+                time_context="noche",
+                key_objects=(
+                    "llave antigua",
+                ),
+                spatial_relationships=(
+                    "la llave queda entre ambas manos",
+                ),
+                continuity_links=(
+                    "misma llave antigua",
+                ),
+                filmable_interpretation=(
+                    "una llave cambia de manos en silencio"
+                ),
+                visual_constraints=(
+                    "sin texto legible",
+                ),
+                visual_truth_status="structured",
+            ),
+            visual_idea="legacy visual idea",
+            profile={
+                "format": "horizontal",
+            },
+        )
+
+        self.assertEqual(
+            "una llave cambia de manos en silencio",
+            effective.visual_brief.visible_content,
+        )
+        self.assertEqual(
+            (
+                "llave antigua",
+            ),
+            effective.visual_brief.key_objects,
+        )
+        origins = {
+            origin.field: origin
+            for origin in effective.trace.field_origins
+        }
+
+        self.assertEqual(
+            "StoryboardScene.filmable_interpretation",
+            origins["VisualBrief.visible_content"].source_path,
+        )
+        self.assertEqual(
+            "copy",
+            origins["VisualBrief.visible_subject"].action,
+        )
+        self.assertEqual(
+            "StoryboardScene.visual_constraints",
+            origins["VisualBrief.visual_constraints"].source_path,
+        )
+        self.assertEqual(
+            "RuntimeCognitiveAdapter",
+            origins["VisualBrief.visual_truth_status"].source_layer,
+        )
+
     def test_runtime_effective_visual_brief_fingerprint_is_deterministic(self):
         builder = ImageBuilder()
         storyboard_scene = StoryboardScene(

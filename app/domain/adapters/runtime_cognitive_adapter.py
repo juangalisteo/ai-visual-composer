@@ -105,13 +105,60 @@ class RuntimeCognitiveAdapter:
         )
 
         visual_brief = VisualBrief(
-            visible_content=RuntimeCognitiveAdapter._clean(
-                visual_idea
+            visible_content=(
+                RuntimeCognitiveAdapter.visible_content_from_scene(
+                    storyboard_scene,
+                    visual_idea
+                )
+            ),
+            visible_subject=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.visible_subject
+            ),
+            visible_action=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.visible_action
+            ),
+            visible_environment=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.setting
+            ),
+            time_context=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.time_context
+            ),
+            key_objects=tuple(
+                storyboard_scene.key_objects
+            ),
+            spatial_relationships=tuple(
+                storyboard_scene.spatial_relationships
+            ),
+            continuity_links=tuple(
+                storyboard_scene.continuity_links
+            ),
+            abstract_source=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.abstract_source
+            ),
+            filmable_interpretation=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.filmable_interpretation
+            ),
+            visual_constraints=tuple(
+                storyboard_scene.visual_constraints
+            ),
+            visual_truth_status=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.visual_truth_status
             ),
             narrative_composition=(
                 RuntimeCognitiveAdapter.composition_guidance_from_orientation(
                     orientation
                 )
+            ),
+            primary_subject=(
+                RuntimeCognitiveAdapter.visible_subject_from_scene(
+                    storyboard_scene
+                )
+            ),
+            visual_reading=RuntimeCognitiveAdapter._clean(
+                storyboard_scene.filmable_interpretation
+            ),
+            visual_continuity=RuntimeCognitiveAdapter._join(
+                storyboard_scene.continuity_links
             ),
             visual_strategy=visual_strategy,
             staging=staging,
@@ -191,7 +238,10 @@ class RuntimeCognitiveAdapter:
         storyboard_scene: StoryboardScene
     ) -> VisualStrategy:
         return VisualStrategy(
-            representation_approach=""
+            representation_approach="",
+            visual_limits=tuple(
+                storyboard_scene.visual_constraints
+            )
         )
 
     @staticmethod
@@ -199,15 +249,121 @@ class RuntimeCognitiveAdapter:
         storyboard_scene: StoryboardScene
     ) -> StagingPlan:
         return StagingPlan(
-            main_subject=RuntimeCognitiveAdapter._clean(
+            main_subject=(
+                RuntimeCognitiveAdapter.visible_subject_from_scene(
+                    storyboard_scene
+                )
+            ),
+            environment=(
+                RuntimeCognitiveAdapter.visible_environment_from_scene(
+                    storyboard_scene
+                )
+            ),
+            action_or_state=(
+                RuntimeCognitiveAdapter.visible_action_from_scene(
+                    storyboard_scene
+                )
+            ),
+            spatial_relationship=RuntimeCognitiveAdapter._join(
+                storyboard_scene.spatial_relationships
+            ),
+            significant_objects=tuple(
+                storyboard_scene.key_objects
+            )
+        )
+
+    @staticmethod
+    def visible_content_from_scene(
+        storyboard_scene: StoryboardScene,
+        visual_idea: str = ""
+    ) -> str:
+        visual_truth_content = (
+            RuntimeCognitiveAdapter._clean(
+                storyboard_scene.filmable_interpretation
+            )
+            or RuntimeCognitiveAdapter._join(
+                (
+                    storyboard_scene.visible_subject,
+                    storyboard_scene.visible_action,
+                    storyboard_scene.setting
+                    if RuntimeCognitiveAdapter.has_visual_truth_content(
+                        storyboard_scene
+                    )
+                    else "",
+                    storyboard_scene.time_context,
+                )
+            )
+        )
+        return (
+            visual_truth_content
+            or RuntimeCognitiveAdapter._clean(
+                visual_idea
+            )
+            or RuntimeCognitiveAdapter._clean(
+                storyboard_scene.text
+            )
+        )
+
+    @staticmethod
+    def has_visual_truth_content(
+        storyboard_scene: StoryboardScene
+    ) -> bool:
+        return any(
+            (
+                RuntimeCognitiveAdapter._clean(
+                    storyboard_scene.visible_subject
+                ),
+                RuntimeCognitiveAdapter._clean(
+                    storyboard_scene.visible_action
+                ),
+                RuntimeCognitiveAdapter._clean(
+                    storyboard_scene.time_context
+                ),
+                storyboard_scene.key_objects,
+                storyboard_scene.spatial_relationships,
+                storyboard_scene.continuity_links,
+                RuntimeCognitiveAdapter._clean(
+                    storyboard_scene.abstract_source
+                ),
+                RuntimeCognitiveAdapter._clean(
+                    storyboard_scene.filmable_interpretation
+                ),
+                storyboard_scene.visual_constraints,
+            )
+        )
+
+    @staticmethod
+    def visible_subject_from_scene(
+        storyboard_scene: StoryboardScene
+    ) -> str:
+        return (
+            RuntimeCognitiveAdapter._clean(
+                storyboard_scene.visible_subject
+            )
+            or RuntimeCognitiveAdapter._clean(
                 storyboard_scene.subject
-            ),
-            environment=RuntimeCognitiveAdapter._clean(
-                storyboard_scene.setting
-            ),
-            action_or_state=RuntimeCognitiveAdapter._clean(
+            )
+        )
+
+    @staticmethod
+    def visible_action_from_scene(
+        storyboard_scene: StoryboardScene
+    ) -> str:
+        return (
+            RuntimeCognitiveAdapter._clean(
+                storyboard_scene.visible_action
+            )
+            or RuntimeCognitiveAdapter._clean(
                 storyboard_scene.action
             )
+        )
+
+    @staticmethod
+    def visible_environment_from_scene(
+        storyboard_scene: StoryboardScene
+    ) -> str:
+        return RuntimeCognitiveAdapter._clean(
+            storyboard_scene.setting
         )
 
     @staticmethod
@@ -297,6 +453,43 @@ class RuntimeCognitiveAdapter:
                 "StoryboardScene.duration"
             )
 
+        references.extend(
+            RuntimeCognitiveAdapter.trace_visual_truth(
+                storyboard_scene
+            )
+        )
+
+        return tuple(
+            references
+        )
+
+    @staticmethod
+    def trace_visual_truth(
+        storyboard_scene: StoryboardScene
+    ) -> tuple[str, ...]:
+        visual_truth_fields = (
+            "visible_subject",
+            "visible_action",
+            "setting",
+            "time_context",
+            "key_objects",
+            "spatial_relationships",
+            "continuity_links",
+            "abstract_source",
+            "filmable_interpretation",
+            "visual_constraints",
+            "visual_truth_status",
+        )
+        references = []
+        for field in visual_truth_fields:
+            value = getattr(
+                storyboard_scene,
+                field
+            )
+            if value:
+                references.append(
+                    f"StoryboardScene.{field}"
+                )
         return tuple(
             references
         )
@@ -343,6 +536,21 @@ class RuntimeCognitiveAdapter:
         return str(
             value
         ).strip()
+
+    @staticmethod
+    def _join(
+        values
+    ) -> str:
+        return " | ".join(
+            item
+            for item in (
+                RuntimeCognitiveAdapter._clean(
+                    value
+                )
+                for value in values
+            )
+            if item
+        )
 
 
 def _tuple_if_present(
