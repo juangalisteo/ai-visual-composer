@@ -44,6 +44,9 @@ input/
 assets/images/generated/
 assets/audio/voices/
 
+# Official product assets under assets/fonts, assets/music, and
+# assets/videos/visual_effects are intentionally versioned.
+
 # Local third-party runtimes and backups
 ComfyUI/
 runtimes/

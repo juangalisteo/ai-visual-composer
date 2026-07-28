@@ -111,6 +111,18 @@ ai-visual-composer/
 
 `output/`, `logs/`, `.env`, `input/`, `CODEX/`, `ComfyUI/`, local models, checkpoints, LoRAs, VAE files, embeddings, ControlNet resources, external runtimes, and generated media are intentionally excluded from the public repository.
 
+## Official Assets
+
+The repository intentionally versions official product assets required by the current product:
+
+- `assets/fonts/`: subtitle fonts used by the video composition core.
+- `assets/music/`: curated music categories used by the audio pipeline.
+- `assets/videos/visual_effects/LightLeak/`: LightLeak visual effects used by the video composition core.
+
+These assets are part of the public product repository. Future overlays or visual assets may also be versioned when they become official product assets. Development-only assets, generated media, local model files, checkpoints, and external runtimes remain private and are excluded through `.gitignore`.
+
+See [assets/README.md](assets/README.md) for the asset inventory and asset governance policy.
+
 ## Current Status
 
 Release: `AI Visual Composer v1.0.0`
@@ -118,6 +130,7 @@ Release: `AI Visual Composer v1.0.0`
 Status:
 
 - Image Component 1.0 certified as `IMAGE_COMPONENT_1_0_READY`.
+- Foundation observations closed.
 - Product Integration completed.
 - Final Project Cleanup completed.
 - Video composition core stabilized.
@@ -226,7 +239,7 @@ VideoBuilder().build(
 - `CHANGELOG.md`: release history.
 - `ROADMAP.md`: future work.
 
-Private development memory lives in `CODEX/` and is intentionally excluded from the public repository and official releases.
+Private development memory and private engineering governance, including AVCES, live in `CODEX/` and are intentionally excluded from the public repository and official releases.
 
 ## License
 
