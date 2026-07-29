@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Added passive Visual Intelligence core contracts for IP3.0 without runtime, backend, prompt, or resolver integration.
 - Retired the legacy storyboard contract by removing `subject`, `action`, `setting`, and `legacy_visual_idea` as operational Image Pipeline inputs.
 - Removed `visual_idea` from generated storyboards and migrated real image certification fixtures to pure Visual Truth 2.0.
 - Migrated runtime narrative reading to use Visual Truth 2.0 as its primary source while keeping legacy storyboard fields isolated as compatibility fallback.
