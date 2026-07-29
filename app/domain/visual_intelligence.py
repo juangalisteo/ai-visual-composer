@@ -705,6 +705,73 @@ class VisualAnalysisResult:
         )
 
 
+@dataclass(frozen=True)
+class VisualReasoningResult:
+    scene_intent: VisualSceneIntent
+    strategy: VisualIntelligenceStrategy
+    continuity: SequenceContinuity
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    status: ResolutionStatus = ResolutionStatus.READY
+    schema_version: str = SCHEMA_VERSION
+    version: str = SCHEMA_VERSION
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_type(
+            self.scene_intent,
+            VisualSceneIntent,
+            "scene_intent"
+        )
+        _require_type(
+            self.strategy,
+            VisualIntelligenceStrategy,
+            "strategy"
+        )
+        _require_type(
+            self.continuity,
+            SequenceContinuity,
+            "continuity"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _require_enum(
+            self.status,
+            ResolutionStatus,
+            "status"
+        )
+        _require_text(
+            self.schema_version,
+            "schema_version"
+        )
+        _require_text(
+            self.version,
+            "version"
+        )
+        _set_fingerprint(
+            self,
+            "VisualReasoningResult",
+            (
+                "scene_intent",
+                "strategy",
+                "continuity",
+                "findings",
+                "trace",
+                "status",
+                "schema_version",
+                "version",
+            )
+        )
+
+
 def deterministic_fingerprint(
     label: str,
     value: Any

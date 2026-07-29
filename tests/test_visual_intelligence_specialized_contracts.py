@@ -18,6 +18,7 @@ from app.domain import (
     VisualIntelligenceResolutionResult,
     VisualIntelligenceStrategy,
     VisualPriority,
+    VisualReasoningResult,
     VisualSceneIntent,
     VisualSemantics,
 )
@@ -96,6 +97,7 @@ class VisualIntelligenceSpecializedContractsTest(unittest.TestCase):
             VisualInspectionResult,
             VisualSemantics,
             VisualPriority,
+            VisualReasoningResult,
             VisualSceneIntent,
             VisualIntelligenceStrategy,
             SequenceContinuity,
@@ -362,6 +364,39 @@ class VisualIntelligenceSpecializedContractsTest(unittest.TestCase):
             "mark_for_review"
         )
 
+    def test_visual_reasoning_result_groups_reasoning_outputs(self):
+        result = VisualReasoningResult(
+            scene_intent=VisualSceneIntent(
+                emotional_function="hold attention on llave antigua"
+            ),
+            strategy=VisualIntelligenceStrategy(
+                representation_approach="represent explicit Visual Truth directly"
+            ),
+            continuity=SequenceContinuity(
+                object_continuity=(
+                    "llave antigua",
+                )
+            ),
+            findings=(
+                finding(),
+            ),
+            trace=specialized_trace(),
+        )
+
+        self.assertEqual(
+            result.scene_intent.emotional_function,
+            "hold attention on llave antigua"
+        )
+        self.assertEqual(
+            result.continuity.object_continuity,
+            (
+                "llave antigua",
+            )
+        )
+        self.assertTrue(
+            result.fingerprint
+        )
+
     def test_specialized_contracts_have_deterministic_fingerprints(self):
         first = VisualSemantics(
             primary_subject="persona adulta",
@@ -501,6 +536,7 @@ class VisualIntelligenceSpecializedContractsTest(unittest.TestCase):
             VisualInspectionResult,
             VisualSemantics,
             VisualPriority,
+            VisualReasoningResult,
             VisualSceneIntent,
             VisualIntelligenceStrategy,
             SequenceContinuity,

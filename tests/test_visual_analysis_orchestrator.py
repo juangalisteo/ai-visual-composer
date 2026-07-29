@@ -246,9 +246,6 @@ class VisualAnalysisOrchestratorTest(unittest.TestCase):
             )
 
         for item in (
-            "SceneIntentResolver",
-            "VisualStrategyResolver",
-            "SequenceContinuityResolver",
             "VisualConflictResolver",
             "EffectiveVisualBriefSynthesizer",
         ):
