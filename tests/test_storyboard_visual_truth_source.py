@@ -40,16 +40,12 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             '"filmable_interpretation"',
             prompt,
         )
-        self.assertIn(
-            '"visual_idea"',
-            prompt,
-        )
-        self.assertIn(
-            "compatibilidad temporal",
+        self.assertNotIn(
+            "visual_idea",
             prompt,
         )
 
-    def test_validator_accepts_visual_truth_and_derives_legacy_visual_idea(self):
+    def test_validator_accepts_visual_truth_without_legacy_visual_idea(self):
         validated = StoryboardValidator().validate(
             visual_scenes=[
                 {
@@ -80,9 +76,9 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             expected_scene_count=1,
         )
 
-        self.assertEqual(
-            "una llave antigua cambia de manos en silencio",
-            validated[0]["visual_idea"],
+        self.assertNotIn(
+            "visual_idea",
+            validated[0],
         )
         self.assertEqual(
             (
@@ -110,13 +106,12 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                 visual_scenes=[
                     {
                         "scene": 1,
-                        "visual_idea": "legacy only idea",
                     }
                 ],
                 expected_scene_count=1,
             )
 
-    def test_composer_preserves_visual_truth_and_keeps_compatibility_field(self):
+    def test_composer_preserves_visual_truth_without_legacy_field(self):
         scenes = StoryboardComposer().compose(
             base_scenes=[
                 {
@@ -148,9 +143,6 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                         "sin texto legible",
                     ),
                     "visual_truth_status": "structured",
-                    "visual_idea": (
-                        "una llave antigua se entrega con solemnidad"
-                    ),
                 }
             ],
             scene_duration=3.25,
@@ -170,9 +162,9 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             ),
             scenes[0]["key_objects"],
         )
-        self.assertEqual(
-            "una llave antigua se entrega con solemnidad",
-            scenes[0]["visual_idea"],
+        self.assertNotIn(
+            "visual_idea",
+            scenes[0],
         )
 
     def test_image_builder_accepts_visual_truth_without_legacy_visual_idea(self):

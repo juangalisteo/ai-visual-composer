@@ -25,11 +25,12 @@ Completed:
 - `IP2.0-4 - Storyboard Visual Truth Source Migration`
 - `IP2.0-5 - ImageBuilder Visual Truth Consumer Migration`
 - `IP2.0-6 - Narrative Runtime Visual Truth Migration`
+- `IP2.0-7 - Generated Storyboard Legacy Field Removal`
 
 Next planned phase:
 
 ```text
-To be defined by the project owner after IP2.0-6 validation.
+To be defined by the project owner after IP2.0-7 validation.
 ```
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline 2.0 phase is explicitly requested.

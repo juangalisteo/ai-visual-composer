@@ -236,7 +236,7 @@ class RealImageComponentRunner:
                         "text": _scene_text(
                             scenario
                         ),
-                        "visual_idea": _visual_idea(
+                        **_visual_truth(
                             scenario
                         ),
                         "duration": 10,
@@ -368,56 +368,206 @@ def _scene_text(
     )
 
 
-def _visual_idea(
+def _visual_truth(
     scenario: CertificationScenario
-) -> str:
+) -> dict[str, object]:
     category = _category(
         scenario
     )
-    ideas = {
+    scenes = {
         "portrait": (
-            "A cinematic portrait of a thoughtful person in a quiet studio."
+            "thoughtful adult person",
+            "holds a calm frontal presence",
+            "quiet professional studio",
+            "controlled indoor session",
+            ("neutral backdrop", "soft practical chair"),
+            ("the subject stays separated from the background",),
+            ("stable identity", "consistent modest wardrobe"),
+            "identity stability certification",
+            "A cinematic portrait of a thoughtful person in a quiet studio.",
+            ("no readable text", "modest wardrobe", "realistic anatomy"),
         ),
         "context": (
-            "A calm hospital corridor prepared for a documentary scene."
+            "empty hospital corridor",
+            "waits in calm documentary silence",
+            "clean hospital interior",
+            "daytime clinical atmosphere",
+            ("hospital doors", "soft overhead lights"),
+            ("the corridor extends into the background",),
+            ("same clinical environment",),
+            "contextual environment certification",
+            "A calm hospital corridor prepared for a documentary scene.",
+            ("no readable text", "no logos", "no patient exposure"),
         ),
         "fantasy": (
-            "An ancient fantasy archive illuminated by soft atmospheric light."
+            "ancient archive chamber",
+            "glows with quiet atmospheric mystery",
+            "fantasy stone archive",
+            "timeless interior",
+            ("stone shelves", "sealed artifacts"),
+            ("artifacts rest deep within the chamber",),
+            ("consistent fantasy archive",),
+            "fantasy environment certification",
+            "An ancient fantasy archive illuminated by soft atmospheric light.",
+            ("no readable text", "no modern objects"),
         ),
         "nature": (
-            "A forest path with layered trees and natural morning atmosphere."
+            "forest path",
+            "leads through layered morning trees",
+            "natural woodland",
+            "early morning",
+            ("trees", "mist", "path"),
+            ("the path recedes between layered trees",),
+            ("same natural morning atmosphere",),
+            "nature certification",
+            "A forest path with layered trees and natural morning atmosphere.",
+            ("no readable text", "no artificial structures"),
         ),
         "animals": (
-            "A respectful documentary image of an animal in its natural habitat."
+            "animal in natural habitat",
+            "rests calmly without theatrical posing",
+            "wild natural environment",
+            "soft daylight",
+            ("natural ground", "background vegetation"),
+            ("the animal remains grounded in its habitat",),
+            ("respectful documentary framing",),
+            "animal safety certification",
+            "A respectful documentary image of an animal in its natural habitat.",
+            ("no human clothing", "no unnatural anatomy", "no readable text"),
         ),
         "anatomy": (
-            "A close practical scene focused on hands holding a simple object."
+            "human hands",
+            "hold a simple object carefully",
+            "practical tabletop setting",
+            "neutral indoor light",
+            ("simple object", "table surface"),
+            ("the object sits between both hands",),
+            ("same hands", "same object"),
+            "anatomy certification",
+            "A close practical scene focused on hands holding a simple object.",
+            ("realistic hands", "correct finger count", "no readable text"),
         ),
         "wardrobe": (
-            "A cinematic character wearing coherent modest clothing."
+            "cinematic character",
+            "stands in coherent modest clothing",
+            "neutral interior",
+            "controlled portrait moment",
+            ("coat", "plain shirt"),
+            ("wardrobe fits naturally on the character",),
+            ("consistent wardrobe",),
+            "wardrobe certification",
+            "A cinematic character wearing coherent modest clothing.",
+            ("modest clothing", "no nudity", "no logos", "no readable text"),
         ),
         "identity": (
-            "A consistent cinematic character portrait with stable identity."
+            "same cinematic character",
+            "maintains stable identity and expression",
+            "quiet portrait environment",
+            "soft interior light",
+            ("recognizable face", "consistent hairstyle"),
+            ("the character remains centered in a stable portrait setup",),
+            ("same age", "same face", "same hairstyle"),
+            "identity continuity certification",
+            "A consistent cinematic character portrait with stable identity.",
+            ("no identity drift", "no age change", "no readable text"),
         ),
         "continuity": (
-            "A scene that should preserve a coherent place and visual mood."
+            "coherent place",
+            "preserves the same visual mood",
+            "continuous cinematic environment",
+            "matching scene atmosphere",
+            ("recurring environment detail",),
+            ("foreground and background preserve spatial logic",),
+            ("same place", "same mood", "same atmosphere"),
+            "continuity certification",
+            "A scene that should preserve a coherent place and visual mood.",
+            ("no abrupt environment change", "no readable text"),
         ),
         "retry": (
-            "A technically demanding image used to observe retry behavior."
+            "technically demanding subject",
+            "tests retry behavior under controlled conditions",
+            "neutral certification environment",
+            "controlled light",
+            ("primary test object", "background structure"),
+            ("the object remains readable without text",),
+            ("retry attempt consistency",),
+            "retry behavior certification",
+            "A technically demanding image used to observe retry behavior.",
+            ("no readable text", "stable subject", "realistic anatomy"),
         ),
         "rollback": (
-            "A baseline cinematic scene used to verify rollback readiness."
+            "baseline cinematic scene",
+            "holds a simple stable composition",
+            "neutral cinematic environment",
+            "balanced lighting",
+            ("main subject", "simple background"),
+            ("subject and background remain clearly separated",),
+            ("rollback baseline consistency",),
+            "rollback readiness certification",
+            "A baseline cinematic scene used to verify rollback readiness.",
+            ("no readable text", "no logos"),
         ),
         "history": (
-            "A traceable scene used to verify asset history behavior."
+            "traceable certification scene",
+            "preserves asset history behavior",
+            "controlled archive environment",
+            "neutral documentation light",
+            ("traceable object", "archive surface"),
+            ("the object remains anchored on the archive surface",),
+            ("stable asset history",),
+            "asset history certification",
+            "A traceable scene used to verify asset history behavior.",
+            ("no readable text", "no volatile details"),
         ),
     }
-    return ideas.get(
+    visual_truth = scenes.get(
         category,
         (
-            "A cinematic certification scene with clear visual structure."
+            "cinematic certification subject",
+            "holds a clear visual state",
+            "controlled certification environment",
+            "neutral cinematic moment",
+            ("primary visible element",),
+            ("the primary element remains clearly placed",),
+            ("stable certification baseline",),
+            "general image certification",
+            "A cinematic certification scene with clear visual structure.",
+            ("no readable text", "no logos", "realistic anatomy"),
         ),
     )
+    (
+        visible_subject,
+        visible_action,
+        visible_environment,
+        time_context,
+        key_objects,
+        spatial_relationships,
+        continuity_links,
+        abstract_source,
+        filmable_interpretation,
+        visual_constraints,
+    ) = visual_truth
+    return {
+        "visible_subject": visible_subject,
+        "visible_action": visible_action,
+        "visible_environment": visible_environment,
+        "time_context": time_context,
+        "key_objects": list(
+            key_objects
+        ),
+        "spatial_relationships": list(
+            spatial_relationships
+        ),
+        "continuity_links": list(
+            continuity_links
+        ),
+        "abstract_source": abstract_source,
+        "filmable_interpretation": filmable_interpretation,
+        "visual_constraints": list(
+            visual_constraints
+        ),
+        "visual_truth_status": "structured",
+    }
 
 
 def _category(

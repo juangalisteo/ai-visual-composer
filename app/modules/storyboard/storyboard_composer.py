@@ -51,8 +51,7 @@ class StoryboardComposer:
                     visual_truth["filmable_interpretation"]
                 ),
                 "visual_constraints": visual_truth["visual_constraints"],
-                "visual_truth_status": visual_truth["visual_truth_status"],
-                "visual_idea": visual_truth["visual_idea"]
+                "visual_truth_status": visual_truth["visual_truth_status"]
             })
 
         return final_scenes

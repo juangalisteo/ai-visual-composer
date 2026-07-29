@@ -74,22 +74,9 @@ class StoryboardValidator:
                 scene_number=scene_number
             )
 
-            visual_idea = self._clean(
-                item.get(
-                    "visual_idea",
-                    ""
-                )
-            )
-
-            if not visual_idea:
-                visual_idea = visual_truth[
-                    "filmable_interpretation"
-                ]
-
             validated_scenes.append({
                 "scene": scene_number,
-                **visual_truth,
-                "visual_idea": visual_idea
+                **visual_truth
             })
 
         expected_numbers = set(

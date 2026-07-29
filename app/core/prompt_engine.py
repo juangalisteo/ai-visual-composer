@@ -248,7 +248,6 @@ CRITERIOS DE DISEÑO:
 - Evita cualquier objeto que pueda inducir al modelo a generar texto visible.
 - No menciones cámaras, lentes, resolución ni parámetros técnicos.
 - `filmable_interpretation` debe describir la imagen filmable final.
-- `visual_idea` se mantiene solo como compatibilidad temporal y debe derivar de `filmable_interpretation`.
 - No escribas párrafos largos.
 - No expliques las decisiones visuales.
 
@@ -274,9 +273,8 @@ SALIDA OBLIGATORIA:
   "abstract_source",
   "filmable_interpretation",
   "visual_constraints",
-  "visual_truth_status"
   y
-  "visual_idea".
+  "visual_truth_status".
 
 FORMATO EXACTO:
 
@@ -395,10 +393,7 @@ FORMATO EXACTO:
                     '        "visual_constraints": [\n'
                     '            "Sin texto legible"\n'
                     "        ],\n"
-                    '        "visual_truth_status": "structured",\n'
-                    '        "visual_idea": '
-                    '"Descripcion breve derivada de '
-                    'filmable_interpretation para compatibilidad."\n'
+                    '        "visual_truth_status": "structured"\n'
                     "    }"
                 )
             )

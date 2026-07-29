@@ -67,8 +67,6 @@ No incluyas:
 
 `filmable_interpretation` debe describir la imagen filmable final.
 
-`visual_idea` debe mantenerse unicamente como compatibilidad temporal y debe derivar de `filmable_interpretation`.
-
 Devuelve exclusivamente un JSON valido con todas las escenas.
 
 La respuesta debe comenzar con [ y terminar con ].
@@ -87,7 +85,6 @@ Cada objeto debe contener unicamente:
 - "filmable_interpretation"
 - "visual_constraints"
 - "visual_truth_status"
-- "visual_idea"
 
 Respeta exactamente la numeracion recibida.
 

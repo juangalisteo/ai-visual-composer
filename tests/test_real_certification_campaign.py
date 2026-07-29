@@ -1,6 +1,9 @@
 import inspect
+import json
+import tempfile
 import unittest
 from dataclasses import FrozenInstanceError, asdict, is_dataclass
+from pathlib import Path
 
 from certification import (
     CAMPAIGN_RESULTS,
@@ -10,7 +13,9 @@ from certification import (
     ImageCertificationExecutor,
     ImageCertificationObservation,
     RC0CampaignProfiles,
+    RealImageComponentRunner,
     RealCertificationCampaign,
+    CertificationScenario,
 )
 
 
@@ -395,6 +400,58 @@ class RealCertificationCampaignTest(unittest.TestCase):
                     item,
                     source
                 )
+
+    def test_real_image_runner_writes_visual_truth_storyboard(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storyboard_path = Path(
+                temp_dir
+            ) / "storyboard.json"
+            runner = RealImageComponentRunner()
+
+            runner._write_storyboard(
+                storyboard_path,
+                CertificationScenario(
+                    scenario_id="portrait",
+                    name="Portrait",
+                    component="image",
+                    objective="Certify portrait behavior.",
+                    tags=(
+                        "image",
+                        "portrait",
+                    ),
+                ),
+            )
+
+            storyboard = json.loads(
+                storyboard_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(
+            1,
+            storyboard[0]["scene"],
+        )
+        self.assertEqual(
+            "thoughtful adult person",
+            storyboard[0]["visible_subject"],
+        )
+        self.assertEqual(
+            "quiet professional studio",
+            storyboard[0]["visible_environment"],
+        )
+        self.assertEqual(
+            "structured",
+            storyboard[0]["visual_truth_status"],
+        )
+        self.assertIn(
+            "realistic anatomy",
+            storyboard[0]["visual_constraints"],
+        )
+        self.assertNotIn(
+            "visual_idea",
+            storyboard[0],
+        )
 
 
 def _run_campaign(
