@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Consolidated `EffectiveVisualBrief` as a single canonical contract in `app/domain/visual_intelligence.py`, with `app.visual_direction` reexporting the canonical contract for temporary compatibility.
 - Implemented the IP3.0 Visual Synthesis Layer with conflict reporting, Effective Visual Brief synthesis, unified Visual Intelligence trace building, a Visual Synthesis orchestrator, and `VisualSynthesisResult` as the passive boundary contract before runtime integration.
 - Implemented the IP3.0 Visual Reasoning Layer with Scene Intent, Visual Intelligence Strategy, Sequence Continuity, an isolated reasoning orchestrator, deterministic traces, and stable fingerprints without runtime, backend, prompt, workflow, or Visual Quality integration.
 - Implemented the IP3.0 Visual Analysis Layer with Visual Truth inspection, visual semantics resolution, visual priority resolution, an isolated analysis orchestrator, deterministic traces, and stable fingerprints without runtime, backend, prompt, workflow, or Visual Quality integration.

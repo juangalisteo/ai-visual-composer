@@ -61,6 +61,24 @@ Planned IP3.x sequence:
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline phase is explicitly requested.
 
+## Architectural Decision Record
+
+### ADR-001 - Canonical EffectiveVisualBrief
+
+Decision:
+
+- There is exactly one official `EffectiveVisualBrief` contract.
+- Its official location is `app/domain/visual_intelligence.py`.
+- Future components MUST consume only the canonical contract.
+- Legacy compatibility MAY reexport the canonical contract temporarily.
+- Parallel `EffectiveVisualBrief` contract evolution is prohibited.
+
+Rationale:
+
+- `EffectiveVisualBrief` is the semantic boundary between Visual Intelligence and Runtime.
+- A single canonical definition preserves Single Source of Truth.
+- Runtime Integration must not depend on parallel Visual Direction and Visual Intelligence variants.
+
 ## Image Enhancement
 
 Future work line.

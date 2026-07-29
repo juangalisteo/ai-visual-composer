@@ -39,6 +39,7 @@ from app.domain import (
     VisualPhilosophy,
     CinematicLanguage,
 )
+from app.domain import EffectiveVisualBrief as CanonicalEffectiveVisualBrief
 from app.visual_direction import (
     EffectiveVisualBrief,
     VisualBriefFieldOrigin,
@@ -235,6 +236,12 @@ class VisualDirectionTest(unittest.TestCase):
             FrozenInstanceError
         ):
             effective.fingerprint = "changed"
+
+    def test_visual_direction_reexports_canonical_effective_visual_brief(self):
+        self.assertIs(
+            EffectiveVisualBrief,
+            CanonicalEffectiveVisualBrief
+        )
 
     def test_resolves_visual_brief_from_three_cognitive_layers(self):
         effective = VisualDirector2().resolve(

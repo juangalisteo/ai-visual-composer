@@ -827,7 +827,7 @@ class VisualConflictReport:
 
 @dataclass(frozen=True)
 class EffectiveVisualBrief:
-    primary_identity: str
+    primary_identity: str = "unknown"
     secondary_identities: tuple[str, ...] = field(default_factory=tuple)
     primary_actions: tuple[str, ...] = field(default_factory=tuple)
     secondary_actions: tuple[str, ...] = field(default_factory=tuple)
@@ -840,10 +840,13 @@ class EffectiveVisualBrief:
     subtext: str = ""
     emotional_function: str = ""
     uncertainty: CertaintyLevel = CertaintyLevel.UNKNOWN
-    conflicts: tuple[VisualConflict, ...] = field(default_factory=tuple)
+    conflicts: tuple[Any, ...] = field(default_factory=tuple)
     findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
     evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
-    trace: SpecializedTrace | None = None
+    trace: Any | None = None
+    visual_brief: Any | None = None
+    source_id: str = ""
+    source_version: str = ""
     fingerprint: str = ""
 
     def __post_init__(self) -> None:
@@ -866,11 +869,13 @@ class EffectiveVisualBrief:
             CertaintyLevel,
             "uncertainty"
         )
-        _require_sequence_of(
+        if not isinstance(
             self.conflicts,
-            VisualConflict,
-            "conflicts"
-        )
+            tuple
+        ):
+            raise ValueError(
+                "conflicts must be a tuple."
+            )
         _require_sequence_of(
             self.findings,
             VisualIntelligenceFinding,
@@ -881,11 +886,8 @@ class EffectiveVisualBrief:
             VisualIntelligenceEvidence,
             "evidences"
         )
-        _require_optional_type(
-            self.trace,
-            SpecializedTrace,
-            "trace"
-        )
+        if self.fingerprint:
+            return
         _set_fingerprint(
             self,
             "EffectiveVisualBrief",
@@ -907,6 +909,9 @@ class EffectiveVisualBrief:
                 "findings",
                 "evidences",
                 "trace",
+                "visual_brief",
+                "source_id",
+                "source_version",
             )
         )
 

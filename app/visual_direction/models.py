@@ -1,6 +1,12 @@
 from dataclasses import dataclass, field
 
-from app.domain import Intention, NarrativeReading, VisualBible, VisualBrief
+from app.domain import (
+    EffectiveVisualBrief,
+    Intention,
+    NarrativeReading,
+    VisualBible,
+    VisualBrief,
+)
 
 
 @dataclass(frozen=True)
@@ -34,13 +40,3 @@ class VisualDirectionConflict:
     description: str
     field: str = ""
     requires_review: bool = True
-
-
-@dataclass(frozen=True)
-class EffectiveVisualBrief:
-    visual_brief: VisualBrief
-    trace: VisualBriefTrace
-    conflicts: tuple[VisualDirectionConflict, ...]
-    fingerprint: str
-    source_id: str = ""
-    source_version: str = ""
