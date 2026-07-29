@@ -472,22 +472,26 @@ class VisualIntelligenceContractsTest(unittest.TestCase):
                     source
                 )
 
-    def test_only_domain_exports_visual_intelligence_contracts(self):
+    def test_runtime_backend_and_prompt_layers_do_not_import_visual_intelligence_contracts(self):
         paths_with_import = []
-        for path in Path(
-            "app"
-        ).rglob(
-            "*.py"
+        for root in (
+            "app/modules",
+            "app/prompt_translation",
+            "app/backend_adapters",
+            "app/visual_quality",
         ):
-            if path.as_posix() == "app/domain/__init__.py":
-                continue
-            source = path.read_text(
-                encoding="utf-8"
-            )
-            if "visual_intelligence" in source:
-                paths_with_import.append(
-                    path.as_posix()
+            for path in Path(
+                root
+            ).rglob(
+                "*.py"
+            ):
+                source = path.read_text(
+                    encoding="utf-8"
                 )
+                if "visual_intelligence" in source:
+                    paths_with_import.append(
+                        path.as_posix()
+                    )
 
         self.assertEqual(
             [],

@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Implemented the IP3.0 Visual Analysis Layer with Visual Truth inspection, visual semantics resolution, visual priority resolution, an isolated analysis orchestrator, deterministic traces, and stable fingerprints without runtime, backend, prompt, workflow, or Visual Quality integration.
 - Added specialized Visual Intelligence contracts for inspection, semantics, priority, scene intent, strategy, sequence continuity, conflicts, and specialized traces without resolver or runtime integration.
 - Added passive Visual Intelligence core contracts for IP3.0 without runtime, backend, prompt, or resolver integration.
 - Retired the legacy storyboard contract by removing `subject`, `action`, `setting`, and `legacy_visual_idea` as operational Image Pipeline inputs.

@@ -638,6 +638,73 @@ class VisualConflict:
         )
 
 
+@dataclass(frozen=True)
+class VisualAnalysisResult:
+    inspection: VisualInspectionResult
+    semantics: VisualSemantics
+    priority: VisualPriority
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    status: ResolutionStatus = ResolutionStatus.READY
+    schema_version: str = SCHEMA_VERSION
+    version: str = SCHEMA_VERSION
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_type(
+            self.inspection,
+            VisualInspectionResult,
+            "inspection"
+        )
+        _require_type(
+            self.semantics,
+            VisualSemantics,
+            "semantics"
+        )
+        _require_type(
+            self.priority,
+            VisualPriority,
+            "priority"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _require_enum(
+            self.status,
+            ResolutionStatus,
+            "status"
+        )
+        _require_text(
+            self.schema_version,
+            "schema_version"
+        )
+        _require_text(
+            self.version,
+            "version"
+        )
+        _set_fingerprint(
+            self,
+            "VisualAnalysisResult",
+            (
+                "inspection",
+                "semantics",
+                "priority",
+                "findings",
+                "trace",
+                "status",
+                "schema_version",
+                "version",
+            )
+        )
+
+
 def deterministic_fingerprint(
     label: str,
     value: Any
