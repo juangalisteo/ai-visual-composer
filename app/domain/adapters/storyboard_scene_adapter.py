@@ -2,9 +2,15 @@ from app.domain import StoryboardScene
 
 
 class StoryboardSceneAdapter:
+    REQUIRED_VISUAL_TRUTH_FIELDS = (
+        "visible_subject",
+        "visible_action",
+        "visible_environment",
+        "filmable_interpretation",
+    )
 
     @staticmethod
-    def from_dict(
+    def from_visual_truth(
         scene,
         default_scene_number: int
     ) -> StoryboardScene:
@@ -37,6 +43,17 @@ class StoryboardSceneAdapter:
         duration = scene.get(
             "duration"
         )
+        for field in StoryboardSceneAdapter.REQUIRED_VISUAL_TRUTH_FIELDS:
+            if not StoryboardSceneAdapter._clean(
+                scene.get(
+                    field,
+                    ""
+                )
+            ):
+                raise ValueError(
+                    f"La escena {scene_number} "
+                    f"no contiene {field}."
+                )
 
         return StoryboardScene(
             scene_number=scene_number,
@@ -55,24 +72,6 @@ class StoryboardSceneAdapter:
             narrative_moment=StoryboardSceneAdapter._clean(
                 scene.get(
                     "narrative_moment",
-                    ""
-                )
-            ),
-            subject=StoryboardSceneAdapter._clean(
-                scene.get(
-                    "subject",
-                    ""
-                )
-            ),
-            action=StoryboardSceneAdapter._clean(
-                scene.get(
-                    "action",
-                    ""
-                )
-            ),
-            setting=StoryboardSceneAdapter._clean(
-                scene.get(
-                    "setting",
                     ""
                 )
             ),
@@ -151,18 +150,7 @@ class StoryboardSceneAdapter:
                         ""
                     )
                 )
-                or "legacy"
-            )
-        )
-
-    @staticmethod
-    def legacy_visual_idea(
-        scene
-    ) -> str:
-        return StoryboardSceneAdapter._clean(
-            scene.get(
-                "visual_idea",
-                ""
+                or "structured"
             )
         )
 

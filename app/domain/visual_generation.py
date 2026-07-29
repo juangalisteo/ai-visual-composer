@@ -110,9 +110,6 @@ class StoryboardScene:
     text: str
     narrative_role: str = ""
     narrative_moment: str = ""
-    subject: str = ""
-    action: str = ""
-    setting: str = ""
     duration: float | None = None
     source_index: int | None = None
     notes: str = ""
@@ -126,7 +123,7 @@ class StoryboardScene:
     abstract_source: str = ""
     filmable_interpretation: str = ""
     visual_constraints: tuple[str, ...] = field(default_factory=tuple)
-    visual_truth_status: str = "legacy"
+    visual_truth_status: str = "structured"
 
 
 @dataclass(frozen=True)

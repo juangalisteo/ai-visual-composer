@@ -45,7 +45,7 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             prompt,
         )
 
-    def test_validator_accepts_visual_truth_without_legacy_visual_idea(self):
+    def test_validator_accepts_visual_truth_without_obsolete_field(self):
         validated = StoryboardValidator().validate(
             visual_scenes=[
                 {
@@ -167,7 +167,7 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             scenes[0],
         )
 
-    def test_image_builder_accepts_visual_truth_without_legacy_visual_idea(self):
+    def test_image_builder_accepts_visual_truth_without_obsolete_field(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
                 temp_dir

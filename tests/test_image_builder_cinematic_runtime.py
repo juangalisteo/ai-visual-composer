@@ -502,9 +502,13 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             origin.source_path
             for origin in effective_visual_brief.trace.field_origins
         }
-        self.assertNotIn(
-            "StoryboardScene.visual_idea",
-            source_paths,
+        self.assertTrue(
+            all(
+                source_path.startswith(
+                    "StoryboardScene."
+                )
+                for source_path in source_paths
+            )
         )
         self.assertIn(
             "StoryboardScene.visible_environment",
@@ -537,8 +541,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                     visible_environment="mountain landscape",
                     filmable_interpretation="A quiet dawn over a valley",
                     visual_truth_status="structured",
-                ),
-                legacy_visual_idea="",
+                )
             )["backend_prompt_fingerprint"]
         )
 
@@ -558,8 +561,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 visible_environment="mountain landscape",
                 filmable_interpretation="A quiet dawn over a valley",
                 visual_truth_status="structured",
-            ),
-            legacy_visual_idea="",
+            )
         )
 
         self.assertEqual(
@@ -611,7 +613,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 ),
                 visual_truth_status="structured",
             ),
-            legacy_visual_idea="",
             profile={
                 "format": "horizontal",
             },
@@ -666,12 +667,10 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         )
 
         first = builder._build_runtime_effective_visual_brief(
-            storyboard_scene=storyboard_scene,
-            legacy_visual_idea=""
+            storyboard_scene=storyboard_scene
         )
         second = builder._build_runtime_effective_visual_brief(
-            storyboard_scene=storyboard_scene,
-            legacy_visual_idea=""
+            storyboard_scene=storyboard_scene
         )
 
         self.assertEqual(

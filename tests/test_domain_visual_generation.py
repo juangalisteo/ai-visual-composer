@@ -64,7 +64,11 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
     def test_visual_models_do_not_require_backend_specific_data(self):
         scene = StoryboardScene(
             scene_number=1,
-            text="A reflective scene."
+            text="A reflective scene.",
+            visible_subject="study table",
+            visible_action="rests in quiet light",
+            visible_environment="quiet study",
+            filmable_interpretation="a study table rests in quiet light",
         )
 
         brief = VisualBrief(
@@ -94,15 +98,19 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
         self.assertEqual(
             scene.visual_truth_status,
-            "legacy"
+            "structured"
         )
 
-    def test_storyboard_scene_supports_legacy_construction(self):
+    def test_storyboard_scene_supports_visual_truth_construction(self):
         scene = StoryboardScene(
             scene_number=1,
             text="Texto de la escena",
             duration=5.0,
             source_index=0,
+            visible_subject="persona observable",
+            visible_action="observa una llave",
+            visible_environment="biblioteca",
+            filmable_interpretation="una persona observa una llave",
         )
 
         self.assertEqual(
@@ -123,7 +131,7 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
         self.assertEqual(
             scene.visible_subject,
-            ""
+            "persona observable"
         )
         self.assertEqual(
             scene.key_objects,
@@ -131,21 +139,21 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
         self.assertEqual(
             scene.visual_truth_status,
-            "legacy"
+            "structured"
         )
 
-    def test_storyboard_scene_keeps_positional_compatibility(self):
+    def test_storyboard_scene_keeps_visual_truth_positional_order(self):
         scene = StoryboardScene(
             1,
             "Texto",
             "funcion narrativa",
             "momento narrativo",
-            "sujeto",
-            "accion",
-            "entorno",
             4.0,
             2,
             "notas",
+            "sujeto visible",
+            "accion visible",
+            "entorno visible",
         )
 
         self.assertEqual(
@@ -158,22 +166,28 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
         self.assertEqual(
             scene.visible_subject,
-            ""
+            "sujeto visible"
+        )
+        self.assertEqual(
+            scene.visible_action,
+            "accion visible"
+        )
+        self.assertEqual(
+            scene.visible_environment,
+            "entorno visible"
         )
         self.assertEqual(
             scene.visual_truth_status,
-            "legacy"
+            "structured"
         )
 
     def test_storyboard_scene_supports_structured_filmable_scene(self):
         scene = StoryboardScene(
             scene_number=7,
             text="La correspondencia se vuelve observable.",
-            subject="una investigadora",
-            action="observa una llave antigua",
-            setting="biblioteca historica",
             visible_subject="investigadora adulta junto a una mesa",
             visible_action="observa una llave de bronce",
+            visible_environment="biblioteca historica",
             time_context="noche silenciosa",
             key_objects=(
                 "llave de bronce",
@@ -301,13 +315,17 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
             )
         )
 
-    def test_storyboard_scene_legacy_serialization_keeps_existing_fields(self):
+    def test_storyboard_scene_visual_truth_serialization_keeps_existing_fields(self):
         serialized = asdict(
             StoryboardScene(
                 scene_number=1,
-                text="Escena legacy",
+                text="Escena Visual Truth",
                 duration=5.0,
                 source_index=0,
+                visible_subject="persona observable",
+                visible_action="camina",
+                visible_environment="pasillo",
+                filmable_interpretation="una persona camina por un pasillo",
             )
         )
 
@@ -317,7 +335,7 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
         self.assertEqual(
             serialized["text"],
-            "Escena legacy"
+            "Escena Visual Truth"
         )
         self.assertEqual(
             serialized["duration"],
@@ -329,7 +347,7 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
         self.assertEqual(
             serialized["visual_truth_status"],
-            "legacy"
+            "structured"
         )
 
     def test_storyboard_scene_rich_serialization_preserves_visual_truth_fields(self):
@@ -420,7 +438,7 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
             )
         )
 
-    def test_storyboard_scene_does_not_duplicate_setting(self):
+    def test_storyboard_scene_does_not_include_legacy_setting(self):
         field_names = [
             field.name
             for field in fields(
@@ -428,11 +446,17 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
             )
         ]
 
-        self.assertEqual(
-            field_names.count(
-                "setting"
-            ),
-            1
+        self.assertNotIn(
+            "setting",
+            field_names
+        )
+        self.assertNotIn(
+            "subject",
+            field_names
+        )
+        self.assertNotIn(
+            "action",
+            field_names
         )
         self.assertNotIn(
             "visible_setting",

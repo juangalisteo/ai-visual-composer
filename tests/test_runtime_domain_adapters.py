@@ -14,13 +14,16 @@ from app.domain.adapters import (
 
 class RuntimeDomainAdaptersTest(unittest.TestCase):
 
-    def test_storyboard_adapter_preserves_current_storyboard_contract(self):
-        scene = StoryboardSceneAdapter.from_dict(
+    def test_storyboard_adapter_preserves_visual_truth_contract(self):
+        scene = StoryboardSceneAdapter.from_visual_truth(
             scene={
                 "scene": "2",
                 "text": "La escena conserva su texto.",
                 "duration": 4.5,
-                "visual_idea": "A quiet dawn over a valley",
+                "visible_subject": "quiet valley",
+                "visible_action": "dawn light spreads slowly",
+                "visible_environment": "mountain landscape",
+                "filmable_interpretation": "A quiet dawn over a valley",
             },
             default_scene_number=1,
         )
@@ -32,39 +35,32 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
                 text="La escena conserva su texto.",
                 duration=4.5,
                 source_index=1,
+                visible_subject="quiet valley",
+                visible_action="dawn light spreads slowly",
+                visible_environment="mountain landscape",
+                filmable_interpretation="A quiet dawn over a valley",
             ),
         )
         self.assertEqual(
-            "legacy",
+            "structured",
             scene.visual_truth_status,
         )
         self.assertEqual(
-            "",
+            "quiet valley",
             scene.visible_subject,
-        )
-        self.assertEqual(
-            "A quiet dawn over a valley",
-            StoryboardSceneAdapter.legacy_visual_idea(
-                {
-                    "visual_idea": "A quiet dawn over a valley",
-                }
-            ),
         )
 
     def test_storyboard_adapter_preserves_storyboard_scene_2_fields(self):
-        scene = StoryboardSceneAdapter.from_dict(
+        scene = StoryboardSceneAdapter.from_visual_truth(
             scene={
                 "scene": "3",
                 "text": "La escena conserva su texto.",
-                "visual_idea": "A quiet dawn over a valley",
                 "narrative_role": "revelacion",
                 "narrative_moment": "inicio",
-                "subject": "una investigadora",
-                "action": "observa una llave",
-                "setting": "biblioteca antigua",
                 "notes": "mantener calma",
                 "visible_subject": "investigadora adulta",
                 "visible_action": "observa una llave de bronce",
+                "visible_environment": "biblioteca antigua",
                 "time_context": "noche",
                 "key_objects": [
                     "llave de bronce",
@@ -96,18 +92,6 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             scene.narrative_moment,
         )
         self.assertEqual(
-            "una investigadora",
-            scene.subject,
-        )
-        self.assertEqual(
-            "observa una llave",
-            scene.action,
-        )
-        self.assertEqual(
-            "biblioteca antigua",
-            scene.setting,
-        )
-        self.assertEqual(
             "mantener calma",
             scene.notes,
         )
@@ -118,6 +102,10 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
         self.assertEqual(
             "observa una llave de bronce",
             scene.visible_action,
+        )
+        self.assertEqual(
+            "biblioteca antigua",
+            scene.visible_environment,
         )
         self.assertEqual(
             "noche",
@@ -160,28 +148,27 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             scene.visual_truth_status,
         )
 
-    def test_storyboard_adapter_keeps_legacy_status_when_field_is_absent(self):
-        scene = StoryboardSceneAdapter.from_dict(
-            scene={
-                "scene": "4",
-                "text": "Escena legacy.",
-            },
-            default_scene_number=1,
-        )
-
-        self.assertEqual(
-            "legacy",
-            scene.visual_truth_status,
-        )
-        self.assertEqual(
-            (),
-            scene.key_objects,
-        )
+    def test_storyboard_adapter_rejects_missing_visual_truth(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "visible_subject",
+        ):
+            StoryboardSceneAdapter.from_visual_truth(
+                scene={
+                    "scene": "4",
+                    "text": "Escena sin Visual Truth.",
+                },
+                default_scene_number=1,
+            )
 
     def test_storyboard_adapter_is_deterministic_and_does_not_mutate_input(self):
         raw_scene = {
             "scene": "5",
             "text": " Escena determinista. ",
+            "visible_subject": " sujeto ",
+            "visible_action": " accion ",
+            "visible_environment": " entorno ",
+            "filmable_interpretation": " escena filmable ",
             "key_objects": [
                 " objeto ",
             ],
@@ -204,11 +191,11 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             for key, value in raw_scene.items()
         }
 
-        first = StoryboardSceneAdapter.from_dict(
+        first = StoryboardSceneAdapter.from_visual_truth(
             scene=raw_scene,
             default_scene_number=1,
         )
-        second = StoryboardSceneAdapter.from_dict(
+        second = StoryboardSceneAdapter.from_visual_truth(
             scene=raw_scene,
             default_scene_number=1,
         )
@@ -278,13 +265,13 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             storyboard_scene=StoryboardScene(
                 scene_number=1,
                 text="La escena conserva su texto.",
-                subject="una persona",
-                action="observa una llave",
-                setting="una biblioteca",
+                visible_subject="una persona",
+                visible_action="observa una llave",
+                visible_environment="una biblioteca",
+                filmable_interpretation="A person observing an old key",
                 duration=5.0,
                 source_index=1,
             ),
-            legacy_visual_idea="A person observing an old key",
             orientation="horizontal",
         )
 
@@ -317,13 +304,24 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             adaptation.trace_references,
         )
 
+    def test_runtime_cognitive_adapter_rejects_missing_visual_truth(self):
+        scene = StoryboardScene(
+            scene_number=1,
+            text="Escena sin contrato visual estructurado",
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Visual Truth 2.0",
+        ):
+            RuntimeCognitiveAdapter.from_storyboard_scene(
+                scene
+            )
+
     def test_runtime_cognitive_adapter_preserves_visual_truth_2_fields(self):
         scene = StoryboardScene(
             scene_number=7,
             text="Una idea abstracta se vuelve visible.",
-            subject="una investigadora",
-            action="recibe una llave",
-            setting="archivo subterraneo",
             visible_subject="investigadora con abrigo gris",
             visible_action="recibe una llave antigua",
             visible_environment="archivo subterraneo",
@@ -353,7 +351,6 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
 
         adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
             storyboard_scene=scene,
-            legacy_visual_idea="legacy idea should not replace visual truth",
             orientation="vertical",
         )
         brief = adaptation.visual_brief
@@ -467,9 +464,6 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
         scene = StoryboardScene(
             scene_number=9,
             text="Una entrega cambia la relacion entre dos personas.",
-            subject="legacy subject must not be used",
-            action="legacy action must not be used",
-            setting="legacy setting must not be used",
             narrative_role="revelacion",
             narrative_moment="punto de giro",
             visible_subject="archivista con guantes blancos",
@@ -594,143 +588,8 @@ class RuntimeDomainAdaptersTest(unittest.TestCase):
             reading.explicit_symbols.symbols,
         )
         self.assertNotIn(
-            "legacy subject must not be used",
+            "subject/action/setting",
             reading.facts.existing_elements,
-        )
-        self.assertNotEqual(
-            "legacy action must not be used",
-            reading.event.action,
-        )
-
-    def test_runtime_cognitive_adapter_preserves_legacy_fallbacks(self):
-        adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
-            storyboard_scene=StoryboardScene(
-                scene_number=8,
-                text="Escena legacy.",
-                subject="persona legacy",
-                action="camina",
-                setting="pasillo",
-            ),
-            legacy_visual_idea="legacy visual idea",
-        )
-        brief = adaptation.visual_brief
-
-        self.assertEqual(
-            "legacy visual idea",
-            brief.visible_content,
-        )
-        self.assertEqual(
-            "",
-            brief.visible_subject,
-        )
-        self.assertEqual(
-            "legacy",
-            brief.visual_truth_status,
-        )
-        self.assertEqual(
-            "persona legacy",
-            brief.staging.main_subject,
-        )
-        self.assertEqual(
-            "camina",
-            brief.staging.action_or_state,
-        )
-        self.assertEqual(
-            "pasillo",
-            brief.staging.environment,
-        )
-        self.assertEqual(
-            "legacy",
-            adaptation.narrative_reading.event.source_model,
-        )
-        self.assertEqual(
-            "persona legacy",
-            adaptation.narrative_reading.event.subject,
-        )
-        self.assertEqual(
-            "camina",
-            adaptation.narrative_reading.event.action,
-        )
-        self.assertEqual(
-            "pasillo",
-            adaptation.narrative_reading.event.environment,
-        )
-        self.assertIn(
-            "LegacyStoryboardScene.subject",
-            adaptation.trace_references,
-        )
-        self.assertIn(
-            "LegacyStoryboardScene.action",
-            adaptation.trace_references,
-        )
-        self.assertIn(
-            "LegacyStoryboardScene.setting",
-            adaptation.trace_references,
-        )
-
-    def test_runtime_visual_truth_scene_does_not_mix_legacy_fallbacks(self):
-        scene = StoryboardScene(
-            scene_number=10,
-            text="Una escena parcialmente estructurada.",
-            subject="legacy subject",
-            action="legacy action",
-            setting="legacy setting",
-            filmable_interpretation="un objeto espera sobre una mesa",
-            visual_truth_status="structured",
-        )
-
-        adaptation = RuntimeCognitiveAdapter.from_storyboard_scene(
-            storyboard_scene=scene,
-            legacy_visual_idea="legacy idea",
-        )
-
-        self.assertEqual(
-            "un objeto espera sobre una mesa",
-            adaptation.visual_brief.visible_content,
-        )
-        self.assertEqual(
-            "",
-            adaptation.visual_brief.primary_subject,
-        )
-        self.assertEqual(
-            "",
-            adaptation.visual_brief.staging.main_subject,
-        )
-        self.assertEqual(
-            "",
-            adaptation.visual_brief.staging.action_or_state,
-        )
-        self.assertEqual(
-            "",
-            adaptation.visual_brief.staging.environment,
-        )
-        self.assertEqual(
-            "",
-            adaptation.narrative_reading.event.subject,
-        )
-        self.assertEqual(
-            "",
-            adaptation.narrative_reading.event.action,
-        )
-        self.assertEqual(
-            "",
-            adaptation.narrative_reading.event.environment,
-        )
-        self.assertEqual(
-            "visual_truth_2_0",
-            adaptation.narrative_reading.event.source_model,
-        )
-        self.assertNotIn(
-            "LegacyStoryboardScene.subject",
-            adaptation.trace_references,
-        )
-        self.assertNotIn(
-            "LegacyStoryboardScene.action",
-            adaptation.trace_references,
-        )
-        self.assertNotIn(
-            "LegacyStoryboardScene.setting",
-            adaptation.trace_references,
         )
 
     def test_runtime_narrative_reading_is_deterministic_and_does_not_mutate_scene(self):

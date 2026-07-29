@@ -166,7 +166,7 @@ class ImageBuilder:
             start=1
         ):
             storyboard_scene = (
-                StoryboardSceneAdapter.from_dict(
+                StoryboardSceneAdapter.from_visual_truth(
                     scene=scene,
                     default_scene_number=index
                 )
@@ -176,18 +176,8 @@ class ImageBuilder:
                 storyboard_scene.scene_number
             )
 
-            legacy_visual_idea = (
-                self._legacy_visual_idea_for_scene(
-                    raw_scene=scene,
-                    storyboard_scene=storyboard_scene
-                )
-            )
-
-            if (
-                not legacy_visual_idea
-                and not RuntimeCognitiveAdapter.has_visual_truth_content(
-                    storyboard_scene
-                )
+            if not RuntimeCognitiveAdapter.has_visual_truth_content(
+                storyboard_scene
             ):
                 raise ValueError(
                     f"La escena {scene_number} "
@@ -197,7 +187,6 @@ class ImageBuilder:
             runtime_metadata = (
                 self._build_cinematic_runtime_metadata(
                     storyboard_scene=storyboard_scene,
-                    legacy_visual_idea=legacy_visual_idea,
                     profile=profile,
                 )
             )
@@ -397,13 +386,11 @@ class ImageBuilder:
     def _build_cinematic_runtime_metadata(
         self,
         storyboard_scene,
-        legacy_visual_idea,
         profile=None
     ):
         effective_visual_brief = (
             self._build_runtime_effective_visual_brief(
                 storyboard_scene=storyboard_scene,
-                legacy_visual_idea=legacy_visual_idea,
                 profile=profile
             )
         )
@@ -455,13 +442,11 @@ class ImageBuilder:
     def _build_runtime_effective_visual_brief(
         self,
         storyboard_scene,
-        legacy_visual_idea="",
         profile=None
     ):
         adaptation = (
             RuntimeCognitiveAdapter.from_storyboard_scene(
                 storyboard_scene=storyboard_scene,
-                legacy_visual_idea=legacy_visual_idea,
                 orientation=str(
                     (
                         profile
@@ -490,8 +475,7 @@ class ImageBuilder:
         return EffectiveVisualBrief(
             visual_brief=adaptation.visual_brief,
             trace=self._runtime_visual_brief_trace(
-                adaptation=adaptation,
-                legacy_visual_idea=legacy_visual_idea
+                adaptation=adaptation
             ),
             conflicts=(),
             fingerprint=fingerprint,
@@ -501,8 +485,7 @@ class ImageBuilder:
 
     def _runtime_visual_brief_trace(
         self,
-        adaptation,
-        legacy_visual_idea=""
+        adaptation
     ):
         origins = []
         visual_brief = adaptation.visual_brief
@@ -511,12 +494,10 @@ class ImageBuilder:
             origins,
             field="VisualBrief.visible_content",
             source_path=self._visible_content_source_path(
-                visual_brief,
-                legacy_visual_idea
+                visual_brief
             ),
             action=self._visible_content_origin_action(
-                visual_brief,
-                legacy_visual_idea
+                visual_brief
             )
         )
         direct_mappings = (
@@ -532,9 +513,7 @@ class ImageBuilder:
             ),
             (
                 "VisualBrief.visible_environment",
-                self._visible_environment_source_path(
-                    adaptation.storyboard_scene
-                ),
+                "StoryboardScene.visible_environment",
                 visual_brief.visible_environment,
             ),
             (
@@ -597,8 +576,7 @@ class ImageBuilder:
 
     def _visible_content_source_path(
         self,
-        visual_brief,
-        legacy_visual_idea=""
+        visual_brief
     ):
         if visual_brief.filmable_interpretation:
             return "StoryboardScene.filmable_interpretation"
@@ -609,55 +587,24 @@ class ImageBuilder:
             or visual_brief.time_context
         ):
             return "StoryboardScene.visual_truth"
-        if legacy_visual_idea:
-            return "StoryboardScene.visual_idea"
         return "StoryboardScene.text"
 
     def _visible_content_origin_action(
         self,
-        visual_brief,
-        legacy_visual_idea=""
+        visual_brief
     ):
         source_path = self._visible_content_source_path(
-            visual_brief,
-            legacy_visual_idea
+            visual_brief
         )
         return self._source_path_action(
             source_path
         )
 
-    def _visible_environment_source_path(
-        self,
-        storyboard_scene
-    ):
-        if storyboard_scene.visible_environment:
-            return "StoryboardScene.visible_environment"
-        return "StoryboardScene.setting"
-
     def _source_path_action(
         self,
         source_path
     ):
-        if source_path in (
-            "StoryboardScene.visual_idea",
-            "StoryboardScene.setting",
-            "StoryboardScene.text",
-        ):
-            return "legacy_fallback"
         return "preserve_visual_truth"
-
-    def _legacy_visual_idea_for_scene(
-        self,
-        raw_scene,
-        storyboard_scene
-    ):
-        if RuntimeCognitiveAdapter.has_visual_truth_content(
-            storyboard_scene
-        ):
-            return ""
-        return StoryboardSceneAdapter.legacy_visual_idea(
-            raw_scene
-        )
 
     def _add_runtime_origin(
         self,
