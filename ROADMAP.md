@@ -40,18 +40,22 @@ Completed:
   - Visual Strategy Resolver
   - Sequence Continuity Resolver
   - Visual Reasoning Orchestrator
+- `IP3.0-4 - Visual Synthesis Layer`
+  - Visual Conflict Resolver
+  - Effective Visual Brief Synthesizer
+  - Visual Intelligence Trace Builder
+  - Visual Synthesis Orchestrator
 
 Next planned phase:
 
 ```text
-IP3.0-4 - Visual Synthesis Layer
+IP3.0-5 - Visual Intelligence Runtime Integration
 ```
 
-`IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` establishes isolated Visual Reasoning over `VisualAnalysisResult` without runtime integration.
+`IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` establishes Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract before runtime integration.
 
 Planned IP3.x sequence:
 
-- `IP3.0-4 - Visual Synthesis Layer`
 - `IP3.0-5 - Visual Intelligence Runtime Integration`
 - `IP3.0-6 - Visual Intelligence Certification`
 

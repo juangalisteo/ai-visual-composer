@@ -10,14 +10,24 @@ from app.visual_intelligence.reasoning import (
     VisualReasoningOrchestrator,
     VisualStrategyResolver,
 )
+from app.visual_intelligence.synthesis import (
+    EffectiveVisualBriefSynthesizer,
+    VisualConflictResolver,
+    VisualIntelligenceTraceBuilder,
+    VisualSynthesisOrchestrator,
+)
 
 __all__ = [
+    "EffectiveVisualBriefSynthesizer",
     "SceneIntentResolver",
     "SequenceContinuityResolver",
     "VisualAnalysisOrchestrator",
+    "VisualConflictResolver",
+    "VisualIntelligenceTraceBuilder",
     "VisualPriorityResolver",
     "VisualReasoningOrchestrator",
     "VisualSemanticsResolver",
+    "VisualSynthesisOrchestrator",
     "VisualStrategyResolver",
     "VisualTruthInspector",
 ]

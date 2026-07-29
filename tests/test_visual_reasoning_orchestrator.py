@@ -170,17 +170,10 @@ class VisualReasoningOrchestratorTest(unittest.TestCase):
                 encoding="utf-8"
             )
 
-        for item in (
-            "VisualConflictResolver",
-            "EffectiveVisualBriefSynthesizer",
-        ):
-            with self.subTest(
-                item=item
-            ):
-                self.assertNotIn(
-                    item,
-                    source
-                )
+        self.assertNotIn(
+            "VisualIntelligenceRuntimeAdapter",
+            source
+        )
 
 
 if __name__ == "__main__":

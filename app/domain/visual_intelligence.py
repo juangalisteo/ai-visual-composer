@@ -772,6 +772,254 @@ class VisualReasoningResult:
         )
 
 
+@dataclass(frozen=True)
+class VisualConflictReport:
+    conflicts: tuple[VisualConflict, ...] = field(default_factory=tuple)
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    status: ResolutionStatus = ResolutionStatus.READY
+    schema_version: str = SCHEMA_VERSION
+    version: str = SCHEMA_VERSION
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_sequence_of(
+            self.conflicts,
+            VisualConflict,
+            "conflicts"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _require_enum(
+            self.status,
+            ResolutionStatus,
+            "status"
+        )
+        _require_text(
+            self.schema_version,
+            "schema_version"
+        )
+        _require_text(
+            self.version,
+            "version"
+        )
+        _set_fingerprint(
+            self,
+            "VisualConflictReport",
+            (
+                "conflicts",
+                "findings",
+                "trace",
+                "status",
+                "schema_version",
+                "version",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class EffectiveVisualBrief:
+    primary_identity: str
+    secondary_identities: tuple[str, ...] = field(default_factory=tuple)
+    primary_actions: tuple[str, ...] = field(default_factory=tuple)
+    secondary_actions: tuple[str, ...] = field(default_factory=tuple)
+    narrative_objectives: tuple[str, ...] = field(default_factory=tuple)
+    visual_priorities: tuple[str, ...] = field(default_factory=tuple)
+    semantic_hierarchy: tuple[str, ...] = field(default_factory=tuple)
+    continuity: SequenceContinuity | None = None
+    restrictions: tuple[str, ...] = field(default_factory=tuple)
+    strategy: VisualIntelligenceStrategy | None = None
+    subtext: str = ""
+    emotional_function: str = ""
+    uncertainty: CertaintyLevel = CertaintyLevel.UNKNOWN
+    conflicts: tuple[VisualConflict, ...] = field(default_factory=tuple)
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.primary_identity,
+            "primary_identity"
+        )
+        _require_optional_type(
+            self.continuity,
+            SequenceContinuity,
+            "continuity"
+        )
+        _require_optional_type(
+            self.strategy,
+            VisualIntelligenceStrategy,
+            "strategy"
+        )
+        _require_enum(
+            self.uncertainty,
+            CertaintyLevel,
+            "uncertainty"
+        )
+        _require_sequence_of(
+            self.conflicts,
+            VisualConflict,
+            "conflicts"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "EffectiveVisualBrief",
+            (
+                "primary_identity",
+                "secondary_identities",
+                "primary_actions",
+                "secondary_actions",
+                "narrative_objectives",
+                "visual_priorities",
+                "semantic_hierarchy",
+                "continuity",
+                "restrictions",
+                "strategy",
+                "subtext",
+                "emotional_function",
+                "uncertainty",
+                "conflicts",
+                "findings",
+                "evidences",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualIntelligenceTrace:
+    sources: tuple[SourceReference, ...] = field(default_factory=tuple)
+    traces: tuple[SpecializedTrace, ...] = field(default_factory=tuple)
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    rules_applied: tuple[str, ...] = field(default_factory=tuple)
+    conflict_references: tuple[str, ...] = field(default_factory=tuple)
+    resolver_references: tuple[str, ...] = field(default_factory=tuple)
+    pipeline_history: tuple[str, ...] = field(default_factory=tuple)
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_sequence_of(
+            self.sources,
+            SourceReference,
+            "sources"
+        )
+        _require_sequence_of(
+            self.traces,
+            SpecializedTrace,
+            "traces"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _set_fingerprint(
+            self,
+            "VisualIntelligenceTrace",
+            (
+                "sources",
+                "traces",
+                "evidences",
+                "findings",
+                "rules_applied",
+                "conflict_references",
+                "resolver_references",
+                "pipeline_history",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualSynthesisResult:
+    brief: EffectiveVisualBrief
+    conflicts: VisualConflictReport
+    trace: VisualIntelligenceTrace
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    status: ResolutionStatus = ResolutionStatus.READY
+    schema_version: str = SCHEMA_VERSION
+    version: str = SCHEMA_VERSION
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_type(
+            self.brief,
+            EffectiveVisualBrief,
+            "brief"
+        )
+        _require_type(
+            self.conflicts,
+            VisualConflictReport,
+            "conflicts"
+        )
+        _require_type(
+            self.trace,
+            VisualIntelligenceTrace,
+            "trace"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _require_enum(
+            self.status,
+            ResolutionStatus,
+            "status"
+        )
+        _require_text(
+            self.schema_version,
+            "schema_version"
+        )
+        _require_text(
+            self.version,
+            "version"
+        )
+        _set_fingerprint(
+            self,
+            "VisualSynthesisResult",
+            (
+                "brief",
+                "conflicts",
+                "trace",
+                "findings",
+                "status",
+                "schema_version",
+                "version",
+            )
+        )
+
+
 def deterministic_fingerprint(
     label: str,
     value: Any
