@@ -45,18 +45,18 @@ Completed:
   - Effective Visual Brief Synthesizer
   - Visual Intelligence Trace Builder
   - Visual Synthesis Orchestrator
+- `IP3.0-5 - Visual Intelligence Runtime Integration`
 
 Next planned phase:
 
 ```text
-IP3.0-5 - Visual Intelligence Runtime Integration
+IP3.0-6 - Visual Intelligence Certification
 ```
 
-`IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` establishes Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract before runtime integration.
+`IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` established Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract. `IP3.0-5` integrates `VisualSynthesisResult` into the Image Runtime as the visual source of truth before prompt translation.
 
 Planned IP3.x sequence:
 
-- `IP3.0-5 - Visual Intelligence Runtime Integration`
 - `IP3.0-6 - Visual Intelligence Certification`
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline phase is explicitly requested.
@@ -142,6 +142,66 @@ Rationale:
 - Active usage does not imply permanent architectural ownership.
 - Runtime Integration requires a clear distinction between final contracts and migration bridges.
 - Explicit classification prevents new dependencies from forming around temporary compatibility surfaces.
+
+### Runtime Integration
+
+Previous architecture:
+
+```text
+RuntimeCognitiveAdapter
+        -> EffectiveVisualBrief compatibility bridge
+        -> CinematicDirectionSet
+        -> PromptTranslator
+        -> Backend Adapter
+```
+
+Current architecture:
+
+```text
+VisualAnalysisResult
+        -> VisualReasoningResult
+        -> VisualSynthesisResult
+        -> EffectiveVisualBrief
+        -> Runtime
+        -> PromptTranslator
+        -> Backend Adapter
+```
+
+Migrated points:
+
+- `ImageBuilder` builds `VisualSynthesisResult` through Visual Analysis, Visual Reasoning, and Visual Synthesis before prompt translation.
+- `ImageBuilder` records `VisualSynthesisResult`, `VisualIntelligenceTrace`, and `VisualConflictReport` fingerprints in runtime metadata.
+- `PromptTranslator` exposes `translate_visual_synthesis_result` as the runtime entry point for canonical synthesis output.
+- Manual runtime construction of `VisualBriefTrace` and manual runtime `EffectiveVisualBrief` fingerprinting were removed from `ImageBuilder`.
+
+Remaining transitional bridges:
+
+- `visual_brief` remains embedded in the canonical `EffectiveVisualBrief` while Cinematic Direction still consumes the historical Visual Direction shape.
+- `source_id` and `source_version` remain as runtime trace compatibility fields.
+- `VisualBriefTrace` and `VisualDirectionConflict` remain available for Visual Direction consumers until the next migration proves they can be removed.
+
+Rule:
+
+- Runtime MUST treat `VisualSynthesisResult` as the visual source of truth.
+- Runtime MUST NOT recalculate visual analysis, reasoning, synthesis, trace, or conflicts after `VisualSynthesisResult` has been produced.
+
+### ADR-003 - Visual Intelligence Governs Runtime
+
+Decision:
+
+- Visual Intelligence is the only source of truth for Runtime visual decisions.
+- Runtime consumes `VisualSynthesisResult` as the single visual entry point.
+- Runtime executes and propagates resolved information; it does not make visual decisions.
+- Prompt translation consumes information derived from `VisualSynthesisResult`.
+- Backend adapters receive only resolved backend-neutral prompt information.
+- Transitional components remain only while active consumers require them.
+
+Rationale:
+
+- Visual decisions must exist before runtime execution.
+- Runtime must remain operational infrastructure, not an intelligence layer.
+- `VisualSynthesisResult` already encapsulates analysis, reasoning, conflict resolution, effective brief, and trace.
+- Keeping one entry point prevents new parallel contracts from appearing during IP3.x evolution.
 
 ## Image Enhancement
 

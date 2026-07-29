@@ -24,7 +24,10 @@ class EffectiveVisualBriefSynthesizer:
         self,
         analysis: VisualAnalysisResult,
         reasoning: VisualReasoningResult,
-        conflicts: VisualConflictReport
+        conflicts: VisualConflictReport,
+        visual_brief=None,
+        source_id: str = "",
+        source_version: str = "",
     ) -> EffectiveVisualBrief:
         ensure_inputs(
             analysis,
@@ -99,6 +102,9 @@ class EffectiveVisualBriefSynthesizer:
                 entries,
                 evidences
             ),
+            visual_brief=visual_brief,
+            source_id=source_id,
+            source_version=source_version,
         )
 
     def _evidences(

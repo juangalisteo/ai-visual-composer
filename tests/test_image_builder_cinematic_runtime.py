@@ -7,11 +7,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.cinematic_direction import create_cinematic_direction_set
-from app.domain import StoryboardScene
+from app.domain import StoryboardScene, VisualSynthesisResult
 from app.modules.images.image_builder import ImageBuilder
 from app.photography_direction import PhotographyDirection
 from app.prompt_translation import BackendPrompt, BackendPromptTrace
-from app.visual_direction import EffectiveVisualBrief
 from app.visual_quality import (
     ImageQualityFlowCoordinator,
     ImageValidator,
@@ -120,9 +119,18 @@ class RecordingPromptTranslator:
         effective_visual_brief,
         cinematic_direction_set=None,
     ):
+        raise AssertionError(
+            "ImageBuilder must translate from VisualSynthesisResult"
+        )
+
+    def translate_visual_synthesis_result(
+        self,
+        visual_synthesis_result,
+        cinematic_direction_set=None,
+    ):
         self.calls.append(
             (
-                effective_visual_brief,
+                visual_synthesis_result,
                 cinematic_direction_set,
             )
         )
@@ -130,11 +138,11 @@ class RecordingPromptTranslator:
             instructions=(),
             trace=BackendPromptTrace(
                 source_visual_brief_fingerprint=(
-                    effective_visual_brief.fingerprint
+                    visual_synthesis_result.brief.fingerprint
                 )
             ),
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
+            source_id=visual_synthesis_result.brief.source_id,
+            source_version=visual_synthesis_result.brief.source_version,
             fingerprint="backend-prompt-fingerprint"
         )
 
@@ -482,13 +490,13 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
         )
 
-        effective_visual_brief, direction_set = (
+        visual_synthesis_result, direction_set = (
             translator.calls[0]
         )
 
         self.assertIsInstance(
-            effective_visual_brief,
-            EffectiveVisualBrief
+            visual_synthesis_result,
+            VisualSynthesisResult
         )
         self.assertIs(
             direction_set,
@@ -496,23 +504,18 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         )
         self.assertEqual(
             "A quiet dawn over a valley",
-            effective_visual_brief.visual_brief.visible_content
+            visual_synthesis_result.brief.visual_brief.visible_content
         )
-        source_paths = {
-            origin.source_path
-            for origin in effective_visual_brief.trace.field_origins
-        }
         self.assertTrue(
-            all(
-                source_path.startswith(
-                    "StoryboardScene."
-                )
-                for source_path in source_paths
-            )
+            visual_synthesis_result.trace.fingerprint
         )
         self.assertIn(
-            "StoryboardScene.visible_environment",
-            source_paths,
+            "VisualTruthInspector",
+            {
+                entry.component
+                for trace in visual_synthesis_result.trace.traces
+                for entry in trace.entries
+            },
         )
         self.assertEqual(
             "backend-prompt-fingerprint",
@@ -568,6 +571,15 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             "payload-fingerprint",
             metadata["backend_adapter_payload_fingerprint"]
         )
+        self.assertTrue(
+            metadata["visual_synthesis_result_fingerprint"]
+        )
+        self.assertTrue(
+            metadata["visual_intelligence_trace_fingerprint"]
+        )
+        self.assertTrue(
+            metadata["visual_conflict_report_fingerprint"]
+        )
         self.assertIn(
             "cinematic operative prompt",
             metadata["operational_prompt"]
@@ -585,10 +597,10 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             metadata["backend_payload_prompt"]
         )
 
-    def test_runtime_effective_visual_brief_preserves_visual_truth_trace(self):
+    def test_runtime_visual_synthesis_result_preserves_visual_truth_trace(self):
         builder = ImageBuilder()
 
-        effective = builder._build_runtime_effective_visual_brief(
+        synthesis_result = builder._build_runtime_visual_synthesis_result(
             storyboard_scene=StoryboardScene(
                 scene_number=9,
                 text="Una idea invisible se vuelve accion.",
@@ -620,41 +632,36 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
         self.assertEqual(
             "una llave cambia de manos en silencio",
-            effective.visual_brief.visible_content,
+            synthesis_result.brief.visual_brief.visible_content,
         )
         self.assertEqual(
             (
                 "llave antigua",
             ),
-            effective.visual_brief.key_objects,
+            synthesis_result.brief.visual_brief.key_objects,
         )
-        origins = {
-            origin.field: origin
-            for origin in effective.trace.field_origins
+        sources = {
+            evidence.source.field
+            for evidence in synthesis_result.trace.evidences
         }
 
-        self.assertEqual(
-            "StoryboardScene.filmable_interpretation",
-            origins["VisualBrief.visible_content"].source_path,
+        self.assertIn(
+            "visible_subject",
+            sources,
+        )
+        self.assertIn(
+            "key_objects",
+            sources,
+        )
+        self.assertTrue(
+            synthesis_result.trace.fingerprint,
         )
         self.assertEqual(
-            "preserve_visual_truth",
-            origins["VisualBrief.visible_subject"].action,
-        )
-        self.assertEqual(
-            "StoryboardScene.visible_environment",
-            origins["VisualBrief.visible_environment"].source_path,
-        )
-        self.assertEqual(
-            "StoryboardScene.visual_constraints",
-            origins["VisualBrief.visual_constraints"].source_path,
-        )
-        self.assertEqual(
-            "RuntimeCognitiveAdapter",
-            origins["VisualBrief.visual_truth_status"].source_layer,
+            "scene_009",
+            synthesis_result.brief.source_id,
         )
 
-    def test_runtime_effective_visual_brief_fingerprint_is_deterministic(self):
+    def test_runtime_visual_synthesis_result_fingerprint_is_deterministic(self):
         builder = ImageBuilder()
         storyboard_scene = StoryboardScene(
             scene_number=1,
@@ -666,10 +673,10 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             visual_truth_status="structured",
         )
 
-        first = builder._build_runtime_effective_visual_brief(
+        first = builder._build_runtime_visual_synthesis_result(
             storyboard_scene=storyboard_scene
         )
-        second = builder._build_runtime_effective_visual_brief(
+        second = builder._build_runtime_visual_synthesis_result(
             storyboard_scene=storyboard_scene
         )
 

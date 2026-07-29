@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Integrated Visual Intelligence into the image runtime so `ImageBuilder` now builds and propagates `VisualSynthesisResult` before cinematic direction, prompt translation, and backend adaptation.
 - Classified `EffectiveVisualBrief` as `CANONICAL` and remaining compatibility fields/models as `TRANSITIONAL` before `IP3.0-5`.
 - Audited legacy compatibility fields after canonical `EffectiveVisualBrief` unification; retained active compatibility fields with explicit temporary markers pending `IP3.0-5`.
 - Consolidated `EffectiveVisualBrief` as a single canonical contract in `app/domain/visual_intelligence.py`, with `app.visual_direction` reexporting the canonical contract for temporary compatibility.

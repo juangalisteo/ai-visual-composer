@@ -34,7 +34,10 @@ class VisualSynthesisOrchestrator:
     def synthesize(
         self,
         analysis: VisualAnalysisResult,
-        reasoning: VisualReasoningResult
+        reasoning: VisualReasoningResult,
+        visual_brief=None,
+        source_id: str = "",
+        source_version: str = "",
     ) -> VisualSynthesisResult:
         ensure_inputs(
             analysis,
@@ -49,7 +52,10 @@ class VisualSynthesisOrchestrator:
         brief = self.brief_synthesizer.synthesize(
             analysis,
             reasoning,
-            conflicts
+            conflicts,
+            visual_brief=visual_brief,
+            source_id=source_id,
+            source_version=source_version,
         )
         trace = self.trace_builder.build(
             analysis,

@@ -162,7 +162,7 @@ class VisualSynthesisOrchestratorTest(unittest.TestCase):
                     source
                 )
 
-    def test_runtime_integration_is_not_started(self):
+    def test_runtime_integration_does_not_create_inverse_adapters(self):
         source = ""
         for path in Path(
             "app"
@@ -176,6 +176,7 @@ class VisualSynthesisOrchestratorTest(unittest.TestCase):
         for item in (
             "VisualIntelligenceRuntimeAdapter",
             "RuntimeVisualIntelligenceAdapter",
+            "EffectiveVisualBriefAdapter",
         ):
             with self.subTest(
                 item=item

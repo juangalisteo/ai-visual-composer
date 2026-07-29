@@ -17,10 +17,10 @@ from app.shared.progress_logger import ProgressLogger
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
 from app.prompt_translation import PromptTranslator
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefFieldOrigin,
-    VisualBriefTrace
+from app.visual_intelligence import (
+    VisualAnalysisOrchestrator,
+    VisualReasoningOrchestrator,
+    VisualSynthesisOrchestrator,
 )
 from app.visual_quality import ImageQualityFlowCoordinator
 
@@ -38,6 +38,9 @@ class ImageBuilder:
         manifest_writer=None,
         prompt_translator=None,
         cinematic_orchestrator=None,
+        visual_analysis_orchestrator=None,
+        visual_reasoning_orchestrator=None,
+        visual_synthesis_orchestrator=None,
         backend_adapter=None,
         image_quality_flow=None
     ):
@@ -67,6 +70,9 @@ class ImageBuilder:
 
         self.prompt_translator = prompt_translator
         self.cinematic_orchestrator = cinematic_orchestrator
+        self.visual_analysis_orchestrator = visual_analysis_orchestrator
+        self.visual_reasoning_orchestrator = visual_reasoning_orchestrator
+        self.visual_synthesis_orchestrator = visual_synthesis_orchestrator
         self.backend_adapter = backend_adapter
         self.image_quality_flow = image_quality_flow
 
@@ -388,20 +394,21 @@ class ImageBuilder:
         storyboard_scene,
         profile=None
     ):
-        effective_visual_brief = (
-            self._build_runtime_effective_visual_brief(
+        visual_synthesis_result = (
+            self._build_runtime_visual_synthesis_result(
                 storyboard_scene=storyboard_scene,
                 profile=profile
             )
         )
+        effective_visual_brief = visual_synthesis_result.brief
         cinematic_direction_set = (
             self._cinematic_orchestrator().resolve(
                 effective_visual_brief
             )
         )
         backend_prompt = (
-            self._prompt_translator().translate(
-                effective_visual_brief,
+            self._prompt_translator().translate_visual_synthesis_result(
+                visual_synthesis_result,
                 cinematic_direction_set=cinematic_direction_set
             )
         )
@@ -418,6 +425,15 @@ class ImageBuilder:
 
         return {
             "enabled": True,
+            "visual_synthesis_result_fingerprint": (
+                visual_synthesis_result.fingerprint
+            ),
+            "visual_intelligence_trace_fingerprint": (
+                visual_synthesis_result.trace.fingerprint
+            ),
+            "visual_conflict_report_fingerprint": (
+                visual_synthesis_result.conflicts.fingerprint
+            ),
             "effective_visual_brief_fingerprint": (
                 effective_visual_brief.fingerprint
             ),
@@ -439,7 +455,7 @@ class ImageBuilder:
             "operational_prompt": operational_prompt
         }
 
-    def _build_runtime_effective_visual_brief(
+    def _build_runtime_visual_synthesis_result(
         self,
         storyboard_scene,
         profile=None
@@ -458,194 +474,30 @@ class ImageBuilder:
                 )
             )
         )
+        analysis = (
+            self._visual_analysis_orchestrator().analyze(
+                storyboard_scene
+            )
+        )
+        reasoning = (
+            self._visual_reasoning_orchestrator().reason(
+                analysis
+            )
+        )
         source_id = (
             f"scene_{storyboard_scene.scene_number:03d}"
         )
         source_version = (
             "image-component-runtime-v1"
         )
-        fingerprint = (
-            self._runtime_visual_brief_fingerprint(
-                visual_brief=adaptation.visual_brief,
-                source_id=source_id,
-                source_version=source_version
-            )
-        )
 
-        return EffectiveVisualBrief(
+        return self._visual_synthesis_orchestrator().synthesize(
+            analysis,
+            reasoning,
             visual_brief=adaptation.visual_brief,
-            trace=self._runtime_visual_brief_trace(
-                adaptation=adaptation
-            ),
-            conflicts=(),
-            fingerprint=fingerprint,
             source_id=source_id,
-            source_version=source_version
+            source_version=source_version,
         )
-
-    def _runtime_visual_brief_trace(
-        self,
-        adaptation
-    ):
-        origins = []
-        visual_brief = adaptation.visual_brief
-
-        self._add_runtime_origin(
-            origins,
-            field="VisualBrief.visible_content",
-            source_path=self._visible_content_source_path(
-                visual_brief
-            ),
-            action=self._visible_content_origin_action(
-                visual_brief
-            )
-        )
-        direct_mappings = (
-            (
-                "VisualBrief.visible_subject",
-                "StoryboardScene.visible_subject",
-                visual_brief.visible_subject,
-            ),
-            (
-                "VisualBrief.visible_action",
-                "StoryboardScene.visible_action",
-                visual_brief.visible_action,
-            ),
-            (
-                "VisualBrief.visible_environment",
-                "StoryboardScene.visible_environment",
-                visual_brief.visible_environment,
-            ),
-            (
-                "VisualBrief.time_context",
-                "StoryboardScene.time_context",
-                visual_brief.time_context,
-            ),
-            (
-                "VisualBrief.key_objects",
-                "StoryboardScene.key_objects",
-                visual_brief.key_objects,
-            ),
-            (
-                "VisualBrief.spatial_relationships",
-                "StoryboardScene.spatial_relationships",
-                visual_brief.spatial_relationships,
-            ),
-            (
-                "VisualBrief.continuity_links",
-                "StoryboardScene.continuity_links",
-                visual_brief.continuity_links,
-            ),
-            (
-                "VisualBrief.abstract_source",
-                "StoryboardScene.abstract_source",
-                visual_brief.abstract_source,
-            ),
-            (
-                "VisualBrief.filmable_interpretation",
-                "StoryboardScene.filmable_interpretation",
-                visual_brief.filmable_interpretation,
-            ),
-            (
-                "VisualBrief.visual_constraints",
-                "StoryboardScene.visual_constraints",
-                visual_brief.visual_constraints,
-            ),
-            (
-                "VisualBrief.visual_truth_status",
-                "StoryboardScene.visual_truth_status",
-                visual_brief.visual_truth_status,
-            ),
-        )
-        for field, source_path, value in direct_mappings:
-            if value:
-                self._add_runtime_origin(
-                    origins,
-                    field=field,
-                    source_path=source_path,
-                    action=self._source_path_action(
-                        source_path
-                    )
-                )
-
-        return VisualBriefTrace(
-            field_origins=tuple(
-                origins
-            )
-        )
-
-    def _visible_content_source_path(
-        self,
-        visual_brief
-    ):
-        if visual_brief.filmable_interpretation:
-            return "StoryboardScene.filmable_interpretation"
-        if (
-            visual_brief.visible_subject
-            or visual_brief.visible_action
-            or visual_brief.visible_environment
-            or visual_brief.time_context
-        ):
-            return "StoryboardScene.visual_truth"
-        return "StoryboardScene.text"
-
-    def _visible_content_origin_action(
-        self,
-        visual_brief
-    ):
-        source_path = self._visible_content_source_path(
-            visual_brief
-        )
-        return self._source_path_action(
-            source_path
-        )
-
-    def _source_path_action(
-        self,
-        source_path
-    ):
-        return "preserve_visual_truth"
-
-    def _add_runtime_origin(
-        self,
-        origins,
-        field,
-        source_path,
-        action
-    ):
-        origins.append(
-            VisualBriefFieldOrigin(
-                field=field,
-                source_layer="RuntimeCognitiveAdapter",
-                source_path=source_path,
-                action=action
-            )
-        )
-
-    def _runtime_visual_brief_fingerprint(
-        self,
-        visual_brief,
-        source_id,
-        source_version
-    ):
-        canonical = {
-            "visual_brief": visual_brief,
-            "source_id": source_id,
-            "source_version": source_version
-        }
-        return hashlib.sha256(
-            json.dumps(
-                canonical,
-                default=_json_default,
-                sort_keys=True,
-                separators=(
-                    ",",
-                    ":"
-                )
-            ).encode(
-                "utf-8"
-            )
-        ).hexdigest()
 
     def _prompt_translator(
         self
@@ -666,6 +518,36 @@ class ImageBuilder:
             )
 
         return self.cinematic_orchestrator
+
+    def _visual_analysis_orchestrator(
+        self
+    ):
+        if self.visual_analysis_orchestrator is None:
+            self.visual_analysis_orchestrator = (
+                VisualAnalysisOrchestrator()
+            )
+
+        return self.visual_analysis_orchestrator
+
+    def _visual_reasoning_orchestrator(
+        self
+    ):
+        if self.visual_reasoning_orchestrator is None:
+            self.visual_reasoning_orchestrator = (
+                VisualReasoningOrchestrator()
+            )
+
+        return self.visual_reasoning_orchestrator
+
+    def _visual_synthesis_orchestrator(
+        self
+    ):
+        if self.visual_synthesis_orchestrator is None:
+            self.visual_synthesis_orchestrator = (
+                VisualSynthesisOrchestrator()
+            )
+
+        return self.visual_synthesis_orchestrator
 
     def _backend_adapter(
         self
@@ -797,24 +679,3 @@ class ImageBuilder:
             workflow=workflow,
             prompt=prompt
         )
-
-
-def _json_default(
-    value
-):
-    if hasattr(
-        value,
-        "__dataclass_fields__"
-    ):
-        return {
-            field: getattr(
-                value,
-                field
-            )
-            for field in value.__dataclass_fields__
-        }
-
-    raise TypeError(
-        f"Object of type {type(value).__name__} "
-        "is not JSON serializable"
-    )

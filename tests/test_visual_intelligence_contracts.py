@@ -474,6 +474,9 @@ class VisualIntelligenceContractsTest(unittest.TestCase):
 
     def test_runtime_backend_and_prompt_layers_do_not_import_visual_intelligence_contracts(self):
         paths_with_import = []
+        allowed_runtime_entry_points = {
+            "app/modules/images/image_builder.py",
+        }
         for root in (
             "app/modules",
             "app/prompt_translation",
@@ -488,9 +491,13 @@ class VisualIntelligenceContractsTest(unittest.TestCase):
                 source = path.read_text(
                     encoding="utf-8"
                 )
-                if "visual_intelligence" in source:
+                normalized_path = path.as_posix()
+                if (
+                    "visual_intelligence" in source
+                    and normalized_path not in allowed_runtime_entry_points
+                ):
                     paths_with_import.append(
-                        path.as_posix()
+                        normalized_path
                     )
 
         self.assertEqual(

@@ -31,6 +31,11 @@ from app.visual_direction import (
     EffectiveVisualBrief,
     VisualBriefTrace,
 )
+from app.visual_intelligence import VisualSynthesisOrchestrator
+from tests.test_visual_synthesis_helpers import (
+    analysis_and_reasoning,
+    complete_scene,
+)
 
 
 def effective_visual_brief():
@@ -179,6 +184,38 @@ class PromptTranslationTest(unittest.TestCase):
             FrozenInstanceError
         ):
             prompt.fingerprint = "changed"
+
+    def test_translates_visual_synthesis_result_from_canonical_brief(self):
+        analysis, reasoning = analysis_and_reasoning(
+            complete_scene()
+        )
+        synthesis_result = VisualSynthesisOrchestrator().synthesize(
+            analysis,
+            reasoning
+        )
+
+        prompt = PromptTranslator().translate_visual_synthesis_result(
+            synthesis_result
+        )
+
+        source_fields = {
+            item.source_fields[0]
+            for item in prompt.trace.items
+            if item.source_fields
+        }
+
+        self.assertIn(
+            "VisualSynthesisResult.brief.primary_identity",
+            source_fields,
+        )
+        self.assertIn(
+            "VisualSynthesisResult.brief.visual_priorities",
+            source_fields,
+        )
+        self.assertEqual(
+            synthesis_result.brief.fingerprint,
+            prompt.trace.source_visual_brief_fingerprint,
+        )
 
     def test_translates_visual_brief_fields_into_backend_neutral_instructions(self):
         prompt = PromptTranslator().translate(
