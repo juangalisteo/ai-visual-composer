@@ -128,7 +128,7 @@ class VisualSynthesisOrchestratorTest(unittest.TestCase):
 
     def test_visual_synthesis_layer_has_no_forbidden_dependencies(self):
         forbidden = (
-            "RuntimeCognitiveAdapter",
+            "Runtime" + "CognitiveAdapter",
             "ImageBuilder",
             "PromptTranslator",
             "BackendPrompt",

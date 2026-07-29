@@ -10,23 +10,18 @@ from app.color_direction import (
     ColorDirector,
 )
 from app.domain import (
+    EffectiveVisualBrief,
     ColorPlan,
     CompositionPlan,
     LightingPlan,
     PhotographyPlan,
     StagingPlan,
-    VisualBrief,
     VisualStrategy,
 )
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
-)
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
             felt_experience="contained solemnity",
             visual_priority="gesture before object",
@@ -81,12 +76,7 @@ def effective_visual_brief():
                 visual_identity_relationship="earth-toned contemplative identity"
             ),
             continuity_relationship="object carries continuity into next scene",
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -112,7 +102,7 @@ class ColorDirectionTest(unittest.TestCase):
 
     def test_color_direction_is_immutable(self):
         direction = ColorDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         with self.assertRaises(
@@ -120,9 +110,9 @@ class ColorDirectionTest(unittest.TestCase):
         ):
             direction.dominant_palette = "changed"
 
-    def test_resolves_color_direction_from_effective_visual_brief(self):
+    def test_resolves_color_direction_from_effective_brief(self):
         direction = ColorDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(
@@ -147,7 +137,7 @@ class ColorDirectionTest(unittest.TestCase):
         )
 
     def test_resolution_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
 
         first = ColorDirector().resolve(
             effective
@@ -167,15 +157,11 @@ class ColorDirectionTest(unittest.TestCase):
 
     def test_fingerprint_changes_when_effective_brief_changes(self):
         first = ColorDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         changed = EffectiveVisualBrief(
-            visual_brief=VisualBrief(
                 visible_content="A different resolved scene.",
-                visual_priority="distant horizon"
-            ),
-            trace=VisualBriefTrace(),
-            conflicts=(),
+                visual_priority="distant horizon",
             fingerprint="changed-brief",
         )
         second = ColorDirector().resolve(
@@ -189,7 +175,7 @@ class ColorDirectionTest(unittest.TestCase):
 
     def test_trace_records_origin_transformation_and_justification(self):
         direction = ColorDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         decisions = {
             decision.field: decision
@@ -197,20 +183,20 @@ class ColorDirectionTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            direction.trace.source_visual_brief_fingerprint,
+            direction.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
         self.assertEqual(
             decisions["chromatic_symbolism"].source_fields,
             (
-                "VisualBrief.symbolic_weight",
-                "VisualBrief.visual_reading",
-                "VisualBrief.color.visual_identity_relationship",
+                "EffectiveVisualBrief.symbolic_weight",
+                "EffectiveVisualBrief.visual_reading",
+                "EffectiveVisualBrief.color.visual_identity_relationship",
             )
         )
         self.assertEqual(
             decisions["chromatic_symbolism"].transformation,
-            "select_and_combine_resolved_visual_brief_fields"
+            "select_and_combine_resolved_effective_brief_fields"
         )
         self.assertIn(
             "without adding symbols",
@@ -219,14 +205,7 @@ class ColorDirectionTest(unittest.TestCase):
 
     def test_empty_input_does_not_invent_color_direction(self):
         direction = ColorDirector().resolve(
-            EffectiveVisualBrief(
-                visual_brief=VisualBrief(
-                    visible_content=""
-                ),
-                trace=VisualBriefTrace(),
-                conflicts=(),
-                fingerprint="empty",
-            )
+            EffectiveVisualBrief(visible_content="", fingerprint="empty")
         )
 
         self.assertEqual(

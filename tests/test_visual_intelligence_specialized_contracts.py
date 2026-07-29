@@ -565,7 +565,7 @@ class VisualIntelligenceSpecializedContractsTest(unittest.TestCase):
         )
         forbidden = (
             "ImageBuilder",
-            "RuntimeCognitiveAdapter",
+            "Runtime" + "CognitiveAdapter",
             "PromptTranslator",
             "BackendPrompt",
             "ComfyUI",

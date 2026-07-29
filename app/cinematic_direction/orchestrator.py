@@ -6,7 +6,7 @@ from app.continuity_direction import ContinuityDirector
 from app.lighting_direction import LightingDirector
 from app.movement_direction import MovementDirector
 from app.photography_direction import PhotographyDirector
-from app.visual_direction import EffectiveVisualBrief
+from app.domain import EffectiveVisualBrief
 
 
 class CinematicDirectionOrchestrator:
@@ -28,25 +28,25 @@ class CinematicDirectionOrchestrator:
 
     def resolve(
         self,
-        effective_visual_brief: EffectiveVisualBrief
+        effective_brief: EffectiveVisualBrief
     ) -> CinematicDirectionSet:
         photography = self.photography_director.resolve(
-            effective_visual_brief
+            effective_brief
         )
         lighting = self.lighting_director.resolve(
-            effective_visual_brief
+            effective_brief
         )
         composition = self.composition_director.resolve(
-            effective_visual_brief
+            effective_brief
         )
         color = self.color_director.resolve(
-            effective_visual_brief
+            effective_brief
         )
         movement = self.movement_director.resolve(
-            effective_visual_brief
+            effective_brief
         )
         continuity = self.continuity_director.resolve(
-            effective_visual_brief
+            effective_brief
         )
         return create_cinematic_direction_set(
             photography=photography,

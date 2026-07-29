@@ -23,56 +23,54 @@ def backend_prompt():
             BackendPromptInstruction(
                 id="visible_content",
                 category="content",
-                source_field="VisualBrief.visible_content",
+                source_field="EffectiveVisualBrief.visible_content",
                 value="A person receives an old key."
             ),
             BackendPromptInstruction(
                 id="felt_experience",
                 category="experience",
-                source_field="VisualBrief.felt_experience",
+                source_field="EffectiveVisualBrief.felt_experience",
                 value="contained solemnity"
             ),
             BackendPromptInstruction(
                 id="visual_priority",
                 category="priority",
-                source_field="VisualBrief.visual_priority",
+                source_field="EffectiveVisualBrief.visual_priority",
                 value="consequence over object"
             ),
             BackendPromptInstruction(
                 id="duplicate",
                 category="coherence",
-                source_field="VisualBrief.narrative_coherence",
+                source_field="EffectiveVisualBrief.narrative_coherence",
                 value="contained solemnity"
             ),
         ),
         trace=BackendPromptTrace(
-            source_visual_brief_fingerprint="visual-brief-fingerprint",
+            source_effective_brief_fingerprint="visual-brief-fingerprint",
             items=(
                 BackendPromptTraceItem(
                     instruction_id="visible_content",
                     source_fields=(
-                        "VisualBrief.visible_content",
+                        "EffectiveVisualBrief.visible_content",
                     ),
                     transformation="normalize_text"
                 ),
                 BackendPromptTraceItem(
                     instruction_id="felt_experience",
                     source_fields=(
-                        "VisualBrief.felt_experience",
+                        "EffectiveVisualBrief.felt_experience",
                     ),
                     transformation="normalize_text"
                 ),
                 BackendPromptTraceItem(
                     instruction_id="visual_priority",
                     source_fields=(
-                        "VisualBrief.visual_priority",
+                        "EffectiveVisualBrief.visual_priority",
                     ),
                     transformation="normalize_text"
                 ),
             )
         ),
-        source_id="scene_001",
-        source_version="1.0.0",
         fingerprint="backend-prompt-fingerprint",
     )
 
@@ -120,15 +118,6 @@ class BackendAdapterTest(unittest.TestCase):
             payload.prompt,
             "A person receives an old key., contained solemnity, consequence over object"
         )
-        self.assertEqual(
-            payload.source_id,
-            "scene_001"
-        )
-        self.assertEqual(
-            payload.source_version,
-            "1.0.0"
-        )
-
     def test_adaptation_is_deterministic(self):
         prompt = backend_prompt()
 
@@ -157,7 +146,7 @@ class BackendAdapterTest(unittest.TestCase):
                 BackendPromptInstruction(
                     id="visible_content",
                     category="content",
-                    source_field="VisualBrief.visible_content",
+                    source_field="EffectiveVisualBrief.visible_content",
                     value="A different image instruction."
                 ),
             ),
@@ -173,7 +162,7 @@ class BackendAdapterTest(unittest.TestCase):
             second.fingerprint
         )
 
-    def test_trace_connects_payload_to_backend_prompt_and_visual_brief(self):
+    def test_trace_connects_payload_to_backend_prompt_and_effective_brief(self):
         payload = ComfyUIAdapter().adapt(
             backend_prompt()
         )
@@ -192,7 +181,7 @@ class BackendAdapterTest(unittest.TestCase):
             trace_item.instruction_ids
         )
         self.assertIn(
-            "VisualBrief.visible_content",
+            "EffectiveVisualBrief.visible_content",
             trace_item.source_fields
         )
 

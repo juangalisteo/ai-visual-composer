@@ -11,7 +11,7 @@ class ContinuityDecisionTrace:
 
 @dataclass(frozen=True)
 class ContinuityDirectionTrace:
-    source_visual_brief_fingerprint: str = ""
+    source_effective_brief_fingerprint: str = ""
     decisions: tuple[ContinuityDecisionTrace, ...] = field(default_factory=tuple)
 
 
@@ -34,6 +34,4 @@ class ContinuityDirection:
     key_element_preservation: str = ""
     visual_transition: str = ""
     trace: ContinuityDirectionTrace = field(default_factory=ContinuityDirectionTrace)
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""

@@ -9,15 +9,15 @@ from app.movement_direction.models import (
     MovementDirection,
     MovementDirectionTrace,
 )
-from app.visual_direction import EffectiveVisualBrief
+from app.domain import EffectiveVisualBrief
 
 
 class MovementDirector:
     def resolve(
         self,
-        effective_visual_brief: EffectiveVisualBrief
+        effective_brief: EffectiveVisualBrief
     ) -> MovementDirection:
-        brief = effective_visual_brief.visual_brief
+        brief = effective_brief
         decisions: list[MovementDecisionTrace] = []
         fields = {
             "dominant_movement": self._decide(
@@ -410,7 +410,7 @@ class MovementDirector:
             ),
         }
         trace = MovementDirectionTrace(
-            source_visual_brief_fingerprint=effective_visual_brief.fingerprint,
+            source_effective_brief_fingerprint=effective_brief.fingerprint,
             decisions=tuple(
                 decisions
             ),
@@ -418,14 +418,10 @@ class MovementDirector:
         direction = MovementDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
         )
         return MovementDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
             fingerprint=self._fingerprint(
                 direction
             ),
@@ -465,14 +461,14 @@ class MovementDirector:
             )
         )
         source_fields = tuple(
-            f"VisualBrief.{name}"
+            f"EffectiveVisualBrief.{name}"
             for name, _ in selected
         )
-        transformation = "select_resolved_visual_brief_field"
+        transformation = "select_resolved_effective_brief_field"
         if len(
             unique_values
         ) > 1:
-            transformation = "select_and_combine_resolved_visual_brief_fields"
+            transformation = "select_and_combine_resolved_effective_brief_fields"
         decisions.append(
             MovementDecisionTrace(
                 field=field,
@@ -509,8 +505,6 @@ class MovementDirector:
                     movement_continuity=direction.movement_continuity,
                     spatial_coherence=direction.spatial_coherence,
                     trace=direction.trace,
-                    source_id=direction.source_id,
-                    source_version=direction.source_version,
                 )
             )
         }

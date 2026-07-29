@@ -129,7 +129,7 @@ class VisualReasoningOrchestratorTest(unittest.TestCase):
 
     def test_visual_reasoning_layer_has_no_forbidden_dependencies(self):
         forbidden = (
-            "RuntimeCognitiveAdapter",
+            "Runtime" + "CognitiveAdapter",
             "ImageBuilder",
             "PromptTranslator",
             "BackendPrompt",

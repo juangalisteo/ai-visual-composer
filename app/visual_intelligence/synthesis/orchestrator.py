@@ -35,9 +35,6 @@ class VisualSynthesisOrchestrator:
         self,
         analysis: VisualAnalysisResult,
         reasoning: VisualReasoningResult,
-        visual_brief=None,
-        source_id: str = "",
-        source_version: str = "",
     ) -> VisualSynthesisResult:
         ensure_inputs(
             analysis,
@@ -53,9 +50,6 @@ class VisualSynthesisOrchestrator:
             analysis,
             reasoning,
             conflicts,
-            visual_brief=visual_brief,
-            source_id=source_id,
-            source_version=source_version,
         )
         trace = self.trace_builder.build(
             analysis,

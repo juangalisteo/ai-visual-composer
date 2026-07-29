@@ -9,15 +9,15 @@ from app.continuity_direction.models import (
     ContinuityDirection,
     ContinuityDirectionTrace,
 )
-from app.visual_direction import EffectiveVisualBrief
+from app.domain import EffectiveVisualBrief
 
 
 class ContinuityDirector:
     def resolve(
         self,
-        effective_visual_brief: EffectiveVisualBrief
+        effective_brief: EffectiveVisualBrief
     ) -> ContinuityDirection:
-        brief = effective_visual_brief.visual_brief
+        brief = effective_brief
         decisions: list[ContinuityDecisionTrace] = []
         fields = {
             "visual_continuity": self._decide(
@@ -398,7 +398,7 @@ class ContinuityDirector:
             ),
         }
         trace = ContinuityDirectionTrace(
-            source_visual_brief_fingerprint=effective_visual_brief.fingerprint,
+            source_effective_brief_fingerprint=effective_brief.fingerprint,
             decisions=tuple(
                 decisions
             ),
@@ -406,14 +406,10 @@ class ContinuityDirector:
         direction = ContinuityDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
         )
         return ContinuityDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
             fingerprint=self._fingerprint(
                 direction
             ),
@@ -453,14 +449,14 @@ class ContinuityDirector:
             )
         )
         source_fields = tuple(
-            f"VisualBrief.{name}"
+            f"EffectiveVisualBrief.{name}"
             for name, _ in selected
         )
-        transformation = "select_resolved_visual_brief_field"
+        transformation = "select_resolved_effective_brief_field"
         if len(
             unique_values
         ) > 1:
-            transformation = "select_and_combine_resolved_visual_brief_fields"
+            transformation = "select_and_combine_resolved_effective_brief_fields"
         decisions.append(
             ContinuityDecisionTrace(
                 field=field,
@@ -497,8 +493,6 @@ class ContinuityDirector:
                     key_element_preservation=direction.key_element_preservation,
                     visual_transition=direction.visual_transition,
                     trace=direction.trace,
-                    source_id=direction.source_id,
-                    source_version=direction.source_version,
                 )
             )
         }

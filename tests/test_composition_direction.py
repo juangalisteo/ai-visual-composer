@@ -10,22 +10,17 @@ from app.composition_direction import (
     CompositionDirector,
 )
 from app.domain import (
+    EffectiveVisualBrief,
     CompositionPlan,
     LightingPlan,
     MotionSense,
     PhotographyPlan,
     StagingPlan,
-    VisualBrief,
-)
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
 )
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
             felt_experience="contained solemnity",
             narrative_composition="threshold moment centered on the exchange",
@@ -70,12 +65,7 @@ def effective_visual_brief():
                 stability="stable held frame"
             ),
             continuity_relationship="object carries continuity into next scene",
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -101,7 +91,7 @@ class CompositionDirectionTest(unittest.TestCase):
 
     def test_composition_direction_is_immutable(self):
         direction = CompositionDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         with self.assertRaises(
@@ -109,9 +99,9 @@ class CompositionDirectionTest(unittest.TestCase):
         ):
             direction.dominant_composition = "changed"
 
-    def test_resolves_composition_direction_from_effective_visual_brief(self):
+    def test_resolves_composition_direction_from_effective_brief(self):
         direction = CompositionDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(
@@ -136,7 +126,7 @@ class CompositionDirectionTest(unittest.TestCase):
         )
 
     def test_resolution_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
 
         first = CompositionDirector().resolve(
             effective
@@ -156,15 +146,11 @@ class CompositionDirectionTest(unittest.TestCase):
 
     def test_fingerprint_changes_when_effective_brief_changes(self):
         first = CompositionDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         changed = EffectiveVisualBrief(
-            visual_brief=VisualBrief(
                 visible_content="A different resolved scene.",
-                visual_priority="solitary figure"
-            ),
-            trace=VisualBriefTrace(),
-            conflicts=(),
+                visual_priority="solitary figure",
             fingerprint="changed-brief",
         )
         second = CompositionDirector().resolve(
@@ -178,7 +164,7 @@ class CompositionDirectionTest(unittest.TestCase):
 
     def test_trace_records_origin_transformation_and_justification(self):
         direction = CompositionDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         decisions = {
             decision.field: decision
@@ -186,20 +172,20 @@ class CompositionDirectionTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            direction.trace.source_visual_brief_fingerprint,
+            direction.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
         self.assertEqual(
             decisions["visual_reading_direction"].source_fields,
             (
-                "VisualBrief.composition.reading_direction",
-                "VisualBrief.attention_focus",
-                "VisualBrief.visual_reading",
+                "EffectiveVisualBrief.composition.reading_direction",
+                "EffectiveVisualBrief.attention_focus",
+                "EffectiveVisualBrief.visual_reading",
             )
         )
         self.assertEqual(
             decisions["visual_reading_direction"].transformation,
-            "select_and_combine_resolved_visual_brief_fields"
+            "select_and_combine_resolved_effective_brief_fields"
         )
         self.assertIn(
             "read visually",
@@ -208,14 +194,7 @@ class CompositionDirectionTest(unittest.TestCase):
 
     def test_empty_input_does_not_invent_composition_direction(self):
         direction = CompositionDirector().resolve(
-            EffectiveVisualBrief(
-                visual_brief=VisualBrief(
-                    visible_content=""
-                ),
-                trace=VisualBriefTrace(),
-                conflicts=(),
-                fingerprint="empty",
-            )
+            EffectiveVisualBrief(visible_content="", fingerprint="empty")
         )
 
         self.assertEqual(

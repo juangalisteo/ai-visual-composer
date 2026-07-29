@@ -10,24 +10,19 @@ from app.continuity_direction import (
     ContinuityDirector,
 )
 from app.domain import (
+    EffectiveVisualBrief,
     ColorPlan,
     CompositionPlan,
     LightingPlan,
     MotionSense,
     PhotographyPlan,
     StagingPlan,
-    VisualBrief,
     VisualStrategy,
 )
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
-)
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
             visual_priority="gesture before object",
             primary_subject="receiver",
@@ -80,12 +75,7 @@ def effective_visual_brief():
                 progression_or_suspension="suspended before consequence"
             ),
             continuity_relationship="object carries continuity into next scene",
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -111,7 +101,7 @@ class ContinuityDirectionTest(unittest.TestCase):
 
     def test_continuity_direction_is_immutable(self):
         direction = ContinuityDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         with self.assertRaises(
@@ -119,9 +109,9 @@ class ContinuityDirectionTest(unittest.TestCase):
         ):
             direction.visual_continuity = "changed"
 
-    def test_resolves_continuity_direction_from_effective_visual_brief(self):
+    def test_resolves_continuity_direction_from_effective_brief(self):
         direction = ContinuityDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(
@@ -146,7 +136,7 @@ class ContinuityDirectionTest(unittest.TestCase):
         )
 
     def test_resolution_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
 
         first = ContinuityDirector().resolve(
             effective
@@ -166,15 +156,11 @@ class ContinuityDirectionTest(unittest.TestCase):
 
     def test_fingerprint_changes_when_effective_brief_changes(self):
         first = ContinuityDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         changed = EffectiveVisualBrief(
-            visual_brief=VisualBrief(
                 visible_content="A different resolved scene.",
-                visual_continuity="new continuity cue"
-            ),
-            trace=VisualBriefTrace(),
-            conflicts=(),
+                visual_continuity="new continuity cue",
             fingerprint="changed-brief",
         )
         second = ContinuityDirector().resolve(
@@ -188,7 +174,7 @@ class ContinuityDirectionTest(unittest.TestCase):
 
     def test_trace_records_origin_transformation_and_justification(self):
         direction = ContinuityDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         decisions = {
             decision.field: decision
@@ -196,20 +182,20 @@ class ContinuityDirectionTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            direction.trace.source_visual_brief_fingerprint,
+            direction.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
         self.assertEqual(
             decisions["visual_transition"].source_fields,
             (
-                "VisualBrief.continuity_relationship",
-                "VisualBrief.color.emotional_evolution",
-                "VisualBrief.motion.progression_or_suspension",
+                "EffectiveVisualBrief.continuity_relationship",
+                "EffectiveVisualBrief.color.emotional_evolution",
+                "EffectiveVisualBrief.motion.progression_or_suspension",
             )
         )
         self.assertEqual(
             decisions["visual_transition"].transformation,
-            "select_and_combine_resolved_visual_brief_fields"
+            "select_and_combine_resolved_effective_brief_fields"
         )
         self.assertIn(
             "visual transition",
@@ -218,14 +204,7 @@ class ContinuityDirectionTest(unittest.TestCase):
 
     def test_empty_input_does_not_invent_continuity_direction(self):
         direction = ContinuityDirector().resolve(
-            EffectiveVisualBrief(
-                visual_brief=VisualBrief(
-                    visible_content=""
-                ),
-                trace=VisualBriefTrace(),
-                conflicts=(),
-                fingerprint="empty",
-            )
+            EffectiveVisualBrief(visible_content="", fingerprint="empty")
         )
 
         self.assertEqual(

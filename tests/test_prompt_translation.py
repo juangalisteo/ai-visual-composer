@@ -8,13 +8,13 @@ from app.color_direction import ColorDirection
 from app.composition_direction import CompositionDirection
 from app.continuity_direction import ContinuityDirection
 from app.domain import (
+    EffectiveVisualBrief,
     ColorPlan,
     CompositionPlan,
     LightingPlan,
     MotionSense,
     PhotographyPlan,
     StagingPlan,
-    VisualBrief,
     VisualStrategy,
 )
 from app.lighting_direction import LightingDirection
@@ -27,10 +27,6 @@ from app.prompt_translation import (
     BackendPromptTraceItem,
     PromptTranslator,
 )
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
-)
 from app.visual_intelligence import VisualSynthesisOrchestrator
 from tests.test_visual_synthesis_helpers import (
     analysis_and_reasoning,
@@ -38,9 +34,8 @@ from tests.test_visual_synthesis_helpers import (
 )
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
             visible_subject="person receiving an old key",
             visible_action="old key changes hands",
@@ -115,13 +110,8 @@ def effective_visual_brief():
                 latent_energy="contained",
                 rhythm="slow"
             ),
-            continuity_relationship="continues the threshold motif"
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
+            continuity_relationship="continues the threshold motif",
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -177,7 +167,7 @@ class PromptTranslationTest(unittest.TestCase):
 
     def test_backend_prompt_is_immutable(self):
         prompt = PromptTranslator().translate(
-            effective_visual_brief()
+            effective_brief()
         )
 
         with self.assertRaises(
@@ -214,12 +204,12 @@ class PromptTranslationTest(unittest.TestCase):
         )
         self.assertEqual(
             synthesis_result.brief.fingerprint,
-            prompt.trace.source_visual_brief_fingerprint,
+            prompt.trace.source_effective_brief_fingerprint,
         )
 
-    def test_translates_visual_brief_fields_into_backend_neutral_instructions(self):
+    def test_translates_effective_brief_fields_into_backend_neutral_instructions(self):
         prompt = PromptTranslator().translate(
-            effective_visual_brief()
+            effective_brief()
         )
         by_source = {
             instruction.source_field: instruction
@@ -227,45 +217,45 @@ class PromptTranslationTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            by_source["VisualBrief.visible_content"].value,
+            by_source["EffectiveVisualBrief.visible_content"].value,
             "A person receives an old key."
         )
         self.assertEqual(
-            by_source["VisualBrief.visible_subject"].value,
+            by_source["EffectiveVisualBrief.visible_subject"].value,
             "person receiving an old key"
         )
         self.assertEqual(
-            by_source["VisualBrief.key_objects"].value,
+            by_source["EffectiveVisualBrief.key_objects"].value,
             "old key | sealed letter"
         )
         self.assertEqual(
-            by_source["VisualBrief.visual_constraints"].category,
+            by_source["EffectiveVisualBrief.visual_constraints"].category,
             "constraints"
         )
         self.assertEqual(
-            by_source["VisualBrief.filmable_interpretation"].value,
+            by_source["EffectiveVisualBrief.filmable_interpretation"].value,
             "a key changes hands in silence"
         )
         self.assertNotIn(
-            "VisualBrief.visual_truth_status",
+            "EffectiveVisualBrief.visual_truth_status",
             by_source,
         )
         self.assertEqual(
-            by_source["VisualBrief.photography.point_of_view"].category,
+            by_source["EffectiveVisualBrief.photography.point_of_view"].category,
             "photography"
         )
         self.assertEqual(
-            by_source["VisualBrief.color.palette"].value,
+            by_source["EffectiveVisualBrief.color.palette"].value,
             "deep graphite | soft gold"
         )
         self.assertEqual(
-            by_source["VisualBrief.visual_strategy.visual_limits"].value,
+            by_source["EffectiveVisualBrief.visual_strategy.visual_limits"].value,
             "avoid spectacle"
         )
 
     def test_translation_preserves_meaning_without_new_decisions(self):
         prompt = PromptTranslator().translate(
-            effective_visual_brief()
+            effective_brief()
         )
         values = tuple(
             instruction.value
@@ -294,7 +284,7 @@ class PromptTranslationTest(unittest.TestCase):
         )
 
     def test_translation_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
 
         first = PromptTranslator().translate(
             effective
@@ -314,7 +304,7 @@ class PromptTranslationTest(unittest.TestCase):
 
     def test_cinematic_set_enriches_translation_when_provided(self):
         prompt = PromptTranslator().translate(
-            effective_visual_brief(),
+            effective_brief(),
             cinematic_direction_set=cinematic_direction_set(),
         )
         by_source = {
@@ -335,14 +325,14 @@ class PromptTranslationTest(unittest.TestCase):
             "muted amber"
         )
         self.assertIn(
-            "VisualBrief.visible_content",
+            "EffectiveVisualBrief.visible_content",
             by_source
         )
 
     def test_cinematic_translation_trace_keeps_direction_and_set_fingerprints(self):
         direction_set = cinematic_direction_set()
         prompt = PromptTranslator().translate(
-            effective_visual_brief(),
+            effective_brief(),
             cinematic_direction_set=direction_set,
         )
         trace = {
@@ -368,7 +358,7 @@ class PromptTranslationTest(unittest.TestCase):
         )
 
     def test_cinematic_translation_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
         direction_set = cinematic_direction_set()
 
         first = PromptTranslator().translate(
@@ -390,7 +380,7 @@ class PromptTranslationTest(unittest.TestCase):
         )
 
     def test_cinematic_translation_fingerprint_changes_when_direction_set_changes(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
         first = PromptTranslator().translate(
             effective,
             cinematic_direction_set=cinematic_direction_set(),
@@ -413,14 +403,10 @@ class PromptTranslationTest(unittest.TestCase):
 
     def test_fingerprint_changes_when_effective_brief_changes(self):
         first = PromptTranslator().translate(
-            effective_visual_brief()
+            effective_brief()
         )
         changed = EffectiveVisualBrief(
-            visual_brief=VisualBrief(
-                visible_content="A different visible event."
-            ),
-            trace=VisualBriefTrace(),
-            conflicts=(),
+                visible_content="A different visible event.",
             fingerprint="changed-brief",
         )
         second = PromptTranslator().translate(
@@ -434,7 +420,7 @@ class PromptTranslationTest(unittest.TestCase):
 
     def test_trace_records_source_fields_and_transformations(self):
         prompt = PromptTranslator().translate(
-            effective_visual_brief()
+            effective_brief()
         )
         trace = {
             item.instruction_id: item
@@ -442,13 +428,13 @@ class PromptTranslationTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            prompt.trace.source_visual_brief_fingerprint,
+            prompt.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
         self.assertEqual(
             trace["visible_content"].source_fields,
             (
-                "VisualBrief.visible_content",
+                "EffectiveVisualBrief.visible_content",
             )
         )
         self.assertEqual(

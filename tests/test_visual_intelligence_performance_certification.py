@@ -9,7 +9,6 @@ from dataclasses import fields, is_dataclass
 from app.backend_adapters import ComfyUIAdapter
 from app.cinematic_direction import CinematicDirectionOrchestrator
 from app.domain import StoryboardScene
-from app.domain.adapters import RuntimeCognitiveAdapter
 from app.modules.images.image_builder import ImageBuilder
 from app.prompt_translation import PromptTranslator
 from app.visual_intelligence import (
@@ -211,12 +210,6 @@ def _measure_complete_pipeline(
 def _measure_stage_breakdown(
     scene: StoryboardScene
 ) -> dict:
-    transitional_visual_brief = (
-        RuntimeCognitiveAdapter.from_storyboard_scene(
-            scene,
-            orientation="horizontal"
-        ).visual_brief
-    )
     analysis = _measure(
         lambda: VisualAnalysisOrchestrator().analyze(
             scene
@@ -238,9 +231,6 @@ def _measure_stage_breakdown(
             analysis["result"],
             reasoning["result"],
             conflict["result"],
-            visual_brief=transitional_visual_brief,
-            source_id=f"scene_{scene.scene_number:03d}",
-            source_version="image-component-runtime-v1",
         )
     )
     trace = _measure(
@@ -255,9 +245,6 @@ def _measure_stage_breakdown(
         lambda: VisualSynthesisOrchestrator().synthesize(
             analysis["result"],
             reasoning["result"],
-            visual_brief=transitional_visual_brief,
-            source_id=f"scene_{scene.scene_number:03d}",
-            source_version="image-component-runtime-v1",
         )
     )
     direction_set = _measure(
@@ -294,7 +281,7 @@ def _measure_stage_breakdown(
         "conflict_resolution": _stage_summary(
             conflict
         ),
-        "effective_visual_brief_synthesis": _stage_summary(
+        "effective_brief_synthesis": _stage_summary(
             brief
         ),
         "visual_intelligence_trace": _stage_summary(
@@ -615,7 +602,7 @@ class VisualIntelligencePerformanceCertificationTest(unittest.TestCase):
             "visual_analysis",
             "visual_reasoning",
             "conflict_resolution",
-            "effective_visual_brief_synthesis",
+            "effective_brief_synthesis",
             "visual_intelligence_trace",
             "visual_synthesis_orchestrator",
             "cinematic_direction",

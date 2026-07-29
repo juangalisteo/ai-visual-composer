@@ -11,7 +11,7 @@ class MovementDecisionTrace:
 
 @dataclass(frozen=True)
 class MovementDirectionTrace:
-    source_visual_brief_fingerprint: str = ""
+    source_effective_brief_fingerprint: str = ""
     decisions: tuple[MovementDecisionTrace, ...] = field(default_factory=tuple)
 
 
@@ -34,6 +34,4 @@ class MovementDirection:
     movement_continuity: str = ""
     spatial_coherence: str = ""
     trace: MovementDirectionTrace = field(default_factory=MovementDirectionTrace)
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""

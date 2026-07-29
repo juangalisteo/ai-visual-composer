@@ -38,7 +38,9 @@ The Image Component runtime follows this flow:
 ```text
 Storyboard scene
   -> StoryboardSceneAdapter
-  -> RuntimeCognitiveAdapter
+  -> VisualAnalysisResult
+  -> VisualReasoningResult
+  -> VisualSynthesisResult
   -> EffectiveVisualBrief
   -> CinematicDirectionOrchestrator
   -> CinematicDirectionSet

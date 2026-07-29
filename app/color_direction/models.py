@@ -11,7 +11,7 @@ class ColorDecisionTrace:
 
 @dataclass(frozen=True)
 class ColorDirectionTrace:
-    source_visual_brief_fingerprint: str = ""
+    source_effective_brief_fingerprint: str = ""
     decisions: tuple[ColorDecisionTrace, ...] = field(default_factory=tuple)
 
 
@@ -34,6 +34,4 @@ class ColorDirection:
     stylization: str = ""
     visual_coherence: str = ""
     trace: ColorDirectionTrace = field(default_factory=ColorDirectionTrace)
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""

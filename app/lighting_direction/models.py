@@ -11,7 +11,7 @@ class LightingDecisionTrace:
 
 @dataclass(frozen=True)
 class LightingDirectionTrace:
-    source_visual_brief_fingerprint: str = ""
+    source_effective_brief_fingerprint: str = ""
     decisions: tuple[LightingDecisionTrace, ...] = field(default_factory=tuple)
 
 
@@ -34,6 +34,4 @@ class LightingDirection:
     luminous_hierarchy: str = ""
     spatial_feeling: str = ""
     trace: LightingDirectionTrace = field(default_factory=LightingDirectionTrace)
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""

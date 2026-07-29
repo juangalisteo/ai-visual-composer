@@ -268,7 +268,9 @@ Current image flow:
 ```text
 Visual Truth 2.0 storyboard scene
   -> StoryboardSceneAdapter
-  -> RuntimeCognitiveAdapter
+  -> VisualAnalysisResult
+  -> VisualReasoningResult
+  -> VisualSynthesisResult
   -> EffectiveVisualBrief
   -> CinematicDirectionOrchestrator
   -> CinematicDirectionSet
@@ -285,7 +287,7 @@ Visual Truth 2.0 storyboard scene
 Responsibilities:
 
 - produce storyboard scenes using Visual Truth 2.0 as the primary visual contract;
-- adapt the current storyboard scene into the domain contracts required by the runtime;
+- analyze, reason, and synthesize Visual Truth through the canonical Visual Intelligence contracts;
 - resolve cinematic direction deterministically;
 - translate the effective brief and cinematic directions into `BackendPrompt`;
 - adapt `BackendPrompt` to the configured backend payload;

@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Retired transitional Visual Direction and Runtime Cognitive compatibility components; the Image Runtime now proceeds from `StoryboardSceneAdapter` through Visual Analysis, Visual Reasoning, Visual Synthesis, `EffectiveVisualBrief`, cinematic direction, prompt translation, and backend adaptation.
 - Certified the Visual Intelligence performance baseline with deterministic timing, memory, object, contract, and fingerprint measurements.
 - Certified the Visual Intelligence runtime pipeline with end-to-end determinism, traceability, boundary, duplicate-contract, and inverse-adapter guards.
 - Integrated Visual Intelligence into the image runtime so `ImageBuilder` now builds and propagates `VisualSynthesisResult` before cinematic direction, prompt translation, and backend adaptation.
@@ -23,7 +24,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 - Extended `NarrativeEvent` with passive Visual Truth context fields for environment, time, objects, spatial relationships, continuity, constraints, status, and source model.
 - Migrated storyboard generation to Visual Truth 2.0 as the primary visual source.
 - Adopted the private AVCES v1.0 engineering standard for repository governance.
-- Foundation completed: public UTF-8 verification, official asset policy, private AVCES policy, and planned RuntimeCognitiveAdapter 2.0 status.
+- Foundation completed: public UTF-8 verification, official asset policy, and private AVCES policy.
 - Certified final repository identity and documentation compliance with private AVCES v1.0 governance.
 - Defined the private development environment policy.
 - Updated public documentation to keep `CODEX/` outside the public repository and official releases.

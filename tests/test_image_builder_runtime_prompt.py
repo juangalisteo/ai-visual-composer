@@ -84,7 +84,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 )
             )
             self.assertIn(
-                "A quiet dawn over a valley",
+                "wide valley under first morning light",
                 manifest[0]["prompt"]
             )
             self.assertIn(

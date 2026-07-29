@@ -89,7 +89,7 @@ class RecordingCinematicOrchestrator:
     def __init__(
         self
     ):
-        self.effective_visual_briefs = []
+        self.effective_briefs = []
         self.direction_set = create_cinematic_direction_set(
             photography=PhotographyDirection(
                 dominant_photographic_language="observational intimacy",
@@ -99,10 +99,10 @@ class RecordingCinematicOrchestrator:
 
     def resolve(
         self,
-        effective_visual_brief
+        effective_brief
     ):
-        self.effective_visual_briefs.append(
-            effective_visual_brief
+        self.effective_briefs.append(
+            effective_brief
         )
         return self.direction_set
 
@@ -116,7 +116,7 @@ class RecordingPromptTranslator:
 
     def translate(
         self,
-        effective_visual_brief,
+        effective_brief,
         cinematic_direction_set=None,
     ):
         raise AssertionError(
@@ -137,12 +137,10 @@ class RecordingPromptTranslator:
         return BackendPrompt(
             instructions=(),
             trace=BackendPromptTrace(
-                source_visual_brief_fingerprint=(
+                source_effective_brief_fingerprint=(
                     visual_synthesis_result.brief.fingerprint
                 )
             ),
-            source_id=visual_synthesis_result.brief.source_id,
-            source_version=visual_synthesis_result.brief.source_version,
             fingerprint="backend-prompt-fingerprint"
         )
 
@@ -236,7 +234,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
             self.assertEqual(
                 1,
-                len(orchestrator.effective_visual_briefs)
+                len(orchestrator.effective_briefs)
             )
             self.assertEqual(
                 1,
@@ -474,7 +472,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         self.assertEqual(
             1,
             len(
-                orchestrator.effective_visual_briefs
+                orchestrator.effective_briefs
             )
         )
         self.assertEqual(
@@ -503,8 +501,8 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             orchestrator.direction_set
         )
         self.assertEqual(
-            "A quiet dawn over a valley",
-            visual_synthesis_result.brief.visual_brief.visible_content
+            "quiet valley | dawn light spreads slowly | mountain landscape | dawn",
+            visual_synthesis_result.brief.visible_content
         )
         self.assertTrue(
             visual_synthesis_result.trace.fingerprint
@@ -631,14 +629,14 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         )
 
         self.assertEqual(
-            "una llave cambia de manos en silencio",
-            synthesis_result.brief.visual_brief.visible_content,
+            "investigadora con abrigo gris | recibe una llave antigua | archivo subterraneo | noche",
+            synthesis_result.brief.visible_content,
         )
         self.assertEqual(
             (
                 "llave antigua",
             ),
-            synthesis_result.brief.visual_brief.key_objects,
+            synthesis_result.brief.key_objects,
         )
         sources = {
             evidence.source.field
@@ -656,11 +654,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         self.assertTrue(
             synthesis_result.trace.fingerprint,
         )
-        self.assertEqual(
-            "scene_009",
-            synthesis_result.brief.source_id,
-        )
-
     def test_runtime_visual_synthesis_result_fingerprint_is_deterministic(self):
         builder = ImageBuilder()
         storyboard_scene = StoryboardScene(

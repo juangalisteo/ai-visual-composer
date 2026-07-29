@@ -30,7 +30,7 @@ def synthesize_brief(scene):
 
 class EffectiveVisualBriefSynthesizerTest(unittest.TestCase):
 
-    def test_synthesizes_effective_visual_brief_without_losing_information(self):
+    def test_synthesizes_effective_brief_without_losing_information(self):
         brief = synthesize_brief(
             complete_scene()
         )

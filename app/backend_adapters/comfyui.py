@@ -51,15 +51,11 @@ class ComfyUIAdapter:
             provider=self.provider,
             prompt=prompt,
             trace=trace,
-            source_id=backend_prompt.source_id,
-            source_version=backend_prompt.source_version,
         )
         return ComfyUIPayload(
             provider=payload.provider,
             prompt=payload.prompt,
             trace=payload.trace,
-            source_id=payload.source_id,
-            source_version=payload.source_version,
             fingerprint=self._fingerprint(
                 payload
             ),
@@ -75,8 +71,6 @@ class ComfyUIAdapter:
             "trace": _canonical_mapping(
                 payload.trace
             ),
-            "source_id": payload.source_id,
-            "source_version": payload.source_version,
         }
         return hashlib.sha256(
             json.dumps(

@@ -9,15 +9,15 @@ from app.photography_direction.models import (
     PhotographyDirection,
     PhotographyDirectionTrace,
 )
-from app.visual_direction import EffectiveVisualBrief
+from app.domain import EffectiveVisualBrief
 
 
 class PhotographyDirector:
     def resolve(
         self,
-        effective_visual_brief: EffectiveVisualBrief
+        effective_brief: EffectiveVisualBrief
     ) -> PhotographyDirection:
-        brief = effective_visual_brief.visual_brief
+        brief = effective_brief
         decisions: list[PhotographyDecisionTrace] = []
         fields = {
             "dominant_photographic_language": self._decide(
@@ -314,7 +314,7 @@ class PhotographyDirector:
             ),
         }
         trace = PhotographyDirectionTrace(
-            source_visual_brief_fingerprint=effective_visual_brief.fingerprint,
+            source_effective_brief_fingerprint=effective_brief.fingerprint,
             decisions=tuple(
                 decisions
             ),
@@ -322,14 +322,10 @@ class PhotographyDirector:
         direction = PhotographyDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
         )
         return PhotographyDirection(
             **fields,
             trace=trace,
-            source_id=direction.source_id,
-            source_version=direction.source_version,
             fingerprint=self._fingerprint(
                 direction
             ),
@@ -368,15 +364,15 @@ class PhotographyDirector:
             PhotographyDecisionTrace(
                 field=field,
                 source_fields=tuple(
-                    f"VisualBrief.{item[0]}"
+                    f"EffectiveVisualBrief.{item[0]}"
                     for item in selected
                 ),
                 transformation=(
-                    "select_and_combine_resolved_visual_brief_fields"
+                    "select_and_combine_resolved_effective_brief_fields"
                     if len(
                         selected
                     ) > 1
-                    else "select_resolved_visual_brief_field"
+                    else "select_resolved_effective_brief_field"
                 ),
                 justification=justification,
             )
@@ -405,8 +401,6 @@ class PhotographyDirector:
                     dynamism=direction.dynamism,
                     contemplation=direction.contemplation,
                     trace=direction.trace,
-                    source_id=direction.source_id,
-                    source_version=direction.source_version,
                 )
             )
         }

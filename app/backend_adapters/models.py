@@ -20,6 +20,4 @@ class ComfyUIPayload:
     provider: str
     prompt: str
     trace: BackendAdapterTrace
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""

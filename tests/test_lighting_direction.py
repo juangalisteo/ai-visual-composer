@@ -4,12 +4,12 @@ from dataclasses import FrozenInstanceError, is_dataclass
 from pathlib import Path
 
 from app.domain import (
+    EffectiveVisualBrief,
     ColorPlan,
     CompositionPlan,
     LightingPlan,
     PhotographyPlan,
     StagingPlan,
-    VisualBrief,
     VisualStrategy,
 )
 from app.lighting_direction import (
@@ -18,15 +18,10 @@ from app.lighting_direction import (
     LightingDirectionTrace,
     LightingDirector,
 )
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
-)
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
             felt_experience="contained solemnity",
             visual_priority="consequence over object",
@@ -75,12 +70,7 @@ def effective_visual_brief():
                 chromatic_contrast="cool shadows",
                 harmony="soft gold harmony"
             ),
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -106,7 +96,7 @@ class LightingDirectionTest(unittest.TestCase):
 
     def test_lighting_direction_is_immutable(self):
         direction = LightingDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         with self.assertRaises(
@@ -114,9 +104,9 @@ class LightingDirectionTest(unittest.TestCase):
         ):
             direction.dominant_lighting = "changed"
 
-    def test_resolves_lighting_direction_from_effective_visual_brief(self):
+    def test_resolves_lighting_direction_from_effective_brief(self):
         direction = LightingDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(
@@ -141,7 +131,7 @@ class LightingDirectionTest(unittest.TestCase):
         )
 
     def test_resolution_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
 
         first = LightingDirector().resolve(
             effective
@@ -161,15 +151,11 @@ class LightingDirectionTest(unittest.TestCase):
 
     def test_fingerprint_changes_when_effective_brief_changes(self):
         first = LightingDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         changed = EffectiveVisualBrief(
-            visual_brief=VisualBrief(
                 visible_content="A different resolved scene.",
-                felt_experience="quiet dread"
-            ),
-            trace=VisualBriefTrace(),
-            conflicts=(),
+                felt_experience="quiet dread",
             fingerprint="changed-brief",
         )
         second = LightingDirector().resolve(
@@ -183,7 +169,7 @@ class LightingDirectionTest(unittest.TestCase):
 
     def test_trace_records_origin_transformation_and_justification(self):
         direction = LightingDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         decisions = {
             decision.field: decision
@@ -191,19 +177,19 @@ class LightingDirectionTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            direction.trace.source_visual_brief_fingerprint,
+            direction.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
         self.assertEqual(
             decisions["conceptual_light_direction"].source_fields,
             (
-                "VisualBrief.lighting.direction",
-                "VisualBrief.attention_focus",
+                "EffectiveVisualBrief.lighting.direction",
+                "EffectiveVisualBrief.attention_focus",
             )
         )
         self.assertEqual(
             decisions["conceptual_light_direction"].transformation,
-            "select_and_combine_resolved_visual_brief_fields"
+            "select_and_combine_resolved_effective_brief_fields"
         )
         self.assertIn(
             "conceptual light orientation",
@@ -212,14 +198,7 @@ class LightingDirectionTest(unittest.TestCase):
 
     def test_empty_input_does_not_invent_lighting_direction(self):
         direction = LightingDirector().resolve(
-            EffectiveVisualBrief(
-                visual_brief=VisualBrief(
-                    visible_content=""
-                ),
-                trace=VisualBriefTrace(),
-                conflicts=(),
-                fingerprint="empty",
-            )
+            EffectiveVisualBrief(visible_content="", fingerprint="empty")
         )
 
         self.assertEqual(

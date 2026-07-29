@@ -4,12 +4,12 @@ from dataclasses import FrozenInstanceError, is_dataclass
 from pathlib import Path
 
 from app.domain import (
+    EffectiveVisualBrief,
     CompositionPlan,
     LightingPlan,
     MotionSense,
     PhotographyPlan,
     StagingPlan,
-    VisualBrief,
     VisualStrategy,
 )
 from app.movement_direction import (
@@ -18,15 +18,10 @@ from app.movement_direction import (
     MovementDirectionTrace,
     MovementDirector,
 )
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
-)
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
             visible_content="A person receives an old key.",
             felt_experience="contained solemnity",
             visual_priority="gesture before object",
@@ -74,12 +69,7 @@ def effective_visual_brief():
                 visual_breathing="quiet breathing space"
             ),
             continuity_relationship="object carries continuity into next scene",
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -105,7 +95,7 @@ class MovementDirectionTest(unittest.TestCase):
 
     def test_movement_direction_is_immutable(self):
         direction = MovementDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         with self.assertRaises(
@@ -113,9 +103,9 @@ class MovementDirectionTest(unittest.TestCase):
         ):
             direction.dominant_movement = "changed"
 
-    def test_resolves_movement_direction_from_effective_visual_brief(self):
+    def test_resolves_movement_direction_from_effective_brief(self):
         direction = MovementDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(
@@ -140,7 +130,7 @@ class MovementDirectionTest(unittest.TestCase):
         )
 
     def test_resolution_is_deterministic(self):
-        effective = effective_visual_brief()
+        effective = effective_brief()
 
         first = MovementDirector().resolve(
             effective
@@ -160,15 +150,11 @@ class MovementDirectionTest(unittest.TestCase):
 
     def test_fingerprint_changes_when_effective_brief_changes(self):
         first = MovementDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         changed = EffectiveVisualBrief(
-            visual_brief=VisualBrief(
                 visible_content="A different resolved scene.",
-                scene_rhythm="accelerating rhythm"
-            ),
-            trace=VisualBriefTrace(),
-            conflicts=(),
+                scene_rhythm="accelerating rhythm",
             fingerprint="changed-brief",
         )
         second = MovementDirector().resolve(
@@ -182,7 +168,7 @@ class MovementDirectionTest(unittest.TestCase):
 
     def test_trace_records_origin_transformation_and_justification(self):
         direction = MovementDirector().resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         decisions = {
             decision.field: decision
@@ -190,20 +176,20 @@ class MovementDirectionTest(unittest.TestCase):
         }
 
         self.assertEqual(
-            direction.trace.source_visual_brief_fingerprint,
+            direction.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
         self.assertEqual(
             decisions["narrative_movement_direction"].source_fields,
             (
-                "VisualBrief.motion.direction",
-                "VisualBrief.visual_reading",
-                "VisualBrief.dominant_visual_intention",
+                "EffectiveVisualBrief.motion.direction",
+                "EffectiveVisualBrief.visual_reading",
+                "EffectiveVisualBrief.dominant_visual_intention",
             )
         )
         self.assertEqual(
             decisions["narrative_movement_direction"].transformation,
-            "select_and_combine_resolved_visual_brief_fields"
+            "select_and_combine_resolved_effective_brief_fields"
         )
         self.assertIn(
             "without adding action",
@@ -212,14 +198,7 @@ class MovementDirectionTest(unittest.TestCase):
 
     def test_empty_input_does_not_invent_movement_direction(self):
         direction = MovementDirector().resolve(
-            EffectiveVisualBrief(
-                visual_brief=VisualBrief(
-                    visible_content=""
-                ),
-                trace=VisualBriefTrace(),
-                conflicts=(),
-                fingerprint="empty",
-            )
+            EffectiveVisualBrief(visible_content="", fingerprint="empty")
         )
 
         self.assertEqual(

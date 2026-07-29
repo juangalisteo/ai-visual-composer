@@ -9,15 +9,15 @@ from app.color_direction.models import (
     ColorDirection,
     ColorDirectionTrace,
 )
-from app.visual_direction import EffectiveVisualBrief
+from app.domain import EffectiveVisualBrief
 
 
 class ColorDirector:
     def resolve(
         self,
-        effective_visual_brief: EffectiveVisualBrief
+        effective_brief: EffectiveVisualBrief
     ) -> ColorDirection:
-        brief = effective_visual_brief.visual_brief
+        brief = effective_brief
         decisions: list[ColorDecisionTrace] = []
         fields = {
             "dominant_palette": self._decide(
@@ -399,7 +399,7 @@ class ColorDirector:
             ),
         }
         trace = ColorDirectionTrace(
-            source_visual_brief_fingerprint=effective_visual_brief.fingerprint,
+            source_effective_brief_fingerprint=effective_brief.fingerprint,
             decisions=tuple(
                 decisions
             ),
@@ -407,14 +407,10 @@ class ColorDirector:
         direction = ColorDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
         )
         return ColorDirection(
             **fields,
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
             fingerprint=self._fingerprint(
                 direction
             ),
@@ -454,14 +450,14 @@ class ColorDirector:
             )
         )
         source_fields = tuple(
-            f"VisualBrief.{name}"
+            f"EffectiveVisualBrief.{name}"
             for name, _ in selected
         )
-        transformation = "select_resolved_visual_brief_field"
+        transformation = "select_resolved_effective_brief_field"
         if len(
             unique_values
         ) > 1:
-            transformation = "select_and_combine_resolved_visual_brief_fields"
+            transformation = "select_and_combine_resolved_effective_brief_fields"
         decisions.append(
             ColorDecisionTrace(
                 field=field,
@@ -498,8 +494,6 @@ class ColorDirector:
                     stylization=direction.stylization,
                     visual_coherence=direction.visual_coherence,
                     trace=direction.trace,
-                    source_id=direction.source_id,
-                    source_version=direction.source_version,
                 )
             )
         }

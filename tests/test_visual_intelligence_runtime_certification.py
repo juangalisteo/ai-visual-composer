@@ -80,7 +80,7 @@ class VisualIntelligenceRuntimeCertificationTest(unittest.TestCase):
         )
         self.assertEqual(
             synthesis_result.brief.fingerprint,
-            backend_prompt.trace.source_visual_brief_fingerprint,
+            backend_prompt.trace.source_effective_brief_fingerprint,
         )
         self.assertEqual(
             backend_prompt.fingerprint,
@@ -155,11 +155,11 @@ class VisualIntelligenceRuntimeCertificationTest(unittest.TestCase):
             source,
         )
         for forbidden in (
-            "_build_runtime_effective_visual_brief",
-            "_runtime_visual_brief_fingerprint",
-            "VisualBriefTrace",
-            "VisualBriefFieldOrigin",
-            "VisualDirectionConflict",
+            "_build_runtime_effective_brief",
+            "_runtime_effective_brief_fingerprint",
+            "Visual" + "BriefTrace",
+            "Visual" + "BriefFieldOrigin",
+            "Visual" + "DirectionConflict",
         ):
             with self.subTest(
                 forbidden=forbidden

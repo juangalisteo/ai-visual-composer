@@ -95,11 +95,7 @@ def _component_trace(
     return CinematicDirectionComponentTrace(
         name=name,
         present=True,
-        version=getattr(
-            direction,
-            "source_version",
-            ""
-        ),
+        version="",
         fingerprint=getattr(
             direction,
             "fingerprint",

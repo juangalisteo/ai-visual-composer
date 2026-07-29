@@ -65,7 +65,7 @@ class PromptTranslator:
             raise TypeError(
                 "PromptTranslator expects a VisualSynthesisResult."
             )
-        return self._translate_effective_visual_brief(
+        return self._translate_effective_brief(
             visual_synthesis_result.brief,
             cinematic_direction_set=cinematic_direction_set,
             source_contract="VisualSynthesisResult",
@@ -73,60 +73,37 @@ class PromptTranslator:
 
     def translate(
         self,
-        effective_visual_brief: EffectiveVisualBrief,
+        effective_brief: EffectiveVisualBrief,
         cinematic_direction_set: CinematicDirectionSet | None = None,
     ) -> BackendPrompt:
-        return self._translate_effective_visual_brief(
-            effective_visual_brief,
+        return self._translate_effective_brief(
+            effective_brief,
             cinematic_direction_set=cinematic_direction_set,
             source_contract="EffectiveVisualBrief",
         )
 
-    def _translate_effective_visual_brief(
+    def _translate_effective_brief(
         self,
-        effective_visual_brief: EffectiveVisualBrief,
+        effective_brief: EffectiveVisualBrief,
         cinematic_direction_set: CinematicDirectionSet | None = None,
         source_contract: str = "EffectiveVisualBrief",
     ) -> BackendPrompt:
         if not isinstance(
-            effective_visual_brief,
+            effective_brief,
             EffectiveVisualBrief
         ):
             raise TypeError(
                 "PromptTranslator expects an EffectiveVisualBrief."
             )
-        visual_brief = effective_visual_brief.visual_brief
         instructions: list[BackendPromptInstruction] = []
         trace_items: list[BackendPromptTraceItem] = []
 
-        if visual_brief is None:
-            self._collect_effective_visual_brief_instructions(
-                instructions,
-                trace_items,
-                effective_visual_brief,
-                source_contract,
-            )
-        else:
-            for field in fields(
-                visual_brief
-            ):
-                source_field = field.name
-                value = getattr(
-                    visual_brief,
-                    source_field
-                )
-                self._collect_instructions(
-                    instructions,
-                    trace_items,
-                    source_field,
-                    value
-                )
-            self._collect_canonical_effective_visual_brief_instructions(
-                instructions,
-                trace_items,
-                effective_visual_brief,
-                source_contract,
-            )
+        self._collect_effective_brief_instructions(
+            instructions,
+            trace_items,
+            effective_brief,
+            source_contract,
+        )
         if cinematic_direction_set is not None:
             self._collect_cinematic_instructions(
                 instructions,
@@ -135,7 +112,7 @@ class PromptTranslator:
             )
 
         trace = BackendPromptTrace(
-            source_visual_brief_fingerprint=effective_visual_brief.fingerprint,
+            source_effective_brief_fingerprint=effective_brief.fingerprint,
             items=tuple(
                 trace_items
             ),
@@ -145,73 +122,43 @@ class PromptTranslator:
                 instructions
             ),
             trace=trace,
-            source_id=effective_visual_brief.source_id,
-            source_version=effective_visual_brief.source_version,
         )
         return BackendPrompt(
             instructions=prompt.instructions,
             trace=prompt.trace,
-            source_id=prompt.source_id,
-            source_version=prompt.source_version,
             fingerprint=self._fingerprint(
                 prompt
             ),
         )
 
-    def _collect_effective_visual_brief_instructions(
+    def _collect_effective_brief_instructions(
         self,
         instructions: list[BackendPromptInstruction],
         trace_items: list[BackendPromptTraceItem],
-        effective_visual_brief: EffectiveVisualBrief,
+        effective_brief: EffectiveVisualBrief,
         source_contract: str,
     ) -> None:
         for field in fields(
-            effective_visual_brief
+            effective_brief
         ):
             if field.name in NON_OPERATIONAL_EFFECTIVE_FIELDS:
                 continue
             source_field = field.name
             value = getattr(
-                effective_visual_brief,
+                effective_brief,
                 source_field
             )
-            self._add_instruction(
+            source_prefix = (
+                f"{source_contract}.brief"
+                if source_contract == "VisualSynthesisResult"
+                else source_contract
+            )
+            self._collect_instructions(
                 instructions,
                 trace_items,
-                f"{source_contract}.brief.{source_field}",
+                source_field,
                 value,
-                source_prefix=""
-            )
-
-    def _collect_canonical_effective_visual_brief_instructions(
-        self,
-        instructions: list[BackendPromptInstruction],
-        trace_items: list[BackendPromptTraceItem],
-        effective_visual_brief: EffectiveVisualBrief,
-        source_contract: str,
-    ) -> None:
-        for source_field in (
-            "primary_identity",
-            "secondary_identities",
-            "primary_actions",
-            "secondary_actions",
-            "narrative_objectives",
-            "visual_priorities",
-            "semantic_hierarchy",
-            "restrictions",
-            "subtext",
-            "emotional_function",
-        ):
-            value = getattr(
-                effective_visual_brief,
-                source_field
-            )
-            self._add_instruction(
-                instructions,
-                trace_items,
-                f"{source_contract}.brief.{source_field}",
-                value,
-                source_prefix=""
+                source_prefix=source_prefix,
             )
 
     def _collect_instructions(
@@ -219,9 +166,12 @@ class PromptTranslator:
         instructions: list[BackendPromptInstruction],
         trace_items: list[BackendPromptTraceItem],
         source_field: str,
-        value: Any
+        value: Any,
+        source_prefix: str = "VisualBrief",
     ) -> None:
-        if source_field in NON_OPERATIONAL_FIELDS:
+        if _field_name(
+            source_field
+        ) in NON_OPERATIONAL_FIELDS:
             return
         if value is None:
             return
@@ -236,18 +186,20 @@ class PromptTranslator:
                     value,
                     nested_field.name
                 )
-                self._add_instruction(
+                self._collect_instructions(
                     instructions,
                     trace_items,
                     nested_source,
-                    nested_value
+                    nested_value,
+                    source_prefix=source_prefix,
                 )
             return
         self._add_instruction(
             instructions,
             trace_items,
             source_field,
-            value
+            value,
+            source_prefix=source_prefix,
         )
 
     def _add_instruction(
@@ -315,8 +267,6 @@ class PromptTranslator:
             ):
                 if field.name in (
                     "trace",
-                    "source_id",
-                    "source_version",
                     "fingerprint",
                 ):
                     continue
@@ -382,8 +332,6 @@ class PromptTranslator:
             "trace": _canonical_mapping(
                 prompt.trace
             ),
-            "source_id": prompt.source_id,
-            "source_version": prompt.source_version,
         }
         return hashlib.sha256(
             json.dumps(
@@ -404,6 +352,13 @@ def _normalize_value(
 ) -> tuple[str, str]:
     if isinstance(
         value,
+        Enum
+    ):
+        return _clean(
+            value.value
+        ), "normalize_enum"
+    if isinstance(
+        value,
         (
             tuple,
             list,
@@ -416,13 +371,20 @@ def _normalize_value(
                         item
                     )
                     for item in value
-                    if _clean(
+                    if _is_scalar(
+                        item
+                    )
+                    and _clean(
                         item
                     )
                 )
             )
         )
         return normalized, "normalize_sequence"
+    if not _is_scalar(
+        value
+    ):
+        return "", "skip_non_scalar"
     return _clean(
         value
     ), "normalize_text"
@@ -484,6 +446,21 @@ def _dedupe(
     )
 
 
+def _is_scalar(
+    value: Any
+) -> bool:
+    return isinstance(
+        value,
+        (
+            str,
+            int,
+            float,
+            bool,
+            Enum,
+        )
+    )
+
+
 def _canonical_mapping(
     value: Any
 ) -> Any:
@@ -532,6 +509,11 @@ def _canonical_mapping(
 
 
 NON_OPERATIONAL_FIELDS = {
+    "conflicts",
+    "evidences",
+    "findings",
+    "fingerprint",
+    "trace",
     "visual_truth_status",
 }
 
@@ -540,8 +522,14 @@ NON_OPERATIONAL_EFFECTIVE_FIELDS = {
     "findings",
     "evidences",
     "trace",
-    "visual_brief",
-    "source_id",
-    "source_version",
     "fingerprint",
 }
+
+
+def _field_name(
+    source_field: str
+) -> str:
+    return source_field.rsplit(
+        ".",
+        1
+    )[-1]

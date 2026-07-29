@@ -21,32 +21,26 @@ def direction_fixtures():
     return {
         "photography": PhotographyDirection(
             dominant_photographic_language="observational",
-            source_version="photography-v1",
             fingerprint="photography-fingerprint"
         ),
         "lighting": LightingDirection(
             dominant_lighting="motivated soft source",
-            source_version="lighting-v1",
             fingerprint="lighting-fingerprint"
         ),
         "composition": CompositionDirection(
             dominant_composition="hands first",
-            source_version="composition-v1",
             fingerprint="composition-fingerprint"
         ),
         "color": ColorDirection(
             dominant_palette="muted amber",
-            source_version="color-v1",
             fingerprint="color-fingerprint"
         ),
         "movement": MovementDirection(
             dominant_movement="inward movement",
-            source_version="movement-v1",
             fingerprint="movement-fingerprint"
         ),
         "continuity": ContinuityDirection(
             visual_continuity="recurring object",
-            source_version="continuity-v1",
             fingerprint="continuity-fingerprint"
         ),
     }
@@ -140,7 +134,7 @@ class CinematicDirectionSetTest(unittest.TestCase):
         )
         self.assertEqual(
             components["photography"].version,
-            "photography-v1"
+            ""
         )
         self.assertEqual(
             components["photography"].fingerprint,
@@ -148,7 +142,7 @@ class CinematicDirectionSetTest(unittest.TestCase):
         )
         self.assertEqual(
             components["continuity"].version,
-            "continuity-v1"
+            ""
         )
         self.assertEqual(
             components["continuity"].fingerprint,

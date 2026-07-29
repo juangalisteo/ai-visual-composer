@@ -10,26 +10,16 @@ from app.cinematic_direction import (
 from app.color_direction import ColorDirection
 from app.composition_direction import CompositionDirection
 from app.continuity_direction import ContinuityDirection
-from app.domain import VisualBrief
+from app.domain import EffectiveVisualBrief
 from app.lighting_direction import LightingDirection
 from app.movement_direction import MovementDirection
 from app.photography_direction import PhotographyDirection
-from app.visual_direction import (
-    EffectiveVisualBrief,
-    VisualBriefTrace,
-)
 
 
-def effective_visual_brief():
+def effective_brief():
     return EffectiveVisualBrief(
-        visual_brief=VisualBrief(
-            visible_content="A person receives an old key."
-        ),
-        trace=VisualBriefTrace(),
-        conflicts=(),
+        visible_content="A person receives an old key.",
         fingerprint="visual-brief-fingerprint",
-        source_id="scene_001",
-        source_version="1.0.0",
     )
 
 
@@ -37,32 +27,26 @@ def direction_fixtures():
     return {
         "photography": PhotographyDirection(
             dominant_photographic_language="observational",
-            source_version="photography-v1",
             fingerprint="photography-fingerprint"
         ),
         "lighting": LightingDirection(
             dominant_lighting="motivated soft source",
-            source_version="lighting-v1",
             fingerprint="lighting-fingerprint"
         ),
         "composition": CompositionDirection(
             dominant_composition="hands first",
-            source_version="composition-v1",
             fingerprint="composition-fingerprint"
         ),
         "color": ColorDirection(
             dominant_palette="muted amber",
-            source_version="color-v1",
             fingerprint="color-fingerprint"
         ),
         "movement": MovementDirection(
             dominant_movement="inward movement",
-            source_version="movement-v1",
             fingerprint="movement-fingerprint"
         ),
         "continuity": ContinuityDirection(
             visual_continuity="recurring object",
-            source_version="continuity-v1",
             fingerprint="continuity-fingerprint"
         ),
     }
@@ -76,7 +60,7 @@ def director_for(direction):
 
 class CinematicDirectionOrchestratorTest(unittest.TestCase):
 
-    def test_builds_cinematic_direction_set_from_effective_visual_brief(self):
+    def test_builds_cinematic_direction_set_from_effective_brief(self):
         directions = direction_fixtures()
         orchestrator = CinematicDirectionOrchestrator(
             photography_director=director_for(
@@ -100,7 +84,7 @@ class CinematicDirectionOrchestratorTest(unittest.TestCase):
         )
 
         direction_set = orchestrator.resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertIs(
@@ -175,7 +159,7 @@ class CinematicDirectionOrchestratorTest(unittest.TestCase):
         )
 
         orchestrator.resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(
@@ -190,9 +174,9 @@ class CinematicDirectionOrchestratorTest(unittest.TestCase):
             ]
         )
 
-    def test_passes_same_effective_visual_brief_to_every_director(self):
+    def test_passes_same_effective_brief_to_every_director(self):
         directions = direction_fixtures()
-        effective = effective_visual_brief()
+        effective = effective_brief()
         directors = {
             name: director_for(
                 direction
@@ -248,7 +232,7 @@ class CinematicDirectionOrchestratorTest(unittest.TestCase):
             return_value=expected
         ) as factory:
             result = orchestrator.resolve(
-                effective_visual_brief()
+                effective_brief()
             )
 
         factory.assert_called_once_with(
@@ -286,7 +270,7 @@ class CinematicDirectionOrchestratorTest(unittest.TestCase):
                 directions["continuity"]
             ),
         ).resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         components = {
             component.name: component
@@ -329,10 +313,10 @@ class CinematicDirectionOrchestratorTest(unittest.TestCase):
         )
 
         first = orchestrator.resolve(
-            effective_visual_brief()
+            effective_brief()
         )
         second = orchestrator.resolve(
-            effective_visual_brief()
+            effective_brief()
         )
 
         self.assertEqual(

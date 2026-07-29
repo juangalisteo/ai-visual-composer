@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+from pathlib import Path
+from dataclasses import replace
 import json
 import hashlib
 import time
@@ -8,7 +9,6 @@ from app.cinematic_direction import CinematicDirectionOrchestrator
 from app.managers.project_manager import ProjectManager
 from app.domain.adapters import (
     GenerationResultAdapter,
-    RuntimeCognitiveAdapter,
     StoryboardSceneAdapter
 )
 from app.modules.images.backends import ComfyUIBackend
@@ -182,7 +182,7 @@ class ImageBuilder:
                 storyboard_scene.scene_number
             )
 
-            if not RuntimeCognitiveAdapter.has_visual_truth_content(
+            if not self._has_visual_truth_content(
                 storyboard_scene
             ):
                 raise ValueError(
@@ -400,10 +400,10 @@ class ImageBuilder:
                 profile=profile
             )
         )
-        effective_visual_brief = visual_synthesis_result.brief
+        effective_brief = visual_synthesis_result.brief
         cinematic_direction_set = (
             self._cinematic_orchestrator().resolve(
-                effective_visual_brief
+                effective_brief
             )
         )
         backend_prompt = (
@@ -434,8 +434,8 @@ class ImageBuilder:
             "visual_conflict_report_fingerprint": (
                 visual_synthesis_result.conflicts.fingerprint
             ),
-            "effective_visual_brief_fingerprint": (
-                effective_visual_brief.fingerprint
+            "effective_brief_fingerprint": (
+                effective_brief.fingerprint
             ),
             "cinematic_direction_set_fingerprint": (
                 cinematic_direction_set.fingerprint
@@ -460,19 +460,9 @@ class ImageBuilder:
         storyboard_scene,
         profile=None
     ):
-        adaptation = (
-            RuntimeCognitiveAdapter.from_storyboard_scene(
-                storyboard_scene=storyboard_scene,
-                orientation=str(
-                    (
-                        profile
-                        or {}
-                    ).get(
-                        "format",
-                        ""
-                    )
-                )
-            )
+        storyboard_scene = self._with_profile_visual_constraints(
+            storyboard_scene,
+            profile
         )
         analysis = (
             self._visual_analysis_orchestrator().analyze(
@@ -484,19 +474,103 @@ class ImageBuilder:
                 analysis
             )
         )
-        source_id = (
-            f"scene_{storyboard_scene.scene_number:03d}"
-        )
-        source_version = (
-            "image-component-runtime-v1"
-        )
-
         return self._visual_synthesis_orchestrator().synthesize(
             analysis,
             reasoning,
-            visual_brief=adaptation.visual_brief,
-            source_id=source_id,
-            source_version=source_version,
+        )
+
+    def _with_profile_visual_constraints(
+        self,
+        storyboard_scene,
+        profile=None
+    ):
+        guidance = self._profile_format_guidance(
+            profile
+        )
+        if (
+            not guidance
+            or guidance in storyboard_scene.visual_constraints
+        ):
+            return storyboard_scene
+        return replace(
+            storyboard_scene,
+            visual_constraints=(
+                storyboard_scene.visual_constraints
+                + (
+                    guidance,
+                )
+            ),
+        )
+
+    def _profile_format_guidance(
+        self,
+        profile=None
+    ):
+        if not profile:
+            return ""
+        video_style = profile.get(
+            "video_style",
+            {}
+        )
+        image_format = str(
+            profile.get(
+                "format",
+                ""
+            )
+            or ""
+        ).lower()
+        width = video_style.get(
+            "width"
+        )
+        height = video_style.get(
+            "height"
+        )
+        if image_format == "vertical":
+            return "vertical 9:16"
+        if image_format == "horizontal":
+            return "wide horizontal 16:9"
+        if width and height:
+            if int(
+                height
+            ) > int(
+                width
+            ):
+                return "vertical 9:16"
+            if int(
+                width
+            ) > int(
+                height
+            ):
+                return "wide horizontal 16:9"
+        return ""
+
+    def _has_visual_truth_content(
+        self,
+        storyboard_scene
+    ):
+        values = (
+            storyboard_scene.visible_subject,
+            storyboard_scene.visible_action,
+            storyboard_scene.visible_environment,
+            storyboard_scene.time_context,
+            storyboard_scene.abstract_source,
+            storyboard_scene.filmable_interpretation,
+        )
+        sequences = (
+            storyboard_scene.key_objects,
+            storyboard_scene.spatial_relationships,
+            storyboard_scene.continuity_links,
+            storyboard_scene.visual_constraints,
+        )
+        return any(
+            str(
+                value
+                or ""
+            ).strip()
+            for value in values
+        ) or any(
+            sequence
+            for sequence in sequences
         )
 
     def _prompt_translator(

@@ -69,6 +69,9 @@ class VisualSemanticsResolver:
                     scene.filmable_interpretation
                 )
             ),
+            filmable_interpretation=clean(
+                scene.filmable_interpretation
+            ),
             spatial_relationships=tuple_values(
                 scene.spatial_relationships
             ),

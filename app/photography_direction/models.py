@@ -11,7 +11,7 @@ class PhotographyDecisionTrace:
 
 @dataclass(frozen=True)
 class PhotographyDirectionTrace:
-    source_visual_brief_fingerprint: str = ""
+    source_effective_brief_fingerprint: str = ""
     decisions: tuple[PhotographyDecisionTrace, ...] = field(default_factory=tuple)
 
 
@@ -32,6 +32,4 @@ class PhotographyDirection:
     dynamism: str = ""
     contemplation: str = ""
     trace: PhotographyDirectionTrace = field(default_factory=PhotographyDirectionTrace)
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""

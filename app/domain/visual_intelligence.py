@@ -359,6 +359,7 @@ class VisualSemantics:
     contextual_environment: str = ""
     observable_action: str = ""
     visual_state: str = ""
+    filmable_interpretation: str = ""
     spatial_relationships: tuple[str, ...] = field(default_factory=tuple)
     ambiguity_level: CertaintyLevel = CertaintyLevel.UNKNOWN
     evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
@@ -396,6 +397,7 @@ class VisualSemantics:
                 "contextual_environment",
                 "observable_action",
                 "visual_state",
+                "filmable_interpretation",
                 "spatial_relationships",
                 "ambiguity_level",
                 "evidences",
@@ -827,10 +829,44 @@ class VisualConflictReport:
 
 @dataclass(frozen=True)
 class EffectiveVisualBrief:
+    visible_content: str = ""
+    visible_subject: str = ""
+    visible_action: str = ""
+    visible_environment: str = ""
+    time_context: str = ""
+    key_objects: tuple[str, ...] = field(default_factory=tuple)
+    spatial_relationships: tuple[str, ...] = field(default_factory=tuple)
+    continuity_links: tuple[str, ...] = field(default_factory=tuple)
+    abstract_source: str = ""
+    filmable_interpretation: str = ""
+    visual_constraints: tuple[str, ...] = field(default_factory=tuple)
+    visual_truth_status: str = ""
+    felt_experience: str = ""
+    narrative_composition: str = ""
+    visual_priority: str = ""
     primary_identity: str = "unknown"
+    primary_subject: str = ""
+    secondary_subject: str = ""
     secondary_identities: tuple[str, ...] = field(default_factory=tuple)
     primary_actions: tuple[str, ...] = field(default_factory=tuple)
     secondary_actions: tuple[str, ...] = field(default_factory=tuple)
+    attention_focus: str = ""
+    dominant_visual_intention: str = ""
+    visual_reading: str = ""
+    scene_rhythm: str = ""
+    symbolic_weight: str = ""
+    visual_continuity: str = ""
+    visual_bible_coherence: str = ""
+    narrative_coherence: str = ""
+    intention_coherence: str = ""
+    visual_strategy: Any | None = None
+    staging: Any | None = None
+    photography: Any | None = None
+    composition: Any | None = None
+    lighting: Any | None = None
+    color: Any | None = None
+    motion: Any | None = None
+    continuity_relationship: str = ""
     narrative_objectives: tuple[str, ...] = field(default_factory=tuple)
     visual_priorities: tuple[str, ...] = field(default_factory=tuple)
     semantic_hierarchy: tuple[str, ...] = field(default_factory=tuple)
@@ -840,33 +876,10 @@ class EffectiveVisualBrief:
     subtext: str = ""
     emotional_function: str = ""
     uncertainty: CertaintyLevel = CertaintyLevel.UNKNOWN
-    # TRANSITIONAL COMPONENT
-    # Temporary compatibility during Runtime Integration migration.
-    # Scheduled for reevaluation after completion of IP3.0-5.
-    # Do not introduce new dependencies.
-    conflicts: tuple[Any, ...] = field(default_factory=tuple)
+    conflicts: VisualConflictReport | None = None
     findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
     evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
-    # TRANSITIONAL COMPONENT
-    # Temporary compatibility during Runtime Integration migration.
-    # Scheduled for reevaluation after completion of IP3.0-5.
-    # Do not introduce new dependencies.
-    trace: Any | None = None
-    # TRANSITIONAL COMPONENT
-    # Temporary compatibility during Runtime Integration migration.
-    # Scheduled for reevaluation after completion of IP3.0-5.
-    # Do not introduce new dependencies.
-    visual_brief: Any | None = None
-    # TRANSITIONAL COMPONENT
-    # Temporary compatibility during Runtime Integration migration.
-    # Scheduled for reevaluation after completion of IP3.0-5.
-    # Do not introduce new dependencies.
-    source_id: str = ""
-    # TRANSITIONAL COMPONENT
-    # Temporary compatibility during Runtime Integration migration.
-    # Scheduled for reevaluation after completion of IP3.0-5.
-    # Do not introduce new dependencies.
-    source_version: str = ""
+    trace: SpecializedTrace | None = None
     fingerprint: str = ""
 
     def __post_init__(self) -> None:
@@ -889,13 +902,16 @@ class EffectiveVisualBrief:
             CertaintyLevel,
             "uncertainty"
         )
-        if not isinstance(
+        _require_optional_type(
             self.conflicts,
-            tuple
-        ):
-            raise ValueError(
-                "conflicts must be a tuple."
-            )
+            VisualConflictReport,
+            "conflicts"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
         _require_sequence_of(
             self.findings,
             VisualIntelligenceFinding,
@@ -912,10 +928,44 @@ class EffectiveVisualBrief:
             self,
             "EffectiveVisualBrief",
             (
+                "visible_content",
+                "visible_subject",
+                "visible_action",
+                "visible_environment",
+                "time_context",
+                "key_objects",
+                "spatial_relationships",
+                "continuity_links",
+                "abstract_source",
+                "filmable_interpretation",
+                "visual_constraints",
+                "visual_truth_status",
+                "felt_experience",
+                "narrative_composition",
+                "visual_priority",
                 "primary_identity",
+                "primary_subject",
+                "secondary_subject",
                 "secondary_identities",
                 "primary_actions",
                 "secondary_actions",
+                "attention_focus",
+                "dominant_visual_intention",
+                "visual_reading",
+                "scene_rhythm",
+                "symbolic_weight",
+                "visual_continuity",
+                "visual_bible_coherence",
+                "narrative_coherence",
+                "intention_coherence",
+                "visual_strategy",
+                "staging",
+                "photography",
+                "composition",
+                "lighting",
+                "color",
+                "motion",
+                "continuity_relationship",
                 "narrative_objectives",
                 "visual_priorities",
                 "semantic_hierarchy",
@@ -929,9 +979,6 @@ class EffectiveVisualBrief:
                 "findings",
                 "evidences",
                 "trace",
-                "visual_brief",
-                "source_id",
-                "source_version",
             )
         )
 

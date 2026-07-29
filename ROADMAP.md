@@ -48,18 +48,19 @@ Completed:
 - `IP3.0-5 - Visual Intelligence Runtime Integration`
 - `IP3.0-6 - Visual Intelligence Certification`
 - `IP3.0-7 - Visual Intelligence Performance Certification`
+- `IP3.0-8 - Transitional Component Retirement`
 
 Next planned phase:
 
 ```text
-Transitional component retirement
+IP3.0-9 - Final architectural closure
 ```
 
 `IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` established Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract. `IP3.0-5` integrates `VisualSynthesisResult` into the Image Runtime as the visual source of truth before prompt translation.
 
 Planned IP3.x sequence:
 
-- Transitional component retirement after certification review
+- Final architectural closure after transitional retirement verification
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline phase is explicitly requested.
 
@@ -81,53 +82,26 @@ Rationale:
 - A single canonical definition preserves Single Source of Truth.
 - Runtime Integration must not depend on parallel Visual Direction and Visual Intelligence variants.
 
-### Legacy Compatibility Audit
+### Transitional Runtime Compatibility Status
 
 Status:
 
-- Completed after `ADR-001 - Canonical EffectiveVisualBrief`.
-- No audited element was proven completely dead.
-- No compatibility field was removed in this consolidation.
+- Transitional runtime compatibility has been retired by `ADR-006 - Transitional Components Retirement`.
+- `EffectiveVisualBrief` remains the canonical semantic brief contract.
+- The Image Runtime no longer depends on the historical Visual Direction package, runtime cognitive adapter, or runtime bridge fields.
 
-Architectural Classification:
+Retired runtime compatibility elements:
 
-- `EffectiveVisualBrief`: `CANONICAL`.
-- `visual_brief`: `TRANSITIONAL` compatibility field consumed by Visual Direction, Cinematic Direction, Prompt Translator, ImageBuilder, and tests until `IP3.0-5`.
-- `source_id`: `TRANSITIONAL` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
-- `source_version`: `TRANSITIONAL` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
-- `VisualBriefTrace`: `TRANSITIONAL` compatibility model consumed by Visual Direction, Prompt Translator, ImageBuilder, cinematic specialization tests, and trace assertions until `IP3.0-5`.
-- `VisualDirectionConflict`: `TRANSITIONAL` compatibility model produced by Visual Direction conflict detection and carried by `EffectiveVisualBrief.conflicts` until `IP3.0-5`.
+- `RuntimeCognitiveAdapter`.
+- `app.visual_direction`.
+- Runtime `VisualBriefTrace`.
+- Runtime `VisualDirectionConflict`.
+- Embedded historical `visual_brief` bridge data.
+- Runtime `source_id` and `source_version` bridge fields in `EffectiveVisualBrief`, `BackendPrompt`, and backend payloads.
 
-Rule:
+Canonical note:
 
-- These elements MUST remain available until `IP3.0-5 - Visual Intelligence Runtime Integration` migrates active runtime consumers to the canonical Visual Intelligence trace and conflict model.
-- Any removal before `IP3.0-5` is prohibited unless a new audit proves there are no active consumers.
-- New development MUST use `CANONICAL` components and MUST NOT introduce new dependencies on `TRANSITIONAL` components.
-
-### Architectural Classification
-
-`CANONICAL`:
-
-- Represents components that are part of the definitive project design.
-- Has no planned removal.
-- Future evolution MUST build on canonical components.
-
-`TRANSITIONAL`:
-
-- Represents components that remain only to preserve compatibility with consumers not yet migrated.
-- Has a temporary lifecycle.
-- Has an explicit removal or reevaluation plan.
-- MUST NOT be used by new development.
-- MUST be reevaluated after `IP3.0-5 - Visual Intelligence Runtime Integration`.
-
-Current classification:
-
-- `EffectiveVisualBrief`: `CANONICAL`.
-- `visual_brief`: `TRANSITIONAL`.
-- `source_id`: `TRANSITIONAL`.
-- `source_version`: `TRANSITIONAL`.
-- `VisualBriefTrace`: `TRANSITIONAL`.
-- `VisualDirectionConflict`: `TRANSITIONAL`.
+- Passive source provenance metadata with similar field names may still exist in Visual Bible, Narrative Reading, and Intention representation systems. Those fields are not Image Runtime compatibility bridges.
 
 ### ADR-002 - Canonical vs Transitional Components
 
@@ -147,26 +121,22 @@ Rationale:
 
 ### Runtime Integration
 
-Previous architecture:
+Certified architecture:
 
 ```text
-RuntimeCognitiveAdapter
-        -> EffectiveVisualBrief compatibility bridge
-        -> CinematicDirectionSet
-        -> PromptTranslator
-        -> Backend Adapter
-```
-
-Current architecture:
-
-```text
+StoryboardScene
+        -> StoryboardSceneAdapter
 VisualAnalysisResult
         -> VisualReasoningResult
-        -> VisualSynthesisResult
+        -> VisualConflictReport
         -> EffectiveVisualBrief
-        -> Runtime
+        -> VisualIntelligenceTrace
+        -> VisualSynthesisResult
+        -> CinematicDirectionSet
         -> PromptTranslator
-        -> Backend Adapter
+        -> BackendPrompt
+        -> ComfyUIAdapter
+        -> ComfyUIPayload
 ```
 
 Migrated points:
@@ -174,13 +144,9 @@ Migrated points:
 - `ImageBuilder` builds `VisualSynthesisResult` through Visual Analysis, Visual Reasoning, and Visual Synthesis before prompt translation.
 - `ImageBuilder` records `VisualSynthesisResult`, `VisualIntelligenceTrace`, and `VisualConflictReport` fingerprints in runtime metadata.
 - `PromptTranslator` exposes `translate_visual_synthesis_result` as the runtime entry point for canonical synthesis output.
-- Manual runtime construction of `VisualBriefTrace` and manual runtime `EffectiveVisualBrief` fingerprinting were removed from `ImageBuilder`.
-
-Remaining transitional bridges:
-
-- `visual_brief` remains embedded in the canonical `EffectiveVisualBrief` while Cinematic Direction still consumes the historical Visual Direction shape.
-- `source_id` and `source_version` remain as runtime trace compatibility fields.
-- `VisualBriefTrace` and `VisualDirectionConflict` remain available for Visual Direction consumers until the next migration proves they can be removed.
+- Cinematic Direction consumes canonical `EffectiveVisualBrief` directly.
+- Prompt translation emits backend-neutral instructions from canonical `EffectiveVisualBrief` and optional `CinematicDirectionSet`.
+- Backend adaptation no longer carries historical source bridge fields.
 
 Rule:
 
@@ -240,12 +206,46 @@ Certified guarantees:
 
 Remaining transitional components:
 
-- `visual_brief`.
-- `source_id`.
-- `source_version`.
-- `VisualBriefTrace`.
-- `VisualDirectionConflict`.
-- `RuntimeCognitiveAdapter`.
+- None in the Image Runtime path.
+
+Canonical note:
+
+- `source_id` and `source_version` may still appear in passive Visual Bible, Narrative Reading, and Intention representation layers as source provenance metadata. Those occurrences are not Image Runtime transitional compatibility contracts.
+
+### ADR-006 - Transitional Components Retirement
+
+Decision:
+
+- `RuntimeCognitiveAdapter` is retired from the Image Runtime.
+- The temporary `app.visual_direction` compatibility package is retired.
+- `VisualBriefTrace` and `VisualDirectionConflict` are retired as runtime compatibility contracts.
+- `EffectiveVisualBrief` no longer carries embedded historical `visual_brief`, `source_id`, or `source_version` runtime bridge fields.
+- `PromptTranslator`, `BackendPrompt`, `ComfyUIAdapter`, and cinematic direction now consume canonical Visual Intelligence and cinematic contracts directly.
+
+Rationale:
+
+- `IP3.0-6` certified `VisualSynthesisResult` as the runtime visual source of truth.
+- `IP3.0-7` certified the performance baseline.
+- The transitional bridge had no remaining architectural ownership after runtime certification.
+- Removing the compatibility layer reduces duplicate contracts and prevents future dependencies on historical runtime shapes.
+
+Canonical runtime flow:
+
+```text
+StoryboardScene
+        -> StoryboardSceneAdapter
+        -> VisualAnalysisResult
+        -> VisualReasoningResult
+        -> VisualConflictReport
+        -> EffectiveVisualBrief
+        -> VisualIntelligenceTrace
+        -> VisualSynthesisResult
+        -> CinematicDirectionSet
+        -> PromptTranslator
+        -> BackendPrompt
+        -> ComfyUIAdapter
+        -> ComfyUIPayload
+```
 
 ### ADR-004 - Certified Visual Intelligence Pipeline
 

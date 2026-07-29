@@ -11,7 +11,7 @@ class CompositionDecisionTrace:
 
 @dataclass(frozen=True)
 class CompositionDirectionTrace:
-    source_visual_brief_fingerprint: str = ""
+    source_effective_brief_fingerprint: str = ""
     decisions: tuple[CompositionDecisionTrace, ...] = field(default_factory=tuple)
 
 
@@ -34,6 +34,4 @@ class CompositionDirection:
     stability: str = ""
     compositional_dynamism: str = ""
     trace: CompositionDirectionTrace = field(default_factory=CompositionDirectionTrace)
-    source_id: str = ""
-    source_version: str = ""
     fingerprint: str = ""
