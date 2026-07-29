@@ -87,19 +87,61 @@ Status:
 - No audited element was proven completely dead.
 - No compatibility field was removed in this consolidation.
 
-Classification:
+Architectural Classification:
 
-- `EffectiveVisualBrief`: `ACTIVE`.
-- `visual_brief`: `ACTIVE` compatibility field consumed by Visual Direction, Cinematic Direction, Prompt Translator, ImageBuilder, and tests until `IP3.0-5`.
-- `source_id`: `ACTIVE` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
-- `source_version`: `ACTIVE` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
-- `VisualBriefTrace`: `ACTIVE` compatibility model consumed by Visual Direction, Prompt Translator, ImageBuilder, cinematic specialization tests, and trace assertions until `IP3.0-5`.
-- `VisualDirectionConflict`: `ACTIVE` compatibility model produced by Visual Direction conflict detection and carried by `EffectiveVisualBrief.conflicts` until `IP3.0-5`.
+- `EffectiveVisualBrief`: `CANONICAL`.
+- `visual_brief`: `TRANSITIONAL` compatibility field consumed by Visual Direction, Cinematic Direction, Prompt Translator, ImageBuilder, and tests until `IP3.0-5`.
+- `source_id`: `TRANSITIONAL` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
+- `source_version`: `TRANSITIONAL` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
+- `VisualBriefTrace`: `TRANSITIONAL` compatibility model consumed by Visual Direction, Prompt Translator, ImageBuilder, cinematic specialization tests, and trace assertions until `IP3.0-5`.
+- `VisualDirectionConflict`: `TRANSITIONAL` compatibility model produced by Visual Direction conflict detection and carried by `EffectiveVisualBrief.conflicts` until `IP3.0-5`.
 
 Rule:
 
 - These elements MUST remain available until `IP3.0-5 - Visual Intelligence Runtime Integration` migrates active runtime consumers to the canonical Visual Intelligence trace and conflict model.
 - Any removal before `IP3.0-5` is prohibited unless a new audit proves there are no active consumers.
+- New development MUST use `CANONICAL` components and MUST NOT introduce new dependencies on `TRANSITIONAL` components.
+
+### Architectural Classification
+
+`CANONICAL`:
+
+- Represents components that are part of the definitive project design.
+- Has no planned removal.
+- Future evolution MUST build on canonical components.
+
+`TRANSITIONAL`:
+
+- Represents components that remain only to preserve compatibility with consumers not yet migrated.
+- Has a temporary lifecycle.
+- Has an explicit removal or reevaluation plan.
+- MUST NOT be used by new development.
+- MUST be reevaluated after `IP3.0-5 - Visual Intelligence Runtime Integration`.
+
+Current classification:
+
+- `EffectiveVisualBrief`: `CANONICAL`.
+- `visual_brief`: `TRANSITIONAL`.
+- `source_id`: `TRANSITIONAL`.
+- `source_version`: `TRANSITIONAL`.
+- `VisualBriefTrace`: `TRANSITIONAL`.
+- `VisualDirectionConflict`: `TRANSITIONAL`.
+
+### ADR-002 - Canonical vs Transitional Components
+
+Decision:
+
+- The architecture explicitly distinguishes definitive components from temporary compatibility components.
+- `CANONICAL` components represent the final intended design.
+- `TRANSITIONAL` components exist only to preserve compatibility during migration.
+- `TRANSITIONAL` components MUST NOT be used in new development.
+- After `IP3.0-5`, all `TRANSITIONAL` components MUST be reevaluated for removal.
+
+Rationale:
+
+- Active usage does not imply permanent architectural ownership.
+- Runtime Integration requires a clear distinction between final contracts and migration bridges.
+- Explicit classification prevents new dependencies from forming around temporary compatibility surfaces.
 
 ## Image Enhancement
 
