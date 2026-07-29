@@ -13,7 +13,7 @@ AI Visual Composer is a modular system where users choose products and the platf
 Current line:
 
 ```text
-Image Pipeline 3.0
+Visual Intelligence Architecture v1.0 frozen
 ```
 
 Completed:
@@ -49,18 +49,21 @@ Completed:
 - `IP3.0-6 - Visual Intelligence Certification`
 - `IP3.0-7 - Visual Intelligence Performance Certification`
 - `IP3.0-8 - Transitional Component Retirement`
+- `IP3.0-9 - Architecture Finalization`
 
 Next planned phase:
 
 ```text
-IP3.0-9 - Final architectural closure
+IP4.x - Next architectural evolution cycle
 ```
 
-`IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` established Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract. `IP3.0-5` integrates `VisualSynthesisResult` into the Image Runtime as the visual source of truth before prompt translation.
+`IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` established Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract. `IP3.0-5` integrated `VisualSynthesisResult` into the Image Runtime as the visual source of truth before prompt translation. `IP3.0-8` retired transitional runtime components. `IP3.0-9` freezes Visual Intelligence Architecture v1.0.
 
-Planned IP3.x sequence:
+IP3.x closure:
 
-- Final architectural closure after transitional retirement verification
+- Visual Intelligence Architecture v1.0 is frozen.
+- Canonical Image Runtime contracts are stable.
+- Future canonical contract changes require an explicit IP4.x architectural cycle.
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline phase is explicitly requested.
 
@@ -73,7 +76,7 @@ Decision:
 - There is exactly one official `EffectiveVisualBrief` contract.
 - Its official location is `app/domain/visual_intelligence.py`.
 - Future components MUST consume only the canonical contract.
-- Legacy compatibility MAY reexport the canonical contract temporarily.
+- No current legacy compatibility reexports exist for this contract.
 - Parallel `EffectiveVisualBrief` contract evolution is prohibited.
 
 Rationale:
@@ -255,7 +258,7 @@ Decision:
 - `VisualSynthesisResult` is the certified runtime visual entry point.
 - The Image Runtime MUST execute from `VisualSynthesisResult` and MUST NOT introduce parallel visual contracts.
 - Traceability MUST preserve the chain from Visual Intelligence to `BackendPrompt` and final backend payload.
-- `TRANSITIONAL` components remain isolated until a controlled retirement phase removes or replaces their active consumers.
+- Transitional components were isolated until `ADR-006` retired their active consumers.
 
 Rationale:
 

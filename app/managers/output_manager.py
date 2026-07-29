@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 import shutil
 
 from app.shared.progress_logger import ProgressLogger

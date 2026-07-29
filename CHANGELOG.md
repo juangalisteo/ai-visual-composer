@@ -6,13 +6,14 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Published `Visual Intelligence Architecture v1.0` as the official frozen specification for the canonical Image Runtime architecture.
 - Retired transitional Visual Direction and Runtime Cognitive compatibility components; the Image Runtime now proceeds from `StoryboardSceneAdapter` through Visual Analysis, Visual Reasoning, Visual Synthesis, `EffectiveVisualBrief`, cinematic direction, prompt translation, and backend adaptation.
 - Certified the Visual Intelligence performance baseline with deterministic timing, memory, object, contract, and fingerprint measurements.
 - Certified the Visual Intelligence runtime pipeline with end-to-end determinism, traceability, boundary, duplicate-contract, and inverse-adapter guards.
 - Integrated Visual Intelligence into the image runtime so `ImageBuilder` now builds and propagates `VisualSynthesisResult` before cinematic direction, prompt translation, and backend adaptation.
 - Classified `EffectiveVisualBrief` as `CANONICAL` and remaining compatibility fields/models as `TRANSITIONAL` before `IP3.0-5`.
 - Audited legacy compatibility fields after canonical `EffectiveVisualBrief` unification; retained active compatibility fields with explicit temporary markers pending `IP3.0-5`.
-- Consolidated `EffectiveVisualBrief` as a single canonical contract in `app/domain/visual_intelligence.py`, with `app.visual_direction` reexporting the canonical contract for temporary compatibility.
+- Consolidated `EffectiveVisualBrief` as a single canonical contract in `app/domain/visual_intelligence.py`; the temporary `app.visual_direction` compatibility reexport used during migration has since been retired.
 - Implemented the IP3.0 Visual Synthesis Layer with conflict reporting, Effective Visual Brief synthesis, unified Visual Intelligence trace building, a Visual Synthesis orchestrator, and `VisualSynthesisResult` as the passive boundary contract before runtime integration.
 - Implemented the IP3.0 Visual Reasoning Layer with Scene Intent, Visual Intelligence Strategy, Sequence Continuity, an isolated reasoning orchestrator, deterministic traces, and stable fingerprints without runtime, backend, prompt, workflow, or Visual Quality integration.
 - Implemented the IP3.0 Visual Analysis Layer with Visual Truth inspection, visual semantics resolution, visual priority resolution, an isolated analysis orchestrator, deterministic traces, and stable fingerprints without runtime, backend, prompt, workflow, or Visual Quality integration.

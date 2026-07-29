@@ -1,4 +1,4 @@
-﻿import random
+import random
 from pathlib import Path
 
 from app.shared.progress_logger import ProgressLogger

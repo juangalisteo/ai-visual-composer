@@ -1,4 +1,4 @@
-﻿from app.providers.ollama_provider import OllamaProvider
+from app.providers.ollama_provider import OllamaProvider
 
 
 class StoryboardAIBuilder:

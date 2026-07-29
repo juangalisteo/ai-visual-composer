@@ -6,6 +6,8 @@ Professional AI Visual Generation Platform
 
 This document describes the current architecture of AI Visual Composer v1.0.0: the certified Image Component runtime and the stabilized video composition core.
 
+The frozen Visual Intelligence specification is published in `VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`.
+
 ## Overview
 
 AI Visual Composer v1.0.0 exposes the Image Pipeline as the first official product pipeline. The repository also includes a stabilized profile-driven FFmpeg video composition core. The system separates configuration, asset selection, temporal operation building, FFmpeg graph generation, command planning, command execution, and output validation.
@@ -270,8 +272,10 @@ Visual Truth 2.0 storyboard scene
   -> StoryboardSceneAdapter
   -> VisualAnalysisResult
   -> VisualReasoningResult
-  -> VisualSynthesisResult
+  -> VisualConflictReport
   -> EffectiveVisualBrief
+  -> VisualIntelligenceTrace
+  -> VisualSynthesisResult
   -> CinematicDirectionOrchestrator
   -> CinematicDirectionSet
   -> PromptTranslator

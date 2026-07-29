@@ -40,8 +40,10 @@ Storyboard scene
   -> StoryboardSceneAdapter
   -> VisualAnalysisResult
   -> VisualReasoningResult
-  -> VisualSynthesisResult
+  -> VisualConflictReport
   -> EffectiveVisualBrief
+  -> VisualIntelligenceTrace
+  -> VisualSynthesisResult
   -> CinematicDirectionOrchestrator
   -> CinematicDirectionSet
   -> PromptTranslator
@@ -98,6 +100,7 @@ ai-visual-composer/
     profiles/
   data/
   docs/
+    adr/
     reference/
       prompt_music.md
   prompts/
@@ -105,6 +108,7 @@ ai-visual-composer/
   main.py
   README.md
   ARCHITECTURE.md
+  VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md
   CHANGELOG.md
   ROADMAP.md
   LICENSE
@@ -238,6 +242,7 @@ VideoBuilder().build(
 
 - `README.md`: official project overview and installation guide.
 - `ARCHITECTURE.md`: current architecture.
+- `VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`: frozen Visual Intelligence architecture specification.
 - `CHANGELOG.md`: release history.
 - `ROADMAP.md`: future work.
 

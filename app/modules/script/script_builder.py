@@ -1,4 +1,4 @@
-﻿import time
+import time
 
 from app.providers.ollama_provider import OllamaProvider
 from app.shared.progress_logger import ProgressLogger
