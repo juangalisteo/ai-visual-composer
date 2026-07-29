@@ -47,6 +47,7 @@ Completed:
   - Visual Synthesis Orchestrator
 - `IP3.0-5 - Visual Intelligence Runtime Integration`
 - `IP3.0-6 - Visual Intelligence Certification`
+- `IP3.0-7 - Visual Intelligence Performance Certification`
 
 Next planned phase:
 
@@ -262,6 +263,78 @@ Rationale:
 - Deterministic fingerprints make regressions observable.
 - Boundary guards prevent Prompt Translation, Backend Adapter, and Visual Quality from becoming intelligence layers.
 - Isolated transitional components can now be retired with lower risk.
+
+### Performance Certification
+
+Status:
+
+- `IP3.0-7 - Visual Intelligence Performance Certification` completed.
+- Baseline measured on Python `3.13.12`, platform `win32`, Microsoft Windows `10.0.26100`, architecture `X64`.
+- Logical processors visible to Python: `24`.
+- Processor identifier available to the runtime: `Intel64 Family 6 Model 183 Stepping 1, GenuineIntel`.
+- WMI hardware inventory for detailed CPU/RAM names was blocked by local permissions, so the certified baseline records only accessible environment metadata.
+
+Certified baseline:
+
+| Metric | Value |
+| --- | --- |
+| Iterations | `20` |
+| Pipeline mean | `0.0693469499994535` seconds |
+| Pipeline min | `0.06658030000107829` seconds |
+| Pipeline max | `0.07414040000003297` seconds |
+| Pipeline p95 | `0.07070870000097784` seconds |
+| Pipeline p99 | `0.07414040000003297` seconds |
+| Peak memory max | `593790` bytes |
+| Peak memory mean | `581020.4` bytes |
+| Objects created mean | `489.2` |
+| Fingerprints per medium pipeline | `118` |
+| Contracts per medium pipeline | `331` |
+| Deterministic payload fingerprints | `1` |
+
+Stage baseline:
+
+| Stage | Seconds | Peak Memory Bytes | Objects Created | Contracts | Fingerprints |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Visual Analysis | `0.018471299998054747` | `217036` | `112` | `80` | `62` |
+| Visual Reasoning | `0.011861999999382533` | `146599` | `73` | `48` | `38` |
+| Conflict Resolution | `0.00017169999773614109` | `4737` | `2` | `2` | `2` |
+| Effective Visual Brief Synthesis | `0.0072289000017917715` | `158925` | `27` | `76` | `60` |
+| Visual Intelligence Trace | `0.008260400001745438` | `242846` | `6` | `131` | `102` |
+| Visual Synthesis Orchestrator | `0.02874850000080187` | `458823` | `36` | `146` | `109` |
+| Cinematic Direction | `0.003751700001885183` | `40152` | `95` | `54` | `7` |
+| Prompt Translation | `0.005344199998944532` | `146964` | `193` | `128` | `1` |
+| Backend Adapter Payload | `0.0006382999999914318` | `26695` | `6` | `3` | `1` |
+| Runtime Visual Synthesis Entry | `0.05936169999768026` | `575782` | `194` | `146` | `109` |
+
+Scalability baseline:
+
+| Load | Seconds | Peak Memory Bytes | Objects Created | Contracts | Fingerprints |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Small | `0.059425900002679555` | `569606` | `390` | `255` | `99` |
+| Medium | `0.06981589999850257` | `575094` | `489` | `331` | `118` |
+| Complex | `0.07189529999959632` | `595880` | `489` | `331` | `118` |
+
+Certification scope:
+
+- Performance certification measures Python-side deterministic contract construction, Visual Intelligence orchestration, cinematic direction, prompt translation, backend-neutral prompt generation, and ComfyUI payload adaptation.
+- Performance certification does not execute external ComfyUI image generation, GPU inference, model loading, network access, file output, or Visual Quality image inspection.
+- Performance certification is a regression baseline, not a hard real-time SLA.
+
+### ADR-005 - Performance Certification Baseline
+
+Decision:
+
+- Visual Intelligence performance MUST be certified with deterministic local benchmark tests before transitional retirement continues.
+- The certified baseline MUST include total pipeline time, per-stage timing, memory peak, object creation, contract count, fingerprint count, and determinism of generated payload fingerprints.
+- Benchmarks MUST avoid external backend execution so certification remains reproducible without GPU, ComfyUI, model files, or network access.
+- Future performance work MUST compare against this baseline before claiming regression or improvement.
+
+Rationale:
+
+- IP3.x introduced multiple deterministic intelligence layers before prompt translation.
+- A quantitative baseline prevents performance regressions from being evaluated only by subjective impressions.
+- Excluding external backend execution keeps the certification focused on repository-owned code.
+- Deterministic fingerprints verify that the benchmarked path is stable across repeated executions.
 
 ## Image Enhancement
 

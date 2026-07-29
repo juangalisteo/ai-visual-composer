@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Certified the Visual Intelligence performance baseline with deterministic timing, memory, object, contract, and fingerprint measurements.
 - Certified the Visual Intelligence runtime pipeline with end-to-end determinism, traceability, boundary, duplicate-contract, and inverse-adapter guards.
 - Integrated Visual Intelligence into the image runtime so `ImageBuilder` now builds and propagates `VisualSynthesisResult` before cinematic direction, prompt translation, and backend adaptation.
 - Classified `EffectiveVisualBrief` as `CANONICAL` and remaining compatibility fields/models as `TRANSITIONAL` before `IP3.0-5`.
