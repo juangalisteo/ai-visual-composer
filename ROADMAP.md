@@ -79,6 +79,28 @@ Rationale:
 - A single canonical definition preserves Single Source of Truth.
 - Runtime Integration must not depend on parallel Visual Direction and Visual Intelligence variants.
 
+### Legacy Compatibility Audit
+
+Status:
+
+- Completed after `ADR-001 - Canonical EffectiveVisualBrief`.
+- No audited element was proven completely dead.
+- No compatibility field was removed in this consolidation.
+
+Classification:
+
+- `EffectiveVisualBrief`: `ACTIVE`.
+- `visual_brief`: `ACTIVE` compatibility field consumed by Visual Direction, Cinematic Direction, Prompt Translator, ImageBuilder, and tests until `IP3.0-5`.
+- `source_id`: `ACTIVE` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
+- `source_version`: `ACTIVE` compatibility field consumed by trace, direction, prompt, backend adapter, ImageBuilder, and tests until `IP3.0-5`.
+- `VisualBriefTrace`: `ACTIVE` compatibility model consumed by Visual Direction, Prompt Translator, ImageBuilder, cinematic specialization tests, and trace assertions until `IP3.0-5`.
+- `VisualDirectionConflict`: `ACTIVE` compatibility model produced by Visual Direction conflict detection and carried by `EffectiveVisualBrief.conflicts` until `IP3.0-5`.
+
+Rule:
+
+- These elements MUST remain available until `IP3.0-5 - Visual Intelligence Runtime Integration` migrates active runtime consumers to the canonical Visual Intelligence trace and conflict model.
+- Any removal before `IP3.0-5` is prohibited unless a new audit proves there are no active consumers.
+
 ## Image Enhancement
 
 Future work line.

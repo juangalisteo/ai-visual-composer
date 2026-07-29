@@ -26,6 +26,9 @@ class VisualBriefFieldOrigin:
     action: str = "set"
 
 
+# Legacy Compatibility Field
+# Temporary.
+# To be removed after IP3.0-5 migration.
 @dataclass(frozen=True)
 class VisualBriefTrace:
     field_origins: tuple[VisualBriefFieldOrigin, ...] = field(default_factory=tuple)
@@ -33,6 +36,9 @@ class VisualBriefTrace:
     specialized_fields: tuple[str, ...] = field(default_factory=tuple)
 
 
+# Legacy Compatibility Field
+# Temporary.
+# To be removed after IP3.0-5 migration.
 @dataclass(frozen=True)
 class VisualDirectionConflict:
     source_layers: tuple[str, ...]

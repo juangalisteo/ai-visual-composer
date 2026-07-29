@@ -840,12 +840,27 @@ class EffectiveVisualBrief:
     subtext: str = ""
     emotional_function: str = ""
     uncertainty: CertaintyLevel = CertaintyLevel.UNKNOWN
+    # Legacy Compatibility Field
+    # Temporary.
+    # To be removed after IP3.0-5 migration.
     conflicts: tuple[Any, ...] = field(default_factory=tuple)
     findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
     evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    # Legacy Compatibility Field
+    # Temporary.
+    # To be removed after IP3.0-5 migration.
     trace: Any | None = None
+    # Legacy Compatibility Field
+    # Temporary.
+    # To be removed after IP3.0-5 migration.
     visual_brief: Any | None = None
+    # Legacy Compatibility Field
+    # Temporary.
+    # To be removed after IP3.0-5 migration.
     source_id: str = ""
+    # Legacy Compatibility Field
+    # Temporary.
+    # To be removed after IP3.0-5 migration.
     source_version: str = ""
     fingerprint: str = ""
 
