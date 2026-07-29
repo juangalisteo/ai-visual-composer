@@ -217,14 +217,14 @@ class ResolutionTraceEntry:
         )
 
 
-PayloadT = TypeVar(
-    "PayloadT"
+ResultT = TypeVar(
+    "ResultT"
 )
 
 
 @dataclass(frozen=True)
-class VisualIntelligenceResolutionResult(Generic[PayloadT]):
-    result: PayloadT
+class VisualIntelligenceResolutionResult(Generic[ResultT]):
+    result: ResultT
     findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
     trace: tuple[ResolutionTraceEntry, ...] = field(default_factory=tuple)
     status: ResolutionStatus = ResolutionStatus.READY
@@ -266,6 +266,374 @@ class VisualIntelligenceResolutionResult(Generic[PayloadT]):
                 "status",
                 "schema_version",
                 "version",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class SpecializedTrace:
+    resolution_type: str
+    entries: tuple[ResolutionTraceEntry, ...] = field(default_factory=tuple)
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.resolution_type,
+            "resolution_type"
+        )
+        _require_sequence_of(
+            self.entries,
+            ResolutionTraceEntry,
+            "entries"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _set_fingerprint(
+            self,
+            "SpecializedTrace",
+            (
+                "resolution_type",
+                "entries",
+                "evidences",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualInspectionResult:
+    completeness: str
+    consistency: str
+    visual_density: str = ""
+    specificity: str = ""
+    missing_fields: tuple[str, ...] = field(default_factory=tuple)
+    ambiguous_fields: tuple[str, ...] = field(default_factory=tuple)
+    findings: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.completeness,
+            "completeness"
+        )
+        _require_text(
+            self.consistency,
+            "consistency"
+        )
+        _require_sequence_of(
+            self.findings,
+            VisualIntelligenceFinding,
+            "findings"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "VisualInspectionResult",
+            (
+                "completeness",
+                "consistency",
+                "visual_density",
+                "specificity",
+                "missing_fields",
+                "ambiguous_fields",
+                "findings",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualSemantics:
+    primary_subject: str
+    secondary_subjects: tuple[str, ...] = field(default_factory=tuple)
+    narrative_objects: tuple[str, ...] = field(default_factory=tuple)
+    active_environment: str = ""
+    contextual_environment: str = ""
+    observable_action: str = ""
+    visual_state: str = ""
+    spatial_relationships: tuple[str, ...] = field(default_factory=tuple)
+    ambiguity_level: CertaintyLevel = CertaintyLevel.UNKNOWN
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.primary_subject,
+            "primary_subject"
+        )
+        _require_enum(
+            self.ambiguity_level,
+            CertaintyLevel,
+            "ambiguity_level"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "VisualSemantics",
+            (
+                "primary_subject",
+                "secondary_subjects",
+                "narrative_objects",
+                "active_environment",
+                "contextual_environment",
+                "observable_action",
+                "visual_state",
+                "spatial_relationships",
+                "ambiguity_level",
+                "evidences",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualPriority:
+    primary_priority: str
+    secondary_priorities: tuple[str, ...] = field(default_factory=tuple)
+    attention_focus: str = ""
+    supporting_elements: tuple[str, ...] = field(default_factory=tuple)
+    visual_hierarchy: tuple[str, ...] = field(default_factory=tuple)
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.primary_priority,
+            "primary_priority"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "VisualPriority",
+            (
+                "primary_priority",
+                "secondary_priorities",
+                "attention_focus",
+                "supporting_elements",
+                "visual_hierarchy",
+                "evidences",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualSceneIntent:
+    emotional_function: str
+    narrative_tension: str = ""
+    visual_subtext: str = ""
+    uncertainty: CertaintyLevel = CertaintyLevel.UNKNOWN
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.emotional_function,
+            "emotional_function"
+        )
+        _require_enum(
+            self.uncertainty,
+            CertaintyLevel,
+            "uncertainty"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "VisualSceneIntent",
+            (
+                "emotional_function",
+                "narrative_tension",
+                "visual_subtext",
+                "uncertainty",
+                "evidences",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualIntelligenceStrategy:
+    representation_approach: str
+    realism_level: str = ""
+    symbolism_degree: str = ""
+    visual_limits: tuple[str, ...] = field(default_factory=tuple)
+    resources_to_avoid: tuple[str, ...] = field(default_factory=tuple)
+    declared_conflicts: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.representation_approach,
+            "representation_approach"
+        )
+        _require_sequence_of(
+            self.declared_conflicts,
+            VisualIntelligenceFinding,
+            "declared_conflicts"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "VisualIntelligenceStrategy",
+            (
+                "representation_approach",
+                "realism_level",
+                "symbolism_degree",
+                "visual_limits",
+                "resources_to_avoid",
+                "declared_conflicts",
+                "evidences",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class SequenceContinuity:
+    character_continuity: tuple[str, ...] = field(default_factory=tuple)
+    object_continuity: tuple[str, ...] = field(default_factory=tuple)
+    location_continuity: tuple[str, ...] = field(default_factory=tuple)
+    visual_continuity: tuple[str, ...] = field(default_factory=tuple)
+    scene_relationships: tuple[str, ...] = field(default_factory=tuple)
+    detected_risks: tuple[VisualIntelligenceFinding, ...] = field(default_factory=tuple)
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_sequence_of(
+            self.detected_risks,
+            VisualIntelligenceFinding,
+            "detected_risks"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "SequenceContinuity",
+            (
+                "character_continuity",
+                "object_continuity",
+                "location_continuity",
+                "visual_continuity",
+                "scene_relationships",
+                "detected_risks",
+                "evidences",
+                "trace",
+            )
+        )
+
+
+@dataclass(frozen=True)
+class VisualConflict:
+    conflict: str
+    category: str
+    severity: FindingSeverity
+    origin: SourceReference
+    involved_components: tuple[str, ...] = field(default_factory=tuple)
+    passive_recommendation: str = ""
+    evidences: tuple[VisualIntelligenceEvidence, ...] = field(default_factory=tuple)
+    trace: SpecializedTrace | None = None
+    fingerprint: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(
+            self.conflict,
+            "conflict"
+        )
+        _require_text(
+            self.category,
+            "category"
+        )
+        _require_enum(
+            self.severity,
+            FindingSeverity,
+            "severity"
+        )
+        _require_type(
+            self.origin,
+            SourceReference,
+            "origin"
+        )
+        _require_sequence_of(
+            self.evidences,
+            VisualIntelligenceEvidence,
+            "evidences"
+        )
+        _require_optional_type(
+            self.trace,
+            SpecializedTrace,
+            "trace"
+        )
+        _set_fingerprint(
+            self,
+            "VisualConflict",
+            (
+                "conflict",
+                "category",
+                "severity",
+                "origin",
+                "involved_components",
+                "passive_recommendation",
+                "evidences",
+                "trace",
             )
         )
 
@@ -402,6 +770,20 @@ def _require_type(
         raise ValueError(
             f"{field_name} must be a {expected_type.__name__}."
         )
+
+
+def _require_optional_type(
+    value: Any,
+    expected_type: type,
+    field_name: str
+) -> None:
+    if value is None:
+        return
+    _require_type(
+        value,
+        expected_type,
+        field_name
+    )
 
 
 def _require_sequence_of(

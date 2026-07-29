@@ -29,14 +29,15 @@ Completed:
 - `IP2.0-8 - Legacy Contract Retirement`
 - `IP3.0-0 - Visual Intelligence Architecture`
 - `IP3.0-1A - Visual Intelligence Core Contracts`
+- `IP3.0-1B - Visual Intelligence Specialized Contracts`
 
 Next planned phase:
 
 ```text
-IP3.0-1B - Visual Intelligence Specialized Contracts
+IP3.0-2 - Visual Truth Inspector
 ```
 
-`IP3.0-1` is refined into subphases. `IP3.0-1A` establishes the shared core contracts. `IP3.0-1B` is reserved for specialized contracts built on top of those primitives.
+`IP3.0-1` is refined into subphases. `IP3.0-1A` establishes the shared core contracts. `IP3.0-1B` establishes specialized passive contracts built on top of those primitives.
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline 2.0 phase is explicitly requested.
 
