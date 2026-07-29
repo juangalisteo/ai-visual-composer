@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.modules.images.backends import ComfyUIBackend
+from app.modules.images.backends import ComfyUIBackend, ComfyUIBackendError
 from app.modules.images.image_builder import ImageBuilder
 
 
@@ -363,11 +363,110 @@ class ComfyUIBackendTest(unittest.TestCase):
         ):
             with self.assertRaisesRegex(
                 RuntimeError,
-                "ComfyUI devolvió un error durante la generación."
+                "ComfyUI devolvio un error durante la generacion."
             ):
                 ComfyUIBackend().wait_for_image(
                     "abc"
                 )
+
+    def test_comfyui_prompt_too_long_error_is_classified(self):
+        with patch(
+            "app.modules.images.backends.comfyui_backend.urllib.request.urlopen",
+            return_value=MockResponse(
+                json.dumps({
+                    "abc": {
+                        "outputs": {},
+                        "status": {
+                            "status_str": "error",
+                            "messages": (
+                                (
+                                    "execution_error",
+                                    {
+                                        "node_id": "6",
+                                        "node_type": "CLIPTextEncode",
+                                        "exception_type": "IndexError",
+                                        "exception_message": (
+                                            "Token indices sequence length is "
+                                            "longer than the specified maximum "
+                                            "sequence length for this model "
+                                            "(4682 > 512)"
+                                        ),
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                }).encode(
+                    "utf-8"
+                )
+            )
+        ):
+            with self.assertRaises(
+                ComfyUIBackendError
+            ) as context:
+                ComfyUIBackend().wait_for_image(
+                    "abc"
+                )
+
+        self.assertEqual(
+            context.exception.category,
+            "PROMPT_TOO_LONG",
+        )
+        self.assertEqual(
+            context.exception.node_id,
+            "6",
+        )
+        self.assertEqual(
+            context.exception.node_type,
+            "CLIPTextEncode",
+        )
+        self.assertIn(
+            "4682 > 512",
+            context.exception.exception_message,
+        )
+
+    def test_comfyui_out_of_memory_error_is_classified(self):
+        with patch(
+            "app.modules.images.backends.comfyui_backend.urllib.request.urlopen",
+            return_value=MockResponse(
+                json.dumps({
+                    "abc": {
+                        "outputs": {},
+                        "status": {
+                            "status_str": "error",
+                            "messages": (
+                                (
+                                    "execution_error",
+                                    {
+                                        "node_id": "30",
+                                        "node_type": "ModelSamplingFlux",
+                                        "exception_type": "OutOfMemoryError",
+                                        "exception_message": "CUDA out of memory",
+                                    },
+                                ),
+                            ),
+                        },
+                    },
+                }).encode(
+                    "utf-8"
+                )
+            )
+        ):
+            with self.assertRaises(
+                ComfyUIBackendError
+            ) as context:
+                ComfyUIBackend().wait_for_image(
+                    "abc"
+                )
+
+        self.assertEqual(
+            context.exception.category,
+            "OUT_OF_MEMORY",
+        )
+        self.assertEqual(
+            context.exception.node_id,
+            "30",
+        )
 
     def test_generate_sends_identical_injected_payload_and_downloads(self):
         requests = []

@@ -293,13 +293,13 @@ Responsibilities:
 - produce storyboard scenes using Visual Truth 2.0 as the primary visual contract;
 - analyze, reason, and synthesize Visual Truth through the canonical Visual Intelligence contracts;
 - resolve cinematic direction deterministically;
-- translate the effective brief and cinematic directions into `BackendPrompt`;
+- translate the effective brief and cinematic directions into compact `BackendPrompt` semantic compilation;
 - adapt `BackendPrompt` to the configured backend payload;
 - generate images through the backend;
 - validate generated assets through Visual Quality when enabled;
 - write the approved asset into the image manifest.
 
-`ImageBuilder` coordinates the component as the public facade. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component. After generation, Visual Quality can validate the asset when enabled, the result is adapted into the current generation contract, and `ImageManifestWriter` persists the manifest consumed by downstream video assembly.
+`ImageBuilder` coordinates the component as the public facade. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt.compiled_prompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component. Prompt Translation keeps visual intent compact under the active backend/model budget while preserving traceability outside the prompt text. After generation, Visual Quality can validate the asset when enabled, the result is adapted into the current generation contract, and `ImageManifestWriter` persists the manifest consumed by downstream video assembly.
 
 The Image Component does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
 

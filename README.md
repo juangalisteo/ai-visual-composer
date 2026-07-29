@@ -21,7 +21,7 @@ The project is designed around explicit configuration, deterministic contracts, 
 - Image Pipeline as the first available product pipeline.
 - Single cinematic Image Component runtime.
 - Backend-neutral cognitive and cinematic contracts.
-- Prompt translation through `BackendPrompt`.
+- Deterministic prompt translation through compact `BackendPrompt` semantic compilation.
 - ComfyUI backend adapter and ComfyUI runtime integration.
 - Optional Visual Quality validation and controlled retry infrastructure.
 - Image manifest generation compatible with downstream video assembly.
@@ -247,6 +247,10 @@ VideoBuilder().build(
 - `ROADMAP.md`: future work.
 
 Private development memory and private engineering governance, including AVCES, live in `CODEX/` and are intentionally excluded from the public repository and official releases.
+
+## Operational Notes
+
+Prompt Translation compiles resolved visual intent into compact backend-neutral operational text before backend adaptation. The current FLUX-oriented prompt budget policy is explicit, deterministic, traceable, and validated against the configured ComfyUI workflow.
 
 ## License
 

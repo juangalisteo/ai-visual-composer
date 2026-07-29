@@ -443,6 +443,53 @@ class ImageBuilder:
             "backend_prompt_fingerprint": (
                 backend_prompt.fingerprint
             ),
+            "prompt_translation_metrics": {
+                "prompt_char_count": (
+                    backend_prompt.metrics.prompt_char_count
+                ),
+                "prompt_word_count": (
+                    backend_prompt.metrics.prompt_word_count
+                ),
+                "prompt_token_count": (
+                    backend_prompt.metrics.prompt_token_count
+                ),
+                "token_count_method": (
+                    backend_prompt.metrics.token_count_method
+                ),
+                "target_budget": (
+                    backend_prompt.metrics.target_budget
+                ),
+                "warning_threshold": (
+                    backend_prompt.metrics.warning_threshold
+                ),
+                "hard_limit": (
+                    backend_prompt.metrics.hard_limit
+                ),
+                "compactation_applied": (
+                    backend_prompt.metrics.compactation_applied
+                ),
+                "compactation_stages": (
+                    backend_prompt.metrics.compactation_stages
+                ),
+                "duplicate_fragments_removed": (
+                    backend_prompt.metrics.duplicate_fragments_removed
+                ),
+                "non_visual_fields_removed": (
+                    backend_prompt.metrics.non_visual_fields_removed
+                ),
+                "semantic_duplicates_removed": (
+                    backend_prompt.metrics.semantic_duplicates_removed
+                ),
+                "budget_policy": (
+                    backend_prompt.budget_policy.policy_id
+                ),
+                "model": (
+                    backend_prompt.budget_policy.model_id
+                ),
+                "encoder": (
+                    backend_prompt.budget_policy.encoder_id
+                ),
+            },
             "backend_adapter_payload_fingerprint": (
                 payload.fingerprint
             ),

@@ -25,6 +25,9 @@ from app.prompt_translation import (
     BackendPromptInstruction,
     BackendPromptTrace,
     BackendPromptTraceItem,
+    PromptBudgetExceededError,
+    PromptBudgetPolicy,
+    PromptCompilationMetrics,
     PromptTranslator,
 )
 from app.visual_intelligence import VisualSynthesisOrchestrator
@@ -144,10 +147,43 @@ def cinematic_direction_set():
     )
 
 
+def all_trace_source_fields(
+    prompt
+):
+    fields = []
+    for item in prompt.trace.items:
+        fields.extend(
+            item.source_fields
+        )
+    return tuple(
+        fields
+    )
+
+
+def instruction_by_source_field(
+    prompt,
+    source_field
+):
+    for instruction in prompt.instructions:
+        if source_field in instruction.source_field:
+            return instruction
+    for instruction, trace_item in zip(
+        prompt.instructions,
+        prompt.trace.items,
+    ):
+        if source_field in trace_item.source_fields:
+            return instruction
+    raise AssertionError(
+        f"Source field not found in prompt trace: {source_field}"
+    )
+
+
 class PromptTranslationTest(unittest.TestCase):
 
     def test_prompt_translation_models_are_passive_dataclasses(self):
         for model in (
+            PromptBudgetPolicy,
+            PromptCompilationMetrics,
             BackendPromptInstruction,
             BackendPromptTraceItem,
             BackendPromptTrace,
@@ -188,11 +224,9 @@ class PromptTranslationTest(unittest.TestCase):
             synthesis_result
         )
 
-        source_fields = {
-            item.source_fields[0]
-            for item in prompt.trace.items
-            if item.source_fields
-        }
+        source_fields = all_trace_source_fields(
+            prompt
+        )
 
         self.assertIn(
             "VisualSynthesisResult.brief.primary_identity",
@@ -211,76 +245,78 @@ class PromptTranslationTest(unittest.TestCase):
         prompt = PromptTranslator().translate(
             effective_brief()
         )
-        by_source = {
-            instruction.source_field: instruction
-            for instruction in prompt.instructions
-        }
 
-        self.assertEqual(
-            by_source["EffectiveVisualBrief.visible_content"].value,
-            "A person receives an old key."
+        self.assertIn(
+            "person receiving an old key",
+            prompt.compiled_prompt
+        )
+        self.assertIn(
+            "old key changes hands",
+            prompt.compiled_prompt
+        )
+        self.assertIn(
+            "quiet interior",
+            prompt.compiled_prompt
+        )
+        self.assertIn(
+            "old key",
+            prompt.compiled_prompt
         )
         self.assertEqual(
-            by_source["EffectiveVisualBrief.visible_subject"].value,
-            "person receiving an old key"
-        )
-        self.assertEqual(
-            by_source["EffectiveVisualBrief.key_objects"].value,
-            "old key | sealed letter"
-        )
-        self.assertEqual(
-            by_source["EffectiveVisualBrief.visual_constraints"].category,
+            instruction_by_source_field(
+                prompt,
+                "EffectiveVisualBrief.visual_constraints",
+            ).category,
             "constraints"
         )
-        self.assertEqual(
-            by_source["EffectiveVisualBrief.filmable_interpretation"].value,
-            "a key changes hands in silence"
+        self.assertIn(
+            "a key changes hands in silence",
+            prompt.compiled_prompt
         )
         self.assertNotIn(
-            "EffectiveVisualBrief.visual_truth_status",
-            by_source,
+            "structured",
+            prompt.compiled_prompt,
         )
         self.assertEqual(
-            by_source["EffectiveVisualBrief.photography.point_of_view"].category,
+            instruction_by_source_field(
+                prompt,
+                "EffectiveVisualBrief.photography.point_of_view",
+            ).category,
             "photography"
         )
-        self.assertEqual(
-            by_source["EffectiveVisualBrief.color.palette"].value,
-            "deep graphite | soft gold"
+        self.assertIn(
+            "deep graphite",
+            prompt.compiled_prompt
         )
-        self.assertEqual(
-            by_source["EffectiveVisualBrief.visual_strategy.visual_limits"].value,
-            "avoid spectacle"
+        self.assertIn(
+            "avoid spectacle",
+            prompt.compiled_prompt
         )
 
     def test_translation_preserves_meaning_without_new_decisions(self):
         prompt = PromptTranslator().translate(
             effective_brief()
         )
-        values = tuple(
-            instruction.value
-            for instruction in prompt.instructions
-        )
 
         self.assertIn(
             "threshold event",
-            values
+            prompt.compiled_prompt
         )
         self.assertIn(
             "consequence over object",
-            values
+            prompt.compiled_prompt
         )
         self.assertIn(
             "the key acts as threshold and burden",
-            values
+            prompt.compiled_prompt
         )
         self.assertNotIn(
             "ComfyUI",
-            values
+            prompt.compiled_prompt
         )
         self.assertNotIn(
             "Flux",
-            values
+            prompt.compiled_prompt
         )
 
     def test_translation_is_deterministic(self):
@@ -307,26 +343,29 @@ class PromptTranslationTest(unittest.TestCase):
             effective_brief(),
             cinematic_direction_set=cinematic_direction_set(),
         )
-        by_source = {
-            instruction.source_field: instruction
-            for instruction in prompt.instructions
-        }
 
-        self.assertEqual(
-            by_source["CinematicDirectionSet.photography.dominant_photographic_language"].value,
-            "observational intimacy"
+        self.assertIn(
+            "CinematicDirectionSet.photography.dominant_photographic_language",
+            all_trace_source_fields(
+                prompt
+            )
         )
         self.assertEqual(
-            by_source["CinematicDirectionSet.photography.dominant_photographic_language"].category,
-            "cinematic_photography"
+            instruction_by_source_field(
+                prompt,
+                "CinematicDirectionSet.photography.dominant_photographic_language",
+            ).category,
+            "photography"
         )
-        self.assertEqual(
-            by_source["CinematicDirectionSet.color.dominant_palette"].value,
-            "muted amber"
+        self.assertIn(
+            "muted amber",
+            prompt.compiled_prompt
         )
         self.assertIn(
             "EffectiveVisualBrief.visible_content",
-            by_source
+            all_trace_source_fields(
+                prompt
+            )
         )
 
     def test_cinematic_translation_trace_keeps_direction_and_set_fingerprints(self):
@@ -335,22 +374,28 @@ class PromptTranslationTest(unittest.TestCase):
             effective_brief(),
             cinematic_direction_set=direction_set,
         )
-        trace = {
-            item.instruction_id: item
-            for item in prompt.trace.items
-        }
-
-        self.assertEqual(
-            trace["cinematic_photography_dominant_photographic_language"].source_fields,
-            (
-                "CinematicDirectionSet.photography.dominant_photographic_language",
-                "CinematicDirectionSet.photography.fingerprint",
-                "CinematicDirectionSet.fingerprint",
-            )
+        source_fields = all_trace_source_fields(
+            prompt
         )
-        self.assertEqual(
-            trace["cinematic_photography_dominant_photographic_language"].transformation,
-            "translate_cinematic_direction_field"
+
+        self.assertIn(
+            "CinematicDirectionSet.photography.dominant_photographic_language",
+            source_fields,
+        )
+        self.assertIn(
+            "CinematicDirectionSet.photography.fingerprint",
+            source_fields,
+        )
+        self.assertIn(
+            "CinematicDirectionSet.fingerprint",
+            source_fields,
+        )
+        self.assertIn(
+            "semantic_prompt_compilation",
+            {
+                item.transformation
+                for item in prompt.trace.items
+            },
         )
         self.assertNotEqual(
             direction_set.fingerprint,
@@ -422,24 +467,139 @@ class PromptTranslationTest(unittest.TestCase):
         prompt = PromptTranslator().translate(
             effective_brief()
         )
-        trace = {
-            item.instruction_id: item
-            for item in prompt.trace.items
-        }
+        source_fields = all_trace_source_fields(
+            prompt
+        )
 
         self.assertEqual(
             prompt.trace.source_effective_brief_fingerprint,
             "visual-brief-fingerprint"
         )
-        self.assertEqual(
-            trace["visible_content"].source_fields,
-            (
-                "EffectiveVisualBrief.visible_content",
-            )
+        self.assertIn(
+            "EffectiveVisualBrief.visible_content",
+            source_fields,
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.color.palette",
+            source_fields,
         )
         self.assertEqual(
-            trace["color_palette"].transformation,
-            "normalize_sequence"
+            {
+                item.transformation
+                for item in prompt.trace.items
+            },
+            {
+                "semantic_prompt_compilation",
+            },
+        )
+
+    def test_compiled_prompt_stays_within_backend_budget(self):
+        prompt = PromptTranslator().translate(
+            effective_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+        )
+
+        self.assertTrue(
+            prompt.compiled_prompt
+        )
+        self.assertLessEqual(
+            prompt.metrics.prompt_token_count,
+            prompt.budget_policy.hard_prompt_tokens,
+        )
+        self.assertEqual(
+            prompt.metrics.token_count_method,
+            "conservative_estimate",
+        )
+
+    def test_semantic_compaction_prevents_oversized_flux_prompts(self):
+        long_fragment = (
+            "a grounded live action person receiving an ancient key in a quiet interior "
+            "with restrained solemnity and no readable text "
+        )
+        brief = EffectiveVisualBrief(
+            visible_content=long_fragment * 80,
+            visible_subject=long_fragment * 40,
+            visible_action=long_fragment * 30,
+            visible_environment=long_fragment * 30,
+            filmable_interpretation=long_fragment * 30,
+            visual_constraints=(
+                "no readable text",
+                "no logos",
+            ),
+            fingerprint="oversized-brief",
+        )
+
+        policy = PromptBudgetPolicy(
+            target_prompt_tokens=20,
+            warning_prompt_tokens=40,
+            hard_prompt_tokens=384,
+        )
+        prompt = PromptTranslator(
+            budget_policy=policy
+        ).translate(
+            brief
+        )
+
+        self.assertLessEqual(
+            prompt.metrics.prompt_token_count,
+            prompt.budget_policy.hard_prompt_tokens,
+        )
+        self.assertTrue(
+            prompt.metrics.compactation_applied
+        )
+        self.assertIn(
+            "priority_compaction",
+            prompt.metrics.compactation_stages,
+        )
+
+    def test_compiled_prompt_excludes_internal_metadata(self):
+        prompt = PromptTranslator().translate(
+            effective_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+        )
+        forbidden = (
+            "EffectiveVisualBrief",
+            "CinematicDirectionSet",
+            "fingerprint",
+            "BackendPrompt",
+            "Trace",
+            "schema_version",
+            "visual-brief-fingerprint",
+            "photography-fingerprint",
+        )
+
+        for item in forbidden:
+            with self.subTest(
+                item=item
+            ):
+                self.assertNotIn(
+                    item,
+                    prompt.compiled_prompt
+                )
+
+    def test_unsatisfiable_budget_raises_structured_error(self):
+        policy = PromptBudgetPolicy(
+            target_prompt_tokens=1,
+            warning_prompt_tokens=1,
+            hard_prompt_tokens=1,
+        )
+
+        with self.assertRaises(
+            PromptBudgetExceededError
+        ) as context:
+            PromptTranslator(
+                budget_policy=policy
+            ).translate(
+                EffectiveVisualBrief(
+                    visible_subject="person receiving ancient key",
+                    visual_constraints=("no readable text",),
+                    fingerprint="tight-budget",
+                )
+            )
+
+        self.assertEqual(
+            context.exception.code,
+            "PROMPT_BUDGET_UNSATISFIABLE",
         )
 
     def test_output_contains_no_backend_specific_fields(self):

@@ -6,6 +6,7 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Corrected Prompt Translation to compile compact backend-neutral prompts with deterministic backend/model budget policy, semantic compaction, traceability-preserving source fields, and useful ComfyUI error categories for prompt-length and memory failures.
 - Published `Visual Intelligence Architecture v1.0` as the official frozen specification for the canonical Image Runtime architecture.
 - Retired transitional Visual Direction and Runtime Cognitive compatibility components; the Image Runtime now proceeds from `StoryboardSceneAdapter` through Visual Analysis, Visual Reasoning, Visual Synthesis, `EffectiveVisualBrief`, cinematic direction, prompt translation, and backend adaptation.
 - Certified the Visual Intelligence performance baseline with deterministic timing, memory, object, contract, and fingerprint measurements.

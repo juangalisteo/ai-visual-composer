@@ -50,6 +50,7 @@ Completed:
 - `IP3.0-7 - Visual Intelligence Performance Certification`
 - `IP3.0-8 - Transitional Component Retirement`
 - `IP3.0-9 - Architecture Finalization`
+- `IP3.1 - Prompt Translation Correction and Runtime Input Governance`
 
 Next planned phase:
 

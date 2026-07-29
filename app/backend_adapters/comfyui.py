@@ -19,16 +19,18 @@ class ComfyUIAdapter:
         self,
         backend_prompt: BackendPrompt
     ) -> ComfyUIPayload:
-        prompt_parts = tuple(
-            instruction.value
-            for instruction in backend_prompt.instructions
-            if instruction.value
-        )
-        prompt = ", ".join(
-            _dedupe(
-                prompt_parts
+        prompt = backend_prompt.compiled_prompt
+        if not prompt:
+            prompt_parts = tuple(
+                instruction.value
+                for instruction in backend_prompt.instructions
+                if instruction.value
             )
-        )
+            prompt = ", ".join(
+                _dedupe(
+                    prompt_parts
+                )
+            )
         trace = BackendAdapterTrace(
             source_backend_prompt_fingerprint=backend_prompt.fingerprint,
             items=(

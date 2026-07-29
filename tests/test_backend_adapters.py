@@ -118,6 +118,34 @@ class BackendAdapterTest(unittest.TestCase):
             payload.prompt,
             "A person receives an old key., contained solemnity, consequence over object"
         )
+
+    def test_compiled_prompt_takes_precedence_over_instruction_joining(self):
+        prompt = BackendPrompt(
+            instructions=(
+                BackendPromptInstruction(
+                    id="verbose_internal_instruction",
+                    category="content",
+                    source_field="EffectiveVisualBrief.visible_content",
+                    value="verbose internal value that should not be joined"
+                ),
+            ),
+            trace=BackendPromptTrace(),
+            compiled_prompt="compact operational prompt",
+            fingerprint="compiled-backend-prompt",
+        )
+
+        payload = ComfyUIAdapter().adapt(
+            prompt
+        )
+
+        self.assertEqual(
+            payload.prompt,
+            "compact operational prompt",
+        )
+        self.assertNotIn(
+            "verbose internal value",
+            payload.prompt,
+        )
     def test_adaptation_is_deterministic(self):
         prompt = backend_prompt()
 

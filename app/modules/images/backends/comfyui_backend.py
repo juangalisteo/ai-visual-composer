@@ -6,6 +6,31 @@ import urllib.request
 import uuid
 
 
+class ComfyUIBackendError(RuntimeError):
+    def __init__(
+        self,
+        message,
+        *,
+        category="UNKNOWN_BACKEND_ERROR",
+        prompt_id="",
+        node_id="",
+        node_type="",
+        exception_type="",
+        exception_message="",
+        status="",
+    ):
+        self.category = category
+        self.prompt_id = prompt_id
+        self.node_id = node_id
+        self.node_type = node_type
+        self.exception_type = exception_type
+        self.exception_message = exception_message
+        self.status = status
+        super().__init__(
+            message
+        )
+
+
 class ComfyUIBackend:
 
     def __init__(
@@ -94,14 +119,14 @@ class ComfyUIBackend:
 
         if not latent_updated:
             raise ValueError(
-                "No se encontró el nodo "
+                "No se encontro el nodo "
                 "EmptySD3LatentImage "
                 "en el workflow de ComfyUI."
             )
 
         if not sampling_updated:
             raise ValueError(
-                "No se encontró el nodo "
+                "No se encontro el nodo "
                 "ModelSamplingFlux "
                 "en el workflow de ComfyUI."
             )
@@ -137,14 +162,21 @@ class ComfyUIBackend:
                 )
 
         except Exception as error:
-            raise RuntimeError(
-                "No se pudo enviar el workflow "
-                "a ComfyUI."
+            raise ComfyUIBackendError(
+                "No se pudo enviar el workflow a ComfyUI.",
+                category="CONNECTION_ERROR",
+                exception_type=type(
+                    error
+                ).__name__,
+                exception_message=str(
+                    error
+                ),
             ) from error
 
         if "prompt_id" not in result:
-            raise RuntimeError(
-                "ComfyUI no devolvió prompt_id."
+            raise ComfyUIBackendError(
+                "ComfyUI no devolvio prompt_id.",
+                category="INPUT_VALIDATION_ERROR",
             )
 
         return result["prompt_id"]
@@ -164,9 +196,16 @@ class ComfyUIBackend:
                     )
 
             except Exception as error:
-                raise RuntimeError(
-                    "No se pudo consultar "
-                    "el estado de ComfyUI."
+                raise ComfyUIBackendError(
+                    "No se pudo consultar el estado de ComfyUI.",
+                    category="CONNECTION_ERROR",
+                    prompt_id=prompt_id,
+                    exception_type=type(
+                        error
+                    ).__name__,
+                    exception_message=str(
+                        error
+                    ),
                 ) from error
 
             if prompt_id in history:
@@ -198,9 +237,35 @@ class ComfyUIBackend:
                 if status.get(
                     "status_str"
                 ) == "error":
-                    raise RuntimeError(
-                        "ComfyUI devolvió un error "
-                        "durante la generación."
+                    detail = _extract_error_detail(
+                        history[prompt_id],
+                        prompt_id
+                    )
+                    raise ComfyUIBackendError(
+                        "ComfyUI devolvio un error durante "
+                        "la generacion: "
+                        f"{detail['category']}. "
+                        f"{detail['exception_message']}",
+                        category=detail[
+                            "category"
+                        ],
+                        prompt_id=prompt_id,
+                        node_id=detail[
+                            "node_id"
+                        ],
+                        node_type=detail[
+                            "node_type"
+                        ],
+                        exception_type=detail[
+                            "exception_type"
+                        ],
+                        exception_message=detail[
+                            "exception_message"
+                        ],
+                        status=status.get(
+                            "status_str",
+                            ""
+                        ),
                     )
 
             time.sleep(
@@ -244,22 +309,29 @@ class ComfyUIBackend:
                 )
 
         except Exception as error:
-            raise RuntimeError(
-                "No se pudo descargar "
-                f"la imagen de la escena "
-                f"{scene_number}."
+            raise ComfyUIBackendError(
+                "No se pudo descargar la imagen "
+                f"de la escena {scene_number}.",
+                category="CONNECTION_ERROR",
+                exception_type=type(
+                    error
+                ).__name__,
+                exception_message=str(
+                    error
+                ),
             ) from error
 
         if not image_path.exists():
             raise FileNotFoundError(
-                "No se guardó la imagen esperada: "
+                "No se guardo la imagen esperada: "
                 f"{image_path}"
             )
 
         if image_path.stat().st_size <= 0:
-            raise RuntimeError(
-                "La imagen descargada está vacía: "
-                f"{image_path}"
+            raise ComfyUIBackendError(
+                "La imagen descargada esta vacia: "
+                f"{image_path}",
+                category="EXECUTION_ERROR",
             )
 
         return image_path
@@ -290,8 +362,102 @@ class ComfyUIBackend:
 
         if not prompt_injected:
             raise ValueError(
-                "No se encontró ningún nodo de texto "
+                "No se encontro ningun nodo de texto "
                 "en el workflow de ComfyUI."
             )
 
         return workflow
+
+
+def _extract_error_detail(
+    history_item,
+    prompt_id
+):
+    status = history_item.get(
+        "status",
+        {}
+    )
+    messages = status.get(
+        "messages",
+        ()
+    )
+    payload = {}
+    for message in messages:
+        if (
+            isinstance(
+                message,
+                (
+                    list,
+                    tuple,
+                )
+            )
+            and len(
+                message
+            ) >= 2
+            and isinstance(
+                message[1],
+                dict
+            )
+        ):
+            payload = message[1]
+    exception_type = str(
+        payload.get(
+            "exception_type",
+            ""
+        )
+    )
+    exception_message = str(
+        payload.get(
+            "exception_message",
+            ""
+        )
+    )
+    return {
+        "prompt_id": prompt_id,
+        "node_id": str(
+            payload.get(
+                "node_id",
+                ""
+            )
+        ),
+        "node_type": str(
+            payload.get(
+                "node_type",
+                ""
+            )
+        ),
+        "exception_type": exception_type,
+        "exception_message": exception_message,
+        "category": _classify_comfyui_error(
+            exception_type,
+            exception_message,
+        ),
+    }
+
+
+def _classify_comfyui_error(
+    exception_type,
+    exception_message
+):
+    text = (
+        f"{exception_type} {exception_message}"
+    ).lower()
+    if "outofmemory" in text or "out of memory" in text:
+        return "OUT_OF_MEMORY"
+    if (
+        "token indices sequence length" in text
+        or "maximum sequence length" in text
+        or "too long" in text
+    ):
+        return "PROMPT_TOO_LONG"
+    if "model" in text and "not found" in text:
+        return "MODEL_NOT_FOUND"
+    if "node" in text and "not found" in text:
+        return "NODE_NOT_FOUND"
+    if "workflow" in text:
+        return "WORKFLOW_INVALID"
+    if "validation" in text or "invalid input" in text:
+        return "INPUT_VALIDATION_ERROR"
+    if exception_type or exception_message:
+        return "EXECUTION_ERROR"
+    return "UNKNOWN_BACKEND_ERROR"
