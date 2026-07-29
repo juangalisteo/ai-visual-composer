@@ -46,18 +46,19 @@ Completed:
   - Visual Intelligence Trace Builder
   - Visual Synthesis Orchestrator
 - `IP3.0-5 - Visual Intelligence Runtime Integration`
+- `IP3.0-6 - Visual Intelligence Certification`
 
 Next planned phase:
 
 ```text
-IP3.0-6 - Visual Intelligence Certification
+Transitional component retirement
 ```
 
 `IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` established Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract. `IP3.0-5` integrates `VisualSynthesisResult` into the Image Runtime as the visual source of truth before prompt translation.
 
 Planned IP3.x sequence:
 
-- `IP3.0-6 - Visual Intelligence Certification`
+- Transitional component retirement after certification review
 
 Do not open Video Pipeline or future visual products until the current Image Pipeline phase is explicitly requested.
 
@@ -202,6 +203,65 @@ Rationale:
 - Runtime must remain operational infrastructure, not an intelligence layer.
 - `VisualSynthesisResult` already encapsulates analysis, reasoning, conflict resolution, effective brief, and trace.
 - Keeping one entry point prevents new parallel contracts from appearing during IP3.x evolution.
+
+### Visual Intelligence Certification
+
+Status:
+
+- `IP3.0-6 - Visual Intelligence Certification` completed.
+- The certified runtime entry point is `VisualSynthesisResult`.
+- The certified operational path is:
+
+```text
+StoryboardScene
+        -> VisualAnalysisResult
+        -> VisualReasoningResult
+        -> VisualConflictReport
+        -> EffectiveVisualBrief
+        -> VisualIntelligenceTrace
+        -> VisualSynthesisResult
+        -> ImageBuilder Runtime
+        -> PromptTranslator
+        -> BackendPrompt
+        -> ComfyUIAdapter
+        -> ComfyUIPayload
+```
+
+Certified guarantees:
+
+- `VisualSynthesisResult` governs the Image Runtime visual path.
+- Backend prompt traceability preserves the `EffectiveVisualBrief` fingerprint.
+- Backend adapter traceability preserves the `BackendPrompt` fingerprint.
+- Repeated execution of the same scene produces stable synthesis, direction, prompt, and payload fingerprints.
+- There is a single `EffectiveVisualBrief` class definition.
+- No inverse Visual Intelligence runtime adapters exist.
+- Prompt, backend, and Visual Quality layers do not run Visual Analysis, Reasoning, or Synthesis.
+
+Remaining transitional components:
+
+- `visual_brief`.
+- `source_id`.
+- `source_version`.
+- `VisualBriefTrace`.
+- `VisualDirectionConflict`.
+- `RuntimeCognitiveAdapter`.
+
+### ADR-004 - Certified Visual Intelligence Pipeline
+
+Decision:
+
+- Visual Intelligence is certified as the source of truth for Image Runtime visual decisions.
+- `VisualSynthesisResult` is the certified runtime visual entry point.
+- The Image Runtime MUST execute from `VisualSynthesisResult` and MUST NOT introduce parallel visual contracts.
+- Traceability MUST preserve the chain from Visual Intelligence to `BackendPrompt` and final backend payload.
+- `TRANSITIONAL` components remain isolated until a controlled retirement phase removes or replaces their active consumers.
+
+Rationale:
+
+- Certification demonstrates that the architecture implemented in IP3.x works through the operational image path.
+- Deterministic fingerprints make regressions observable.
+- Boundary guards prevent Prompt Translation, Backend Adapter, and Visual Quality from becoming intelligence layers.
+- Isolated transitional components can now be retired with lower risk.
 
 ## Image Enhancement
 
