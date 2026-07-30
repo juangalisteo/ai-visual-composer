@@ -97,6 +97,8 @@ DURACIÓN:
 - Longitud aproximada: entre {min_words} y {max_words} palabras.
 - El texto debe poder narrarse con naturalidad dentro del tiempo indicado.
 - No superes el máximo de palabras.
+- Si cualquier otra instrucción entra en conflicto con la longitud, prioriza siempre la longitud.
+- Integra apertura, desarrollo y cierre dentro de un único texto breve cuando la duración sea corta.
 
 IDENTIDAD Y TONO:
 {tone_text}
@@ -118,11 +120,18 @@ RESTRICCIONES:
 
 SALIDA OBLIGATORIA:
 - Devuelve únicamente el guion final.
+- El guion debe contener entre {min_words} y {max_words} palabras.
+- Si superas {max_words} palabras, la respuesta sera invalida.
 - No expliques el proceso.
 - No añadas comentarios.
 - No añadas encabezados técnicos.
+- No escribas "Answer", "Response", "Output" ni "Final answer".
+- No escribas "Word count" ni recuentos de palabras.
 - No añadas un título.
+- No uses Markdown.
+- No uses bloques de código.
 - No uses formato JSON.
+- No uses XML.
 """.strip()
 
         return prompt

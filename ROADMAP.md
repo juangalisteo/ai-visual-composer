@@ -8,6 +8,15 @@ This roadmap lists future lines of work after `AI Visual Composer v1.0.0`. It do
 
 AI Visual Composer is a modular system where users choose products and the platform selects the appropriate profile, pipeline, registry entry, and visual components. Version 1.0.0 ships the certified Image Pipeline as the first official product pipeline.
 
+## Current Restoration Point
+
+```text
+PR1
+Stable
+```
+
+PR1 is the current official restoration reference for AI Visual Composer. Future changes must remain restorable to this state if an optimization, refactor, backend experiment, architectural evolution, or functional change introduces regressions.
+
 ## Current Active Development
 
 Current line:
@@ -51,6 +60,10 @@ Completed:
 - `IP3.0-8 - Transitional Component Retirement`
 - `IP3.0-9 - Architecture Finalization`
 - `IP3.1 - Prompt Translation Correction and Runtime Input Governance`
+
+Current validation:
+
+- `IP3.2 - Script Generation Output Contract and LLM Response Sanitization` is implemented and blocked only on real Edge TTS Voice/Subtitles validation in the current environment.
 
 Next planned phase:
 

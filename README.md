@@ -19,6 +19,7 @@ The project is designed around explicit configuration, deterministic contracts, 
 
 - Official AI Visual Composer entry point.
 - Image Pipeline as the first available product pipeline.
+- Structured script generation output contract before downstream runtime stages.
 - Single cinematic Image Component runtime.
 - Backend-neutral cognitive and cinematic contracts.
 - Deterministic prompt translation through compact `BackendPrompt` semantic compilation.

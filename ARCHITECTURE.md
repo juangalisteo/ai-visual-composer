@@ -263,6 +263,8 @@ Profile JSON
 
 ## Image Component Runtime
 
+Script generation is guarded before runtime propagation. Raw LLM responses are parsed into a structured `ScriptGenerationResult`, validated, and only the `script` field may continue to voice, subtitles, storyboard, Visual Intelligence, Prompt Translation, images, or video. Invalid conversational output stops the pipeline with `INVALID_SCRIPT_OUTPUT`.
+
 The Image Component uses a single cinematic runtime. It is part of the image generation path, not the video render core.
 
 Current image flow:

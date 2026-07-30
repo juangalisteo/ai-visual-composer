@@ -245,7 +245,8 @@ def cargar_o_generar_guion(
     profile,
     input_script_path,
     input_topic_path,
-    output_script_path
+    output_script_path,
+    script_builder_factory=ScriptBuilder
 ):
     if builders.get(
         "script",
@@ -292,7 +293,7 @@ def cargar_o_generar_guion(
             )
 
             script = (
-                ScriptBuilder(
+                script_builder_factory(
                     ai_config
                 )
                 .build(

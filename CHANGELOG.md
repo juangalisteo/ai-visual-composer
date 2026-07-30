@@ -6,6 +6,8 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Created `PR1` as the first Official Restoration Point for AI Visual Composer, establishing the stable reference state for future rollback, audits, optimizations, refactors, backend experiments, and architectural evolution.
+- Added structured Script Generation output validation so conversational LLM responses cannot enter voice, subtitles, storyboard, Visual Intelligence, Prompt Translation, or image generation.
 - Corrected Prompt Translation to compile compact backend-neutral prompts with deterministic backend/model budget policy, semantic compaction, traceability-preserving source fields, and useful ComfyUI error categories for prompt-length and memory failures.
 - Published `Visual Intelligence Architecture v1.0` as the official frozen specification for the canonical Image Runtime architecture.
 - Retired transitional Visual Direction and Runtime Cognitive compatibility components; the Image Runtime now proceeds from `StoryboardSceneAdapter` through Visual Analysis, Visual Reasoning, Visual Synthesis, `EffectiveVisualBrief`, cinematic direction, prompt translation, and backend adaptation.
