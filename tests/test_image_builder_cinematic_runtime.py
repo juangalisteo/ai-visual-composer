@@ -281,6 +281,124 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 manifest_path.exists()
             )
 
+    def test_build_persists_visual_intelligence_evidence_without_manifest_changes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = self._write_storyboard(
+                root
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+
+            with self._patched_environment(
+                manifest_path=manifest_path
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    image_quality_flow=FailingImageQualityFlow()
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir
+                    )
+
+            evidence_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "visual_analysis_result.json"
+            )
+            reasoning_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "visual_reasoning_result.json"
+            )
+            conflicts_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "visual_conflict_report.json"
+            )
+            brief_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "effective_visual_brief.json"
+            )
+            synthesis_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "visual_synthesis_result.json"
+            )
+            prompt_observation_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "prompt_translation_observation.json"
+            )
+            index_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "evidence_index.json"
+            )
+            manifest = json.loads(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertTrue(
+                evidence_path.exists()
+            )
+            self.assertTrue(
+                reasoning_path.exists()
+            )
+            self.assertTrue(
+                conflicts_path.exists()
+            )
+            self.assertTrue(
+                brief_path.exists()
+            )
+            self.assertTrue(
+                synthesis_path.exists()
+            )
+            self.assertTrue(
+                prompt_observation_path.exists()
+            )
+            self.assertTrue(
+                index_path.exists()
+            )
+            self.assertEqual(
+                {
+                    "scene",
+                    "prompt",
+                    "positive_prompt",
+                    "negative_prompt",
+                    "visual_director",
+                    "image",
+                    "width",
+                    "height",
+                    "duration"
+                },
+                set(
+                    manifest[0]
+                )
+            )
+
     def test_image_validation_enabled_invokes_quality_flow(self):
         quality_flow = RecordingImageQualityFlow()
         with tempfile.TemporaryDirectory() as temp_dir:

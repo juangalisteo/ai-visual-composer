@@ -141,7 +141,10 @@ def _canonical_mapping(
             for key, item in asdict(
                 value
             ).items()
-            if key != "result_fingerprint"
+            if key not in (
+                "result_fingerprint",
+                "local_artifact_path",
+            )
         }
     if isinstance(
         value,
@@ -154,6 +157,7 @@ def _canonical_mapping(
             for key, item in sorted(
                 value.items()
             )
+            if key != "local_artifact_path"
         }
     if isinstance(
         value,

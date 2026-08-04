@@ -25,6 +25,8 @@ Current line:
 Visual Intelligence Architecture v1.0 frozen
 ```
 
+Post-PR1 local engineering work exists for PromptTranslator observability, evidence persistence, OVB-001 benchmark infrastructure, and Visual Quality validation flow. That work is pending owner review and is not a new official IP, EPIC, or roadmap phase until explicitly approved.
+
 Completed:
 
 - `IP2.0-1 - StoryboardScene 2.0`
@@ -70,6 +72,8 @@ Next planned phase:
 ```text
 IP4.x - Next architectural evolution cycle
 ```
+
+Do not begin IP4.x until the post-PR1 working tree has been classified, validated, and either committed or otherwise resolved by owner decision.
 
 `IP3.0-1` established Visual Intelligence contracts. `IP3.0-2` established isolated Visual Analysis over Visual Truth 2.0. `IP3.0-3` established isolated Visual Reasoning over `VisualAnalysisResult`. `IP3.0-4` established Visual Synthesis and `VisualSynthesisResult` as the passive boundary contract. `IP3.0-5` integrated `VisualSynthesisResult` into the Image Runtime as the visual source of truth before prompt translation. `IP3.0-8` retired transitional runtime components. `IP3.0-9` freezes Visual Intelligence Architecture v1.0.
 

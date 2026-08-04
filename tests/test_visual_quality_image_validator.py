@@ -1,9 +1,12 @@
 import inspect
+import tempfile
 import unittest
 from dataclasses import asdict
+from pathlib import Path
 
 from app.visual_quality import (
     AnatomyCheck,
+    ArtifactIntegrityCheck,
     IdentityCheck,
     ImageValidator,
     LogoCheck,
@@ -16,6 +19,7 @@ from app.visual_quality import (
     create_generated_asset,
     create_validation_context,
     create_validation_failure,
+    default_product_quality_checks,
 )
 
 
@@ -123,6 +127,99 @@ class ImageValidatorTest(unittest.TestCase):
                         context
                     )
                 )
+
+    def test_product_checker_rejects_explicit_failure_signal(self):
+        asset = create_generated_asset(
+            asset_id="asset-1",
+            scene_id="scene-001",
+            sequence_id="sequence-001",
+            asset_type="image",
+            path="scene_001.png",
+            attempt_number=1,
+            generation_attempt_id="scene-001-attempt-1",
+            width=1024,
+            height=576,
+            metadata=(
+                (
+                    "visual_quality_failure",
+                    "text_detected",
+                ),
+            ),
+        )
+        failures = TextCheck().check(
+            asset,
+            validation_context()
+        )
+
+        self.assertEqual(
+            1,
+            len(
+                failures
+            )
+        )
+        self.assertEqual(
+            "text_detected",
+            failures[0].failure_type
+        )
+
+    def test_artifact_integrity_check_rejects_empty_local_artifact(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_path = Path(
+                temp_dir
+            ) / "scene_001.png"
+            image_path.write_bytes(
+                b""
+            )
+            asset = create_generated_asset(
+                asset_id="asset-1",
+                scene_id="scene-001",
+                sequence_id="sequence-001",
+                asset_type="image",
+                path="scene_001.png",
+                attempt_number=1,
+                generation_attempt_id="scene-001-attempt-1",
+                width=1024,
+                height=576,
+                local_artifact_path=str(
+                    image_path
+                ),
+            )
+            failures = ArtifactIntegrityCheck().check(
+                asset,
+                validation_context()
+            )
+
+        self.assertEqual(
+            1,
+            len(
+                failures
+            )
+        )
+        self.assertEqual(
+            "scene_mismatch",
+            failures[0].failure_type
+        )
+
+    def test_default_product_quality_checks_are_active_contracts(self):
+        checks = default_product_quality_checks()
+
+        self.assertGreater(
+            len(
+                checks
+            ),
+            10
+        )
+        self.assertEqual(
+            len(
+                {
+                    check.name
+                    for check in checks
+                }
+            ),
+            len(
+                checks
+            )
+        )
 
     def test_validator_executes_all_checks_in_stable_order(self):
         events = []

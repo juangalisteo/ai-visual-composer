@@ -4,7 +4,7 @@
 
 `generate_project_tree.py` genera una fotografia documental de la arquitectura del proyecto AI Visual Composer.
 
-Su salida no pretende ser un inventario completo de recursos, modelos, caches o artefactos locales. El objetivo es producir un arbol limpio, estable y legible para documentacion, auditorias y Puntos Oficiales de Restauracion.
+Su salida no pretende ser un inventario completo de recursos, modelos, caches, memoria privada o artefactos locales. El objetivo es producir un arbol limpio, estable y legible para documentacion, auditorias y Puntos Oficiales de Restauracion.
 
 ## Ubicacion
 
@@ -32,7 +32,7 @@ project_tree.txt
 
 en la raiz del proyecto.
 
-`project_tree.txt` representa la estructura arquitectonica del proyecto en el momento de su ejecucion.
+`project_tree.txt` representa la estructura arquitectonica prevista del proyecto en el momento de su ejecucion.
 
 ## Funcionamiento
 
@@ -52,25 +52,30 @@ Reglas principales:
 
 Carpetas colapsadas:
 
-- `.git`.
-- `.agents`.
-- `ComfyUI`.
-- `output`.
-- `logs`.
-- `data`.
-- `node_modules`.
-- `venv`.
 - `.venv`.
-- `models`.
 - `cache`.
+- `data`.
+- `models`.
+- `node_modules`.
 - `temp`.
-- cualquier carpeta `backup_*`.
+- `venv`.
+- `assets/music`.
+- `assets/videos`.
+- carpetas que contienen unicamente recursos multimedia o binarios conocidos.
 
 Carpetas omitidas completamente:
 
-- `__pycache__` y cualquier carpeta cuyo nombre contenga `pycache`.
-- `.pytest_cache`.
+- `.agents`.
+- `.git`.
 - `.mypy_cache`.
+- `.pytest_cache`.
+- `CODEX`.
+- `ComfyUI`.
+- `input`.
+- `logs`.
+- `output`.
+- cualquier carpeta `backup_*`.
+- `__pycache__` y cualquier carpeta cuyo nombre contenga `pycache`.
 
 Carpetas de assets no expandidas:
 
@@ -95,23 +100,25 @@ from pathlib import Path
 OUTPUT_FILE = "project_tree.txt"
 
 EXCLUDED_DIRECTORIES = {
-    ".agents",
-    ".git",
     ".venv",
-    "ComfyUI",
     "cache",
     "data",
-    "logs",
     "models",
     "node_modules",
-    "output",
     "temp",
     "venv",
 }
 
 OMITTED_DIRECTORIES = {
+    ".agents",
+    ".git",
     ".mypy_cache",
     ".pytest_cache",
+    "CODEX",
+    "ComfyUI",
+    "input",
+    "logs",
+    "output",
 }
 
 ARCHITECTURAL_ASSET_DIRECTORIES = {
@@ -205,7 +212,7 @@ def _render_children(
 
     for index, child in enumerate(children):
         is_last = index == last_index
-        connector = "â””â”€â”€ " if is_last else "â”œâ”€â”€ "
+        connector = "└── " if is_last else "├── "
         rendered.append(
             f"{prefix}{connector}{child.name}"
         )
@@ -226,7 +233,7 @@ def _render_children(
         child_prefix = (
             f"{prefix}    "
             if is_last
-            else f"{prefix}â”‚   "
+            else f"{prefix}│   "
         )
         rendered.extend(
             _render_children(
@@ -279,6 +286,7 @@ def _is_omitted_directory(path: Path) -> bool:
     name = path.name
     return (
         name in OMITTED_DIRECTORIES
+        or name.startswith("backup_")
         or "pycache" in name.casefold()
     )
 

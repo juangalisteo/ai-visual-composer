@@ -7,23 +7,25 @@ from pathlib import Path
 OUTPUT_FILE = "project_tree.txt"
 
 EXCLUDED_DIRECTORIES = {
-    ".agents",
-    ".git",
     ".venv",
-    "ComfyUI",
     "cache",
     "data",
-    "logs",
     "models",
     "node_modules",
-    "output",
     "temp",
     "venv",
 }
 
 OMITTED_DIRECTORIES = {
+    ".agents",
+    ".git",
     ".mypy_cache",
     ".pytest_cache",
+    "CODEX",
+    "ComfyUI",
+    "input",
+    "logs",
+    "output",
 }
 
 ARCHITECTURAL_ASSET_DIRECTORIES = {
@@ -191,6 +193,7 @@ def _is_omitted_directory(path: Path) -> bool:
     name = path.name
     return (
         name in OMITTED_DIRECTORIES
+        or name.startswith("backup_")
         or "pycache" in name.casefold()
     )
 

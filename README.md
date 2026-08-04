@@ -25,6 +25,8 @@ The project is designed around explicit configuration, deterministic contracts, 
 - Deterministic prompt translation through compact `BackendPrompt` semantic compilation.
 - ComfyUI backend adapter and ComfyUI runtime integration.
 - Optional Visual Quality validation and controlled retry infrastructure.
+- Post-PR1 engineering observability and benchmark packages are present locally
+  for owner review; they are not a new official roadmap phase.
 - Image manifest generation compatible with downstream video assembly.
 - Profile-driven video configuration.
 - Modular video pipeline: Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles.
@@ -90,6 +92,8 @@ ai-visual-composer/
     backend_adapters/
     cinematic_direction/
     domain/
+    evidence/
+    benchmarks/
     modules/
       images/
       video/
@@ -102,6 +106,8 @@ ai-visual-composer/
   data/
   docs/
     adr/
+    architecture/
+    reports/
     reference/
       prompt_music.md
   prompts/
@@ -109,7 +115,6 @@ ai-visual-composer/
   main.py
   README.md
   ARCHITECTURE.md
-  VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md
   CHANGELOG.md
   ROADMAP.md
   LICENSE
@@ -142,7 +147,10 @@ Status:
 - Final Project Cleanup completed.
 - Video composition core stabilized.
 - Runtime legacy image path removed.
-- Visual Quality infrastructure included.
+- Visual Quality infrastructure included. Current product checks consume
+  explicit validation signals and artifact integrity evidence; they do not
+  independently perform OCR, logo recognition, face analysis, anatomy
+  analysis, object detection, or pixel-level visual inference.
 - First official product entry available through `python main.py`.
 
 ## Requirements
@@ -243,7 +251,7 @@ VideoBuilder().build(
 
 - `README.md`: official project overview and installation guide.
 - `ARCHITECTURE.md`: current architecture.
-- `VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`: frozen Visual Intelligence architecture specification.
+- `docs/architecture/VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`: frozen Visual Intelligence architecture specification.
 - `CHANGELOG.md`: release history.
 - `ROADMAP.md`: future work.
 

@@ -6,6 +6,11 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ### Changed
 
+- Recorded post-PR1 local engineering work as pending owner review: PromptTranslator observability, evidence persistence, OVB-001 benchmark infrastructure, Visual Quality validation flow, and ImageBuilder evidence integration. These names are not promoted to official roadmap phases by this entry.
+- Reorganized post-PR1 technical reports from the repository root into `docs/architecture/` and `docs/reports/image-pipeline/`, keeping the root focused on official product entry-point documents and utilities.
+- Clarified that current Visual Quality product checks consume explicit validation signals and artifact integrity evidence; they do not independently perform OCR, logo recognition, face analysis, anatomy analysis, object detection, or pixel-level visual inference.
+- Added the missing `edge_tts` runtime dependency declaration required by `app/modules/audio/voice_builder.py`.
+- Regenerated `project_tree.txt` and updated `generate_project_tree.py` documentation so private local folders such as `CODEX/`, `ComfyUI/`, `output/`, `logs/`, `input/`, `.git/`, `.agents/`, and `backup_*` are omitted from the public architecture tree.
 - Created `PR1` as the first Official Restoration Point for AI Visual Composer, establishing the stable reference state for future rollback, audits, optimizations, refactors, backend experiments, and architectural evolution.
 - Added structured Script Generation output validation so conversational LLM responses cannot enter voice, subtitles, storyboard, Visual Intelligence, Prompt Translation, or image generation.
 - Corrected Prompt Translation to compile compact backend-neutral prompts with deterministic backend/model budget policy, semantic compaction, traceability-preserving source fields, and useful ComfyUI error categories for prompt-length and memory failures.

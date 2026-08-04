@@ -17,6 +17,7 @@ class GeneratedAsset:
     duration: float | None = None
     fps: float | None = None
     generation_fingerprint: str = ""
+    local_artifact_path: str = ""
     metadata: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
 
@@ -44,6 +45,58 @@ class ValidationFailure:
     retry_relevant: bool
     region: tuple[int, int, int, int] | None = None
     failure_fingerprint: str = ""
+
+
+@dataclass(frozen=True)
+class SeverityDefinition:
+    severity: str
+    blocks_acceptance: bool
+    score_penalty: float
+    retry_relevant_by_default: bool
+    description: str
+    definition_fingerprint: str = ""
+
+
+@dataclass(frozen=True)
+class ConfidenceBand:
+    band_id: str
+    minimum: float
+    maximum: float
+    review_recommended: bool
+    description: str
+    band_fingerprint: str = ""
+
+
+@dataclass(frozen=True)
+class FailureClassification:
+    failure_type: str
+    category: str
+    default_severity: str
+    retry_relevant_by_default: bool
+    description: str
+    classification_fingerprint: str = ""
+
+
+@dataclass(frozen=True)
+class ValidationThresholds:
+    thresholds_id: str
+    blocking_confidence: float
+    manual_review_confidence: float
+    high_confidence: float
+    version: str = "1.0.0"
+    thresholds_fingerprint: str = ""
+
+
+@dataclass(frozen=True)
+class ValidationProfileConfig:
+    profile_id: str
+    enabled_checks: tuple[str, ...]
+    failure_classifications: tuple[FailureClassification, ...]
+    severity_definitions: tuple[SeverityDefinition, ...]
+    confidence_bands: tuple[ConfidenceBand, ...]
+    thresholds: ValidationThresholds
+    version: str = "1.0.0"
+    profile_fingerprint: str = ""
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,14 @@ from app.prompt_translation.models import (
     PromptBudgetPolicy,
     PromptCompilationMetrics,
 )
+from app.prompt_translation.observability import (
+    PromptCandidateUtilizationObservation,
+    PromptCandidateObservation,
+    PromptCandidateMergeObservation,
+    PromptCompilationStageObservation,
+    PromptSemanticSurvivalObservation,
+    PromptTranslationObservation,
+)
 from app.prompt_translation.translator import (
     PromptBudgetExceededError,
     PromptTranslator,
@@ -16,8 +24,14 @@ __all__ = [
     "BackendPromptInstruction",
     "BackendPromptTrace",
     "BackendPromptTraceItem",
+    "PromptCandidateObservation",
+    "PromptCandidateUtilizationObservation",
+    "PromptCandidateMergeObservation",
+    "PromptCompilationStageObservation",
+    "PromptSemanticSurvivalObservation",
     "PromptBudgetExceededError",
     "PromptBudgetPolicy",
     "PromptCompilationMetrics",
+    "PromptTranslationObservation",
     "PromptTranslator",
 ]

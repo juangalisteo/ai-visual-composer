@@ -27,7 +27,11 @@ from app.prompt_translation import (
     BackendPromptTraceItem,
     PromptBudgetExceededError,
     PromptBudgetPolicy,
+    PromptCandidateUtilizationObservation,
+    PromptCandidateMergeObservation,
     PromptCompilationMetrics,
+    PromptSemanticSurvivalObservation,
+    PromptTranslationObservation,
     PromptTranslator,
 )
 from app.visual_intelligence import VisualSynthesisOrchestrator
@@ -336,6 +340,599 @@ class PromptTranslationTest(unittest.TestCase):
         self.assertEqual(
             first.fingerprint,
             second.fingerprint
+        )
+
+    def test_observability_does_not_change_compiled_prompt(self):
+        effective = effective_brief()
+        direction_set = cinematic_direction_set()
+
+        observed = PromptTranslator().translate(
+            effective,
+            cinematic_direction_set=direction_set,
+        )
+        unobserved = PromptTranslator(
+            capture_observation=False
+        ).translate(
+            effective,
+            cinematic_direction_set=direction_set,
+        )
+
+        self.assertEqual(
+            observed,
+            unobserved,
+        )
+        self.assertEqual(
+            observed.compiled_prompt,
+            unobserved.compiled_prompt,
+        )
+        self.assertEqual(
+            observed.fingerprint,
+            unobserved.fingerprint,
+        )
+
+    def test_prompt_translation_observation_records_compilation_stages(self):
+        translator = PromptTranslator()
+        prompt = translator.translate(
+            effective_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+        )
+
+        observation = translator.last_observation
+
+        self.assertIsInstance(
+            observation,
+            PromptTranslationObservation,
+        )
+        self.assertEqual(
+            prompt.compiled_prompt,
+            observation.compiled_prompt,
+        )
+        self.assertEqual(
+            prompt.fingerprint,
+            observation.backend_prompt_fingerprint,
+        )
+        self.assertEqual(
+            "EffectiveVisualBrief",
+            observation.source_contract,
+        )
+        stage_ids = tuple(
+            stage.stage_id
+            for stage in observation.stages
+        )
+        self.assertEqual(
+            (
+                "input_effective_visual_brief",
+                "candidate_selection",
+                "compilation_start",
+                "deduplication",
+                "fragment_prioritisation",
+                "budget_reduction",
+                "prompt_assembly",
+                "semantic_survival_metrics",
+                "candidate_utilisation_report",
+                "compiled_prompt",
+            ),
+            stage_ids,
+        )
+        self.assertTrue(
+            observation.fingerprint
+        )
+
+    def test_prompt_translation_observation_records_merge_pairs(self):
+        translator = PromptTranslator()
+        prompt = translator.translate_visual_synthesis_result(
+            VisualSynthesisOrchestrator().synthesize(
+                *analysis_and_reasoning(
+                    complete_scene()
+                )
+            )
+        )
+
+        deduplication_stage = [
+            stage
+            for stage in translator.last_observation.stages
+            if stage.stage_id == "deduplication"
+        ][0]
+        merge_kinds = [
+            merge.merge_kind
+            for merge in deduplication_stage.merge_pairs
+        ]
+
+        self.assertEqual(
+            (
+                prompt.metrics.duplicate_fragments_removed
+                + prompt.metrics.semantic_duplicates_removed
+            ),
+            len(
+                deduplication_stage.merge_pairs
+            ),
+        )
+        self.assertEqual(
+            prompt.metrics.duplicate_fragments_removed,
+            merge_kinds.count(
+                "exact"
+            ),
+        )
+        self.assertEqual(
+            prompt.metrics.semantic_duplicates_removed,
+            merge_kinds.count(
+                "semantic"
+            ),
+        )
+        self.assertTrue(
+            all(
+                isinstance(
+                    merge,
+                    PromptCandidateMergeObservation,
+                )
+                for merge in deduplication_stage.merge_pairs
+            )
+        )
+
+    def test_merge_pair_evidence_does_not_change_prompt_output(self):
+        analysis, reasoning = analysis_and_reasoning(
+            complete_scene()
+        )
+        synthesis_result = VisualSynthesisOrchestrator().synthesize(
+            analysis,
+            reasoning
+        )
+
+        observed = PromptTranslator().translate_visual_synthesis_result(
+            synthesis_result
+        )
+        unobserved = PromptTranslator(
+            capture_observation=False
+        ).translate_visual_synthesis_result(
+            synthesis_result
+        )
+
+        self.assertEqual(
+            observed,
+            unobserved,
+        )
+        self.assertEqual(
+            observed.compiled_prompt,
+            unobserved.compiled_prompt,
+        )
+        self.assertEqual(
+            observed.fingerprint,
+            unobserved.fingerprint,
+        )
+
+    def test_protected_semantic_candidate_replaces_unprotected_duplicate(self):
+        brief = EffectiveVisualBrief(
+            visible_content="the archivist holds the old key",
+            visible_subject="the archivist holds the old key",
+            fingerprint="protected-subject",
+        )
+
+        prompt = PromptTranslator().translate(
+            brief
+        )
+
+        self.assertIn(
+            "EffectiveVisualBrief.visible_subject",
+            all_trace_source_fields(
+                prompt
+            ),
+        )
+        self.assertEqual(
+            instruction_by_source_field(
+                prompt,
+                "EffectiveVisualBrief.visible_subject",
+            ).source_field,
+            "EffectiveVisualBrief.visible_subject",
+        )
+
+    def test_protected_visual_truth_units_are_not_semantically_merged(self):
+        brief = EffectiveVisualBrief(
+            visible_subject="archivist holding old key",
+            key_objects=(
+                "archivist holding old key",
+            ),
+            fingerprint="protected-units",
+        )
+
+        translator = PromptTranslator()
+        prompt = translator.translate(
+            brief
+        )
+        deduplication_stage = [
+            stage
+            for stage in translator.last_observation.stages
+            if stage.stage_id == "deduplication"
+        ][0]
+
+        source_fields = all_trace_source_fields(
+            prompt
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.visible_subject",
+            source_fields,
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.key_objects",
+            source_fields,
+        )
+        self.assertGreater(
+            deduplication_stage.metadata[
+                "semantic_merges_blocked_by_protection"
+            ],
+            0,
+        )
+
+    def test_continuity_provenance_survives_protected_merge_policy(self):
+        brief = EffectiveVisualBrief(
+            key_objects=(
+                "same old key remains visible",
+            ),
+            continuity_links=(
+                "same old key remains visible",
+            ),
+            fingerprint="protected-continuity",
+        )
+
+        prompt = PromptTranslator().translate(
+            brief
+        )
+
+        source_fields = all_trace_source_fields(
+            prompt
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.key_objects",
+            source_fields,
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.continuity_links",
+            source_fields,
+        )
+
+    def test_exact_duplicates_still_merge_protected_sources(self):
+        brief = EffectiveVisualBrief(
+            visible_subject="archivist with old key",
+            primary_identity="archivist with old key",
+            fingerprint="protected-exact-duplicate",
+        )
+
+        translator = PromptTranslator()
+        prompt = translator.translate(
+            brief
+        )
+
+        self.assertEqual(
+            1,
+            prompt.metrics.duplicate_fragments_removed,
+        )
+        source_fields = all_trace_source_fields(
+            prompt
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.visible_subject",
+            source_fields,
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.primary_identity",
+            source_fields,
+        )
+
+    def test_prompt_translation_observation_marks_protected_candidates(self):
+        translator = PromptTranslator()
+        translator.translate(
+            effective_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+        )
+
+        candidates = tuple(
+            candidate
+            for stage in translator.last_observation.stages
+            for candidate in stage.candidates
+        )
+        protected = tuple(
+            candidate
+            for candidate in candidates
+            if candidate.protected
+        )
+
+        self.assertTrue(
+            protected
+        )
+        self.assertIn(
+            "visual_truth.continuity",
+            {
+                candidate.semantic_unit
+                for candidate in protected
+            },
+        )
+        self.assertTrue(
+            all(
+                candidate.protection_reasons
+                for candidate in protected
+            )
+        )
+
+    def test_semantic_survival_metrics_are_recorded(self):
+        translator = PromptTranslator()
+        translator.translate(
+            effective_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+        )
+
+        survival_stage = [
+            stage
+            for stage in translator.last_observation.stages
+            if stage.stage_id == "semantic_survival_metrics"
+        ][0]
+
+        self.assertTrue(
+            survival_stage.semantic_survival
+        )
+        self.assertTrue(
+            all(
+                isinstance(
+                    item,
+                    PromptSemanticSurvivalObservation,
+                )
+                for item in survival_stage.semantic_survival
+            )
+        )
+        self.assertEqual(
+            len(
+                survival_stage.semantic_survival
+            ),
+            survival_stage.metadata[
+                "input_semantic_field_count"
+            ],
+        )
+        self.assertIn(
+            "fully_preserved",
+            survival_stage.metadata[
+                "status_counts"
+            ],
+        )
+
+    def test_semantic_survival_metrics_report_provenance_preservation(self):
+        brief = EffectiveVisualBrief(
+            visible_subject="archivist holding old key",
+            primary_identity="archivist holding old key carefully",
+            fingerprint="survival-provenance",
+        )
+        translator = PromptTranslator()
+        prompt = translator.translate(
+            brief
+        )
+
+        survival_stage = [
+            stage
+            for stage in translator.last_observation.stages
+            if stage.stage_id == "semantic_survival_metrics"
+        ][0]
+        primary_identity = [
+            item
+            for item in survival_stage.semantic_survival
+            if item.source_field == "EffectiveVisualBrief.primary_identity"
+        ][0]
+
+        self.assertEqual(
+            "provenance_preserved",
+            primary_identity.status,
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.primary_identity",
+            all_trace_source_fields(
+                prompt
+            ),
+        )
+
+    def test_semantic_survival_metrics_report_budget_loss(self):
+        brief = EffectiveVisualBrief(
+            visible_subject="person with old key",
+            visible_action="receives old key",
+            visible_environment="quiet archive",
+            time_context="late night",
+            felt_experience="solemn restraint",
+            symbolic_weight="responsibility",
+            fingerprint="survival-budget-loss",
+        )
+        policy = PromptBudgetPolicy(
+            target_prompt_tokens=8,
+            warning_prompt_tokens=12,
+            hard_prompt_tokens=80,
+        )
+        translator = PromptTranslator(
+            budget_policy=policy,
+        )
+        translator.translate(
+            brief
+        )
+
+        survival_stage = [
+            stage
+            for stage in translator.last_observation.stages
+            if stage.stage_id == "semantic_survival_metrics"
+        ][0]
+
+        self.assertGreater(
+            survival_stage.metadata[
+                "not_preserved_count"
+            ],
+            0,
+        )
+        self.assertTrue(
+            any(
+                item.status == "not_preserved"
+                for item in survival_stage.semantic_survival
+            )
+        )
+
+    def test_semantic_survival_metrics_do_not_change_prompt_output(self):
+        analysis, reasoning = analysis_and_reasoning(
+            complete_scene()
+        )
+        synthesis_result = VisualSynthesisOrchestrator().synthesize(
+            analysis,
+            reasoning
+        )
+
+        observed = PromptTranslator().translate_visual_synthesis_result(
+            synthesis_result
+        )
+        unobserved = PromptTranslator(
+            capture_observation=False
+        ).translate_visual_synthesis_result(
+            synthesis_result
+        )
+
+        self.assertEqual(
+            observed,
+            unobserved,
+        )
+        self.assertEqual(
+            observed.compiled_prompt,
+            unobserved.compiled_prompt,
+        )
+        self.assertEqual(
+            observed.fingerprint,
+            unobserved.fingerprint,
+        )
+
+    def test_candidate_utilisation_report_is_recorded(self):
+        translator = PromptTranslator()
+        translator.translate(
+            effective_brief(),
+            cinematic_direction_set=cinematic_direction_set(),
+        )
+
+        utilisation_stage = [
+            stage
+            for stage in translator.last_observation.stages
+            if stage.stage_id == "candidate_utilisation_report"
+        ][0]
+
+        self.assertTrue(
+            utilisation_stage.candidate_utilization
+        )
+        self.assertTrue(
+            all(
+                isinstance(
+                    item,
+                    PromptCandidateUtilizationObservation,
+                )
+                for item in utilisation_stage.candidate_utilization
+            )
+        )
+        self.assertEqual(
+            len(
+                utilisation_stage.candidate_utilization
+            ),
+            utilisation_stage.metadata[
+                "source_field_count"
+            ],
+        )
+        self.assertIn(
+            "subject",
+            utilisation_stage.metadata[
+                "by_category"
+            ],
+        )
+
+    def test_abstract_intent_uses_operational_equivalent_not_raw_abstraction(self):
+        brief = EffectiveVisualBrief(
+            visible_subject="young doctor",
+            visible_action="sits alone beside untouched gloves",
+            visible_environment="hospital corridor",
+            abstract_source="guilt and exhaustion after failing to save a patient",
+            filmable_interpretation="doctor sits still beside untouched gloves",
+            attention_focus="untouched gloves beside the doctor",
+            key_objects=(
+                "untouched gloves",
+            ),
+            spatial_relationships=(
+                "gloves on bench beside doctor",
+            ),
+            visual_constraints=(
+                "no blood",
+            ),
+            fingerprint="abstract-operational",
+        )
+
+        prompt = PromptTranslator().translate(
+            brief
+        )
+
+        self.assertIn(
+            "doctor sits still beside untouched gloves",
+            prompt.compiled_prompt,
+        )
+        self.assertNotIn(
+            "guilt and exhaustion",
+            prompt.compiled_prompt,
+        )
+        self.assertIn(
+            "EffectiveVisualBrief.abstract_source",
+            all_trace_source_fields(
+                prompt
+            ),
+        )
+
+    def test_prompt_density_removes_repeated_prompt_fragments(self):
+        brief = EffectiveVisualBrief(
+            visible_subject="investigator holding antique key",
+            visible_action="investigator holding antique key",
+            key_objects=(
+                "antique key",
+                "antique key",
+            ),
+            spatial_relationships=(
+                "antique key between both hands",
+            ),
+            fingerprint="density-dedupe",
+        )
+
+        prompt = PromptTranslator().translate(
+            brief
+        )
+
+        self.assertEqual(
+            1,
+            prompt.compiled_prompt.count(
+                "investigator holding antique key"
+            ),
+        )
+        self.assertEqual(
+            1,
+            prompt.compiled_prompt.count(
+                "antique key between both hands"
+            ),
+        )
+
+    def test_visual_synthesis_translation_observation_records_source_contract(self):
+        analysis, reasoning = analysis_and_reasoning(
+            complete_scene()
+        )
+        synthesis_result = VisualSynthesisOrchestrator().synthesize(
+            analysis,
+            reasoning
+        )
+        translator = PromptTranslator()
+        prompt = translator.translate_visual_synthesis_result(
+            synthesis_result
+        )
+
+        observation = translator.last_observation
+
+        self.assertEqual(
+            "VisualSynthesisResult",
+            observation.source_contract,
+        )
+        self.assertEqual(
+            synthesis_result.brief.fingerprint,
+            observation.source_effective_brief_fingerprint,
+        )
+        self.assertEqual(
+            prompt.compiled_prompt,
+            observation.compiled_prompt,
         )
 
     def test_cinematic_set_enriches_translation_when_provided(self):

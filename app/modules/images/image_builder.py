@@ -6,6 +6,7 @@ import time
 
 from app.backend_adapters import ComfyUIAdapter
 from app.cinematic_direction import CinematicDirectionOrchestrator
+from app.evidence import ImageEvidenceWriter
 from app.managers.project_manager import ProjectManager
 from app.domain.adapters import (
     GenerationResultAdapter,
@@ -42,7 +43,8 @@ class ImageBuilder:
         visual_reasoning_orchestrator=None,
         visual_synthesis_orchestrator=None,
         backend_adapter=None,
-        image_quality_flow=None
+        image_quality_flow=None,
+        evidence_writer=None
     ):
         self.comfyui_url = comfyui_url
 
@@ -75,6 +77,7 @@ class ImageBuilder:
         self.visual_synthesis_orchestrator = visual_synthesis_orchestrator
         self.backend_adapter = backend_adapter
         self.image_quality_flow = image_quality_flow
+        self.evidence_writer = evidence_writer
 
     def build(
         self,
@@ -194,6 +197,7 @@ class ImageBuilder:
                 self._build_cinematic_runtime_metadata(
                     storyboard_scene=storyboard_scene,
                     profile=profile,
+                    evidence_output_dir=output_dir,
                 )
             )
             prompt = (
@@ -278,6 +282,14 @@ class ImageBuilder:
                         generate_attempt=generate_quality_attempt
                     )
                 )
+                if self._is_visual_quality_result(
+                    quality_result
+                ):
+                    self._evidence_writer().write_visual_quality_result(
+                        output_dir=output_dir,
+                        scene_number=scene_number,
+                        visual_quality_result=quality_result,
+                    )
                 if quality_result.status != "approved":
                     raise RuntimeError(
                         "La validacion de imagen requiere "
@@ -392,12 +404,14 @@ class ImageBuilder:
     def _build_cinematic_runtime_metadata(
         self,
         storyboard_scene,
-        profile=None
+        profile=None,
+        evidence_output_dir=None
     ):
         visual_synthesis_result = (
             self._build_runtime_visual_synthesis_result(
                 storyboard_scene=storyboard_scene,
-                profile=profile
+                profile=profile,
+                evidence_output_dir=evidence_output_dir
             )
         )
         effective_brief = visual_synthesis_result.brief
@@ -406,12 +420,27 @@ class ImageBuilder:
                 effective_brief
             )
         )
+        prompt_translator = self._prompt_translator()
         backend_prompt = (
-            self._prompt_translator().translate_visual_synthesis_result(
+            prompt_translator.translate_visual_synthesis_result(
                 visual_synthesis_result,
                 cinematic_direction_set=cinematic_direction_set
             )
         )
+        prompt_translation_observation = getattr(
+            prompt_translator,
+            "last_observation",
+            None,
+        )
+        if (
+            evidence_output_dir is not None
+            and prompt_translation_observation is not None
+        ):
+            self._evidence_writer().write_prompt_translation_observation(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                prompt_translation_observation=prompt_translation_observation,
+            )
         payload = (
             self._backend_adapter().adapt(
                 backend_prompt
@@ -505,7 +534,8 @@ class ImageBuilder:
     def _build_runtime_visual_synthesis_result(
         self,
         storyboard_scene,
-        profile=None
+        profile=None,
+        evidence_output_dir=None
     ):
         storyboard_scene = self._with_profile_visual_constraints(
             storyboard_scene,
@@ -516,15 +546,44 @@ class ImageBuilder:
                 storyboard_scene
             )
         )
+        if evidence_output_dir is not None:
+            self._evidence_writer().write_visual_analysis_result(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                visual_analysis_result=analysis,
+            )
         reasoning = (
             self._visual_reasoning_orchestrator().reason(
                 analysis
             )
         )
-        return self._visual_synthesis_orchestrator().synthesize(
+        if evidence_output_dir is not None:
+            self._evidence_writer().write_visual_reasoning_result(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                visual_reasoning_result=reasoning,
+            )
+        synthesis_result = self._visual_synthesis_orchestrator().synthesize(
             analysis,
             reasoning,
         )
+        if evidence_output_dir is not None:
+            self._evidence_writer().write_visual_conflict_report(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                visual_conflict_report=synthesis_result.conflicts,
+            )
+            self._evidence_writer().write_effective_visual_brief(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                effective_visual_brief=synthesis_result.brief,
+            )
+            self._evidence_writer().write_visual_synthesis_result(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                visual_synthesis_result=synthesis_result,
+            )
+        return synthesis_result
 
     def _with_profile_visual_constraints(
         self,
@@ -680,6 +739,16 @@ class ImageBuilder:
 
         return self.backend_adapter
 
+    def _evidence_writer(
+        self
+    ):
+        if self.evidence_writer is None:
+            self.evidence_writer = (
+                ImageEvidenceWriter()
+            )
+
+        return self.evidence_writer
+
     def _image_quality_flow(
         self
     ):
@@ -689,6 +758,21 @@ class ImageBuilder:
             )
 
         return self.image_quality_flow
+
+    def _is_visual_quality_result(
+        self,
+        quality_result
+    ):
+        return (
+            hasattr(
+                quality_result,
+                "result_fingerprint"
+            )
+            and hasattr(
+                quality_result,
+                "history"
+            )
+        )
 
     def _text_fingerprint(
         self,

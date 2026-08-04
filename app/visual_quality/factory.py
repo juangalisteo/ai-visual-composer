@@ -9,13 +9,18 @@ from typing import Any
 
 from app.visual_quality.models import (
     ApprovedAsset,
+    ConfidenceBand,
+    FailureClassification,
     GeneratedAsset,
     ManualReviewMarker,
     RegenerationDecision,
     SceneAssetHistory,
+    SeverityDefinition,
     ValidationContext,
     ValidationFailure,
+    ValidationProfileConfig,
     ValidationReport,
+    ValidationThresholds,
 )
 
 
@@ -31,10 +36,21 @@ VALID_FAILURE_TYPES = (
     "pseudotext_detected",
     "logo_detected",
     "badge_detected",
+    "watermark_detected",
     "unsafe_wardrobe",
     "anatomy_error",
+    "hands_error",
+    "face_error",
     "continuity_break",
     "scene_mismatch",
+    "object_missing",
+    "unexpected_object",
+    "composition_failure",
+    "cropping_error",
+    "readability_failure",
+    "background_artifact",
+    "style_drift",
+    "lighting_mismatch",
 )
 VALID_SEVERITIES = (
     "low",
@@ -68,6 +84,16 @@ BLOCKING_SEVERITIES = (
     "high",
     "critical",
 )
+VALID_FAILURE_CATEGORIES = (
+    "semantic",
+    "visual",
+    "composition",
+    "continuity",
+    "style",
+    "lighting",
+    "safety",
+    "artifact",
+)
 
 
 def create_generated_asset(
@@ -83,6 +109,7 @@ def create_generated_asset(
     sequence_id: str = "",
     duration: float | None = None,
     fps: float | None = None,
+    local_artifact_path: str = "",
     metadata: tuple[tuple[str, str], ...] = (),
 ) -> GeneratedAsset:
     _require(
@@ -131,6 +158,10 @@ def create_generated_asset(
         sequence_id=sequence_id,
         duration=duration,
         fps=fps,
+        local_artifact_path=str(
+            local_artifact_path
+            or ""
+        ),
         metadata=_sorted_metadata(
             metadata
         ),
@@ -253,6 +284,273 @@ def create_validation_failure(
             "failure_fingerprint": _fingerprint(
                 "ValidationFailure",
                 failure
+            ),
+        }
+    )
+
+
+def create_severity_definition(
+    *,
+    severity: str,
+    blocks_acceptance: bool,
+    score_penalty: float,
+    retry_relevant_by_default: bool,
+    description: str,
+) -> SeverityDefinition:
+    _require_one_of(
+        severity,
+        VALID_SEVERITIES,
+        "severity"
+    )
+    _require_probability(
+        score_penalty,
+        "score_penalty"
+    )
+    _require(
+        description,
+        "description is required"
+    )
+    definition = SeverityDefinition(
+        severity=severity,
+        blocks_acceptance=blocks_acceptance,
+        score_penalty=score_penalty,
+        retry_relevant_by_default=retry_relevant_by_default,
+        description=description,
+    )
+    return SeverityDefinition(
+        **{
+            **asdict(
+                definition
+            ),
+            "definition_fingerprint": _fingerprint(
+                "SeverityDefinition",
+                definition
+            ),
+        }
+    )
+
+
+def create_confidence_band(
+    *,
+    band_id: str,
+    minimum: float,
+    maximum: float,
+    review_recommended: bool,
+    description: str,
+) -> ConfidenceBand:
+    _require(
+        band_id,
+        "band_id is required"
+    )
+    _require_probability(
+        minimum,
+        "minimum"
+    )
+    _require_probability(
+        maximum,
+        "maximum"
+    )
+    if minimum > maximum:
+        raise ValueError(
+            "minimum cannot be greater than maximum"
+        )
+    _require(
+        description,
+        "description is required"
+    )
+    band = ConfidenceBand(
+        band_id=band_id,
+        minimum=minimum,
+        maximum=maximum,
+        review_recommended=review_recommended,
+        description=description,
+    )
+    return ConfidenceBand(
+        **{
+            **asdict(
+                band
+            ),
+            "band_fingerprint": _fingerprint(
+                "ConfidenceBand",
+                band
+            ),
+        }
+    )
+
+
+def create_failure_classification(
+    *,
+    failure_type: str,
+    category: str,
+    default_severity: str,
+    retry_relevant_by_default: bool,
+    description: str,
+) -> FailureClassification:
+    _require_one_of(
+        failure_type,
+        VALID_FAILURE_TYPES,
+        "failure_type"
+    )
+    _require_one_of(
+        category,
+        VALID_FAILURE_CATEGORIES,
+        "category"
+    )
+    _require_one_of(
+        default_severity,
+        VALID_SEVERITIES,
+        "default_severity"
+    )
+    _require(
+        description,
+        "description is required"
+    )
+    classification = FailureClassification(
+        failure_type=failure_type,
+        category=category,
+        default_severity=default_severity,
+        retry_relevant_by_default=retry_relevant_by_default,
+        description=description,
+    )
+    return FailureClassification(
+        **{
+            **asdict(
+                classification
+            ),
+            "classification_fingerprint": _fingerprint(
+                "FailureClassification",
+                classification
+            ),
+        }
+    )
+
+
+def create_validation_thresholds(
+    *,
+    thresholds_id: str,
+    blocking_confidence: float,
+    manual_review_confidence: float,
+    high_confidence: float,
+    version: str = "1.0.0",
+) -> ValidationThresholds:
+    _require(
+        thresholds_id,
+        "thresholds_id is required"
+    )
+    _require(
+        version,
+        "version is required"
+    )
+    for name, value in (
+        (
+            "blocking_confidence",
+            blocking_confidence,
+        ),
+        (
+            "manual_review_confidence",
+            manual_review_confidence,
+        ),
+        (
+            "high_confidence",
+            high_confidence,
+        ),
+    ):
+        _require_probability(
+            value,
+            name
+        )
+    thresholds = ValidationThresholds(
+        thresholds_id=thresholds_id,
+        blocking_confidence=blocking_confidence,
+        manual_review_confidence=manual_review_confidence,
+        high_confidence=high_confidence,
+        version=version,
+    )
+    return ValidationThresholds(
+        **{
+            **asdict(
+                thresholds
+            ),
+            "thresholds_fingerprint": _fingerprint(
+                "ValidationThresholds",
+                thresholds
+            ),
+        }
+    )
+
+
+def create_validation_profile_config(
+    *,
+    profile_id: str,
+    enabled_checks: tuple[str, ...],
+    failure_classifications: tuple[FailureClassification, ...],
+    severity_definitions: tuple[SeverityDefinition, ...],
+    confidence_bands: tuple[ConfidenceBand, ...],
+    thresholds: ValidationThresholds,
+    version: str = "1.0.0",
+) -> ValidationProfileConfig:
+    _require(
+        profile_id,
+        "profile_id is required"
+    )
+    _require(
+        version,
+        "version is required"
+    )
+    _require_unique(
+        enabled_checks,
+        "enabled_checks"
+    )
+    _require_unique(
+        tuple(
+            classification.failure_type
+            for classification in failure_classifications
+        ),
+        "failure_classifications"
+    )
+    _require_unique(
+        tuple(
+            definition.severity
+            for definition in severity_definitions
+        ),
+        "severity_definitions"
+    )
+    _require_unique(
+        tuple(
+            band.band_id
+            for band in confidence_bands
+        ),
+        "confidence_bands"
+    )
+    profile = ValidationProfileConfig(
+        profile_id=profile_id,
+        enabled_checks=tuple(
+            enabled_checks
+        ),
+        failure_classifications=tuple(
+            failure_classifications
+        ),
+        severity_definitions=tuple(
+            severity_definitions
+        ),
+        confidence_bands=tuple(
+            confidence_bands
+        ),
+        thresholds=thresholds,
+        version=version,
+    )
+    return ValidationProfileConfig(
+        **{
+            **asdict(
+                profile
+            ),
+            "failure_classifications": profile.failure_classifications,
+            "severity_definitions": profile.severity_definitions,
+            "confidence_bands": profile.confidence_bands,
+            "thresholds": profile.thresholds,
+            "profile_fingerprint": _fingerprint(
+                "ValidationProfileConfig",
+                profile
             ),
         }
     )
@@ -744,6 +1042,16 @@ def _require_minimum(
         )
 
 
+def _require_probability(
+    value: float,
+    name: str
+) -> None:
+    if value < 0 or value > 1:
+        raise ValueError(
+            f"{name} must be between 0 and 1"
+        )
+
+
 def _require_one_of(
     value: str,
     options: tuple[str, ...],
@@ -752,6 +1060,22 @@ def _require_one_of(
     if value not in options:
         raise ValueError(
             f"{name} must be one of {options}"
+        )
+
+
+def _require_unique(
+    values: tuple[str, ...],
+    name: str
+) -> None:
+    if len(
+        set(
+            values
+        )
+    ) != len(
+        values
+    ):
+        raise ValueError(
+            f"{name} must not contain duplicates"
         )
 
 
@@ -853,7 +1177,13 @@ def _canonical_mapping(
                 "approval_fingerprint",
                 "marker_fingerprint",
                 "history_fingerprint",
+                "definition_fingerprint",
+                "band_fingerprint",
+                "classification_fingerprint",
+                "thresholds_fingerprint",
+                "profile_fingerprint",
             )
+            and key not in _volatile_fingerprint_keys()
         }
     if isinstance(
         value,
@@ -866,6 +1196,7 @@ def _canonical_mapping(
             for key, item in sorted(
                 value.items()
             )
+            if key not in _volatile_fingerprint_keys()
         }
     if isinstance(
         value,
@@ -881,3 +1212,10 @@ def _canonical_mapping(
             for item in value
         ]
     return value
+
+
+def _volatile_fingerprint_keys(
+) -> tuple[str, ...]:
+    return (
+        "local_artifact_path",
+    )

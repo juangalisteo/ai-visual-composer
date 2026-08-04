@@ -15,7 +15,10 @@ from app.visual_quality.factory import (
     create_validation_context,
 )
 from app.visual_quality.gate import VisualQualityGate
-from app.visual_quality.image_validator import ImageValidator
+from app.visual_quality.image_validator import (
+    ImageValidator,
+    default_product_quality_checks,
+)
 from app.visual_quality.models import (
     ApprovedAsset,
     GeneratedAsset,
@@ -56,7 +59,7 @@ class ImageQualityFlowCoordinator:
                 "quality_gate_version is required"
             )
         self.validator = validator or ImageValidator(
-            checks=()
+            checks=default_product_quality_checks()
         )
         self.policy = policy or RegenerationPolicy()
         self.gate = gate or VisualQualityGate(
@@ -101,6 +104,9 @@ class ImageQualityFlowCoordinator:
             ),
             width=width,
             height=height,
+            local_artifact_path=str(
+                image_path
+            ),
         )
         context = create_validation_context(
             scene_id=scene_id,
@@ -285,7 +291,10 @@ def _canonical_mapping(
             for key, item in asdict(
                 value
             ).items()
-            if key != "result_fingerprint"
+            if key not in (
+                "result_fingerprint",
+                "local_artifact_path",
+            )
         }
     if isinstance(
         value,
@@ -298,6 +307,7 @@ def _canonical_mapping(
             for key, item in sorted(
                 value.items()
             )
+            if key != "local_artifact_path"
         }
     if isinstance(
         value,

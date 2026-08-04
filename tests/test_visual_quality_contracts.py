@@ -190,6 +190,37 @@ class VisualQualityContractsTest(unittest.TestCase):
             asset.path
         )
 
+    def test_generated_asset_local_artifact_path_is_excluded_from_fingerprint(self):
+        first = create_generated_asset(
+            asset_id="asset-1",
+            scene_id="scene-001",
+            sequence_id="sequence-001",
+            asset_type="image",
+            path="scene_001.png",
+            attempt_number=1,
+            generation_attempt_id="scene-001-attempt-1",
+            width=1024,
+            height=576,
+            local_artifact_path="C:/private/a/scene_001.png",
+        )
+        second = create_generated_asset(
+            asset_id="asset-1",
+            scene_id="scene-001",
+            sequence_id="sequence-001",
+            asset_type="image",
+            path="scene_001.png",
+            attempt_number=1,
+            generation_attempt_id="scene-001-attempt-1",
+            width=1024,
+            height=576,
+            local_artifact_path="D:/private/b/scene_001.png",
+        )
+
+        self.assertEqual(
+            first.generation_fingerprint,
+            second.generation_fingerprint
+        )
+
     def test_validation_context_has_deterministic_fingerprint(self):
         first = create_validation_context(
             scene_id="scene-001",

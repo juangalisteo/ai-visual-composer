@@ -6,7 +6,7 @@ Professional AI Visual Generation Platform
 
 This document describes the current architecture of AI Visual Composer v1.0.0: the certified Image Component runtime and the stabilized video composition core.
 
-The frozen Visual Intelligence specification is published in `VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`.
+The frozen Visual Intelligence specification is published in `docs/architecture/VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`.
 
 ## Overview
 
@@ -302,6 +302,10 @@ Responsibilities:
 - write the approved asset into the image manifest.
 
 `ImageBuilder` coordinates the component as the public facade. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt.compiled_prompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component. Prompt Translation keeps visual intent compact under the active backend/model budget while preserving traceability outside the prompt text. After generation, Visual Quality can validate the asset when enabled, the result is adapted into the current generation contract, and `ImageManifestWriter` persists the manifest consumed by downstream video assembly.
+
+Post-PR1 local engineering work adds passive evidence persistence and OVB-001 benchmark infrastructure for owner review. These packages observe or benchmark the image path; they must not become a parallel runtime, must not modify Visual Intelligence decisions, and must not rewrite prompts, backend payloads, workflows, manifests, or generated creative intent.
+
+Current Visual Quality checks are bounded validation contracts. Apart from artifact integrity checks over local asset files, named checks such as text, logo, face, anatomy, wardrobe, object, style, lighting, or continuity checks consume explicit validation signals supplied through asset metadata or validation context. They do not currently implement independent OCR, logo recognition, face analysis, anatomy analysis, object detection, or pixel-level visual inference.
 
 The Image Component does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
 

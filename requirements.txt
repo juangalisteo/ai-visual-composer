@@ -39,6 +39,7 @@ Pillow
 # AUDIO
 # ==========================
 
+edge_tts
 pydub
 soundfile
 
