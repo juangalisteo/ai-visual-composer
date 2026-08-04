@@ -108,6 +108,7 @@ ai-visual-composer/
     adr/
     architecture/
     reports/
+    restoration/
     reference/
       prompt_music.md
   prompts/
