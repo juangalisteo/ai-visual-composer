@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 
@@ -27,18 +28,17 @@ class RunController:
     def select_visual_pipeline(self):
         pipelines = [
             {
-                "name": "Image Pipeline",
+                "name": "Imagen",
                 "pipeline": "image"
             },
             {
-                "name": "Video Pipeline (Próximamente)",
+                "name": "Vídeo",
                 "pipeline": "video",
                 "available": False
             }
         ]
 
         print("\nAI VISUAL COMPOSER\n")
-        print("¿Qué pipeline deseas utilizar?\n")
 
         for i, pipeline in enumerate(
             pipelines,
@@ -50,8 +50,7 @@ class RunController:
 
         while True:
             selected = self._select_from_list(
-                pipelines,
-                "Selecciona un pipeline"
+                pipelines
             )
 
             if selected.get(
@@ -63,9 +62,7 @@ class RunController:
                 ]
 
             print(
-                "Video Pipeline estará disponible "
-                "próximamente. Selecciona Image Pipeline "
-                "para continuar."
+                "\nNo disponible."
             )
 
     def select_pipeline_mode(self):
@@ -88,7 +85,7 @@ class RunController:
             }
         ]
 
-        print("\nMODO DE EJECUCIÓN\n")
+        print("\nMODO\n")
 
         for i, mode in enumerate(
             modes,
@@ -99,8 +96,7 @@ class RunController:
             )
 
         selected = self._select_from_list(
-            modes,
-            "Selecciona un modo de ejecución"
+            modes
         )
 
         return selected["mode"]
@@ -133,7 +129,7 @@ class RunController:
                 "en config/profiles."
             )
 
-        print("\nPERFILES DISPONIBLES\n")
+        print("\nPERFIL\n")
 
         for i, item in enumerate(
             profiles,
@@ -141,13 +137,12 @@ class RunController:
         ):
             print(
                 f"{i}. "
-                f"{item['platform']} / "
-                f"{item['profile']}"
+                f"{self._label(item['platform'])} / "
+                f"{self._label(item['profile'])}"
             )
 
         return self._select_from_list(
-            profiles,
-            "Selecciona un perfil"
+            profiles
         )
 
     def select_subtitle_config(self):
@@ -166,7 +161,7 @@ class RunController:
             )
 
         print(
-            "\nCONFIGURACIONES DE SUBTÍTULOS\n"
+            "\nSUBTÍTULOS\n"
         )
 
         for i, config in enumerate(
@@ -174,12 +169,12 @@ class RunController:
             start=1
         ):
             print(
-                f"{i}. {config.stem}"
+                f"{i}. "
+                f"{self._subtitle_label(config.stem)}"
             )
 
         selected = self._select_from_list(
-            configs,
-            "Selecciona configuración de subtítulos"
+            configs
         )
 
         return selected.stem
@@ -200,7 +195,7 @@ class RunController:
             )
 
         print(
-            "\nCONFIGURACIONES DE VOZ\n"
+            "\nVOZ\n"
         )
 
         for i, config in enumerate(
@@ -208,12 +203,12 @@ class RunController:
             start=1
         ):
             print(
-                f"{i}. {config.stem}"
+                f"{i}. "
+                f"{self._voice_label(config.stem)}"
             )
 
         selected = self._select_from_list(
-            configs,
-            "Selecciona configuración de voz"
+            configs
         )
 
         return selected.stem
@@ -238,7 +233,7 @@ class RunController:
             None
         ] + categories
 
-        print("\nMÚSICA DE FONDO\n")
+        print("\nMÚSICA\n")
         print("1. Sin música")
 
         for i, category in enumerate(
@@ -250,15 +245,14 @@ class RunController:
             )
 
         selected = self._select_from_list(
-            options,
-            "Selecciona una categoría musical"
+            options
         )
 
         return selected
 
     def ask_project_name(self):
         print(
-            "\nNOMBRE DEL PROYECTO\n"
+            "\nPROYECTO\n"
         )
 
         while True:
@@ -266,17 +260,19 @@ class RunController:
                 "Nombre: "
             ).strip()
 
+            if name == "0":
+                self._exit_application()
+
             if name:
                 return name
 
             print(
-                "Debes introducir un nombre."
+                "\nOpción no válida."
             )
 
     def ask_clear_output(self):
         print(
-            "\n¿Eliminar TODOS los proyectos "
-            "del output?\n"
+            "\nELIMINAR OUTPUT\n"
         )
 
         print("1. Sí")
@@ -284,8 +280,11 @@ class RunController:
 
         while True:
             option = input(
-                "\nSelecciona una opción: "
+                "\n> "
             ).strip()
+
+            if option == "0":
+                self._exit_application()
 
             if option == "1":
                 return True
@@ -294,18 +293,20 @@ class RunController:
                 return False
 
             print(
-                "Opción no válida."
+                "\nOpción no válida."
             )
 
     def _select_from_list(
         self,
-        items,
-        message
+        items
     ):
         while True:
             option = input(
-                f"\n{message}: "
+                "\n> "
             ).strip()
+
+            if option == "0":
+                self._exit_application()
 
             if option.isdigit():
                 option = int(
@@ -318,5 +319,51 @@ class RunController:
                     ]
 
             print(
-                "Opción no válida."
+                "\nOpción no válida."
             )
+
+    def _label(
+        self,
+        value
+    ):
+        return (
+            value.replace(
+                "_",
+                " "
+            )
+            .title()
+        )
+
+    def _voice_label(
+        self,
+        value
+    ):
+        labels = {
+            "femenina": "Femenina",
+            "masculina": "Masculina"
+        }
+
+        return labels.get(
+            value,
+            self._label(value)
+        )
+
+    def _subtitle_label(
+        self,
+        value
+    ):
+        labels = {
+            "single_line": "Línea única",
+            "word_by_word": "Palabra por palabra"
+        }
+
+        return labels.get(
+            value,
+            self._label(value)
+        )
+
+    def _exit_application(self):
+        print(
+            "\nFinalizando AI Visual Composer..."
+        )
+        sys.exit(0)
