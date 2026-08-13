@@ -52,6 +52,10 @@ class PromptEngine:
         format_type = profile["format"]
         duration = int(profile["duration"])
 
+        target_words = self.calculate_target_words(
+            duration
+        )
+
         min_words, max_words = (
             self.calculate_word_range(
                 duration
@@ -94,11 +98,10 @@ TEMA:
 
 DURACIÓN:
 - Duración objetivo: {duration} segundos.
-- Longitud aproximada: entre {min_words} y {max_words} palabras.
-- El texto debe poder narrarse con naturalidad dentro del tiempo indicado.
-- No superes el máximo de palabras.
-- Si cualquier otra instrucción entra en conflicto con la longitud, prioriza siempre la longitud.
-- Integra apertura, desarrollo y cierre dentro de un único texto breve cuando la duración sea corta.
+- Extensión orientativa: aproximadamente entre {min_words} y {max_words} palabras, con un objetivo aproximado de {target_words} palabras.
+- Usa esta referencia para acercarte a la duración solicitada.
+- Prioriza claridad, coherencia, desarrollo natural y completitud del contenido.
+- Puedes utilizar más o menos palabras si el guion lo necesita.
 
 IDENTIDAD Y TONO:
 {tone_text}
@@ -120,8 +123,6 @@ RESTRICCIONES:
 
 SALIDA OBLIGATORIA:
 - Devuelve únicamente el guion final.
-- El guion debe contener entre {min_words} y {max_words} palabras.
-- Si superas {max_words} palabras, la respuesta sera invalida.
 - No expliques el proceso.
 - No añadas comentarios.
 - No añadas encabezados técnicos.
@@ -423,8 +424,8 @@ FORMATO EXACTO:
                 "superior a cero."
             )
 
-        target_words = int(
-            duration * 2.6
+        target_words = self.calculate_target_words(
+            duration
         )
 
         min_words = max(
@@ -438,3 +439,17 @@ FORMATO EXACTO:
         )
 
         return min_words, max_words
+
+    def calculate_target_words(
+        self,
+        duration: int
+    ) -> int:
+        if duration <= 0:
+            raise ValueError(
+                "La duración debe ser "
+                "superior a cero."
+            )
+
+        return int(
+            duration * 2.6
+        )

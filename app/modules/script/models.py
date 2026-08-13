@@ -8,6 +8,11 @@ class ScriptGenerationMetadata:
     parser_id: str = "script_generation_contract_v1"
     attempt: int = 1
     raw_response: str = ""
+    target_words: int = 0
+    recommended_min_words: int = 0
+    recommended_max_words: int = 0
+    actual_words: int = 0
+    deviation_percentage: float = 0.0
 
 
 @dataclass(frozen=True)

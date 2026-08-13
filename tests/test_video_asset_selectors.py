@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 import tempfile
 import unittest
 
@@ -142,6 +143,173 @@ class VideoAssetSelectorTest(
                 second
             )
 
+    def test_overlay_random_folder_selection_uses_category_cooldown(
+        self
+    ):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root)
+            electricity = root_path / "Electricity"
+            technology = root_path / "Technology"
+            electricity.mkdir()
+            technology.mkdir()
+
+            electricity_asset = (
+                electricity
+                / "Electricity 1.mp4"
+            )
+            technology_asset = (
+                technology
+                / "Technology 1.mp4"
+            )
+            electricity_asset.touch()
+            technology_asset.touch()
+
+            selector = OverlaySelector(
+                selector_config(
+                    directory=root_path,
+                    folder_selection="random",
+                    file_selection="sequence",
+                    avoid_repeats=False,
+                    folders=(
+                        "Electricity",
+                        "Technology"
+                    ),
+                    extensions=(
+                        ".mp4",
+                    ),
+                    folder_weights={
+                        "Electricity": 3.0,
+                        "Technology": 2.0
+                    }
+                )
+            )
+
+            with patch(
+                "app.modules.video.overlays"
+                ".overlay_category_distribution_policy"
+                ".random.choices",
+                side_effect=lambda population, weights, k: [
+                    population[0]
+                ]
+            ) as choices:
+                first = selector.select(
+                    scene_index=0,
+                    scene_count=2
+                )
+                second = selector.select(
+                    scene_index=1,
+                    scene_count=2
+                )
+
+        self.assertEqual(
+            electricity_asset,
+            first
+        )
+        self.assertEqual(
+            technology_asset,
+            second
+        )
+        first_population = tuple(
+            folder.name
+            for folder in (
+                choices.call_args_list[0]
+                .kwargs["population"]
+            )
+        )
+        second_population = tuple(
+            folder.name
+            for folder in (
+                choices.call_args_list[1]
+                .kwargs["population"]
+            )
+        )
+        self.assertEqual(
+            (
+                "Electricity",
+                "Technology"
+            ),
+            first_population
+        )
+        self.assertEqual(
+            (
+                "Technology",
+            ),
+            second_population
+        )
+
+    def test_overlay_category_cooldown_allows_single_folder_reuse(
+        self
+    ):
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root)
+            electricity = root_path / "Electricity"
+            electricity.mkdir()
+
+            asset = electricity / "Electricity 1.mp4"
+            asset.touch()
+
+            selector = OverlaySelector(
+                selector_config(
+                    directory=root_path,
+                    folder_selection="random",
+                    file_selection="sequence",
+                    avoid_repeats=False,
+                    folders=(
+                        "Electricity",
+                    ),
+                    extensions=(
+                        ".mp4",
+                    )
+                )
+            )
+
+            with patch(
+                "app.modules.video.overlays"
+                ".overlay_category_distribution_policy"
+                ".random.choices",
+                side_effect=lambda population, weights, k: [
+                    population[0]
+                ]
+            ):
+                first = selector.select(
+                    scene_index=0,
+                    scene_count=2
+                )
+                second = selector.select(
+                    scene_index=1,
+                    scene_count=2
+                )
+
+        self.assertEqual(
+            asset,
+            first
+        )
+        self.assertEqual(
+            asset,
+            second
+        )
+
+    def test_overlay_category_distribution_state_can_reset_per_video(
+        self
+    ):
+        selector = OverlaySelector(
+            selector_config(
+                directory="unused",
+                folder_selection="random"
+            )
+        )
+        selector.category_distribution_policy.previous_category = (
+            "Electricity"
+        )
+
+        selector.reset_category_distribution()
+
+        self.assertIsNone(
+            selector
+            .category_distribution_policy
+            .previous_category
+        )
+
     def test_visual_effect_missing_directory_message_is_preserved(
         self
     ):
@@ -160,6 +328,22 @@ class VideoAssetSelectorTest(
                 scene_index=0,
                 scene_count=1
             )
+
+    def test_visual_effect_selector_has_no_overlay_category_cooldown(
+        self
+    ):
+        selector = VisualEffectSelector(
+            selector_config(
+                directory="unused"
+            )
+        )
+
+        self.assertFalse(
+            hasattr(
+                selector,
+                "category_distribution_policy"
+            )
+        )
 
 
 if __name__ == "__main__":

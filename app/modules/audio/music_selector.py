@@ -59,6 +59,9 @@ class MusicSelector:
         }:
             return None
 
+        if normalized_category.lower() == "random":
+            return self._select_random_track()
+
         category_path = (
             self.music_path
             / normalized_category
@@ -76,15 +79,9 @@ class MusicSelector:
                 f"{category_path}"
             )
 
-        tracks = [
-            file
-            for file in category_path.iterdir()
-            if (
-                file.is_file()
-                and file.suffix.lower()
-                in self.SUPPORTED_EXTENSIONS
-            )
-        ]
+        tracks = self._valid_tracks(
+            category_path
+        )
 
         if not tracks:
             raise FileNotFoundError(
@@ -103,3 +100,72 @@ class MusicSelector:
         )
 
         return selected_track
+
+    def _select_random_track(
+        self
+    ):
+        if not self.music_path.exists():
+            raise FileNotFoundError(
+                "No existe la carpeta de música: "
+                f"{self.music_path}"
+            )
+
+        valid_categories = []
+
+        for category_path in sorted(
+            self.music_path.iterdir()
+        ):
+            if not category_path.is_dir():
+                continue
+
+            tracks = self._valid_tracks(
+                category_path
+            )
+
+            if tracks:
+                valid_categories.append(
+                    (
+                        category_path,
+                        tracks
+                    )
+                )
+
+        if not valid_categories:
+            raise FileNotFoundError(
+                "No se encontraron pistas musicales "
+                f"validas en: {self.music_path}"
+            )
+
+        selected_category, tracks = random.choice(
+            valid_categories
+        )
+        selected_track = random.choice(
+            tracks
+        )
+
+        ProgressLogger.info(
+            "Música seleccionada: "
+            f"{selected_category.name} / "
+            f"{selected_track.name}"
+        )
+
+        return selected_track
+
+    def _valid_tracks(
+        self,
+        category_path
+    ):
+        return [
+            file
+            for file in sorted(
+                category_path.iterdir()
+            )
+            if (
+                file.is_file()
+                and not file.name.startswith(".")
+                and not file.name.startswith("~")
+                and not file.name.endswith(".tmp")
+                and file.suffix.lower()
+                in self.SUPPORTED_EXTENSIONS
+            )
+        ]

@@ -1,5 +1,4 @@
 import hashlib
-import re
 import time
 
 from app.modules.script.models import (
@@ -82,13 +81,10 @@ class ScriptBuilder:
         prompt_id = _prompt_id(
             prompt
         )
-        min_words, max_words = _word_range_from_prompt(
+        length_reference = _length_reference_from_prompt(
             prompt
         )
-        validator = ScriptOutputValidator(
-            min_words=min_words,
-            max_words=max_words,
-        )
+        validator = ScriptOutputValidator()
         last_response = ""
         last_report = None
 
@@ -101,8 +97,6 @@ class ScriptBuilder:
                     prompt,
                     attempt,
                     last_report,
-                    min_words,
-                    max_words,
                 )
             )
             last_response = str(
@@ -116,17 +110,42 @@ class ScriptBuilder:
             last_report = report
 
             if report.valid:
+                actual_words = count_script_words(
+                    candidate
+                )
                 return ScriptGenerationResult(
                     script=candidate,
-                    word_count=count_script_words(
-                        candidate
-                    ),
+                    word_count=actual_words,
                     metadata=ScriptGenerationMetadata(
                         model=self.model,
                         prompt_id=prompt_id,
                         parser_id=validator.parser_id,
                         attempt=attempt,
                         raw_response=last_response,
+                        target_words=(
+                            length_reference[
+                                "target_words"
+                            ]
+                        ),
+                        recommended_min_words=(
+                            length_reference[
+                                "recommended_min_words"
+                            ]
+                        ),
+                        recommended_max_words=(
+                            length_reference[
+                                "recommended_max_words"
+                            ]
+                        ),
+                        actual_words=actual_words,
+                        deviation_percentage=(
+                            _deviation_percentage(
+                                actual_words=actual_words,
+                                target_words=length_reference[
+                                    "target_words"
+                                ],
+                            )
+                        ),
                     ),
                 )
 
@@ -158,8 +177,6 @@ def _attempt_prompt(
     prompt: str,
     attempt: int,
     previous_report=None,
-    min_words: int = 3,
-    max_words: int = 600,
 ) -> str:
     if attempt <= 1:
         return prompt
@@ -173,8 +190,6 @@ def _attempt_prompt(
         "La respuesta anterior incumple el formato requerido. "
         f"Motivo: {previous_reason}. "
         f"Tema: {topic}. "
-        f"El guion debe contener entre {min_words} y {max_words} palabras. "
-        f"Objetivo exacto: {_target_words(min_words, max_words)} palabras. "
         "Devuelve unicamente el guion final valido, sin encabezados, "
         "sin comentarios, sin markdown, sin JSON y sin metadatos."
     )
@@ -208,21 +223,6 @@ def _topic_from_prompt(
     return "tema solicitado"
 
 
-def _target_words(
-    min_words: int,
-    max_words: int,
-) -> int:
-    return int(
-        round(
-            (
-                min_words
-                + max_words
-            )
-            / 2
-        )
-    )
-
-
 def _prompt_id(
     prompt: str
 ) -> str:
@@ -233,28 +233,117 @@ def _prompt_id(
     ).hexdigest()
 
 
-def _word_range_from_prompt(
+def _length_reference_from_prompt(
     prompt: str
-) -> tuple[int, int]:
-    match = re.search(
-        r"entre\s+(\d+)\s+y\s+(\d+)\s+palabras",
+) -> dict:
+    recommended_min_words = _extract_number_after(
         prompt,
-        flags=re.IGNORECASE,
+        "aproximadamente entre"
     )
-    if not match:
-        return (
-            3,
-            600,
+    recommended_max_words = _extract_number_after_y(
+        prompt
+    )
+    target_words = _extract_number_after(
+        prompt,
+        "objetivo aproximado de"
+    )
+
+    if (
+        target_words <= 0
+        and recommended_min_words > 0
+        and recommended_max_words > 0
+    ):
+        target_words = int(
+            round(
+                (
+                    recommended_min_words
+                    + recommended_max_words
+                )
+                / 2
+            )
         )
-    return (
-        int(
-            match.group(
-                1
-            )
-        ),
-        int(
-            match.group(
-                2
-            )
-        ),
+
+    return {
+        "target_words": target_words,
+        "recommended_min_words": recommended_min_words,
+        "recommended_max_words": recommended_max_words,
+    }
+
+
+def _extract_number_after(
+    text: str,
+    marker: str
+) -> int:
+    lower_text = text.lower()
+    marker_index = lower_text.find(
+        marker
     )
+    if marker_index < 0:
+        return 0
+
+    suffix = lower_text[
+        marker_index + len(marker):
+    ]
+    return _leading_number(
+        suffix
+    )
+
+
+def _extract_number_after_y(
+    text: str
+) -> int:
+    lower_text = text.lower()
+    marker = "aproximadamente entre"
+    marker_index = lower_text.find(
+        marker
+    )
+    if marker_index < 0:
+        return 0
+
+    suffix = lower_text[
+        marker_index + len(marker):
+    ]
+    if " y " not in suffix:
+        return 0
+
+    return _leading_number(
+        suffix.split(
+            " y ",
+            1
+        )[1]
+    )
+
+
+def _leading_number(
+    text: str
+) -> int:
+    digits = ""
+
+    for character in text:
+        if character.isdigit():
+            digits += character
+            continue
+        if digits:
+            break
+
+    return int(
+        digits
+        or 0
+    )
+
+
+def _deviation_percentage(
+    *,
+    actual_words: int,
+    target_words: int,
+) -> float:
+    if target_words <= 0:
+        return 0.0
+
+    return (
+        (
+            actual_words
+            - target_words
+        )
+        / target_words
+    ) * 100

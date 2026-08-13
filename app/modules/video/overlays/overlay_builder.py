@@ -49,6 +49,15 @@ class OverlayBuilder:
     ):
         self._asset_builder.reset()
 
+        reset_distribution = getattr(
+            self.selector,
+            "reset_category_distribution",
+            None
+        )
+
+        if reset_distribution is not None:
+            reset_distribution()
+
     def build(
         self,
         scene_index,

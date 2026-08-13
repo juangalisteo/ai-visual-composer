@@ -4,10 +4,22 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [V.1] - 2026-08-13
+
 ### Changed
 
-- Recorded post-PR1 local engineering work as pending owner review: PromptTranslator observability, evidence persistence, OVB-001 benchmark infrastructure, Visual Quality validation flow, and ImageBuilder evidence integration. These names are not promoted to official roadmap phases by this entry.
-- Reorganized post-PR1 technical reports from the repository root into `docs/architecture/` and `docs/reports/image-pipeline/`, keeping the root focused on official product entry-point documents and utilities.
+- Established AI Visual Composer `V.1` as the official stable general system version.
+- Established `PR1` as the first official restoration point inside `V.1`.
+- Normalized the public restoration structure so previous development PR tags no longer define the official restoration sequence.
+- Reviewed and corrected public documentation before the V.1 stable closure.
+- Updated `README.md` with the real startup sequence: `ollama serve`, `cd ComfyUI` + `.\run_nvidia_gpu.bat`, then `python main.py`.
+- Documented the real Ollama model from `config/ai.json`: `qwen3:14b`.
+- Updated documentation for current console modes, music selection, smart overlays, `Light Leaks` neutral fallback, weighted overlay category distribution, and per-video overlay category cooldown.
+- Replaced the previous pre-Version-1.0 closure language with the official `V.1 / STABLE / PR1` baseline.
+- Integrated post-PR1 development work into the V.1 stable baseline: PromptTranslator observability, evidence persistence, OVB-001 benchmark infrastructure, Visual Quality validation flow, and ImageBuilder evidence integration.
+- Reorganized technical reports from the repository root into `docs/architecture/` and `docs/reports/image-pipeline/`, keeping the root focused on official product entry-point documents and utilities.
 - Clarified that current Visual Quality product checks consume explicit validation signals and artifact integrity evidence; they do not independently perform OCR, logo recognition, face analysis, anatomy analysis, object detection, or pixel-level visual inference.
 - Added the missing `edge_tts` runtime dependency declaration required by `app/modules/audio/voice_builder.py`.
 - Regenerated `project_tree.txt` and updated `generate_project_tree.py` documentation so private local folders such as `CODEX/`, `ComfyUI/`, `output/`, `logs/`, `input/`, `.git/`, `.agents/`, and `backup_*` are omitted from the public architecture tree.
@@ -39,11 +51,11 @@ All notable changes to AI Visual Composer will be documented in this file.
 - Updated public documentation to keep `CODEX/` outside the public repository and official releases.
 - Extended `.gitignore` for private development memory, external runtimes, LoRAs, VAE files, embeddings, and ControlNet resources.
 
-## [1.0.0] - AI Visual Composer v1.0.0
+## [1.0.0] - Historical planning reference
 
 ### Summary
 
-- First official release candidate base for AI Visual Composer.
+- Historical planning record for the first official AI Visual Composer baseline before the project adopted the `V.1` general-version and `PR1` restoration-point structure.
 - Image Component 1.0 certified as `IMAGE_COMPONENT_1_0_READY`.
 - AI Visual Composer product entry added.
 - Image Pipeline established as the first official product pipeline.

@@ -2,179 +2,55 @@
 
 Professional AI Visual Generation Platform
 
-AI Visual Composer is a profile-driven visual generation and composition platform. Version 1.0.0 ships a certified Image Component runtime and a stabilized video composition core that can assemble generated images, audio, subtitles, motion, transitions, overlays, visual effects, fade stages, and FFmpeg command generation into final videos.
+AI Visual Composer is a profile-driven generation and video composition system. The current repository state is the official stable V.1 baseline.
 
-The project is designed around explicit configuration, deterministic contracts, and independent components. The current official product entry is the Image Pipeline. Video Pipeline is visible as a future expansion, but is not implemented in this release.
-
-## Project Goals
-
-- Provide a modular visual generation platform controlled by profiles.
-- Keep visual behavior explicit, inspectable, and configurable.
-- Preserve a certified Image Component runtime.
-- Preserve a stable FFmpeg-based video composition core.
-- Keep external runtimes, models, generated outputs, logs, and local secrets outside the repository.
-- Prepare the project for future AI Visual Composer product pipelines without changing the certified Image Component core.
-
-## Main Features
-
-- Official AI Visual Composer entry point.
-- Image Pipeline as the first available product pipeline.
-- Structured script generation output contract before downstream runtime stages.
-- Single cinematic Image Component runtime.
-- Backend-neutral cognitive and cinematic contracts.
-- Deterministic prompt translation through compact `BackendPrompt` semantic compilation.
-- ComfyUI backend adapter and ComfyUI runtime integration.
-- Optional Visual Quality validation and controlled retry infrastructure.
-- Post-PR1 engineering observability and benchmark packages are present locally
-  for owner review; they are not a new official roadmap phase.
-- Image manifest generation compatible with downstream video assembly.
-- Profile-driven video configuration.
-- Modular video pipeline: Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles.
-- FFmpeg `filter_complex` generation.
-- FFmpeg command planning, execution, and output validation.
-- Unit and certification test coverage.
-
-## Architecture Summary
-
-The Image Component runtime follows this flow:
-
-```text
-Storyboard scene
-  -> StoryboardSceneAdapter
-  -> VisualAnalysisResult
-  -> VisualReasoningResult
-  -> VisualConflictReport
-  -> EffectiveVisualBrief
-  -> VisualIntelligenceTrace
-  -> VisualSynthesisResult
-  -> CinematicDirectionOrchestrator
-  -> CinematicDirectionSet
-  -> PromptTranslator
-  -> BackendPrompt
-  -> ComfyUIAdapter
-  -> ImagePromptSystem cinematic operational identity
-  -> ComfyUIBackend
-  -> Visual Quality, when enabled
-  -> GenerationResultAdapter
-  -> ImageManifestWriter
-```
-
-The video core remains a separate FFmpeg composition pipeline:
-
-```text
-Configs
-  -> Loaders
-  -> Selectors
-  -> Builders
-  -> Graph Builders
-  -> FilterPipeline
-  -> CommandPlanBuilder
-  -> CommandBuilder
-  -> VideoBuilder
-  -> Runner
-  -> VideoValidator
-```
-
-The current video filter order is fixed:
-
-1. Motion
-2. Transitions
-3. Overlays
-4. Visual Effects
-5. Fade
-6. Subtitles
-
-## Project Structure
-
-```text
-ai-visual-composer/
-  app/
-    backend_adapters/
-    cinematic_direction/
-    domain/
-    evidence/
-    benchmarks/
-    modules/
-      images/
-      video/
-    prompt_translation/
-    visual_quality/
-  assets/
-  certification/
-  config/
-    profiles/
-  data/
-  docs/
-    adr/
-    architecture/
-    reports/
-    restoration/
-    reference/
-      prompt_music.md
-  prompts/
-  tests/
-  main.py
-  README.md
-  ARCHITECTURE.md
-  CHANGELOG.md
-  ROADMAP.md
-  LICENSE
-  requirements.txt
-```
-
-`output/`, `logs/`, `.env`, `input/`, `CODEX/`, `ComfyUI/`, local models, checkpoints, LoRAs, VAE files, embeddings, ControlNet resources, external runtimes, and generated media are intentionally excluded from the public repository.
-
-## Official Assets
-
-The repository intentionally versions official product assets required by the current product:
-
-- `assets/fonts/`: subtitle fonts used by the video composition core.
-- `assets/music/`: curated music categories used by the audio pipeline.
-- `assets/videos/visual_effects/LightLeak/`: LightLeak visual effects used by the video composition core.
-
-These assets are part of the public product repository. Future overlays or visual assets may also be versioned when they become official product assets. Development-only assets, generated media, local model files, checkpoints, and external runtimes remain private and are excluded through `.gitignore`.
-
-See [assets/README.md](assets/README.md) for the asset inventory and asset governance policy.
+The system can generate scripts, voice, mixed audio, subtitles, storyboard, images through ComfyUI, and final FFmpeg videos with motion, transitions, overlays, visual effects, fade stages, and subtitles.
 
 ## Current Status
 
-Release: `AI Visual Composer v1.0.0`
-
 Status:
 
-- Image Component 1.0 certified as `IMAGE_COMPONENT_1_0_READY`.
-- Foundation completed.
-- Product Integration completed.
-- Final Project Cleanup completed.
-- Video composition core stabilized.
-- Runtime legacy image path removed.
-- Visual Quality infrastructure included. Current product checks consume
-  explicit validation signals and artifact integrity evidence; they do not
-  independently perform OCR, logo recognition, face analysis, anatomy
-  analysis, object detection, or pixel-level visual inference.
-- First official product entry available through `python main.py`.
+- General system version: `V.1`.
+- State: `STABLE`.
+- Current restoration point: `PR1`.
+- `V.1` identifies the general system version.
+- `PR1` identifies the first official restoration point inside `V.1`.
 
-## Requirements
+Current local AI provider:
 
-Repository requirements:
+- Provider: `ollama`
+- Model: `qwen3:14b`
+- API: `http://localhost:11434/api/generate`
 
-- Python 3.13 or compatible Python 3 runtime.
-- FFmpeg available on `PATH`.
-- Python dependencies installed from `requirements.txt`.
+Current ComfyUI workflow:
 
-External runtime requirements:
+- `config/comfyui_flux_workflow_api.json`
 
-- ComfyUI installed outside the repository.
-- Required ComfyUI models and checkpoints installed outside the repository.
-- A compatible ComfyUI workflow available through local configuration.
-- Ollama installed and running when using the local LLM provider.
-- Required Ollama model pulled locally.
-- Edge TTS network access for voice generation.
-- Environment variables configured in a local `.env` file.
+## Main Capabilities
 
-These external dependencies are not committed to the repository.
+- Console entry point through `python main.py`.
+- Execution modes:
+  - Proyecto completo.
+  - Solo guion.
+  - Solo audio.
+  - Audio + subtítulos.
+  - Audio + subtítulos + storyboard.
+- Script generation through Ollama.
+- Manual script support through `input/guion.txt`.
+- Topic input through `input/tema.txt`.
+- Voice generation through Edge TTS.
+- Optional random music selection from `assets/music/`.
+- Subtitle generation and optimization.
+- Storyboard generation with Visual Truth 2.0.
+- Visual Intelligence runtime for image generation.
+- Prompt Translation and backend-neutral prompt compilation.
+- ComfyUI backend integration.
+- Image manifest generation.
+- FFmpeg video rendering.
+- Motion, Transitions, Overlays, Visual Effects, Fade, and Subtitles stages.
+- Smart overlays with thematic category selection, `Light Leaks` neutral fallback, weighted distribution, and per-video category cooldown.
 
-## Installation
+## First Installation
 
 Clone the repository:
 
@@ -202,65 +78,279 @@ Verify FFmpeg:
 ffmpeg -version
 ```
 
-Prepare external tools:
+Install Ollama and pull the configured model:
 
-1. Install ComfyUI outside this repository.
-2. Install required image models and checkpoints in the ComfyUI environment.
-3. Start ComfyUI and verify that it is reachable by the configured backend URL.
-4. Install Ollama if using the local LLM provider.
-5. Pull the configured Ollama model locally.
-6. Ensure Edge TTS can access the network for voice generation.
-7. Create a local `.env` file for secrets and machine-specific settings.
+```bash
+ollama pull qwen3:14b
+```
 
-## Execution
+Install ComfyUI as a local external runtime. The working local startup flow expects a `ComfyUI/` directory beside the project root or otherwise reachable from the local development environment.
 
-Run the product entry point:
+Install the required ComfyUI models, checkpoints, and custom nodes required by:
+
+```text
+config/comfyui_flux_workflow_api.json
+```
+
+ComfyUI, models, checkpoints, generated output, logs, local secrets, and private development memory are not part of the public product repository.
+
+## Normal Startup
+
+Open three terminals and keep the external runtimes running while using AI Visual Composer.
+
+### Terminal 1 - Ollama
+
+Start Ollama first:
+
+```bash
+ollama serve
+```
+
+Ollama must remain running because AI Visual Composer calls the local Ollama API directly.
+
+Configured model:
+
+```text
+qwen3:14b
+```
+
+### Terminal 2 - ComfyUI
+
+Start ComfyUI second:
+
+```bat
+cd ComfyUI
+.\run_nvidia_gpu.bat
+```
+
+ComfyUI must remain running while using image generation.
+
+### Terminal 3 - AI Visual Composer
+
+From the project root:
 
 ```bash
 python main.py
 ```
 
-The application starts with:
+## Console Flow
+
+The console starts with:
 
 ```text
 AI VISUAL COMPOSER
 
-¿Qué pipeline deseas utilizar?
-
-1. Image Pipeline
-2. Video Pipeline (Próximamente)
+1. Imagen
+2. Vídeo
 ```
 
-Select `Image Pipeline` to use the certified Image Component flow. `Video Pipeline` is visible only as a future expansion.
+`Imagen` is the available product entry. `Vídeo` is visible in the console but remains unavailable as a separate product pipeline.
 
-## Direct Video Core Usage
+After selecting `Imagen`, the runtime offers:
 
-The video core can still be used directly from Python:
+```text
+MODO
+
+1. Proyecto completo
+2. Solo guion
+3. Solo audio
+4. Audio + subtítulos
+5. Audio + subtítulos + storyboard
+```
+
+Mode behavior:
+
+- `Proyecto completo`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> Images -> Video.
+- `Solo guion`: Script -> stop.
+- `Solo audio`: Script -> Voice -> Audio -> stop.
+- `Audio + subtítulos`: Script -> Voice -> Audio -> Subtitles -> stop.
+- `Audio + subtítulos + storyboard`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> stop.
+
+The global `0` rule exits the application:
+
+```text
+Finalizando AI Visual Composer...
+```
+
+## Inputs
+
+Main topic:
+
+```text
+input/tema.txt
+```
+
+Optional manual script:
+
+```text
+input/guion.txt
+```
+
+If `input/guion.txt` exists and contains text, the system uses it as the script. Otherwise it generates the script from `input/tema.txt` through Ollama.
+
+## Profiles And Configuration
+
+Current application profile configuration:
+
+```text
+config/app.json
+platform: youtube
+profile: modo_conciencia
+language: es
+```
+
+Available profiles:
+
+- `config/profiles/instagram/modo_conciencia.json`
+- `config/profiles/youtube/modo_conciencia.json`
+
+Available voice configs:
+
+- `config/voice_configs/femenina.json`
+- `config/voice_configs/masculina.json`
+
+Available subtitle configs:
+
+- `config/subtitle_configs/single_line.json`
+- `config/subtitle_configs/word_by_word.json`
+
+## Music
+
+The console currently offers:
+
+```text
+MÚSICA
+
+1. Sin música
+2. Aleatoria
+```
+
+When random music is enabled, the system selects from available categories under:
+
+```text
+assets/music/
+```
+
+Current categories include:
+
+- `action`
+- `ambient`
+- `calm`
+- `cinematic`
+- `documentary`
+- `electronic`
+- `emotional`
+- `epic`
+- `meditation`
+- `mystery`
+
+## Overlays
+
+Overlays are available in `Proyecto completo` mode through:
+
+```text
+OVERLAYS
+
+1. Sí
+2. No
+```
+
+When overlays are enabled:
+
+1. The system reads the topic.
+2. It discovers real folders under `assets/videos/overlays/`.
+3. It asks the semantic overlay resolver for a primary thematic category and optional secondary categories.
+4. It validates all returned categories against real folders.
+5. It adds `Light Leaks` as neutral fallback when available.
+6. It applies weighted category selection:
+   - primary: `3.0`;
+   - secondary: `2.0`;
+   - `Light Leaks`: `1.0`.
+7. It applies per-video category cooldown to reduce immediate category repetition when alternatives exist.
+8. It selects a concrete MP4 using the existing file selector.
+
+Current overlay folders:
+
+- `Electricity`
+- `Light Leaks`
+
+Behavior:
+
+- If a clear thematic category exists, thematic overlays can participate.
+- If no clear thematic category exists, `NONE -> Light Leaks`.
+- If no neutral fallback exists and no thematic category is valid, overlays are disabled safely.
+- File selection still avoids only immediate MP4 repetition according to the existing selector behavior.
+
+## Visual Effects
+
+Visual Effects are separate from overlays.
+
+Current visual effects folder:
+
+```text
+assets/videos/visual_effects/LightLeak/
+```
+
+Visual Effects are used as temporal video layer effects according to the profile configuration. They are not the same as thematic overlays.
+
+## Video Composition Core
+
+The video composition order is:
+
+1. Motion
+2. Transitions
+3. Overlays
+4. Visual Effects
+5. Fade
+6. Subtitles
+
+The public video facade remains:
 
 ```python
 from app.modules.video.video_builder import VideoBuilder
 
 VideoBuilder().build(
-    audio_path="output/example/audio/voice.mp3",
-    subtitle_path="output/example/subtitles/subtitles.srt",
-    images_manifest_path="output/example/images/images_manifest.json",
-    output_path="output/example/video/final.mp4",
+    audio_path=None,
+    subtitle_path=None,
+    images_manifest_path=None,
+    output_path=None,
 )
 ```
 
+## Project Structure
+
+The documentation tree is maintained in:
+
+```text
+project_tree.txt
+```
+
+This file is a documentation snapshot of the architecture, not a full inventory of local resources.
+
 ## Official Documentation
 
-- `README.md`: official project overview and installation guide.
+- `README.md`: overview, setup, startup, and operational usage.
 - `ARCHITECTURE.md`: current architecture.
+- `ROADMAP.md`: future work for the stable V.1 baseline.
+- `CHANGELOG.md`: notable changes.
 - `docs/architecture/VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`: frozen Visual Intelligence architecture specification.
-- `CHANGELOG.md`: release history.
-- `ROADMAP.md`: future work.
+- `docs/reference/generate_project_tree.md`: project tree generator reference.
+- `docs/reference/prompt_music.md`: music prompt reference.
+- `docs/restoration/RESTORATION_POINT_PR1.md`: official V.1 stable restoration point.
 
-Private development memory and private engineering governance, including AVCES, live in `CODEX/` and are intentionally excluded from the public repository and official releases.
+Private development memory and task reports live in `CODEX/` and are intentionally excluded from the public repository and official releases.
 
-## Operational Notes
+## Restoration Structure
 
-Prompt Translation compiles resolved visual intent into compact backend-neutral operational text before backend adaptation. The current FLUX-oriented prompt budget policy is explicit, deterministic, traceable, and validated against the configured ComfyUI workflow.
+Official restoration structure:
+
+```text
+V.1
+|
+└── PR1 - STABLE
+```
+
+Future stable restoration points inside `V.1` may be named `PR2`, `PR3`, `PR4`, and so on. `V.2` must only be created after an explicit owner decision.
 
 ## License
 

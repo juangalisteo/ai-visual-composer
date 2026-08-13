@@ -1,6 +1,9 @@
 from app.modules.video.assets.asset_selector import (
     AssetSelector
 )
+from app.modules.video.overlays.overlay_category_distribution_policy import (
+    OverlayCategoryDistributionPolicy
+)
 
 
 class OverlaySelector(
@@ -29,6 +32,9 @@ class OverlaySelector(
                 "negativo."
             )
         )
+        self.category_distribution_policy = (
+            OverlayCategoryDistributionPolicy()
+        )
 
     @property
     def previous_overlay(
@@ -52,6 +58,35 @@ class OverlaySelector(
             root_directory=root_directory,
             folder=folder
         )
+
+    def _select_folder(
+        self,
+        folders,
+        scene_index
+    ):
+        if (
+            self.config.folder_selection
+            == "sequence"
+        ):
+            return super()._select_folder(
+                folders=folders,
+                scene_index=scene_index
+            )
+
+        return (
+            self.category_distribution_policy
+            .select_folder(
+                folders=folders,
+                folder_weights=(
+                    self.config.folder_weights
+                )
+            )
+        )
+
+    def reset_category_distribution(
+        self
+    ):
+        self.category_distribution_policy.reset()
 
     def _remove_previous_overlay(
         self,

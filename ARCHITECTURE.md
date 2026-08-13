@@ -4,13 +4,13 @@
 
 Professional AI Visual Generation Platform
 
-This document describes the current architecture of AI Visual Composer v1.0.0: the certified Image Component runtime and the stabilized video composition core.
+This document describes the official stable V.1 architecture of AI Visual Composer: the Visual Intelligence image runtime and the stabilized video composition core.
 
 The frozen Visual Intelligence specification is published in `docs/architecture/VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`.
 
 ## Overview
 
-AI Visual Composer v1.0.0 exposes the Image Pipeline as the first official product pipeline. The repository also includes a stabilized profile-driven FFmpeg video composition core. The system separates configuration, asset selection, temporal operation building, FFmpeg graph generation, command planning, command execution, and output validation.
+AI Visual Composer exposes the image-oriented product entry through `python main.py`. The console also shows `Vídeo` as a future product pipeline, but that separate product pipeline is not available yet. The repository includes a stabilized profile-driven FFmpeg video composition core used by the current full project generation mode. The system separates configuration, asset selection, temporal operation building, FFmpeg graph generation, command planning, command execution, and output validation.
 
 The architecture follows this flow:
 
@@ -88,6 +88,8 @@ Examples:
 
 The shared asset selector infrastructure is used by temporal audiovisual layers while preserving semantic wrappers for overlays and visual effects.
 
+`OverlaySelector` has overlay-specific category distribution state. It applies per-video category cooldown only to overlay category selection. The shared `AssetSelector` remains unchanged and `VisualEffectSelector` does not inherit overlay category cooldown behavior.
+
 ## Builders
 
 Builders convert selected configuration into render operations.
@@ -111,6 +113,8 @@ Examples:
 
 Overlay and visual effect builders share temporal asset infrastructure, but remain separate public components.
 
+`OverlayBuilder.reset()` also resets overlay category distribution state when the selector supports it. This keeps overlay category cooldown scoped to the current video build and prevents persistence between projects.
+
 ## Graph Builders
 
 Graph builders produce FFmpeg filter graph fragments for one stage of the pipeline.
@@ -133,6 +137,8 @@ Current graph stages:
 - `SubtitleGraphBuilder`
 
 Overlay and visual effect graph builders share layer composition infrastructure through `LayerCompositor`.
+
+`OverlayGraphBuilder` keeps the existing `repeat_mode="interval"` behavior. Each interval can request a new overlay selection, so weighted thematic overlay categories and cooldown can operate without changing FFmpeg graph construction.
 
 ## FilterPipeline
 
@@ -303,11 +309,36 @@ Responsibilities:
 
 `ImageBuilder` coordinates the component as the public facade. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt.compiled_prompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component. Prompt Translation keeps visual intent compact under the active backend/model budget while preserving traceability outside the prompt text. After generation, Visual Quality can validate the asset when enabled, the result is adapted into the current generation contract, and `ImageManifestWriter` persists the manifest consumed by downstream video assembly.
 
-Post-PR1 local engineering work adds passive evidence persistence and OVB-001 benchmark infrastructure for owner review. These packages observe or benchmark the image path; they must not become a parallel runtime, must not modify Visual Intelligence decisions, and must not rewrite prompts, backend payloads, workflows, manifests, or generated creative intent.
+V.1 includes passive evidence persistence and OVB-001 benchmark infrastructure. These packages observe or benchmark the image path; they must not become a parallel runtime, must not modify Visual Intelligence decisions, and must not rewrite prompts, backend payloads, workflows, manifests, or generated creative intent.
 
 Current Visual Quality checks are bounded validation contracts. Apart from artifact integrity checks over local asset files, named checks such as text, logo, face, anatomy, wardrobe, object, style, lighting, or continuity checks consume explicit validation signals supplied through asset metadata or validation context. They do not currently implement independent OCR, logo recognition, face analysis, anatomy analysis, object detection, or pixel-level visual inference.
 
 The Image Component does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
+
+## Console And Pipeline Modes
+
+The current console entry is `python main.py`.
+
+The first menu is:
+
+```text
+AI VISUAL COMPOSER
+
+1. Imagen
+2. Vídeo
+```
+
+`Imagen` is available. `Vídeo` remains visible but unavailable as a separate future product pipeline.
+
+Current execution modes after selecting `Imagen`:
+
+- `Proyecto completo`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> Images -> Video.
+- `Solo guion`: Script -> stop.
+- `Solo audio`: Script -> Voice -> Audio -> stop.
+- `Audio + subtítulos`: Script -> Voice -> Audio -> Subtitles -> stop.
+- `Audio + subtítulos + storyboard`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> stop.
+
+`RunController` writes the selected profile, mode, subtitle config, voice config, music option, overlay option, project name, and clear-output option to environment variables consumed by the runtime.
 
 ## Profile Control
 
@@ -333,9 +364,105 @@ Profiles control the current visual behavior:
 
 The core does not introduce hidden visual defaults beyond documented loader defaults.
 
+## Overlays
+
+Smart overlays are controlled through the console only for `Proyecto completo`.
+
+Current runtime flow:
+
+```text
+input/tema.txt
+  -> OverlayFolderResolver.discover_valid_folders()
+  -> OverlayFolderResolver.resolve_categories()
+  -> OverlayCategoryResolution
+  -> VideoBuildContextFactory
+  -> OverlayConfig.folders + OverlayConfig.folder_weights
+  -> OverlaySelector
+  -> OverlayCategoryDistributionPolicy
+  -> selected overlay folder for the interval
+  -> existing MP4 file selection
+```
+
+The resolver returns:
+
+- `primary`: one thematic category or `None`;
+- `secondary`: zero or more additional thematic categories.
+
+All category names are validated against real folders discovered from `assets/videos/overlays/`. The resolver does not receive `Light Leaks` as a thematic category. `VideoBuildContextFactory` adds `Light Leaks` as neutral fallback when available.
+
+Current weighting policy:
+
+- primary category: `3.0`;
+- secondary categories: `2.0`;
+- `Light Leaks`: `1.0`.
+
+Cooldown policy:
+
+- lives only in memory;
+- belongs to `OverlaySelector`;
+- remembers the previous overlay category;
+- removes that category from the next weighted choice when alternatives exist;
+- does not create round-robin or fixed alternation;
+- resets through `OverlayBuilder.reset()`;
+- does not affect `VisualEffectSelector`.
+
+MP4 file selection remains the existing selector behavior: `avoid_repeats=True` prevents only immediate repetition of the same asset when alternatives exist.
+
+If no thematic category is valid, `NONE -> Light Leaks` is used when the neutral folder exists. If there is no valid thematic category and no neutral fallback, overlays are disabled safely in memory.
+
+## Music
+
+Music is selected from `assets/music/` when the user enables random music. The current console option is:
+
+```text
+MÚSICA
+
+1. Sin música
+2. Aleatoria
+```
+
+The existing `MusicSelector` selects from available music categories and does not require the user to choose a category manually in the current console flow.
+
+## External Runtimes
+
+The current local LLM provider is Ollama:
+
+```text
+provider: ollama
+model: qwen3:14b
+API: http://localhost:11434/api/generate
+```
+
+Normal startup requires:
+
+```bash
+ollama serve
+```
+
+The current image backend expects ComfyUI to run as an external local runtime using:
+
+```bat
+cd ComfyUI
+.\run_nvidia_gpu.bat
+```
+
+AI Visual Composer then starts from the project root:
+
+```bash
+python main.py
+```
+
 ## Current Core Status
 
-The current core is completed and validated as `v1.0.0`.
+The current core is functional and stable as AI Visual Composer V.1.
+
+Current restoration point:
+
+```text
+PR1
+```
+
+`PR1` is the first official restoration point inside `V.1`.
 
 Validated areas:
 

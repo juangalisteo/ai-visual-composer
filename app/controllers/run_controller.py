@@ -8,9 +8,25 @@ class RunController:
         visual_pipeline = self.select_visual_pipeline()
         pipeline_mode = self.select_pipeline_mode()
         profile = self.select_profile()
-        subtitle_config = self.select_subtitle_config()
-        voice_config = self.select_voice_config()
-        music_category = self.select_music_category()
+        subtitle_config = ""
+        voice_config = ""
+        music_category = None
+        overlays_mode = "off"
+
+        if pipeline_mode in {
+            "full",
+            "subtitles",
+            "storyboard"
+        }:
+            subtitle_config = self.select_subtitle_config()
+
+        if pipeline_mode != "script":
+            voice_config = self.select_voice_config()
+            music_category = self.select_music_category()
+
+        if pipeline_mode == "full":
+            overlays_mode = self.select_overlays_mode()
+
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
 
@@ -21,6 +37,7 @@ class RunController:
             "subtitle_config": subtitle_config,
             "voice_config": voice_config,
             "music_category": music_category,
+            "overlays_mode": overlays_mode,
             "project_name": project_name,
             "clear_output": clear_output
         }
@@ -70,6 +87,10 @@ class RunController:
             {
                 "name": "Proyecto completo",
                 "mode": "full"
+            },
+            {
+                "name": "Solo guion",
+                "mode": "script"
             },
             {
                 "name": "Solo audio",
@@ -214,35 +235,30 @@ class RunController:
         return selected.stem
 
     def select_music_category(self):
-        music_path = Path(
-            "assets/music"
-        )
-
-        if not music_path.exists():
-            raise FileNotFoundError(
-                "No existe la carpeta assets/music."
-            )
-
-        categories = sorted(
-            folder.name
-            for folder in music_path.iterdir()
-            if folder.is_dir()
-        )
-
         options = [
-            None
-        ] + categories
+            None,
+            "random"
+        ]
 
         print("\nMÚSICA\n")
         print("1. Sin música")
+        print("2. Aleatoria")
 
-        for i, category in enumerate(
-            categories,
-            start=2
-        ):
-            print(
-                f"{i}. {category}"
-            )
+        selected = self._select_from_list(
+            options
+        )
+
+        return selected
+
+    def select_overlays_mode(self):
+        options = [
+            "smart",
+            "off"
+        ]
+
+        print("\nOVERLAYS\n")
+        print("1. Sí")
+        print("2. No")
 
         selected = self._select_from_list(
             options

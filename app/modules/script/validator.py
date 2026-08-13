@@ -12,14 +12,9 @@ class ScriptOutputValidator:
 
     def __init__(
         self,
-        *,
-        min_words: int = 3,
-        max_words: int = 600,
-        tolerance_ratio: float = 0.20,
+        **_,
     ) -> None:
-        self.min_words = min_words
-        self.max_words = max_words
-        self.tolerance_ratio = tolerance_ratio
+        pass
 
     def validate(
         self,
@@ -53,50 +48,6 @@ class ScriptOutputValidator:
                 _issue(
                     "invalid_utf8",
                     "script",
-                )
-            )
-
-        word_count = count_script_words(
-            text
-        )
-        effective_min_words = max(
-            1,
-            int(
-                self.min_words
-                * (
-                    1
-                    - self.tolerance_ratio
-                )
-            ),
-        )
-        effective_max_words = max(
-            self.max_words,
-            int(
-                self.max_words
-                * (
-                    1
-                    + self.tolerance_ratio
-                )
-            ),
-        )
-        if word_count < effective_min_words:
-            issues.append(
-                _issue(
-                    "too_short",
-                    "script",
-                    str(
-                        word_count
-                    ),
-                )
-            )
-        if word_count > effective_max_words:
-            issues.append(
-                _issue(
-                    "too_long",
-                    "script",
-                    str(
-                        word_count
-                    ),
                 )
             )
 

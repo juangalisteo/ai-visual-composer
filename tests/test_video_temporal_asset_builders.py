@@ -280,6 +280,25 @@ class TemporalAssetBuilderTest(
                 )
             )
 
+    def test_overlay_builder_reset_clears_category_distribution_state(
+        self
+    ):
+        builder = OverlayBuilder(
+            builder_config()
+        )
+        builder.selector.category_distribution_policy.previous_category = (
+            "Electricity"
+        )
+
+        builder.reset()
+
+        self.assertIsNone(
+            builder
+            .selector
+            .category_distribution_policy
+            .previous_category
+        )
+
     def test_duration_is_within_configured_bounds(
         self
     ):

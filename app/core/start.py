@@ -79,6 +79,16 @@ def iniciar():
         output_script_path
     )
 
+    if pipeline_mode == "script":
+        _complete_summary(
+            summary=summary,
+            stage_times=stage_times,
+            project=project,
+            pipeline_start=pipeline_start
+        )
+
+        return final_result
+
     if builders.get(
         "voice",
         False

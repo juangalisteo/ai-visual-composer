@@ -4,12 +4,17 @@ import unittest
 from unittest.mock import patch
 
 from app.modules.video.ffmpeg.filter_context import FilterContext
+from app.modules.video.config.overlay_config import OverlayConfig
 from app.modules.video.video_build_context import (
     VideoBuildComponents,
     VideoBuildContext
 )
+from app.modules.video.video_config import VideoConfig
 from app.modules.video.video_build_context_factory import (
     VideoBuildContextFactory
+)
+from app.modules.video.overlays.overlay_folder_resolver import (
+    OverlayCategoryResolution
 )
 from app.modules.video.video_component_factory import (
     VideoComponentFactory
@@ -20,6 +25,67 @@ from app.modules.video.video_filter_context_factory import (
 from app.modules.video.video_render_service import (
     VideoRenderService
 )
+
+
+def overlay_config(
+    directory="assets/videos/overlays",
+    enabled=False,
+    folders=()
+):
+    return OverlayConfig(
+        enabled=enabled,
+        directory=str(
+            directory
+        ),
+        folder_selection="random",
+        file_selection="random",
+        avoid_repeats=True,
+        repeat_mode="interval",
+        min_seconds=1.0,
+        max_seconds=2.0,
+        loop_file=True,
+        opacity=0.5,
+        blend_mode="screen",
+        probability=1.0,
+        folders=folders,
+        types=(),
+        extensions=(
+            ".mp4",
+            ".mov"
+        ),
+        folder_weights={},
+        file_weights={}
+    )
+
+
+def video_config(
+    overlays
+):
+    return VideoConfig(
+        width=640,
+        height=360,
+        fps=24,
+        pixel_format="yuv420p",
+        subtitles=SimpleNamespace(
+            offset=0.0
+        ),
+        motion=SimpleNamespace(),
+        transitions=SimpleNamespace(
+            duration=0.4
+        ),
+        overlays=overlays,
+        visual_effects=SimpleNamespace(
+            enabled=False
+        ),
+        fade=SimpleNamespace(),
+        validation=SimpleNamespace(),
+        codec="libx264",
+        preset="medium",
+        crf=18,
+        audio_codec="aac",
+        audio_bitrate="192k",
+        movflags="+faststart"
+    )
 
 
 class VideoBuildFactoriesTest(
@@ -429,6 +495,370 @@ class VideoBuildFactoriesTest(
             ),
             overlay_loop_file=True,
             visual_effect_loop_file=False
+        )
+
+    def test_overlay_mode_off_disables_overlays_in_memory(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=True,
+                folders=(
+                    "Electricity",
+                )
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "off"
+            },
+            clear=False
+        ):
+            factory = VideoBuildContextFactory()
+            with patch.object(
+                factory,
+                "_read_topic",
+                return_value="Nikola Tesla"
+            ):
+                result = (
+                    factory._apply_overlay_mode(
+                        config
+                    )
+                )
+
+        self.assertFalse(
+            result.overlays.enabled
+        )
+        self.assertEqual(
+            (
+                "Electricity",
+            ),
+            result.overlays.folders
+        )
+        self.assertTrue(
+            config.overlays.enabled
+        )
+
+    def test_overlay_mode_smart_enables_selected_folders_in_memory(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=False
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "smart"
+            },
+            clear=False
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".OverlayFolderResolver"
+        ) as resolver_class:
+            resolver = resolver_class.return_value
+            resolver.discover_valid_folders.return_value = (
+                "Electricity",
+                "Technology",
+                "Light Leaks"
+            )
+            resolver.resolve_categories.return_value = (
+                OverlayCategoryResolution(
+                    primary="Electricity",
+                    secondary=(
+                        "Technology",
+                    )
+                )
+            )
+
+            factory = VideoBuildContextFactory()
+            with patch.object(
+                factory,
+                "_read_topic",
+                return_value="Nikola Tesla"
+            ):
+                result = (
+                    factory._apply_overlay_mode(
+                        config
+                    )
+                )
+
+        self.assertTrue(
+            result.overlays.enabled
+        )
+        self.assertEqual(
+            (
+                "Electricity",
+                "Technology",
+                "Light Leaks"
+            ),
+            result.overlays.folders
+        )
+        self.assertEqual(
+            {
+                "Electricity": 3.0,
+                "Technology": 2.0,
+                "Light Leaks": 1.0
+            },
+            result.overlays.folder_weights
+        )
+        resolver.discover_valid_folders.assert_called_once_with(
+            directory=config.overlays.directory,
+            extensions=config.overlays.extensions,
+            types=config.overlays.types
+        )
+        resolver.resolve_categories.assert_called_once_with(
+            topic="Nikola Tesla",
+            folders=(
+                "Electricity",
+                "Technology"
+            )
+        )
+        self.assertFalse(
+            config.overlays.enabled
+        )
+        self.assertEqual(
+            (),
+            config.overlays.folders
+        )
+
+    def test_overlay_mode_smart_falls_back_to_neutral_folder(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=False,
+                folders=(
+                    "Legacy",
+                )
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "smart"
+            },
+            clear=False
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".OverlayFolderResolver"
+        ) as resolver_class:
+            resolver = resolver_class.return_value
+            resolver.discover_valid_folders.return_value = (
+                "Electricity",
+                "Light Leaks"
+            )
+            resolver.resolve_categories.return_value = (
+                OverlayCategoryResolution()
+            )
+
+            factory = VideoBuildContextFactory()
+            with patch.object(
+                factory,
+                "_read_topic",
+                return_value="Aleister Crowley"
+            ):
+                result = (
+                    factory._apply_overlay_mode(
+                        config
+                    )
+                )
+
+        self.assertTrue(
+            result.overlays.enabled
+        )
+        self.assertEqual(
+            (
+                "Light Leaks",
+            ),
+            result.overlays.folders
+        )
+        resolver.resolve_categories.assert_called_once_with(
+            topic="Aleister Crowley",
+            folders=(
+                "Electricity",
+            )
+        )
+        self.assertEqual(
+            (
+                "Legacy",
+            ),
+            config.overlays.folders
+        )
+
+    def test_overlay_mode_smart_disables_without_neutral_fallback(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=True
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "smart"
+            },
+            clear=False
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".OverlayFolderResolver"
+        ) as resolver_class:
+            resolver = resolver_class.return_value
+            resolver.discover_valid_folders.return_value = (
+                "Electricity",
+                "Smoke"
+            )
+            resolver.resolve_categories.return_value = (
+                OverlayCategoryResolution()
+            )
+
+            factory = VideoBuildContextFactory()
+            with patch.object(
+                factory,
+                "_read_topic",
+                return_value="Nikola Tesla"
+            ):
+                result = (
+                    factory._apply_overlay_mode(
+                        config
+                    )
+                )
+
+        self.assertFalse(
+            result.overlays.enabled
+        )
+        self.assertEqual(
+            (),
+            result.overlays.folders
+        )
+        resolver.resolve_categories.assert_called_once_with(
+            topic="Nikola Tesla",
+            folders=(
+                "Electricity",
+                "Smoke"
+            )
+        )
+
+    def test_overlay_mode_smart_uses_neutral_when_no_thematic_folders_exist(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=False
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "smart"
+            },
+            clear=False
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".OverlayFolderResolver"
+        ) as resolver_class:
+            resolver = resolver_class.return_value
+            resolver.discover_valid_folders.return_value = (
+                "Light Leaks",
+            )
+
+            result = (
+                VideoBuildContextFactory()
+                ._apply_overlay_mode(
+                    config
+                )
+            )
+
+        self.assertTrue(
+            result.overlays.enabled
+        )
+        self.assertEqual(
+            (
+                "Light Leaks",
+            ),
+            result.overlays.folders
+        )
+        resolver.resolve_categories.assert_not_called()
+
+    def test_overlay_mode_smart_without_valid_overlays_does_not_block(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=True
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "smart"
+            },
+            clear=False
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".OverlayFolderResolver"
+        ) as resolver_class:
+            resolver = resolver_class.return_value
+            resolver.discover_valid_folders.return_value = ()
+
+            result = (
+                VideoBuildContextFactory()
+                ._apply_overlay_mode(
+                    config
+                )
+            )
+
+        self.assertFalse(
+            result.overlays.enabled
+        )
+        self.assertEqual(
+            (),
+            result.overlays.folders
+        )
+        resolver.resolve_categories.assert_not_called()
+
+    def test_overlay_override_does_not_modify_profile_file(
+        self
+    ):
+        profile_path = Path(
+            "config/profiles/youtube/modo_conciencia.json"
+        )
+        before = profile_path.read_text(
+            encoding="utf-8"
+        )
+        config = video_config(
+            overlays=overlay_config(
+                enabled=True
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "MC_OVERLAYS_MODE": "off"
+            },
+            clear=False
+        ):
+            VideoBuildContextFactory()._apply_overlay_mode(
+                config
+            )
+
+        after = profile_path.read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(
+            before,
+            after
         )
 
 
