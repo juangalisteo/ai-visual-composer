@@ -119,6 +119,104 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
         self.assertIn(
+            "3. Dise",
+            printed
+        )
+        self.assertIn(
+            "No disponible.",
+            printed
+        )
+
+    def test_script_destination_design_is_visible_and_selectable(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="3"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_script_destination()
+
+        self.assertEqual(
+            "design",
+            selected
+        )
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            "DESTINO",
+            printed
+        )
+        self.assertIn(
+            "1. Imagen",
+            printed
+        )
+        self.assertIn(
+            "2. Video",
+            printed
+        )
+        self.assertIn(
+            "3. Dise",
+            printed
+        )
+
+    def test_design_target_image_is_visible_and_selectable(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_design_target()
+
+        self.assertEqual(
+            "image",
+            selected
+        )
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            "DISE",
+            printed
+        )
+        self.assertIn(
+            "1. Imagen",
+            printed
+        )
+        self.assertIn(
+            "2. Video",
+            printed
+        )
+
+    def test_design_target_video_is_visible_but_not_available(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="2"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            with self.assertRaises(
+                SystemExit
+            ):
+                controller.select_design_target()
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
             "No disponible.",
             printed
         )
@@ -324,6 +422,103 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertEqual(
             "smart",
+            options["overlays_mode"]
+        )
+        self.assertEqual(
+            "",
+            options["design_target"]
+        )
+
+    def test_script_design_image_only_requests_design_image_inputs(self):
+        controller = RunController()
+
+        with patch.object(
+            controller,
+            "select_visual_pipeline",
+            return_value="script"
+        ), patch.object(
+            controller,
+            "select_script_destination",
+            return_value="design"
+        ), patch.object(
+            controller,
+            "select_design_target",
+            return_value="image"
+        ) as design_target_mock, patch.object(
+            controller,
+            "select_pipeline_mode"
+        ) as mode_mock, patch.object(
+            controller,
+            "select_profile",
+            return_value={
+                "path": (
+                    "config/profiles/diseno/imagen/"
+                    "instagram.json"
+                )
+            }
+        ) as profile_mock, patch.object(
+            controller,
+            "select_subtitle_config"
+        ) as subtitle_mock, patch.object(
+            controller,
+            "select_voice_config"
+        ) as voice_mock, patch.object(
+            controller,
+            "select_music_category"
+        ) as music_mock, patch.object(
+            controller,
+            "select_overlays_mode"
+        ) as overlays_mock, patch.object(
+            controller,
+            "ask_project_name",
+            return_value="design image"
+        ) as project_mock, patch.object(
+            controller,
+            "ask_clear_output",
+            return_value=False
+        ) as clear_mock:
+            options = controller.run()
+
+        design_target_mock.assert_called_once()
+        mode_mock.assert_not_called()
+        profile_mock.assert_called_once_with(
+            "design_image"
+        )
+        subtitle_mock.assert_not_called()
+        voice_mock.assert_not_called()
+        music_mock.assert_not_called()
+        overlays_mock.assert_not_called()
+        project_mock.assert_called_once()
+        clear_mock.assert_called_once()
+        self.assertEqual(
+            "image",
+            options["visual_pipeline"]
+        )
+        self.assertEqual(
+            "manual_design",
+            options["script_source"]
+        )
+        self.assertEqual(
+            "image",
+            options["design_target"]
+        )
+        self.assertEqual(
+            "design_image",
+            options["pipeline_mode"]
+        )
+        self.assertEqual(
+            "",
+            options["subtitle_config"]
+        )
+        self.assertEqual(
+            "",
+            options["voice_config"]
+        )
+        self.assertIsNone(
+            options["music_category"]
+        )
+        self.assertEqual(
+            "off",
             options["overlays_mode"]
         )
 

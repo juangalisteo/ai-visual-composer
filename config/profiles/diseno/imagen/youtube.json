@@ -1,0 +1,19 @@
+{
+    "platform": "youtube",
+    "format": "horizontal",
+    "resolution": "1920x1080",
+    "tone": "modo_conciencia",
+
+    "builders": {
+        "images": true
+    },
+
+    "video_style": {
+        "width": 1920,
+        "height": 1080
+    },
+
+    "image_validation": {
+        "enabled": false
+    }
+}

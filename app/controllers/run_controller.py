@@ -7,16 +7,27 @@ class RunController:
     def run(self):
         visual_pipeline = self.select_visual_pipeline()
         script_source = "generated"
+        design_target = ""
 
         if visual_pipeline == "script":
             script_source = "manual"
             visual_pipeline = self.select_script_destination()
+            if visual_pipeline == "design":
+                script_source = "manual_design"
+                design_target = self.select_design_target()
+                visual_pipeline = design_target
 
-        pipeline_mode = self.select_pipeline_mode()
+        if script_source == "manual_design":
+            pipeline_mode = f"design_{design_target}"
+        else:
+            pipeline_mode = self.select_pipeline_mode()
+
         profile = self.select_profile(
-            "script"
-            if script_source == "manual"
-            else visual_pipeline
+            self._profile_scope(
+                script_source=script_source,
+                visual_pipeline=visual_pipeline,
+                design_target=design_target
+            )
         )
         subtitle_config = ""
         voice_config = ""
@@ -30,7 +41,10 @@ class RunController:
         }:
             subtitle_config = self.select_subtitle_config()
 
-        if pipeline_mode != "script":
+        if pipeline_mode not in {
+            "script",
+            "design_image"
+        }:
             voice_config = self.select_voice_config()
             music_category = self.select_music_category()
 
@@ -43,6 +57,7 @@ class RunController:
         return {
             "visual_pipeline": visual_pipeline,
             "script_source": script_source,
+            "design_target": design_target,
             "pipeline_mode": pipeline_mode,
             "profile_path": str(profile["path"]),
             "subtitle_config": subtitle_config,
@@ -107,6 +122,10 @@ class RunController:
                 "name": "Video",
                 "pipeline": "video",
                 "available": False
+            },
+            {
+                "name": "Diseño",
+                "pipeline": "design"
             }
         ]
 
@@ -136,6 +155,46 @@ class RunController:
             print(
                 "\nNo disponible."
             )
+
+    def select_design_target(self):
+        targets = [
+            {
+                "name": "Imagen",
+                "pipeline": "image"
+            },
+            {
+                "name": "Video",
+                "pipeline": "video",
+                "available": False
+            }
+        ]
+
+        print("\nDISEÑO\n")
+
+        for i, target in enumerate(
+            targets,
+            start=1
+        ):
+            print(
+                f"{i}. {target['name']}"
+            )
+
+        selected = self._select_from_list(
+            targets
+        )
+
+        if not selected.get(
+            "available",
+            True
+        ):
+            print(
+                "\nNo disponible."
+            )
+            sys.exit(0)
+
+        return selected[
+            "pipeline"
+        ]
 
     def select_pipeline_mode(self):
         modes = [
@@ -197,6 +256,21 @@ class RunController:
                     "profile": profile.stem,
                     "path": profile
                 })
+        elif visual_pipeline == "design_image":
+            profile_paths = sorted(
+                (
+                    profiles_path
+                    / "diseno"
+                    / "imagen"
+                ).glob("*.json")
+            )
+
+            for profile in profile_paths:
+                profiles.append({
+                    "platform": "diseno",
+                    "profile": profile.stem,
+                    "path": profile
+                })
         else:
             platform_paths = [
                 platform
@@ -229,7 +303,10 @@ class RunController:
             profiles,
             start=1
         ):
-            if item["platform"] == "guion":
+            if item["platform"] in {
+                "guion",
+                "diseno"
+            }:
                 label = self._label(
                     item["profile"]
                 )
@@ -458,6 +535,20 @@ class RunController:
             value,
             self._label(value)
         )
+
+    def _profile_scope(
+        self,
+        script_source,
+        visual_pipeline,
+        design_target
+    ):
+        if script_source == "manual":
+            return "script"
+
+        if script_source == "manual_design":
+            return f"design_{design_target}"
+
+        return visual_pipeline
 
     def _exit_application(self):
         print(

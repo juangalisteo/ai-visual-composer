@@ -18,6 +18,7 @@ def main():
     os.environ["MC_PROJECT_NAME"] = options["project_name"]
     os.environ["MC_VISUAL_PIPELINE"] = options["visual_pipeline"]
     os.environ["MC_SCRIPT_SOURCE"] = options["script_source"]
+    os.environ["MC_DESIGN_TARGET"] = options.get("design_target", "")
     os.environ["MC_PIPELINE_MODE"] = options["pipeline_mode"]
 
     if options["clear_output"]:

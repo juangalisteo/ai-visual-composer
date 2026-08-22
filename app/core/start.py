@@ -10,6 +10,10 @@ from app.modules.audio.audio_mixer import AudioMixer
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.audio.voice_builder import VoiceBuilder
 from app.modules.images.image_builder import ImageBuilder
+from app.modules.images import (
+    ImageDesignPreparationService,
+    ImageDesignVisualTruthAdapter,
+)
 from app.modules.script import (
     ScriptOperation,
     ScriptPreparationService,
@@ -26,13 +30,20 @@ from app.shared.media_probe import MediaProbe
 def iniciar():
     pipeline_start = time.perf_counter()
 
-    config = ConfigManager()
     project = ProjectManager()
 
     pipeline_mode = os.environ.get(
         "MC_PIPELINE_MODE",
         "full"
     ).strip().lower()
+
+    if pipeline_mode == "design_image":
+        return ejecutar_diseno_imagen(
+            pipeline_start=pipeline_start,
+            project=project
+        )
+
+    config = ConfigManager()
 
     if pipeline_mode != "script":
         project.setup()
@@ -295,6 +306,92 @@ def ejecutar_guion(
     )
 
 
+def ejecutar_diseno_imagen(
+    pipeline_start=None,
+    project=None,
+    input_design_path=None,
+    preparation_service=None,
+    visual_truth_adapter=None,
+    image_builder=None
+):
+    if pipeline_start is None:
+        pipeline_start = time.perf_counter()
+
+    project = (
+        project
+        or ProjectManager()
+    )
+
+    summary = PipelineSummary(
+        project.project_name
+    )
+
+    preparation_service = (
+        preparation_service
+        or ImageDesignPreparationService()
+    )
+    visual_truth_adapter = (
+        visual_truth_adapter
+        or ImageDesignVisualTruthAdapter()
+    )
+    image_builder = (
+        image_builder
+        or ImageBuilder()
+    )
+
+    prepared_design = preparation_service.prepare(
+        input_path=(
+            input_design_path
+            or Path("input/guion_imagen.txt")
+        )
+    )
+
+    scenes = visual_truth_adapter.adapt(
+        prepared_design
+    )
+
+    _ensure_single_design_scene(
+        scenes
+    )
+
+    storyboard_path = (
+        project.storyboard_path()
+    )
+    storyboard_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+    storyboard_path.write_text(
+        json.dumps(
+            scenes,
+            ensure_ascii=False,
+            indent=4
+        ),
+        encoding="utf-8"
+    )
+
+    images_manifest_path, images_elapsed = _measure_stage(
+        image_builder.build,
+        storyboard_path=storyboard_path,
+        output_dir=project.images_dir()
+    )
+
+    _ensure_single_design_image(
+        images_manifest_path
+    )
+
+    _complete_summary(
+        summary=summary,
+        stage_times={
+            "Imágenes": images_elapsed
+        },
+        project=project,
+        pipeline_start=pipeline_start
+    )
+
+    return images_manifest_path
+
+
 def preparar_guion(
     builders,
     ai_config,
@@ -341,6 +438,72 @@ def _measure_stage(
     )
 
     return result, elapsed
+
+
+def _ensure_single_design_scene(
+    scenes
+):
+    if not isinstance(
+        scenes,
+        list
+    ):
+        raise ValueError(
+            "El diseno visual debe producir una lista "
+            "de escenas."
+        )
+
+    if len(
+        scenes
+    ) != 1:
+        raise ValueError(
+            "El diseno visual debe producir exactamente "
+            "una escena."
+        )
+
+
+def _ensure_single_design_image(
+    images_manifest_path
+):
+    manifest_path = Path(
+        images_manifest_path
+    )
+    manifest = json.loads(
+        manifest_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(
+        manifest,
+        list
+    ):
+        raise ValueError(
+            "El manifiesto de diseno debe contener "
+            "una lista de imagenes."
+        )
+
+    if len(
+        manifest
+    ) != 1:
+        raise ValueError(
+            "El diseno visual debe generar exactamente "
+            "una imagen."
+        )
+
+    image_name = Path(
+        str(
+            manifest[0].get(
+                "image",
+                ""
+            )
+        )
+    ).name
+
+    if image_name != "scene_001.png":
+        raise ValueError(
+            "La imagen de diseno debe corresponder a "
+            "scene_001.png."
+        )
 
 
 def _complete_summary(
