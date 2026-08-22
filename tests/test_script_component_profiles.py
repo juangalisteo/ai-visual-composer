@@ -1,0 +1,186 @@
+import json
+import os
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from app.controllers.run_controller import RunController
+from app.shared.config_manager import ConfigManager
+
+
+class ScriptComponentProfilesTest(
+    unittest.TestCase
+):
+
+    def test_script_profiles_exist_as_independent_copies(self):
+        pairs = (
+            (
+                Path(
+                    "config/profiles/instagram/modo_conciencia.json"
+                ),
+                Path(
+                    "config/profiles/guion/instagram.json"
+                ),
+            ),
+            (
+                Path(
+                    "config/profiles/youtube/modo_conciencia.json"
+                ),
+                Path(
+                    "config/profiles/guion/youtube.json"
+                ),
+            ),
+        )
+
+        for original, script_profile in pairs:
+            with self.subTest(
+                script_profile=script_profile
+            ):
+                self.assertTrue(
+                    original.is_file()
+                )
+                self.assertTrue(
+                    script_profile.is_file()
+                )
+                self.assertFalse(
+                    os.path.samefile(
+                        original,
+                        script_profile
+                    )
+                )
+                self.assertEqual(
+                    original.read_text(
+                        encoding="utf-8"
+                    ),
+                    script_profile.read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+    def test_script_profiles_preserve_source_orientation(self):
+        instagram = json.loads(
+            Path(
+                "config/profiles/guion/instagram.json"
+            ).read_text(
+                encoding="utf-8"
+            )
+        )
+        youtube = json.loads(
+            Path(
+                "config/profiles/guion/youtube.json"
+            ).read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            "vertical",
+            instagram["format"]
+        )
+        self.assertEqual(
+            "1080x1920",
+            instagram["resolution"]
+        )
+        self.assertEqual(
+            "horizontal",
+            youtube["format"]
+        )
+        self.assertEqual(
+            "1920x1080",
+            youtube["resolution"]
+        )
+
+    def test_script_profile_selection_uses_script_profile_directory(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_profile(
+                "script"
+            )
+
+        self.assertEqual(
+            Path(
+                "config/profiles/guion/instagram.json"
+            ),
+            selected["path"]
+        )
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            "1. Instagram",
+            printed
+        )
+        self.assertIn(
+            "2. Youtube",
+            printed
+        )
+        self.assertNotIn(
+            "Modo Conciencia",
+            printed
+        )
+
+    def test_image_profile_selection_excludes_script_profiles(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_profile(
+                "image"
+            )
+
+        self.assertEqual(
+            Path(
+                "config/profiles/instagram/modo_conciencia.json"
+            ),
+            selected["path"]
+        )
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            "Instagram / Modo Conciencia",
+            printed
+        )
+        self.assertNotIn(
+            "Guion",
+            printed
+        )
+
+    def test_config_manager_loads_selected_script_profile_path(self):
+        with patch.dict(
+            os.environ,
+            {
+                "MC_PROFILE_PATH": (
+                    "config/profiles/guion/youtube.json"
+                )
+            },
+            clear=False
+        ):
+            profile = ConfigManager().get_profile_config()
+
+        self.assertEqual(
+            "youtube",
+            profile["platform"]
+        )
+        self.assertEqual(
+            "horizontal",
+            profile["format"]
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

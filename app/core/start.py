@@ -3,8 +3,6 @@ import os
 import time
 from pathlib import Path
 
-from app.core.prompt_engine import PromptEngine
-
 from app.managers.pipeline_summary import PipelineSummary
 from app.managers.project_manager import ProjectManager
 
@@ -12,7 +10,10 @@ from app.modules.audio.audio_mixer import AudioMixer
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.audio.voice_builder import VoiceBuilder
 from app.modules.images.image_builder import ImageBuilder
-from app.modules.script.script_builder import ScriptBuilder
+from app.modules.script import (
+    ScriptOperation,
+    ScriptPreparationService,
+)
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.subtitles.srt_optimizer import SrtOptimizer
 from app.modules.subtitles.subtitle_builder import SubtitleBuilder
@@ -20,7 +21,6 @@ from app.modules.video.video_builder import VideoBuilder
 
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
-from app.shared.progress_logger import ProgressLogger
 
 
 def iniciar():
@@ -28,12 +28,14 @@ def iniciar():
 
     config = ConfigManager()
     project = ProjectManager()
-    project.setup()
 
     pipeline_mode = os.environ.get(
         "MC_PIPELINE_MODE",
         "full"
     ).strip().lower()
+
+    if pipeline_mode != "script":
+        project.setup()
 
     ai_config = config.get_ai_config()
     profile = config.get_profile_config()
@@ -61,8 +63,8 @@ def iniciar():
 
     stage_times = {}
 
-    script, script_elapsed = _measure_stage(
-        cargar_o_generar_guion,
+    prepared_script, script_elapsed = _measure_stage(
+        ejecutar_guion,
         builders=builders,
         ai_config=ai_config,
         profile=profile,
@@ -95,7 +97,7 @@ def iniciar():
     ):
         voice_path, voice_elapsed = _measure_stage(
             VoiceBuilder().build,
-            script
+            prepared_script.text
         )
 
         stage_times["Voces"] = (
@@ -256,97 +258,69 @@ def cargar_o_generar_guion(
     input_script_path,
     input_topic_path,
     output_script_path,
-    script_builder_factory=ScriptBuilder
+    script_builder_factory=None
 ):
-    if builders.get(
-        "script",
-        True
-    ):
-        manual_script = (
-            input_script_path.exists()
-            and input_script_path.read_text(
-                encoding="utf-8"
-            ).strip()
-        )
+    return preparar_guion(
+        builders=builders,
+        ai_config=ai_config,
+        profile=profile,
+        input_script_path=input_script_path,
+        input_topic_path=input_topic_path,
+        output_script_path=output_script_path,
+        script_builder_factory=script_builder_factory
+    ).text
 
-        if manual_script:
-            ProgressLogger.info(
-                "Usando guion manual."
-            )
 
-            script = str(
-                manual_script
-            ).strip()
+def ejecutar_guion(
+    builders,
+    ai_config,
+    profile,
+    input_script_path,
+    input_topic_path,
+    output_script_path
+):
+    source_mode = os.environ.get(
+        "MC_SCRIPT_SOURCE",
+        "generated"
+    ).strip().lower()
 
-        else:
-            if not input_topic_path.exists():
-                raise FileNotFoundError(
-                    "No existe input/tema.txt."
-                )
-
-            topic = input_topic_path.read_text(
-                encoding="utf-8"
-            ).strip()
-
-            if not topic:
-                raise ValueError(
-                    "El archivo input/tema.txt "
-                    "está vacío."
-                )
-
-            prompt = (
-                PromptEngine()
-                .build_script_prompt(
-                    topic,
-                    profile
-                )
-            )
-
-            script = (
-                script_builder_factory(
-                    ai_config
-                )
-                .build(
-                    prompt
-                )
-                .strip()
-            )
-
-        output_script_path.parent.mkdir(
-            parents=True,
-            exist_ok=True
-        )
-
-        output_script_path.write_text(
-            script,
-            encoding="utf-8"
-        )
-
-        return script
-
-    if not output_script_path.exists():
-        raise FileNotFoundError(
-            "ScriptBuilder está desactivado "
-            "y no existe el guion esperado: "
-            f"{output_script_path}"
-        )
-
-    script = output_script_path.read_text(
-        encoding="utf-8"
-    ).strip()
-
-    if not script:
-        raise ValueError(
-            "ScriptBuilder está desactivado "
-            "y el guion existente está vacío: "
-            f"{output_script_path}"
-        )
-
-    ProgressLogger.info(
-        "Usando guion existente."
+    return ScriptOperation().execute(
+        builders=builders,
+        ai_config=ai_config,
+        profile=profile,
+        input_script_path=input_script_path,
+        input_topic_path=input_topic_path,
+        output_script_path=output_script_path,
+        source_mode=source_mode
     )
 
-    return script
+
+def preparar_guion(
+    builders,
+    ai_config,
+    profile,
+    input_script_path,
+    input_topic_path,
+    output_script_path,
+    script_builder_factory=None
+):
+    service_kwargs = {}
+
+    if script_builder_factory is not None:
+        service_kwargs[
+            "script_builder_factory"
+        ] = script_builder_factory
+
+    return ScriptPreparationService(
+        **service_kwargs
+    ).prepare(
+        builders=builders,
+        ai_config=ai_config,
+        profile=profile,
+        input_script_path=input_script_path,
+        input_topic_path=input_topic_path,
+        output_script_path=output_script_path
+    )
 
 
 def _measure_stage(

@@ -11,12 +11,45 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
         with patch(
             "builtins.input",
-            return_value="1"
+            return_value="2"
         ):
             self.assertEqual(
                 "image",
                 controller.select_visual_pipeline()
             )
+
+    def test_selects_script_pipeline_from_main_menu(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_visual_pipeline()
+
+        self.assertEqual(
+            "script",
+            selected
+        )
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            "1. Guion",
+            printed
+        )
+        self.assertIn(
+            "2. Imagen",
+            printed
+        )
+        self.assertIn(
+            "3. Video",
+            printed
+        )
 
     def test_video_pipeline_is_visible_but_not_available(self):
         controller = RunController()
@@ -24,8 +57,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         with patch(
             "builtins.input",
             side_effect=(
+                "3",
                 "2",
-                "1",
             )
         ), patch(
             "builtins.print"
@@ -42,7 +75,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             if call.args
         )
         self.assertIn(
-            "Vídeo",
+            "Video",
             printed
         )
         self.assertIn(
@@ -50,19 +83,59 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
 
-    def test_script_mode_is_second_option(self):
+    def test_script_destination_video_is_visible_but_not_available(self):
         controller = RunController()
 
         with patch(
             "builtins.input",
-            return_value="2"
+            side_effect=(
+                "2",
+                "1",
+            )
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_script_destination()
+
+        self.assertEqual(
+            "image",
+            selected
+        )
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            "DESTINO",
+            printed
+        )
+        self.assertIn(
+            "1. Imagen",
+            printed
+        )
+        self.assertIn(
+            "2. Video",
+            printed
+        )
+        self.assertIn(
+            "No disponible.",
+            printed
+        )
+
+    def test_image_modes_exclude_legacy_script_mode(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
         ), patch(
             "builtins.print"
         ) as print_mock:
             selected = controller.select_pipeline_mode()
 
         self.assertEqual(
-            "script",
+            "full",
             selected
         )
         printed = "\n".join(
@@ -75,28 +148,28 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
         self.assertIn(
-            "2. Solo guion",
+            "2. Solo audio",
             printed
         )
         self.assertIn(
-            "3. Solo audio",
+            "3. Audio + subtítulos",
             printed
         )
         self.assertIn(
-            "4. Audio + subtítulos",
+            "4. Audio + subtítulos + storyboard",
             printed
         )
-        self.assertIn(
-            "5. Audio + subtítulos + storyboard",
+        self.assertNotIn(
+            "Solo guion",
             printed
         )
 
     def test_existing_modes_keep_internal_identifiers(self):
         cases = (
             ("1", "full"),
-            ("3", "audio"),
-            ("4", "subtitles"),
-            ("5", "storyboard"),
+            ("2", "audio"),
+            ("3", "subtitles"),
+            ("4", "storyboard"),
         )
 
         for option, expected_mode in cases:
@@ -114,39 +187,47 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                         controller.select_pipeline_mode()
                     )
 
-    def test_script_mode_skips_unused_configuration_prompts(self):
+    def test_script_entry_selects_image_destination_and_reuses_image_flow(self):
         controller = RunController()
 
         with patch.object(
             controller,
             "select_visual_pipeline",
+            return_value="script"
+        ), patch.object(
+            controller,
+            "select_script_destination",
             return_value="image"
         ), patch.object(
             controller,
             "select_pipeline_mode",
-            return_value="script"
-        ), patch.object(
+            return_value="full"
+        ) as mode_mock, patch.object(
             controller,
             "select_profile",
             return_value={
-                "path": "config/profiles/youtube/modo_conciencia.json"
+                "path": "config/profiles/guion/instagram.json"
             }
         ) as profile_mock, patch.object(
             controller,
-            "select_subtitle_config"
+            "select_subtitle_config",
+            return_value="single_line"
         ) as subtitle_mock, patch.object(
             controller,
-            "select_voice_config"
+            "select_voice_config",
+            return_value="masculina"
         ) as voice_mock, patch.object(
             controller,
-            "select_music_category"
+            "select_music_category",
+            return_value="random"
         ) as music_mock, patch.object(
             controller,
-            "select_overlays_mode"
+            "select_overlays_mode",
+            return_value="smart"
         ) as overlays_mock, patch.object(
             controller,
             "ask_project_name",
-            return_value="project"
+            return_value="script image project"
         ) as project_mock, patch.object(
             controller,
             "ask_clear_output",
@@ -155,42 +236,31 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             options = controller.run()
 
         self.assertEqual(
-            "script",
+            "image",
+            options["visual_pipeline"]
+        )
+        self.assertEqual(
+            "manual",
+            options["script_source"]
+        )
+        self.assertEqual(
+            "full",
             options["pipeline_mode"]
         )
         self.assertEqual(
-            "config/profiles/youtube/modo_conciencia.json",
-            options["profile_path"]
-        )
-        self.assertEqual(
-            "project",
+            "script image project",
             options["project_name"]
         )
-        self.assertFalse(
-            options["clear_output"]
+        mode_mock.assert_called_once()
+        profile_mock.assert_called_once_with(
+            "script"
         )
-        profile_mock.assert_called_once()
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        subtitle_mock.assert_not_called()
-        voice_mock.assert_not_called()
-        music_mock.assert_not_called()
-        overlays_mock.assert_not_called()
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
-        self.assertEqual(
-            "",
-            options["voice_config"]
-        )
-        self.assertIsNone(
-            options["music_category"]
-        )
-        self.assertEqual(
-            "off",
-            options["overlays_mode"]
-        )
+        subtitle_mock.assert_called_once()
+        voice_mock.assert_called_once()
+        music_mock.assert_called_once()
+        overlays_mock.assert_called_once()
 
     def test_run_includes_visual_pipeline_without_changing_existing_options(self):
         controller = RunController()
@@ -239,6 +309,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         self.assertEqual(
             "image",
             options["visual_pipeline"]
+        )
+        self.assertEqual(
+            "generated",
+            options["script_source"]
         )
         self.assertEqual(
             "full",
@@ -497,7 +571,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         self
     ):
         cases = (
-            "script",
             "audio",
             "subtitles",
             "storyboard",

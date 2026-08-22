@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,16 @@ class ScriptGenerationResult:
     script: str
     word_count: int
     metadata: ScriptGenerationMetadata
+
+
+@dataclass(frozen=True)
+class PreparedScript:
+    text: str
+    source: str
+    path: Path
+    word_count: int
+    metadata: ScriptGenerationMetadata | None = None
+    preparation_status: str = "prepared"
 
 
 @dataclass(frozen=True)

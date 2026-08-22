@@ -6,8 +6,18 @@ class RunController:
 
     def run(self):
         visual_pipeline = self.select_visual_pipeline()
+        script_source = "generated"
+
+        if visual_pipeline == "script":
+            script_source = "manual"
+            visual_pipeline = self.select_script_destination()
+
         pipeline_mode = self.select_pipeline_mode()
-        profile = self.select_profile()
+        profile = self.select_profile(
+            "script"
+            if script_source == "manual"
+            else visual_pipeline
+        )
         subtitle_config = ""
         voice_config = ""
         music_category = None
@@ -32,6 +42,7 @@ class RunController:
 
         return {
             "visual_pipeline": visual_pipeline,
+            "script_source": script_source,
             "pipeline_mode": pipeline_mode,
             "profile_path": str(profile["path"]),
             "subtitle_config": subtitle_config,
@@ -45,11 +56,15 @@ class RunController:
     def select_visual_pipeline(self):
         pipelines = [
             {
+                "name": "Guion",
+                "pipeline": "script"
+            },
+            {
                 "name": "Imagen",
                 "pipeline": "image"
             },
             {
-                "name": "Vídeo",
+                "name": "Video",
                 "pipeline": "video",
                 "available": False
             }
@@ -82,15 +97,51 @@ class RunController:
                 "\nNo disponible."
             )
 
+    def select_script_destination(self):
+        destinations = [
+            {
+                "name": "Imagen",
+                "pipeline": "image"
+            },
+            {
+                "name": "Video",
+                "pipeline": "video",
+                "available": False
+            }
+        ]
+
+        print("\nDESTINO\n")
+
+        for i, destination in enumerate(
+            destinations,
+            start=1
+        ):
+            print(
+                f"{i}. {destination['name']}"
+            )
+
+        while True:
+            selected = self._select_from_list(
+                destinations
+            )
+
+            if selected.get(
+                "available",
+                True
+            ):
+                return selected[
+                    "pipeline"
+                ]
+
+            print(
+                "\nNo disponible."
+            )
+
     def select_pipeline_mode(self):
         modes = [
             {
                 "name": "Proyecto completo",
                 "mode": "full"
-            },
-            {
-                "name": "Solo guion",
-                "mode": "script"
             },
             {
                 "name": "Solo audio",
@@ -122,27 +173,49 @@ class RunController:
 
         return selected["mode"]
 
-    def select_profile(self):
+    def select_profile(
+        self,
+        visual_pipeline="image"
+    ):
         profiles_path = Path(
             "config/profiles"
         )
 
         profiles = []
 
-        for platform in sorted(
-            profiles_path.iterdir()
-        ):
-            if not platform.is_dir():
-                continue
+        if visual_pipeline == "script":
+            profile_paths = sorted(
+                (
+                    profiles_path
+                    / "guion"
+                ).glob("*.json")
+            )
 
-            for profile in sorted(
-                platform.glob("*.json")
-            ):
+            for profile in profile_paths:
                 profiles.append({
-                    "platform": platform.name,
+                    "platform": "guion",
                     "profile": profile.stem,
                     "path": profile
                 })
+        else:
+            platform_paths = [
+                platform
+                for platform in sorted(
+                    profiles_path.iterdir()
+                )
+                if platform.is_dir()
+                and platform.name != "guion"
+            ]
+
+            for platform in platform_paths:
+                for profile in sorted(
+                    platform.glob("*.json")
+                ):
+                    profiles.append({
+                        "platform": platform.name,
+                        "profile": profile.stem,
+                        "path": profile
+                    })
 
         if not profiles:
             raise FileNotFoundError(
@@ -156,10 +229,18 @@ class RunController:
             profiles,
             start=1
         ):
+            if item["platform"] == "guion":
+                label = self._label(
+                    item["profile"]
+                )
+            else:
+                label = (
+                    f"{self._label(item['platform'])} / "
+                    f"{self._label(item['profile'])}"
+                )
+
             print(
-                f"{i}. "
-                f"{self._label(item['platform'])} / "
-                f"{self._label(item['profile'])}"
+                f"{i}. {label}"
             )
 
         return self._select_from_list(

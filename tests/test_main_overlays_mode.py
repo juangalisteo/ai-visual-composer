@@ -20,6 +20,7 @@ class MainOverlaysModeTest(
             "overlays_mode": "smart",
             "project_name": "project",
             "visual_pipeline": "image",
+            "script_source": "generated",
             "pipeline_mode": "full",
             "clear_output": False
         }

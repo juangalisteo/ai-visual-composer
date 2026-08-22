@@ -17,7 +17,17 @@ class FontManager:
         "uni sans": "UniSansHeavyCAPS",
         "uni sans heavy": "UniSansHeavyCAPS",
         "uni sans heavy.otf": "UniSansHeavyCAPS",
-        "unisansheavycaps": "UniSansHeavyCAPS"
+        "unisansheavycaps": "UniSansHeavyCAPS",
+
+        "oswald": "Oswald",
+        "oswald variable": "Oswald",
+        "oswald-variablefont_wght": "Oswald",
+        "oswald-variablefont_wght.ttf": "Oswald",
+
+        "anton": "Anton",
+        "anton regular": "Anton",
+        "anton-regular": "Anton",
+        "anton-regular.ttf": "Anton"
     }
 
     FONT_FILES = {
@@ -29,6 +39,16 @@ class FontManager:
         "UniSansHeavyCAPS": (
             FONTS_DIR
             / "Uni Sans Heavy.otf"
+        ),
+
+        "Oswald": (
+            FONTS_DIR
+            / "Oswald-VariableFont_wght.ttf"
+        ),
+
+        "Anton": (
+            FONTS_DIR
+            / "Anton-Regular.ttf"
         )
     }
 
