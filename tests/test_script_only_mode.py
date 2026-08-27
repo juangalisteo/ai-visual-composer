@@ -469,6 +469,155 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     previous_cwd
                 )
 
+    def test_main_script_to_video_uses_manual_script_and_video_flow(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            previous_cwd = Path.cwd()
+
+            try:
+                os.chdir(
+                    root
+                )
+                input_dir = root / "input"
+                input_dir.mkdir()
+                (
+                    input_dir
+                    / "guion.txt"
+                ).write_text(
+                    "Guion manual para generar un video completo.",
+                    encoding="utf-8"
+                )
+                (
+                    input_dir
+                    / "tema.txt"
+                ).write_text(
+                    "tema que no debe usarse",
+                    encoding="utf-8"
+                )
+
+                FakeVoiceBuilder.received_scripts = []
+
+                with patch(
+                    "main.RunController"
+                ) as run_controller, patch(
+                    "app.core.start.ConfigManager",
+                    FakeConfigManager
+                ), patch(
+                    "app.modules.script.preparation.PromptEngine",
+                    side_effect=AssertionError(
+                        "PromptEngine must not run for manual source"
+                    )
+                ), patch(
+                    "app.modules.script.preparation.ScriptBuilder",
+                    side_effect=AssertionError(
+                        "ScriptBuilder must not run for manual source"
+                    )
+                ), patch(
+                    "app.core.start.VoiceBuilder",
+                    FakeVoiceBuilder
+                ), patch(
+                    "app.core.start.MusicSelector",
+                    side_effect=AssertionError(
+                        "MusicSelector must not run without music"
+                    )
+                ), patch(
+                    "app.core.start.AudioMixer"
+                ) as audio_mixer, patch(
+                    "app.core.start.SubtitleBuilder"
+                ) as subtitle_builder, patch(
+                    "app.core.start.SrtOptimizer"
+                ) as srt_optimizer, patch(
+                    "app.core.start.StoryboardBuilder"
+                ) as storyboard_builder, patch(
+                    "app.core.start.ImageBuilder"
+                ) as image_builder, patch(
+                    "app.core.start.generar_video_clips_i2v"
+                ) as video_clips_builder, patch(
+                    "app.core.start.VideoBuilder"
+                ) as video_builder, patch(
+                    "app.core.start.MediaProbe.get_duration",
+                    return_value=None
+                ), patch.dict(
+                    os.environ,
+                    {},
+                    clear=False
+                ):
+                    run_controller.return_value.run.return_value = {
+                        "visual_pipeline": "video",
+                        "script_source": "manual",
+                        "pipeline_mode": "full",
+                        "profile_path": (
+                            "config/profiles/guion/instagram.json"
+                        ),
+                        "subtitle_config": "single_line",
+                        "voice_config": "masculina",
+                        "music_category": None,
+                        "overlays_mode": "smart",
+                        "project_name": "guion video",
+                        "clear_output": False
+                    }
+                    audio_mixer.return_value.build.return_value = Path(
+                        "output/guion video/audio/audio_final.mp3"
+                    )
+                    subtitle_builder.return_value.build.return_value = Path(
+                        "output/guion video/subtitles/subtitulos.srt"
+                    )
+                    srt_optimizer.return_value.optimize.return_value = Path(
+                        "output/guion video/subtitles/subtitulos.srt"
+                    )
+                    storyboard_builder.return_value.build.return_value = Path(
+                        "output/guion video/storyboard/storyboard.json"
+                    )
+                    image_builder.return_value.build.return_value = Path(
+                        "output/guion video/images/images_manifest.json"
+                    )
+                    video_clips_builder.return_value = Path(
+                        "output/guion video/video_clips/"
+                        "video_clips_manifest.json"
+                    )
+                    video_builder.return_value.build.return_value = Path(
+                        "output/guion video/video/guion video.mp4"
+                    )
+
+                    app_main.main()
+
+                script_path = (
+                    root
+                    / "output"
+                    / "guion video"
+                    / "scripts"
+                    / "guion.txt"
+                )
+                self.assertEqual(
+                    "Guion manual para generar un video completo.",
+                    script_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertEqual(
+                    [
+                        "Guion manual para generar un video completo."
+                    ],
+                    FakeVoiceBuilder.received_scripts
+                )
+                video_clips_builder.assert_called_once()
+                video_builder.return_value.build.assert_called_once_with(
+                    video_clips_manifest_path=Path(
+                        "output/guion video/video_clips/"
+                        "video_clips_manifest.json"
+                    )
+                )
+                image_builder.return_value.build.assert_called_once()
+                storyboard_builder.return_value.build.assert_called_once()
+                subtitle_builder.return_value.build.assert_called_once()
+                audio_mixer.return_value.build.assert_called_once()
+            finally:
+                os.chdir(
+                    previous_cwd
+                )
+
     def test_full_mode_reuses_script_operation_and_continues_with_prepared_text(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(

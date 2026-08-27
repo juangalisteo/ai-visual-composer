@@ -193,13 +193,108 @@ class VideoBuildFactoriesTest(
             audio_path=Path("audio.mp3"),
             subtitle_path=Path("subtitles.srt"),
             images_manifest_path=Path("images.json"),
-            output_path=Path("out.mp4")
+            output_path=Path("out.mp4"),
+            media_manifest_type="images"
         )
         timeline_builder_class.return_value.build.assert_called_once_with(
             audio_path=media.audio_path,
             subtitle_path=media.subtitle_path,
             image_count=2,
             subtitle_offset=0.25
+        )
+
+    def test_context_factory_loads_video_clip_manifest_as_video_media(
+        self
+    ):
+        project = SimpleNamespace(
+            subtitle_path=lambda: Path(
+                "project.srt"
+            ),
+            images_manifest_path=lambda: Path(
+                "project_images.json"
+            ),
+            video_path=lambda: Path(
+                "project.mp4"
+            )
+        )
+        config = SimpleNamespace(
+            subtitle_offset=0.0,
+            transitions=SimpleNamespace(
+                duration=0.4
+            ),
+            width=640,
+            height=360,
+            fps=24
+        )
+        media = SimpleNamespace(
+            audio_path=Path(
+                "audio.mp3"
+            ),
+            subtitle_path=Path(
+                "subtitles.srt"
+            ),
+            output_path=Path(
+                "out.mp4"
+            ),
+            image_paths=(
+                Path("scene_001.mp4"),
+            ),
+            media_types=(
+                "video",
+            )
+        )
+        timeline = SimpleNamespace(
+            audio_duration=4.0,
+            image_duration=4.0
+        )
+
+        with patch(
+            "app.modules.video.video_build_context_factory"
+            ".ProjectManager",
+            return_value=project
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".AudioResolver"
+        ) as audio_resolver_class, patch(
+            "app.modules.video.video_build_context_factory"
+            ".VideoConfigLoader"
+        ) as config_loader_class, patch(
+            "app.modules.video.video_build_context_factory"
+            ".MediaLoader"
+        ) as media_loader_class, patch(
+            "app.modules.video.video_build_context_factory"
+            ".TimelineBuilder"
+        ) as timeline_builder_class:
+            audio_resolver_class.return_value.resolve.return_value = (
+                Path("audio.mp3")
+            )
+            config_loader_class.return_value.load.return_value = (
+                config
+            )
+            media_loader_class.return_value.load.return_value = (
+                media
+            )
+            timeline_builder_class.return_value.build.return_value = (
+                timeline
+            )
+
+            result = VideoBuildContextFactory().build(
+                audio_path="audio.mp3",
+                subtitle_path="subtitles.srt",
+                video_clips_manifest_path="video_clips.json",
+                output_path="out.mp4"
+            )
+
+        self.assertIs(
+            result.media,
+            media
+        )
+        media_loader_class.return_value.load.assert_called_once_with(
+            audio_path=Path("audio.mp3"),
+            subtitle_path=Path("subtitles.srt"),
+            images_manifest_path=Path("video_clips.json"),
+            output_path=Path("out.mp4"),
+            media_manifest_type="video_clips"
         )
 
     def test_component_factory_creates_fresh_builders_and_resets_layers(
@@ -404,6 +499,9 @@ class VideoBuildFactoriesTest(
                 image_paths=(
                     Path("a.png"),
                 ),
+                media_types=(
+                    "image",
+                ),
                 audio_path=Path("audio.mp3"),
                 output_path=Path("out.mp4")
             ),
@@ -487,6 +585,9 @@ class VideoBuildFactoriesTest(
             movflags="+faststart",
             audio_duration=4.0,
             transition_duration=0.4,
+            media_types=(
+                "image",
+            ),
             overlay_inputs=(
                 Path("overlay.mov"),
             ),

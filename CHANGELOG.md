@@ -6,6 +6,38 @@ All notable changes to AI Visual Composer will be documented in this file.
 
 No unreleased changes.
 
+## [V2.0] - 2026-08-25
+
+### Added
+
+- Documented and validated the three current product entries: Guion, Imagen, and Video.
+- Added V2.0 validation baselines for Guion, Imagen, and Video under `validation/v2_0/`.
+- Added complete baseline artifacts for each component: reports, JSON metrics, CSV metrics, inventories, samples manifests, samples, and charts.
+- Added validated Video product routing with complete mode, partial audio/subtitle/storyboard modes, I2V clip generation, video clip manifests, and final FFmpeg composition.
+- Added validated design-to-image and design-to-video routes through dedicated manual inputs.
+- Added validated ping-pong I2V loop composition using existing clips without regenerating Wan output.
+- Added validated Motion application over generated I2V clips in the FFmpeg composition graph.
+
+### Changed
+
+- Updated the public documentation to describe the real V2.0 system instead of the previous V.1 / PR1 baseline.
+- Updated the documented console entry to the current product menu: Guion, Imagen, and Video.
+- Updated baseline metadata so Imagen references the current `output/imagen/` location.
+- Homogenized Video baseline metrics with the Guion and Imagen baseline schema for direct comparison.
+- Moved ping-pong/reverse I2V looping and Motion over I2V clips into the V2.0 validated state after real render approval.
+
+### Validated
+
+- Guion baseline: 20 real executions.
+- Imagen baseline: 8 real executions.
+- Video baseline: 8 real executions.
+- Total V2.0 baseline: 36 real executions.
+- Full test suite at pre-checkpoint audit: 837 tests passing.
+- Real render validation by the owner for ping-pong I2V looping and Motion over I2V clips.
+- Python compilation over `app`, `tests`, and `certification`.
+- Baseline JSON and CSV structure.
+- `git diff --check`.
+
 ## [V.1] - 2026-08-13
 
 ### Changed

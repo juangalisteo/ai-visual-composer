@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+from app.shared.progress_logger import ProgressLogger
 from app.shared.time_formatter import TimeFormatter
 
 
@@ -139,7 +140,7 @@ class PipelineSummary:
         )
 
     def print(self):
-        print(
+        ProgressLogger.info(
             "\n"
             + self.render()
         )

@@ -133,7 +133,7 @@ class MusicSelector:
         if not valid_categories:
             raise FileNotFoundError(
                 "No se encontraron pistas musicales "
-                f"validas en: {self.music_path}"
+                f"válidas en: {self.music_path}"
             )
 
         selected_category, tracks = random.choice(

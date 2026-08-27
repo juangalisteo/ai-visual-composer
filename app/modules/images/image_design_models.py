@@ -6,6 +6,7 @@ from pathlib import Path
 class PreparedImageDesign:
     text: str
     source_path: Path
+    visual_truth: dict
     source: str = "manual_design"
     target: str = "image"
     expected_images: int = 1

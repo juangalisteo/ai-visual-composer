@@ -119,14 +119,14 @@ class ComfyUIBackend:
 
         if not latent_updated:
             raise ValueError(
-                "No se encontro el nodo "
+                "No se encontró el nodo "
                 "EmptySD3LatentImage "
                 "en el workflow de ComfyUI."
             )
 
         if not sampling_updated:
             raise ValueError(
-                "No se encontro el nodo "
+                "No se encontró el nodo "
                 "ModelSamplingFlux "
                 "en el workflow de ComfyUI."
             )
@@ -175,7 +175,7 @@ class ComfyUIBackend:
 
         if "prompt_id" not in result:
             raise ComfyUIBackendError(
-                "ComfyUI no devolvio prompt_id.",
+                "ComfyUI no devolvió prompt_id.",
                 category="INPUT_VALIDATION_ERROR",
             )
 
@@ -242,8 +242,8 @@ class ComfyUIBackend:
                         prompt_id
                     )
                     raise ComfyUIBackendError(
-                        "ComfyUI devolvio un error durante "
-                        "la generacion: "
+                        "ComfyUI devolvió un error durante "
+                        "la generación: "
                         f"{detail['category']}. "
                         f"{detail['exception_message']}",
                         category=detail[
@@ -329,7 +329,7 @@ class ComfyUIBackend:
 
         if image_path.stat().st_size <= 0:
             raise ComfyUIBackendError(
-                "La imagen descargada esta vacia: "
+                "La imagen descargada está vacía: "
                 f"{image_path}",
                 category="EXECUTION_ERROR",
             )
@@ -362,7 +362,7 @@ class ComfyUIBackend:
 
         if not prompt_injected:
             raise ValueError(
-                "No se encontro ningun nodo de texto "
+                "No se encontró ningún nodo de texto "
                 "en el workflow de ComfyUI."
             )
 

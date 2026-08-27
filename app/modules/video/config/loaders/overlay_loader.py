@@ -19,7 +19,7 @@ class OverlayConfigLoader:
             profile=profile,
             section_name="overlays",
             section_error_message=(
-                "La configuracion "
+                "La configuración "
                 "video_style.overlays "
                 "debe ser un diccionario."
             )

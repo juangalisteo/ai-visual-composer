@@ -37,7 +37,7 @@ class StoryboardSceneAdapter:
             ValueError
         ) as error:
             raise ValueError(
-                "El numero de escena no es valido."
+                "El número de escena no es válido."
             ) from error
 
         duration = scene.get(

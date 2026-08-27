@@ -4,187 +4,162 @@
 
 Professional AI Visual Generation Platform
 
-This roadmap describes the official stable V.1 baseline and the future lines of work that may be opened only with explicit owner approval.
+This roadmap describes the current V2.0 implementation state and the future V2.x optimization line.
 
-## Current Stable Baseline
+## V2.0 - Implemented And Validated
 
-General system version:
-
-```text
-V.1
-```
-
-State:
+V2.0 establishes AI Visual Composer as a three-entry local generation platform:
 
 ```text
-STABLE
+AI VISUAL COMPOSER
+
+1. Guion
+2. Imagen
+3. Video
 ```
 
-Current restoration point:
+Validated baseline evidence:
+
+- Guion: 20 real executions.
+- Imagen: 8 real executions.
+- Video: 8 real executions.
+- Total: 36 real executions.
+
+Baseline directories:
 
 ```text
-PR1
+validation/v2_0/guion/
+validation/v2_0/imagen/
+validation/v2_0/video/
 ```
 
-`V.1` identifies the general system version. `PR1` identifies the first official restoration point inside `V.1`.
+## Guion
 
-Official restoration structure:
+Implemented and validated:
+
+- manual script source through `input/guion.txt`;
+- generated script topic through `input/tema.txt`;
+- Guion -> Imagen;
+- Guion -> Video;
+- Guion -> Diseno -> Imagen;
+- Guion -> Diseno -> Video;
+- Instagram and YouTube profiles.
+
+## Imagen
+
+Implemented and validated:
+
+- Proyecto completo;
+- Solo audio;
+- Audio + subtitulos;
+- Audio + subtitulos + storyboard;
+- Storyboard generation;
+- Visual Truth based image runtime;
+- Visual Intelligence evidence;
+- Prompt Translation;
+- ComfyUI image generation;
+- image manifests;
+- final FFmpeg video composition in complete mode;
+- Instagram and YouTube profiles.
+
+## Video
+
+Implemented and validated:
+
+- Proyecto completo;
+- Solo audio;
+- Audio + subtitulos;
+- Audio + subtitulos + storyboard;
+- image generation as source for video;
+- I2V clip generation;
+- ping-pong/reverse I2V looping in FFmpeg composition;
+- Motion applied over generated I2V clips;
+- video clip manifests;
+- final FFmpeg video composition;
+- Instagram and YouTube profiles.
+
+## Shared Runtime Capabilities
+
+Implemented and validated:
+
+- voice generation;
+- audio mixing;
+- subtitle generation and optimization;
+- storyboard generation;
+- image generation;
+- I2V generation;
+- ping-pong I2V clip looping;
+- Motion over images and I2V clips;
+- transitions;
+- overlays;
+- visual effects;
+- fade;
+- subtitles in final composition;
+- pipeline summary output;
+- manifests and validation baselines.
+
+## Current Inputs
 
 ```text
-V.1
-|
-└── PR1 - STABLE
+input/tema.txt
+input/guion.txt
+input/guion_imagen.txt
+input/guion_video.txt
 ```
 
-Future stable restoration points inside `V.1` may be named `PR2`, `PR3`, `PR4`, and so on. `V.2` must only be created after an explicit owner decision.
+## Current Outputs
 
-## Current Working Capabilities
-
-Current console entry:
+V2.0 output families:
 
 ```text
-python main.py
+output/guion/
+output/imagen/
+output/video/
 ```
 
-Current available product entry:
+## V2.x - Optimization / Polish
 
-```text
-Imagen
-```
+The following items are known future work. They are not part of the V2.0 checkpoint requirements unless a real functional failure is discovered.
 
-Current separate future product entry:
+### I2V
 
-```text
-Video
-```
+- Evaluate I2V quality vs VRAM constraints.
+- Improve I2V quality presets when supported by local hardware.
 
-`Video` remains visible but unavailable as a standalone future product pipeline.
+### Motion
 
-Current execution modes:
+- Optimize Motion behavior beyond the validated V2.0 baseline.
+- Refine motion distribution across different scene types.
 
-- Proyecto completo.
-- Solo guion.
-- Solo audio.
-- Audio + subtitulos.
-- Audio + subtitulos + storyboard.
+### Overlays
 
-Current full generation flow:
+- Improve professional overlay selection.
+- Refine overlay density, timing, and category distribution.
 
-```text
-Script
-  -> Voice
-  -> Audio
-  -> Subtitles
-  -> Storyboard
-  -> Images
-  -> Video
-```
+### Transitions
 
-Current external runtime dependencies:
+- Improve transition style selection.
+- Refine transition timing and visual continuity.
 
-- Ollama with model `qwen3:14b`.
-- ComfyUI using `config/comfyui_flux_workflow_api.json`.
-- FFmpeg.
-- Edge TTS.
+### Subtitles
 
-## Current Video Composition Capabilities
+- Optimize subtitle segmentation.
+- Synchronize subtitles more deeply with real voice timing and silence.
 
-The stabilized video composition core includes:
+### Performance
 
-- Motion.
-- Transitions.
-- Smart thematic Overlays.
-- Visual Effects.
-- Fade.
-- Subtitles.
-- FFmpeg command planning.
-- FFmpeg command execution.
-- Output validation.
+- Optimize processing time.
+- Persist PipelineSummary timing metrics per project.
+- Improve benchmark comparability across future runs.
 
-Smart overlays currently support:
+## Future Version Policy
 
-- dynamic folder discovery under `assets/videos/overlays/`;
-- semantic category resolution;
-- primary and secondary thematic categories;
-- `Light Leaks` as neutral fallback;
-- weighted category distribution;
-- per-video category cooldown;
-- existing MP4 file selection with immediate-repeat avoidance.
+V2.x work must be opened explicitly by the owner.
 
-## Current Image Runtime Capabilities
+Future checkpoints must only be created after:
 
-The image runtime includes:
-
-- Visual Truth 2.0 storyboard input.
-- StoryboardSceneAdapter.
-- Visual Analysis.
-- Visual Reasoning.
-- Visual Synthesis.
-- EffectiveVisualBrief.
-- VisualIntelligenceTrace.
-- Cinematic Direction.
-- Prompt Translation.
-- BackendPrompt.
-- ComfyUIAdapter.
-- ComfyUIBackend.
-- Visual Quality validation infrastructure.
-- Image manifest writing.
-
-## Completed Architectural Work
-
-Completed historical lines:
-
-- `IP2.0-1 - StoryboardScene 2.0`
-- `IP2.0-2 - StoryboardSceneAdapter 2.0`
-- `QF-0 - Quality Foundation`
-- `IP2.0-3 - RuntimeCognitiveAdapter 2.0`
-- `IP2.0-4 - Storyboard Visual Truth Source Migration`
-- `IP2.0-5 - ImageBuilder Visual Truth Consumer Migration`
-- `IP2.0-6 - Narrative Runtime Visual Truth Migration`
-- `IP2.0-7 - Generated Storyboard Legacy Field Removal`
-- `IP2.0-8 - Legacy Contract Retirement`
-- `IP3.0-0 - Visual Intelligence Architecture`
-- `IP3.0-1A - Visual Intelligence Core Contracts`
-- `IP3.0-1B - Visual Intelligence Specialized Contracts`
-- `IP3.0-2 - Visual Analysis Layer`
-- `IP3.0-3 - Visual Reasoning Layer`
-- `IP3.0-4 - Visual Synthesis Layer`
-- `IP3.0-5 - Visual Intelligence Runtime Integration`
-- `IP3.0-6 - Visual Intelligence Certification`
-- `IP3.0-7 - Visual Intelligence Performance Certification`
-- `IP3.0-8 - Transitional Component Retirement`
-- `IP3.0-9 - Architecture Finalization`
-- `IP3.1 - Prompt Translation Correction and Runtime Input Governance`
-- `IP3.2 - Script Generation Output Contract and LLM Response Sanitization`
-- Post-PR1 development stabilization.
-- Current console, script length, music, overlay, visual effects, and documentation refinements.
-
-## Stable Baseline Policy
-
-`PR1` is the current restoration reference for V.1.
-
-If a future change introduces a regression, the system may be restored to `PR1`.
-
-Future stable points may extend the V.1 restoration chain as `PR2`, `PR3`, and later points. Those points must be created only after validation and owner approval.
-
-## Future Product Lines
-
-Future lines remain open and must not start without explicit owner approval:
-
-- Standalone Video Pipeline.
-- Thumbnail Generator.
-- AI Assistant.
-- Multi-layer Rendering.
-- New Effects.
-- Automation.
-- Plugins.
-- Additional visual products.
-
-## Deferred Investigations
-
-Potential future investigations must be opened explicitly by the owner and must not modify the stable V.1 baseline without a dedicated task:
-
-- Dedicated handling for subtitles generated from manual scripts.
-- Additional semantic music selection.
-- Additional overlay distribution strategies.
-- Further PromptTranslator optimization based on benchmark evidence.
+- functional validation;
+- baseline or test evidence;
+- documentation update;
+- clean Git review;
+- explicit owner approval.

@@ -3,6 +3,7 @@ import os
 from app.controllers.run_controller import RunController
 from app.core.start import iniciar
 from app.managers.output_manager import OutputManager
+from app.modules.visual_design import VisualDesignInterpretationError
 
 
 def main():
@@ -24,8 +25,17 @@ def main():
     if options["clear_output"]:
         OutputManager().reset()
 
-    iniciar()
+    try:
+        iniciar()
+    except VisualDesignInterpretationError as error:
+        print(
+            f"ERROR: {error}"
+        )
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(
+        main()
+    )

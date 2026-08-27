@@ -10,6 +10,8 @@ class VideoMedia:
     images_manifest_path: Path
     output_path: Path
     image_paths: tuple[Path, ...]
+    media_types: tuple[str, ...] = ()
+    media_durations: tuple[float | None, ...] = ()
 
 
 class MediaLoader:
@@ -19,7 +21,8 @@ class MediaLoader:
         audio_path,
         subtitle_path,
         images_manifest_path,
-        output_path
+        output_path,
+        media_manifest_type="images"
     ):
         audio_path = Path(
             audio_path
@@ -48,9 +51,34 @@ class MediaLoader:
             images_manifest_path=images_manifest_path
         )
 
-        image_paths = self._load_image_paths(
-            images_manifest_path
-        )
+        if media_manifest_type == "video_clips":
+            clip_entries = self._load_video_clip_entries(
+                images_manifest_path
+            )
+            image_paths = tuple(
+                clip_path
+                for clip_path, _ in clip_entries
+            )
+            media_durations = tuple(
+                duration
+                for _, duration in clip_entries
+            )
+            media_types = tuple(
+                "video"
+                for _ in image_paths
+            )
+        else:
+            image_paths = self._load_image_paths(
+                images_manifest_path
+            )
+            media_durations = tuple(
+                None
+                for _ in image_paths
+            )
+            media_types = tuple(
+                "image"
+                for _ in image_paths
+            )
 
         return VideoMedia(
             audio_path=audio_path,
@@ -59,7 +87,9 @@ class MediaLoader:
             output_path=output_path,
             image_paths=tuple(
                 image_paths
-            )
+            ),
+            media_types=media_types,
+            media_durations=media_durations
         )
 
     def _validate_input_files(
@@ -145,3 +175,141 @@ class MediaLoader:
             )
 
         return image_paths
+
+    def _load_video_clip_entries(
+        self,
+        video_clips_manifest_path
+    ):
+        try:
+            clips_data = json.loads(
+                video_clips_manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "No se pudo interpretar el manifiesto "
+                "de clips de vídeo."
+            ) from error
+
+        if not isinstance(
+            clips_data,
+            list
+        ):
+            raise ValueError(
+                "El manifiesto de clips de vídeo "
+                "debe contener una lista."
+            )
+
+        entries = []
+        seen_scenes = set()
+
+        for item in clips_data:
+            if not isinstance(
+                item,
+                dict
+            ):
+                raise ValueError(
+                        "Cada clip de vídeo debe declararse "
+                    "como un diccionario."
+                )
+
+            try:
+                scene_number = int(
+                    item[
+                        "scene"
+                    ]
+                )
+            except (
+                KeyError,
+                TypeError,
+                ValueError
+            ) as error:
+                raise ValueError(
+                    "Cada clip de vídeo debe declarar "
+                    "un scene válido."
+                ) from error
+
+            if scene_number in seen_scenes:
+                raise ValueError(
+                    "El manifiesto de clips de vídeo "
+                    f"contiene la escena duplicada {scene_number}."
+                )
+
+            seen_scenes.add(
+                scene_number
+            )
+
+            clip_value = item.get(
+                "output_clip"
+            )
+
+            if not clip_value:
+                raise ValueError(
+                    "Cada clip de vídeo debe declarar output_clip."
+                )
+
+            clip_path = Path(
+                clip_value
+            )
+
+            if not clip_path.exists():
+                raise FileNotFoundError(
+                    "No existe el clip de vídeo "
+                    f"de la escena {scene_number}: "
+                    f"{clip_path}"
+                )
+
+            entries.append(
+                (
+                    scene_number,
+                    clip_path,
+                    self._clip_duration(
+                        item
+                    )
+                )
+            )
+
+        if not entries:
+            raise FileNotFoundError(
+                "No se encontraron clips de vídeo válidos "
+                "para montar el vídeo final."
+            )
+
+        return [
+            (
+                clip_path,
+                duration
+            )
+            for _, clip_path, duration in sorted(
+                entries,
+                key=lambda entry: entry[0]
+            )
+        ]
+
+    def _clip_duration(
+        self,
+        item
+    ):
+        duration = item.get(
+            "duration_seconds"
+        )
+
+        if duration is None:
+            return None
+
+        try:
+            duration = float(
+                duration
+            )
+        except (
+            TypeError,
+            ValueError
+        ):
+            return None
+
+        if duration <= 0:
+            return None
+
+        return duration

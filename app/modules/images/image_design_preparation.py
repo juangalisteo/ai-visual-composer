@@ -1,9 +1,19 @@
 from pathlib import Path
 
 from app.modules.images.image_design_models import PreparedImageDesign
+from app.modules.visual_design import VisualDesignInterpreter
 
 
 class ImageDesignPreparationService:
+
+    def __init__(
+        self,
+        visual_interpreter=None
+    ):
+        self.visual_interpreter = (
+            visual_interpreter
+            or VisualDesignInterpreter()
+        )
 
     def prepare(
         self,
@@ -16,7 +26,7 @@ class ImageDesignPreparationService:
 
         if not design_path.exists():
             raise FileNotFoundError(
-                "No existe el diseno visual manual: "
+                "No existe el diseño visual manual: "
                 f"{design_path}"
             )
 
@@ -26,10 +36,13 @@ class ImageDesignPreparationService:
 
         if not text:
             raise ValueError(
-                "El diseno visual manual esta vacio."
+                "El diseño visual manual está vacío."
             )
 
         return PreparedImageDesign(
             text=text,
-            source_path=design_path
+            source_path=design_path,
+            visual_truth=self.visual_interpreter.interpret(
+                text
+            )
         )

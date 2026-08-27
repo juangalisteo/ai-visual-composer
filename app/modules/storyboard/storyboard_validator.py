@@ -31,7 +31,7 @@ class StoryboardValidator:
             visual_scenes
         ) != expected_scene_count:
             raise ValueError(
-                f"Ollama devolvio "
+                f"Ollama devolvió "
                 f"{len(visual_scenes)} escenas, "
                 f"pero se esperaban "
                 f"{expected_scene_count}."
@@ -65,8 +65,8 @@ class StoryboardValidator:
                 ValueError
             ) as error:
                 raise ValueError(
-                    "El numero de escena "
-                    "no es valido."
+                    "El número de escena "
+                    "no es válido."
                 ) from error
 
             visual_truth = self._validate_visual_truth(

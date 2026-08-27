@@ -168,6 +168,51 @@ class CommandBuilderTest(
             command
         )
 
+    def test_video_clip_inputs_are_not_file_looped_or_image_looped(
+        self
+    ):
+        command = self.build_command(
+            images=[
+                Path("scene_001.mp4"),
+                Path("scene_002.mp4")
+            ],
+            media_types=(
+                "video",
+                "video",
+            )
+        )
+
+        self.assertEqual(
+            command[
+                2:4
+            ],
+            [
+                "-i",
+                "scene_001.mp4"
+            ]
+        )
+        self.assertEqual(
+            command[
+                4:6
+            ],
+            [
+                "-i",
+                "scene_002.mp4"
+            ]
+        )
+        self.assertNotIn(
+            "-framerate",
+            command[
+                2:6
+            ]
+        )
+        self.assertNotIn(
+            "-stream_loop",
+            command[
+                2:6
+            ]
+        )
+
     def test_loop_file_false_omits_stream_loop_for_that_layer(
         self
     ):
@@ -306,6 +351,34 @@ class CommandBuilderTest(
                 "c.png"
             )
         )
+
+    def test_plan_builder_rejects_mismatched_media_types(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "tipos de media"
+        ):
+            CommandPlanBuilder().build(
+                images=[
+                    Path("a.mp4"),
+                    Path("b.mp4")
+                ],
+                media_types=(
+                    "video",
+                ),
+                audio_path=Path("audio.mp3"),
+                output_path=Path("out.mp4"),
+                filter_complex="[vout]",
+                codec="libx264",
+                preset="medium",
+                crf=18,
+                fps=30,
+                pixel_format="yuv420p",
+                audio_codec="aac",
+                audio_bitrate="192k",
+                movflags="+faststart",
+                audio_duration=4.0,
+                transition_duration=0.4
+            )
 
 
 if __name__ == "__main__":

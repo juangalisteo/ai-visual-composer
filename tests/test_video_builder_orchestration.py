@@ -191,6 +191,68 @@ class VideoBuilderOrchestrationTest(
             audio_path="audio.mp3",
             subtitle_path="subtitles.srt",
             images_manifest_path="images.json",
+            video_clips_manifest_path=None,
+            output_path="final.mp4"
+        )
+
+    def test_build_accepts_video_clips_manifest_without_changing_api(
+        self
+    ):
+        context = self.make_context(
+            "final.mp4"
+        )
+        components = self.make_components()
+        artifacts = VideoBuildArtifacts(
+            filter_complex="[vout]",
+            command=[
+                "ffmpeg"
+            ]
+        )
+
+        with patch(
+            "app.modules.video.video_builder"
+            ".VideoBuildContextFactory"
+        ) as context_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoComponentFactory"
+        ) as component_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoFilterContextFactory"
+        ) as filter_context_factory_class, patch(
+            "app.modules.video.video_builder"
+            ".VideoRenderService"
+        ) as render_service_class:
+            context_factory_class.return_value.build.return_value = (
+                context
+            )
+            component_factory_class.return_value.create.return_value = (
+                components
+            )
+            filter_context_factory_class.return_value.build.return_value = (
+                object()
+            )
+            render_service_class.return_value.build_artifacts.return_value = (
+                artifacts
+            )
+
+            output = VideoBuilder().build(
+                audio_path="audio.mp3",
+                subtitle_path="subtitles.srt",
+                video_clips_manifest_path="video_clips.json",
+                output_path="final.mp4"
+            )
+
+        self.assertEqual(
+            Path(
+                "final.mp4"
+            ),
+            output
+        )
+        context_factory_class.return_value.build.assert_called_once_with(
+            audio_path="audio.mp3",
+            subtitle_path="subtitles.srt",
+            images_manifest_path=None,
+            video_clips_manifest_path="video_clips.json",
             output_path="final.mp4"
         )
 

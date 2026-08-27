@@ -2,21 +2,21 @@
 
 ## Objetivo
 
-`generate_project_tree.py` genera una fotografia documental de la arquitectura del proyecto AI Visual Composer.
+`generate_project_tree.py` genera una fotografía documental de la arquitectura del proyecto AI Visual Composer.
 
-Su salida no pretende ser un inventario completo de recursos, modelos, caches, memoria privada o artefactos locales. El objetivo es producir un arbol limpio, estable y legible para documentacion, auditorias y Puntos Oficiales de Restauracion.
+Su salida no pretende ser un inventario completo de recursos, modelos, cachés, memoria privada o artefactos locales. El objetivo es producir un árbol limpio, estable y legible para documentación, auditorías y Puntos Oficiales de Restauración.
 
-## Ubicacion
+## Ubicación
 
-El archivo debe situarse en la raiz del proyecto:
+El archivo debe situarse en la raíz del proyecto:
 
 ```text
 generate_project_tree.py
 ```
 
-Debe ejecutarse tambien desde la raiz del proyecto.
+Debe ejecutarse también desde la raíz del proyecto.
 
-## Ejecucion
+## Ejecución
 
 ```bash
 python generate_project_tree.py
@@ -30,21 +30,21 @@ La utilidad genera el archivo:
 project_tree.txt
 ```
 
-en la raiz del proyecto.
+en la raíz del proyecto.
 
-`project_tree.txt` representa la estructura arquitectonica prevista del proyecto en el momento de su ejecucion.
+`project_tree.txt` representa la estructura arquitectónica prevista del proyecto en el momento de su ejecución.
 
 ## Funcionamiento
 
-La utilidad recorre el proyecto de forma recursiva utilizando exclusivamente la libreria estandar de Python.
+La utilidad recorre el proyecto de forma recursiva utilizando exclusivamente la librería estándar de Python.
 
 Reglas principales:
 
-- Ordena alfabeticamente.
+- Ordena alfabéticamente.
 - Muestra siempre primero las carpetas.
-- Muestra despues los archivos.
-- Usa formato de arbol UTF-8.
-- Detecta automaticamente la raiz desde el directorio actual de ejecucion.
+- Muestra después los archivos.
+- Usa formato de árbol UTF-8.
+- Detecta automáticamente la raíz desde el directorio actual de ejecución.
 - Es compatible con Windows.
 - No usa dependencias externas.
 - No llama a comandos del sistema.
@@ -61,7 +61,7 @@ Carpetas colapsadas:
 - `venv`.
 - `assets/music`.
 - `assets/videos`.
-- carpetas que contienen unicamente recursos multimedia o binarios conocidos.
+- carpetas que contienen únicamente recursos multimedia o binarios conocidos.
 
 Carpetas omitidas completamente:
 
@@ -81,12 +81,12 @@ Carpetas de assets no expandidas:
 
 - `assets/music`.
 - `assets/videos`.
-- cualquier contenido descendiente de ellas queda fuera del arbol porque no aporta valor arquitectonico.
+- cualquier contenido descendiente de ellas queda fuera del árbol porque no aporta valor arquitectónico.
 
 Carpetas de recursos binarios:
 
-- Si una carpeta contiene unicamente archivos multimedia o recursos binarios conocidos, se muestra solo la carpeta y no se expande.
-- Esto evita documentar inventarios extensos de audio, imagen, video o fuentes.
+- Si una carpeta contiene únicamente archivos multimedia o recursos binarios conocidos, se muestra solo la carpeta y no se expande.
+- Esto evita documentar inventarios extensos de audio, imagen, vídeo o fuentes.
 
 ## Codigo
 
@@ -337,8 +337,8 @@ if __name__ == "__main__":
 
 Ejecutar `python generate_project_tree.py`:
 
-- antes de crear un Punto Oficial de Restauracion;
+- antes de crear un Punto Oficial de Restauración;
 - cuando cambie la arquitectura;
-- cuando se anadan modulos importantes;
+- cuando se añadan módulos importantes;
 - cuando se reorganice el proyecto;
-- antes de checkpoints donde sea necesario congelar una fotografia estructural del repositorio.
+- antes de checkpoints donde sea necesario congelar una fotografía estructural del repositorio.

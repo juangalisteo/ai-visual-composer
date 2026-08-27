@@ -54,6 +54,13 @@ class VideoRenderService:
             transition_duration=(
                 build_context.config.transitions.duration
             ),
+            media_types=(
+                getattr(
+                    build_context.media,
+                    "media_types",
+                    ()
+                )
+            ),
             overlay_inputs=(
                 components.overlay_builder.inputs
             ),

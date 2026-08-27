@@ -23,6 +23,7 @@ class VideoBuilder:
         audio_path=None,
         subtitle_path=None,
         images_manifest_path=None,
+        video_clips_manifest_path=None,
         output_path=None
     ):
         total_start = time.perf_counter()
@@ -37,6 +38,9 @@ class VideoBuilder:
                 subtitle_path=subtitle_path,
                 images_manifest_path=(
                     images_manifest_path
+                ),
+                video_clips_manifest_path=(
+                    video_clips_manifest_path
                 ),
                 output_path=output_path
             )

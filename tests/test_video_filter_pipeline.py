@@ -6,6 +6,9 @@ import unittest
 from app.modules.video.ffmpeg.filter_builder import FilterBuilder
 from app.modules.video.ffmpeg.filter_pipeline import FilterPipeline
 from app.modules.video.ffmpeg.graphs.graph_result import GraphResult
+from app.modules.video.ffmpeg.graphs.motion_graph_builder import (
+    MotionGraphBuilder
+)
 
 
 @dataclass(frozen=True)
@@ -262,6 +265,114 @@ class FilterPipelineTest(
                 stages[3],
                 "refresh_layer_inputs"
             )
+        )
+
+    def test_motion_graph_pingpongs_and_animates_video_clips(
+        self
+    ):
+        class MotionBuilderSpy:
+
+            def __init__(
+                self
+            ):
+                self.calls = []
+
+            def build(
+                self,
+                **kwargs
+            ):
+                self.calls.append(
+                    kwargs
+                )
+                return {
+                    "type": "zoom_in",
+                    "filter": (
+                        "scale=672:378:"
+                        "force_original_aspect_ratio=increase,"
+                        "crop=672:378,"
+                        "format=yuv444p,"
+                        "zoompan=z='1':x='0':y='0':"
+                        "d=1:s=672x378:fps=24,"
+                        "scale=640:360:flags=lanczos"
+                    ),
+                    "duration": kwargs[
+                        "duration"
+                    ],
+                    "frame_count": 96
+                }
+
+        context = SimpleNamespace(
+            media=SimpleNamespace(
+                image_paths=(
+                    Path("scene_001.mp4"),
+                ),
+                media_types=(
+                    "video",
+                ),
+                media_durations=(
+                    2.0,
+                )
+            ),
+            timeline=SimpleNamespace(
+                image_duration=4.0
+            ),
+            config=SimpleNamespace(
+                transitions=SimpleNamespace(
+                    enabled=False,
+                    duration=0.4
+                ),
+                width=640,
+                height=360,
+                fps=24,
+                pixel_format="yuv420p"
+            )
+        )
+        graph = SimpleNamespace(
+            context=context,
+            filter_parts=[]
+        )
+
+        motion_builder = MotionBuilderSpy()
+
+        result = MotionGraphBuilder(
+            motion_builder
+        ).build(
+            graph
+        )
+
+        self.assertEqual(
+            result.video_streams,
+            (
+                "[v0]",
+            )
+        )
+        self.assertIn(
+            "scale=640:360",
+            result.parts[0]
+        )
+        self.assertIn(
+            "reverse,trim=start_frame=1:end_frame=47",
+            result.parts[0]
+        )
+        self.assertIn(
+            "concat=n=2:v=1:a=0",
+            result.parts[0]
+        )
+        self.assertIn(
+            "loop=loop=-1:size=94:start=0",
+            result.parts[0]
+        )
+        self.assertIn(
+            "trim=duration=4.000000",
+            result.parts[0]
+        )
+        self.assertIn(
+            "zoompan",
+            result.parts[0]
+        )
+        self.assertEqual(
+            motion_builder.calls[0]["duration"],
+            4.0
         )
 
 

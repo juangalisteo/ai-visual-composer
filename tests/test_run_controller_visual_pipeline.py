@@ -51,22 +51,19 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
 
-    def test_video_pipeline_is_visible_but_not_available(self):
+    def test_selects_video_pipeline_from_main_menu(self):
         controller = RunController()
 
         with patch(
             "builtins.input",
-            side_effect=(
-                "3",
-                "2",
-            )
+            return_value="3"
         ), patch(
             "builtins.print"
         ) as print_mock:
             selected = controller.select_visual_pipeline()
 
         self.assertEqual(
-            "image",
+            "video",
             selected
         )
         printed = "\n".join(
@@ -78,27 +75,24 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "Video",
             printed
         )
-        self.assertIn(
+        self.assertNotIn(
             "No disponible.",
             printed
         )
 
-    def test_script_destination_video_is_visible_but_not_available(self):
+    def test_script_destination_video_is_visible_and_selectable(self):
         controller = RunController()
 
         with patch(
             "builtins.input",
-            side_effect=(
-                "2",
-                "1",
-            )
+            return_value="2"
         ), patch(
             "builtins.print"
         ) as print_mock:
             selected = controller.select_script_destination()
 
         self.assertEqual(
-            "image",
+            "video",
             selected
         )
         printed = "\n".join(
@@ -122,7 +116,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "3. Dise",
             printed
         )
-        self.assertIn(
+        self.assertNotIn(
             "No disponible.",
             printed
         )
@@ -197,7 +191,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
 
-    def test_design_target_video_is_visible_but_not_available(self):
+    def test_design_target_video_is_visible_and_selectable(self):
         controller = RunController()
 
         with patch(
@@ -206,18 +200,56 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ), patch(
             "builtins.print"
         ) as print_mock:
-            with self.assertRaises(
-                SystemExit
-            ):
-                controller.select_design_target()
+            selected = controller.select_design_target()
 
+        self.assertEqual(
+            "video",
+            selected
+        )
         printed = "\n".join(
             str(call.args[0])
             for call in print_mock.call_args_list
             if call.args
         )
         self.assertIn(
+            "2. Video",
+            printed
+        )
+        self.assertNotIn(
             "No disponible.",
+            printed
+        )
+
+    def test_design_video_profile_selection_uses_design_video_directory(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_profile(
+                "design_video"
+            )
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertEqual(
+            "diseno",
+            selected["platform"]
+        )
+        self.assertIn(
+            "config\\profiles\\diseno\\video",
+            str(
+                selected["path"]
+            )
+        )
+        self.assertIn(
+            "PERFIL",
             printed
         )
 
@@ -259,6 +291,42 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertNotIn(
             "Solo guion",
+            printed
+        )
+
+    def test_video_profile_selection_uses_main_visual_profiles(self):
+        controller = RunController()
+
+        with patch(
+            "builtins.input",
+            return_value="1"
+        ), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_profile(
+                "video"
+            )
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn(
+            selected["platform"],
+            (
+                "instagram",
+                "youtube",
+            )
+        )
+        self.assertNotIn(
+            "config\\profiles\\video",
+            str(
+                selected["path"]
+            )
+        )
+        self.assertIn(
+            "PERFIL",
             printed
         )
 
@@ -429,6 +497,164 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             options["design_target"]
         )
 
+    def test_script_entry_selects_video_destination_and_reuses_video_flow(self):
+        controller = RunController()
+
+        with patch.object(
+            controller,
+            "select_visual_pipeline",
+            return_value="script"
+        ), patch.object(
+            controller,
+            "select_script_destination",
+            return_value="video"
+        ), patch.object(
+            controller,
+            "select_pipeline_mode",
+            return_value="full"
+        ) as mode_mock, patch.object(
+            controller,
+            "select_profile",
+            return_value={
+                "path": "config/profiles/guion/instagram.json"
+            }
+        ) as profile_mock, patch.object(
+            controller,
+            "select_subtitle_config",
+            return_value="single_line"
+        ) as subtitle_mock, patch.object(
+            controller,
+            "select_voice_config",
+            return_value="masculina"
+        ) as voice_mock, patch.object(
+            controller,
+            "select_music_category",
+            return_value="random"
+        ) as music_mock, patch.object(
+            controller,
+            "select_overlays_mode",
+            return_value="smart"
+        ) as overlays_mock, patch.object(
+            controller,
+            "ask_project_name",
+            return_value="script video project"
+        ) as project_mock, patch.object(
+            controller,
+            "ask_clear_output",
+            return_value=False
+        ) as clear_mock:
+            options = controller.run()
+
+        self.assertEqual(
+            "video",
+            options["visual_pipeline"]
+        )
+        self.assertEqual(
+            "manual",
+            options["script_source"]
+        )
+        self.assertEqual(
+            "full",
+            options["pipeline_mode"]
+        )
+        self.assertEqual(
+            "",
+            options["design_target"]
+        )
+        self.assertEqual(
+            "script video project",
+            options["project_name"]
+        )
+        mode_mock.assert_called_once()
+        profile_mock.assert_called_once_with(
+            "script"
+        )
+        project_mock.assert_called_once()
+        clear_mock.assert_called_once()
+        subtitle_mock.assert_called_once()
+        voice_mock.assert_called_once()
+        music_mock.assert_called_once()
+        overlays_mock.assert_called_once()
+
+    def test_video_entry_reuses_complete_image_user_flow(
+        self
+    ):
+        controller = RunController()
+
+        with patch.object(
+            controller,
+            "select_visual_pipeline",
+            return_value="video"
+        ), patch.object(
+            controller,
+            "select_pipeline_mode",
+            return_value="full"
+        ) as mode_mock, patch.object(
+            controller,
+            "select_profile",
+            return_value={
+                "path": "config/profiles/instagram/modo_conciencia.json"
+            }
+        ) as profile_mock, patch.object(
+            controller,
+            "select_subtitle_config",
+            return_value="word_by_word"
+        ) as subtitle_mock, patch.object(
+            controller,
+            "select_voice_config",
+            return_value="femenina"
+        ) as voice_mock, patch.object(
+            controller,
+            "select_music_category",
+            return_value="random"
+        ) as music_mock, patch.object(
+            controller,
+            "select_overlays_mode",
+            return_value="smart"
+        ) as overlays_mock, patch.object(
+            controller,
+            "ask_project_name",
+            return_value="video runtime"
+        ), patch.object(
+            controller,
+            "ask_clear_output",
+            return_value=False
+        ):
+            options = controller.run()
+
+        mode_mock.assert_called_once()
+        profile_mock.assert_called_once_with(
+            "video"
+        )
+        subtitle_mock.assert_called_once()
+        voice_mock.assert_called_once()
+        music_mock.assert_called_once()
+        overlays_mock.assert_called_once()
+        self.assertEqual(
+            "video",
+            options["visual_pipeline"]
+        )
+        self.assertEqual(
+            "full",
+            options["pipeline_mode"]
+        )
+        self.assertEqual(
+            "word_by_word",
+            options["subtitle_config"]
+        )
+        self.assertEqual(
+            "femenina",
+            options["voice_config"]
+        )
+        self.assertEqual(
+            "random",
+            options["music_category"]
+        )
+        self.assertEqual(
+            "smart",
+            options["overlays_mode"]
+        )
+
     def test_script_design_image_only_requests_design_image_inputs(self):
         controller = RunController()
 
@@ -504,6 +730,99 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertEqual(
             "design_image",
+            options["pipeline_mode"]
+        )
+        self.assertEqual(
+            "",
+            options["subtitle_config"]
+        )
+        self.assertEqual(
+            "",
+            options["voice_config"]
+        )
+        self.assertIsNone(
+            options["music_category"]
+        )
+        self.assertEqual(
+            "off",
+            options["overlays_mode"]
+        )
+
+    def test_script_design_video_only_requests_design_video_inputs(self):
+        controller = RunController()
+
+        with patch.object(
+            controller,
+            "select_visual_pipeline",
+            return_value="script"
+        ), patch.object(
+            controller,
+            "select_script_destination",
+            return_value="design"
+        ), patch.object(
+            controller,
+            "select_design_target",
+            return_value="video"
+        ) as design_target_mock, patch.object(
+            controller,
+            "select_pipeline_mode"
+        ) as mode_mock, patch.object(
+            controller,
+            "select_profile",
+            return_value={
+                "path": (
+                    "config/profiles/diseno/video/"
+                    "instagram.json"
+                )
+            }
+        ) as profile_mock, patch.object(
+            controller,
+            "select_subtitle_config"
+        ) as subtitle_mock, patch.object(
+            controller,
+            "select_voice_config"
+        ) as voice_mock, patch.object(
+            controller,
+            "select_music_category"
+        ) as music_mock, patch.object(
+            controller,
+            "select_overlays_mode"
+        ) as overlays_mock, patch.object(
+            controller,
+            "ask_project_name",
+            return_value="design video"
+        ) as project_mock, patch.object(
+            controller,
+            "ask_clear_output",
+            return_value=False
+        ) as clear_mock:
+            options = controller.run()
+
+        design_target_mock.assert_called_once()
+        mode_mock.assert_not_called()
+        profile_mock.assert_called_once_with(
+            "design_video"
+        )
+        subtitle_mock.assert_not_called()
+        voice_mock.assert_not_called()
+        music_mock.assert_not_called()
+        overlays_mock.assert_not_called()
+        project_mock.assert_called_once()
+        clear_mock.assert_called_once()
+        self.assertEqual(
+            "video",
+            options["visual_pipeline"]
+        )
+        self.assertEqual(
+            "manual_design",
+            options["script_source"]
+        )
+        self.assertEqual(
+            "video",
+            options["design_target"]
+        )
+        self.assertEqual(
+            "design_video",
             options["pipeline_mode"]
         )
         self.assertEqual(

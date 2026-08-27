@@ -50,6 +50,7 @@ class CommandPlanBuilder:
         movflags,
         audio_duration,
         transition_duration,
+        media_types=(),
         overlay_inputs=(),
         visual_effect_inputs=(),
         overlay_loop_file=True,
@@ -66,8 +67,9 @@ class CommandPlanBuilder:
             )
 
         inputs = list(
-            self._image_inputs(
-                images=images,
+            self._media_inputs(
+                media_paths=images,
+                media_types=media_types,
                 fps=fps,
                 audio_duration=audio_duration,
                 transition_duration=transition_duration
@@ -122,35 +124,69 @@ class CommandPlanBuilder:
             )
         )
 
-    def _image_inputs(
+    def _media_inputs(
         self,
-        images,
+        media_paths,
+        media_types,
         fps,
         audio_duration,
         transition_duration
     ):
-        image_count = len(
-            images
+        media_count = len(
+            media_paths
         )
-        image_duration = (
+        media_duration = (
             audio_duration
-            / image_count
+            / media_count
         )
 
-        for index, image in enumerate(
-            images
-        ):
-            input_duration = (
-                image_duration
+        if not media_types:
+            media_types = tuple(
+                "image"
+                for _ in media_paths
             )
 
-            if index < image_count - 1:
+        if len(
+            media_types
+        ) != media_count:
+            raise ValueError(
+                "La cantidad de tipos de media no coincide "
+                "con los assets visuales."
+            )
+
+        for index, media_path in enumerate(
+            media_paths
+        ):
+            input_duration = (
+                media_duration
+            )
+
+            if index < media_count - 1:
                 input_duration += (
                     transition_duration
                 )
 
-            yield FFmpegInputPlan(
-                arguments=(
+            media_type = (
+                str(
+                    media_types[
+                        index
+                    ]
+                )
+                .strip()
+                .lower()
+            )
+
+            if media_type == "video":
+                arguments = (
+                    "-i",
+                    str(
+                        Path(
+                            media_path
+                        )
+                    )
+                )
+            else:
+                arguments = (
                     "-loop",
                     "1",
                     "-framerate",
@@ -161,9 +197,14 @@ class CommandPlanBuilder:
                     f"{input_duration:.6f}",
                     "-i",
                     str(
-                        Path(image)
+                        Path(
+                            media_path
+                        )
                     )
                 )
+
+            yield FFmpegInputPlan(
+                arguments=arguments
             )
 
     def _audio_input(

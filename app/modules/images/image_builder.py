@@ -292,7 +292,7 @@ class ImageBuilder:
                     )
                 if quality_result.status != "approved":
                     raise RuntimeError(
-                        "La validacion de imagen requiere "
+                        "La validación de imagen requiere "
                         "intervencion antes de continuar: "
                         f"{quality_result.status}"
                     )

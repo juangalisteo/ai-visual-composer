@@ -24,7 +24,7 @@ class OverlaySelector(
                 "una carpeta: "
             ),
             invalid_scene_count_message=(
-                "El numero de escenas debe ser "
+                "El número de escenas debe ser "
                 "superior a cero."
             ),
             invalid_scene_index_message=(

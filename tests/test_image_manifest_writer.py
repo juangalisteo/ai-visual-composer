@@ -276,6 +276,12 @@ class ImageManifestWriterTest(unittest.TestCase):
             ),
             media.image_paths
         )
+        self.assertEqual(
+            (
+                "image",
+            ),
+            media.media_types
+        )
 
     def test_image_builder_delegates_manifest_entry_and_write(self):
         with tempfile.TemporaryDirectory() as temp_dir:

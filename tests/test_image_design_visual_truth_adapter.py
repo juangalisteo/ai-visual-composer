@@ -17,7 +17,31 @@ class ImageDesignVisualTruthAdapterTest(unittest.TestCase):
         )
         prepared = PreparedImageDesign(
             text=text,
-            source_path=Path("input/guion_imagen.txt")
+            source_path=Path("input/guion_imagen.txt"),
+            visual_truth={
+                "scene": 1,
+                "visible_subject": "torre electrica",
+                "visible_action": (
+                    "permanece bajo una tormenta nocturna"
+                ),
+                "visible_environment": "paisaje nocturno tormentoso",
+                "time_context": "noche",
+                "key_objects": (
+                    "torre electrica",
+                    "rayos",
+                ),
+                "spatial_relationships": (),
+                "continuity_links": (),
+                "abstract_source": text,
+                "filmable_interpretation": (
+                    "Una torre electrica se eleva bajo "
+                    "una tormenta nocturna con rayos."
+                ),
+                "visual_constraints": (),
+                "visual_truth_status": (
+                    "manual_design_interpreted"
+                )
+            }
         )
 
         scenes = ImageDesignVisualTruthAdapter().adapt(
@@ -38,19 +62,19 @@ class ImageDesignVisualTruthAdapterTest(unittest.TestCase):
             scene["text"]
         )
         self.assertEqual(
-            text,
+            "torre electrica",
             scene["visible_subject"]
         )
-        self.assertEqual(
-            text,
+        self.assertIn(
+            "tormenta",
             scene["visible_action"]
         )
-        self.assertEqual(
-            text,
+        self.assertIn(
+            "nocturno",
             scene["visible_environment"]
         )
-        self.assertEqual(
-            text,
+        self.assertIn(
+            "rayos",
             scene["filmable_interpretation"]
         )
         self.assertEqual(
@@ -58,14 +82,37 @@ class ImageDesignVisualTruthAdapterTest(unittest.TestCase):
             scene["abstract_source"]
         )
         self.assertEqual(
-            "manual_design",
+            "manual_design_interpreted",
             scene["visual_truth_status"]
         )
 
     def test_output_is_compatible_with_storyboard_scene_adapter(self):
         prepared = PreparedImageDesign(
             text="Interior realista de laboratorio con luz azul.",
-            source_path=Path("input/guion_imagen.txt")
+            source_path=Path("input/guion_imagen.txt"),
+            visual_truth={
+                "scene": 1,
+                "visible_subject": "laboratorio con luz azul",
+                "visible_action": "la luz azul ilumina el interior",
+                "visible_environment": "laboratorio realista",
+                "time_context": "",
+                "key_objects": (
+                    "luz azul",
+                ),
+                "spatial_relationships": (),
+                "continuity_links": (),
+                "abstract_source": (
+                    "Interior realista de laboratorio con luz azul."
+                ),
+                "filmable_interpretation": (
+                    "Un laboratorio realista queda iluminado "
+                    "por una luz azul."
+                ),
+                "visual_constraints": (),
+                "visual_truth_status": (
+                    "manual_design_interpreted"
+                )
+            }
         )
 
         scenes = ImageDesignVisualTruthAdapter().adapt(
@@ -81,11 +128,11 @@ class ImageDesignVisualTruthAdapterTest(unittest.TestCase):
             storyboard_scene.scene_number
         )
         self.assertEqual(
-            "Interior realista de laboratorio con luz azul.",
+            "laboratorio con luz azul",
             storyboard_scene.visible_subject
         )
         self.assertEqual(
-            "manual_design",
+            "manual_design_interpreted",
             storyboard_scene.visual_truth_status
         )
 
@@ -93,6 +140,13 @@ class ImageDesignVisualTruthAdapterTest(unittest.TestCase):
         prepared = PreparedImageDesign(
             text="Una descripcion visual.",
             source_path=Path("input/guion_imagen.txt"),
+            visual_truth={
+                "scene": 1,
+                "visible_subject": "sujeto",
+                "visible_action": "accion",
+                "visible_environment": "entorno",
+                "filmable_interpretation": "escena",
+            },
             expected_images=2
         )
 

@@ -127,7 +127,7 @@ class ScriptPreparationService:
         if input_script_path.exists():
             raise ValueError(
                 "El archivo input/guion.txt "
-                "esta vacio."
+                "está vacío."
             )
 
         raise FileNotFoundError(
@@ -154,7 +154,7 @@ class ScriptPreparationService:
         if not topic:
             raise ValueError(
                 "El archivo input/tema.txt "
-                "esta vacio."
+                "está vacío."
             )
 
         prompt = (
@@ -187,7 +187,7 @@ class ScriptPreparationService:
     ) -> PreparedScript:
         if not output_script_path.exists():
             raise FileNotFoundError(
-                "ScriptBuilder esta desactivado "
+                "ScriptBuilder está desactivado "
                 "y no existe el guion esperado: "
                 f"{output_script_path}"
             )
@@ -198,8 +198,8 @@ class ScriptPreparationService:
 
         if not script:
             raise ValueError(
-                "ScriptBuilder esta desactivado "
-                "y el guion existente esta vacio: "
+                "ScriptBuilder está desactivado "
+                "y el guion existente está vacío: "
                 f"{output_script_path}"
             )
 

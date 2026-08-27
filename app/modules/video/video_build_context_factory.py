@@ -22,7 +22,8 @@ class VideoBuildContextFactory:
         audio_path=None,
         subtitle_path=None,
         images_manifest_path=None,
-        output_path=None
+        output_path=None,
+        video_clips_manifest_path=None
     ):
         project = ProjectManager()
 
@@ -38,10 +39,18 @@ class VideoBuildContextFactory:
             or project.subtitle_path()
         )
 
-        resolved_manifest_path = Path(
-            images_manifest_path
-            or project.images_manifest_path()
-        )
+        media_manifest_type = "images"
+
+        if video_clips_manifest_path is not None:
+            resolved_manifest_path = Path(
+                video_clips_manifest_path
+            )
+            media_manifest_type = "video_clips"
+        else:
+            resolved_manifest_path = Path(
+                images_manifest_path
+                or project.images_manifest_path()
+            )
 
         resolved_output_path = Path(
             output_path
@@ -62,7 +71,8 @@ class VideoBuildContextFactory:
             audio_path=resolved_audio_path,
             subtitle_path=resolved_subtitle_path,
             images_manifest_path=resolved_manifest_path,
-            output_path=resolved_output_path
+            output_path=resolved_output_path,
+            media_manifest_type=media_manifest_type
         )
 
         image_count = len(

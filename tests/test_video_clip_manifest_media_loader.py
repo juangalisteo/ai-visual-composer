@@ -1,0 +1,188 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from app.modules.video.media.media_loader import MediaLoader
+
+
+class VideoClipManifestMediaLoaderTest(unittest.TestCase):
+
+    def _base_files(
+        self,
+        root
+    ):
+        audio_path = root / "audio.mp3"
+        subtitle_path = root / "subtitles.srt"
+        output_path = root / "video" / "final.mp4"
+
+        audio_path.write_bytes(
+            b"audio"
+        )
+        subtitle_path.write_text(
+            "1\n00:00:00,000 --> 00:00:01,000\nTexto",
+            encoding="utf-8"
+        )
+
+        return audio_path, subtitle_path, output_path
+
+    def test_loads_video_clips_ordered_by_scene(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            audio_path, subtitle_path, output_path = (
+                self._base_files(
+                    root
+                )
+            )
+            first_clip = root / "scene_001.mp4"
+            second_clip = root / "scene_002.mp4"
+            first_clip.write_bytes(
+                b"video-1"
+            )
+            second_clip.write_bytes(
+                b"video-2"
+            )
+            manifest_path = root / "video_clips_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "scene": 2,
+                            "output_clip": str(
+                                second_clip
+                            ),
+                            "duration_seconds": 2.5,
+                        },
+                        {
+                            "scene": 1,
+                            "output_clip": str(
+                                first_clip
+                            ),
+                            "duration_seconds": 1.25,
+                        },
+                    ],
+                    ensure_ascii=False,
+                    indent=4,
+                ),
+                encoding="utf-8"
+            )
+
+            media = MediaLoader().load(
+                audio_path=audio_path,
+                subtitle_path=subtitle_path,
+                images_manifest_path=manifest_path,
+                output_path=output_path,
+                media_manifest_type="video_clips"
+            )
+
+        self.assertEqual(
+            (
+                first_clip,
+                second_clip,
+            ),
+            media.image_paths
+        )
+        self.assertEqual(
+            (
+                "video",
+                "video",
+            ),
+            media.media_types
+        )
+        self.assertEqual(
+            (
+                1.25,
+                2.5,
+            ),
+            media.media_durations
+        )
+
+    def test_missing_clip_fails_clearly(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            audio_path, subtitle_path, output_path = (
+                self._base_files(
+                    root
+                )
+            )
+            manifest_path = root / "video_clips_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "scene": 1,
+                            "output_clip": str(
+                                root / "missing.mp4"
+                            ),
+                        },
+                    ]
+                ),
+                encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                "No existe el clip de vídeo"
+            ):
+                MediaLoader().load(
+                    audio_path=audio_path,
+                    subtitle_path=subtitle_path,
+                    images_manifest_path=manifest_path,
+                    output_path=output_path,
+                    media_manifest_type="video_clips"
+                )
+
+    def test_duplicate_scene_fails_clearly(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            audio_path, subtitle_path, output_path = (
+                self._base_files(
+                    root
+                )
+            )
+            clip = root / "scene_001.mp4"
+            clip.write_bytes(
+                b"video"
+            )
+            manifest_path = root / "video_clips_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "scene": 1,
+                            "output_clip": str(
+                                clip
+                            ),
+                        },
+                        {
+                            "scene": 1,
+                            "output_clip": str(
+                                clip
+                            ),
+                        },
+                    ]
+                ),
+                encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "duplicada"
+            ):
+                MediaLoader().load(
+                    audio_path=audio_path,
+                    subtitle_path=subtitle_path,
+                    images_manifest_path=manifest_path,
+                    output_path=output_path,
+                    media_manifest_type="video_clips"
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()

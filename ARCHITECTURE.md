@@ -4,145 +4,270 @@
 
 Professional AI Visual Generation Platform
 
-This document describes the official stable V.1 architecture of AI Visual Composer: the Visual Intelligence image runtime and the stabilized video composition core.
+This document describes the current V2.0 architecture of AI Visual Composer.
 
-The frozen Visual Intelligence specification is published in `docs/architecture/VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`.
-
-## Overview
-
-AI Visual Composer exposes the image-oriented product entry through `python main.py`. The console also shows `Vídeo` as a future product pipeline, but that separate product pipeline is not available yet. The repository includes a stabilized profile-driven FFmpeg video composition core used by the current full project generation mode. The system separates configuration, asset selection, temporal operation building, FFmpeg graph generation, command planning, command execution, and output validation.
-
-The architecture follows this flow:
+V2.0 is organized around three product entries:
 
 ```text
-Configs
-  -> Loaders
-  -> Selectors
-  -> Builders
-  -> Graph Builders
-  -> FilterPipeline
-  -> CommandPlanBuilder
-  -> CommandBuilder
-  -> VideoBuilder
-  -> Runner
-  -> VideoValidator
+AI VISUAL COMPOSER
+
+1. Guion
+2. Imagen
+3. Video
 ```
 
-## Configs
+The architecture remains profile-driven and locally executed. It separates console selection, runtime orchestration, script preparation, storyboard construction, image generation, image-to-video generation, and final FFmpeg composition.
 
-Configs are typed configuration objects that represent the video profile after parsing and validation.
+## High-Level Flow
 
-Current video config areas include:
+```text
+Console
+  -> RunController
+  -> Environment runtime options
+  -> app.core.start.iniciar()
+  -> Component orchestration
+  -> Builders
+  -> Manifests
+  -> Output artifacts
+```
 
-- Motion
-- Transitions
-- Overlays
-- Visual Effects
-- Fade
-- Subtitles
-- Validation
-- Video encoding
-- Audio encoding
+The console does not generate media directly. It selects the product entry, mode, profile, voice, subtitles, music, overlays, project name, and output reset policy. Runtime execution is delegated to `app.core.start`.
 
-Configs define what is enabled and which values are valid. They are the contract between the external profile and the engine.
+## Product Entries
 
-## Loaders
+### Guion
 
-Loaders read raw profile dictionaries and create config objects.
-
-Responsibilities:
-
-- read sections from the selected profile;
-- apply default values;
-- normalize primitive values;
-- create typed config objects;
-- let config validation reject invalid values.
-
-Examples:
-
-- `MotionConfigLoader`
-- `TransitionConfigLoader`
-- `OverlayConfigLoader`
-- `VisualEffectConfigLoader`
-- `FadeConfigLoader`
-- `SubtitleConfigLoader`
-- `ValidationConfigLoader`
-
-## Selectors
-
-Selectors choose profile-defined assets or behaviors.
+Guion is the script-centered entry.
 
 Responsibilities:
 
-- implement sequence or random selection modes;
-- respect profile weights;
-- optionally avoid repeats;
-- return only values available in the active config.
+- read manual script input from `input/guion.txt`;
+- support script-first routes toward Imagen or Video;
+- support design routes toward Imagen or Video;
+- preserve the selected destination and runtime mode.
 
-Examples:
+Validated V2.0 route families:
 
-- `MotionSelector`
-- `TransitionSelector`
-- `OverlaySelector`
-- `VisualEffectSelector`
+```text
+Guion -> Imagen
+Guion -> Video
+Guion -> Diseno -> Imagen
+Guion -> Diseno -> Video
+```
 
-The shared asset selector infrastructure is used by temporal audiovisual layers while preserving semantic wrappers for overlays and visual effects.
+### Imagen
 
-`OverlaySelector` has overlay-specific category distribution state. It applies per-video category cooldown only to overlay category selection. The shared `AssetSelector` remains unchanged and `VisualEffectSelector` does not inherit overlay category cooldown behavior.
-
-## Builders
-
-Builders convert selected configuration into render operations.
+Imagen is the image-centered entry.
 
 Responsibilities:
 
-- validate operation-level inputs;
-- apply probability when configured;
-- select assets;
-- calculate durations;
-- register auxiliary FFmpeg inputs;
-- preserve input positions for repeated assets;
-- build operation dictionaries consumed by graph builders.
+- execute script, voice, audio, subtitles, storyboard, image generation, and final video composition according to selected mode;
+- build image manifests;
+- preserve Visual Truth evidence for image generation;
+- produce final video in complete mode through the established FFmpeg composition core.
 
-Examples:
+### Video
 
-- `MotionBuilder`
-- `TransitionBuilder`
-- `OverlayBuilder`
-- `VisualEffectBuilder`
-
-Overlay and visual effect builders share temporal asset infrastructure, but remain separate public components.
-
-`OverlayBuilder.reset()` also resets overlay category distribution state when the selector supports it. This keeps overlay category cooldown scoped to the current video build and prevents persistence between projects.
-
-## Graph Builders
-
-Graph builders produce FFmpeg filter graph fragments for one stage of the pipeline.
+Video is the video-centered entry.
 
 Responsibilities:
 
-- receive a graph context;
-- append filter graph parts;
-- update the current video stream;
-- preserve stream metadata required by later stages;
-- return a graph result.
+- execute partial audio/subtitle/storyboard modes;
+- execute complete Video mode with image generation, I2V clip generation, and final composition;
+- generate `video_clips_manifest.json`;
+- produce I2V clips through the video component backend;
+- compose the final video through the FFmpeg video core with ping-pong I2V looping and Motion over generated clips.
 
-Current graph stages:
+## Modes
 
-- `MotionGraphBuilder`
-- `TransitionGraphBuilder`
-- `OverlayGraphBuilder`
-- `VisualEffectGraphBuilder`
-- `FadeGraphBuilder`
-- `SubtitleGraphBuilder`
+Validated modes for Imagen and Video:
 
-Overlay and visual effect graph builders share layer composition infrastructure through `LayerCompositor`.
+```text
+Proyecto completo
+Solo audio
+Audio + subtitulos
+Audio + subtitulos + storyboard
+```
 
-`OverlayGraphBuilder` keeps the existing `repeat_mode="interval"` behavior. Each interval can request a new overlay selection, so weighted thematic overlay categories and cooldown can operate without changing FFmpeg graph construction.
+Mode behavior:
 
-## FilterPipeline
+```text
+Solo audio:
+Script -> Voice -> Audio -> stop
 
-`FilterPipeline` executes graph builders in the explicit pipeline order:
+Audio + subtitulos:
+Script -> Voice -> Audio -> Subtitles -> stop
+
+Audio + subtitulos + storyboard:
+Script -> Voice -> Audio -> Subtitles -> Storyboard -> stop
+
+Proyecto completo, Imagen:
+Script -> Voice -> Audio -> Subtitles -> Storyboard -> Images -> Video
+
+Proyecto completo, Video:
+Script -> Voice -> Audio -> Subtitles -> Storyboard -> Images -> I2V clips -> Video
+```
+
+## Inputs
+
+Current input files:
+
+```text
+input/tema.txt
+input/guion.txt
+input/guion_imagen.txt
+input/guion_video.txt
+```
+
+Input ownership:
+
+- `input/tema.txt`: generated script topic.
+- `input/guion.txt`: manual Guion source.
+- `input/guion_imagen.txt`: design source for Diseno -> Imagen.
+- `input/guion_video.txt`: design source for Diseno -> Video.
+
+## Outputs
+
+The current output layout is grouped by product entry:
+
+```text
+output/guion/
+output/imagen/
+output/video/
+```
+
+Project outputs may contain:
+
+```text
+scripts/
+audio/
+subtitles/
+storyboard/
+images/
+images/evidence/
+video_clips/
+video/
+```
+
+Important manifests:
+
+- `storyboard/storyboard.json`
+- `images/images_manifest.json`
+- `video_clips/video_clips_manifest.json`
+
+## Script Layer
+
+The script layer is implemented in `app/modules/script/`.
+
+Responsibilities:
+
+- prepare script input;
+- generate or load script text according to runtime source;
+- enforce script output contract validation;
+- keep script handling independent from image and video rendering.
+
+Key elements:
+
+- `ScriptPreparationService`
+- `ScriptOperation`
+- `ScriptBuilder`
+- `ScriptOutputValidator`
+
+## Storyboard Layer
+
+Storyboard generation is implemented in `app/modules/storyboard/`.
+
+Responsibilities:
+
+- parse script content into storyboard scenes;
+- validate storyboard structure;
+- preserve Visual Truth 2.0 fields;
+- provide scene data to image and video generation.
+
+The Image Pipeline uses Visual Truth as its operational visual contract.
+
+## Image Runtime
+
+The image runtime is implemented primarily through:
+
+- `app/modules/images/`
+- `app/domain/adapters/storyboard_scene_adapter.py`
+- `app/visual_intelligence/`
+- `app/prompt_translation/`
+- `app/modules/images/backends/comfyui_backend.py`
+
+Flow:
+
+```text
+StoryboardScene
+  -> StoryboardSceneAdapter
+  -> Visual Analysis
+  -> Visual Reasoning
+  -> Visual Synthesis
+  -> EffectiveVisualBrief
+  -> Cinematic Direction
+  -> Prompt Translation
+  -> BackendPrompt
+  -> ComfyUI
+  -> images_manifest.json
+```
+
+Evidence may be persisted under:
+
+```text
+images/evidence/
+```
+
+## Design Runtime
+
+Design routes use manual design inputs and convert them into Visual Truth compatible scenes before invoking image or video generation.
+
+Imagen design path:
+
+```text
+input/guion_imagen.txt
+  -> ImageDesignPreparationService
+  -> ImageDesignVisualTruthAdapter
+  -> ImageBuilder
+```
+
+Video design path:
+
+```text
+input/guion_video.txt
+  -> VideoDesignPreparationService
+  -> VideoDesignVisualTruthAdapter
+  -> ImageBuilder
+  -> VideoComponentBuilder
+```
+
+## Video Component
+
+The video component lives in:
+
+```text
+app/modules/video_component/
+```
+
+Responsibilities:
+
+- analyze the source image;
+- build motion intent;
+- translate visual video intent into backend prompt data;
+- adapt requests to ComfyUI I2V;
+- persist clip manifests.
+
+The component is used by complete Video mode and design-to-video routes.
+
+## FFmpeg Video Composition Core
+
+The final video composition core lives in:
+
+```text
+app/modules/video/
+```
+
+Composition order:
 
 ```text
 Motion
@@ -153,328 +278,120 @@ Motion
   -> Subtitles
 ```
 
-Responsibilities:
+Main responsibilities:
 
-- run each graph stage;
-- carry forward the graph state;
-- refresh layer input indexes when overlay or visual effect builders register new inputs;
-- produce the final filter parts, current stream, layer streams, and context.
+- load video profile configuration;
+- select temporal assets;
+- build FFmpeg filter graph stages;
+- build command plans;
+- serialize FFmpeg commands;
+- execute rendering;
+- validate final output.
 
-The order is fixed in the current core and is not profile-configurable.
-
-## CommandPlanBuilder
-
-`CommandPlanBuilder` creates the structured FFmpeg command plan.
-
-Responsibilities:
-
-- assemble image inputs;
-- include audio input;
-- include overlay inputs;
-- include visual effect inputs;
-- apply loop behavior for auxiliary video inputs;
-- attach `filter_complex`;
-- define output maps;
-- define codec and container options;
-- preserve render duration.
-
-This layer keeps planning separate from command serialization.
-
-## CommandBuilder
-
-`CommandBuilder` serializes the command plan into the final FFmpeg command list.
-
-Responsibilities:
-
-- convert planned inputs into FFmpeg arguments;
-- add `-filter_complex`;
-- map `[vout]`;
-- map audio;
-- add video and audio codec settings;
-- add output options;
-- return the command consumed by the runner.
-
-## VideoBuilder
-
-`VideoBuilder` is the public facade for video rendering.
-
-Public API:
-
-```python
-VideoBuilder().build(
-    audio_path=None,
-    subtitle_path=None,
-    images_manifest_path=None,
-    output_path=None,
-)
-```
-
-Responsibilities:
-
-- prepare build context;
-- create pipeline components;
-- create `FilterContext`;
-- build render artifacts;
-- run FFmpeg;
-- validate output;
-- return the generated output path.
-
-Supporting components:
+Key components:
 
 - `VideoBuildContextFactory`
 - `VideoComponentFactory`
 - `VideoFilterContextFactory`
 - `VideoRenderService`
+- `VideoBuilder`
+- `CommandPlanBuilder`
+- `CommandBuilder`
+- `Runner`
+- `VideoValidator`
 
-## Runner
+## Motion
 
-`Runner` executes the final FFmpeg command.
+Motion is generated as part of the FFmpeg composition graph. It applies scene-level movement according to profile configuration and available media, including both still images and generated I2V clips.
 
-Responsibilities:
+## I2V
 
-- receive a fully built command list;
-- execute FFmpeg through the process layer;
-- surface execution errors to the caller.
+I2V generation is part of the Video product entry and design-to-video route.
 
-The runner is intentionally small in the current core.
-
-## VideoValidator
-
-`VideoValidator` checks the generated output after rendering.
-
-Responsibilities:
-
-- confirm that the output file exists;
-- probe the rendered duration;
-- compare generated duration with expected duration;
-- enforce the configured validation tolerance.
-
-## Data Flow
+Evidence is stored through:
 
 ```text
-Profile JSON
-  -> VideoConfigLoader
-  -> VideoConfig
-  -> VideoBuildContext
-  -> VideoBuildComponents
-  -> FilterContext
-  -> FilterPipeline
-  -> filter_complex
-  -> CommandPlan
-  -> FFmpeg command
-  -> Runner
-  -> VideoValidator
-  -> Output video
+video_clips/video_clips_manifest.json
+video_clips/scene_*.mp4
 ```
 
-## Image Component Runtime
+The current backend is ComfyUI using the configured Wan I2V workflow when available locally.
 
-Script generation is guarded before runtime propagation. Raw LLM responses are parsed into a structured `ScriptGenerationResult`, validated, and only the `script` field may continue to voice, subtitles, storyboard, Visual Intelligence, Prompt Translation, images, or video. Invalid conversational output stops the pipeline with `INVALID_SCRIPT_OUTPUT`.
+Generated I2V clips are reused by the FFmpeg composition layer. When a scene requires more time than the source clip duration, composition builds a forward/reverse ping-pong loop, avoids duplicated endpoint frames, applies Motion over the prepared clip stream, and trims the result to the exact scene duration.
 
-The Image Component uses a single cinematic runtime. It is part of the image generation path, not the video render core.
+## Music, Overlays, Transitions, Visual Effects
 
-Current image flow:
+Music:
+
+- selected when enabled by runtime options;
+- sourced from `assets/music/`.
+
+Overlays:
+
+- discovered under `assets/videos/overlays/`;
+- selected with semantic category resolution;
+- use `Light Leaks` as neutral fallback when appropriate;
+- apply weighted distribution and category cooldown.
+
+Transitions and Visual Effects:
+
+- configured through video profiles;
+- applied by the FFmpeg composition layer;
+- kept separate from overlays.
+
+## Profiles And Configuration
+
+Configuration is profile-driven.
+
+Relevant profile families:
 
 ```text
-Visual Truth 2.0 storyboard scene
-  -> StoryboardSceneAdapter
-  -> VisualAnalysisResult
-  -> VisualReasoningResult
-  -> VisualConflictReport
-  -> EffectiveVisualBrief
-  -> VisualIntelligenceTrace
-  -> VisualSynthesisResult
-  -> CinematicDirectionOrchestrator
-  -> CinematicDirectionSet
-  -> PromptTranslator
-  -> BackendPrompt
-  -> ComfyUIAdapter
-  -> ImagePromptSystem cinematic operational identity
-  -> ComfyUIBackend
-  -> Visual Quality, when enabled
-  -> GenerationResultAdapter
-  -> ImageManifestWriter
+config/profiles/guion/
+config/profiles/instagram/
+config/profiles/youtube/
+config/profiles/diseno/imagen/
+config/profiles/diseno/video/
+config/profiles/video/
 ```
 
-Responsibilities:
+Runtime selection is propagated through environment variables prepared by `main.py` from `RunController` output.
 
-- produce storyboard scenes using Visual Truth 2.0 as the primary visual contract;
-- analyze, reason, and synthesize Visual Truth through the canonical Visual Intelligence contracts;
-- resolve cinematic direction deterministically;
-- translate the effective brief and cinematic directions into compact `BackendPrompt` semantic compilation;
-- adapt `BackendPrompt` to the configured backend payload;
-- generate images through the backend;
-- validate generated assets through Visual Quality when enabled;
-- write the approved asset into the image manifest.
+## Baseline Validation
 
-`ImageBuilder` coordinates the component as the public facade. It no longer selects between a legacy runtime and a cinematic runtime. The prompt sent to ComfyUI is produced from `BackendPrompt.compiled_prompt` through the backend adapter and then enriched only with the stable operational cinematic identity used by the Image Component. Prompt Translation keeps visual intent compact under the active backend/model budget while preserving traceability outside the prompt text. After generation, Visual Quality can validate the asset when enabled, the result is adapted into the current generation contract, and `ImageManifestWriter` persists the manifest consumed by downstream video assembly.
-
-V.1 includes passive evidence persistence and OVB-001 benchmark infrastructure. These packages observe or benchmark the image path; they must not become a parallel runtime, must not modify Visual Intelligence decisions, and must not rewrite prompts, backend payloads, workflows, manifests, or generated creative intent.
-
-Current Visual Quality checks are bounded validation contracts. Apart from artifact integrity checks over local asset files, named checks such as text, logo, face, anatomy, wardrobe, object, style, lighting, or continuity checks consume explicit validation signals supplied through asset metadata or validation context. They do not currently implement independent OCR, logo recognition, face analysis, anatomy analysis, object detection, or pixel-level visual inference.
-
-The Image Component does not modify Motion, Transitions, Overlays, Visual Effects, Fade, Subtitles, FilterPipeline, CommandPlanBuilder, CommandBuilder, VideoBuilder, Runner, or VideoValidator.
-
-## Console And Pipeline Modes
-
-The current console entry is `python main.py`.
-
-The first menu is:
+V2.0 is supported by three baselines:
 
 ```text
-AI VISUAL COMPOSER
-
-1. Imagen
-2. Vídeo
+validation/v2_0/guion/
+validation/v2_0/imagen/
+validation/v2_0/video/
 ```
 
-`Imagen` is available. `Vídeo` remains visible but unavailable as a separate future product pipeline.
+Validated execution count:
 
-Current execution modes after selecting `Imagen`:
+- Guion: 20
+- Imagen: 8
+- Video: 8
+- Total: 36
 
-- `Proyecto completo`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> Images -> Video.
-- `Solo guion`: Script -> stop.
-- `Solo audio`: Script -> Voice -> Audio -> stop.
-- `Audio + subtítulos`: Script -> Voice -> Audio -> Subtitles -> stop.
-- `Audio + subtítulos + storyboard`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> stop.
+Each baseline contains:
 
-`RunController` writes the selected profile, mode, subtitle config, voice config, music option, overlay option, project name, and clear-output option to environment variables consumed by the runtime.
+- `report.md`
+- `metrics.json`
+- `metrics.csv`
+- `inventory.json`
+- `samples_manifest.json`
+- `samples/`
+- `charts/`
 
-## Profile Control
+## Known V2.x Work
 
-Profiles control the current visual behavior:
+The following items are known future optimization work, not V2.0 blockers:
 
-- module activation;
-- resolution;
-- FPS;
-- subtitle styling;
-- motion options;
-- transition types;
-- transition duration;
-- overlay directory and behavior;
-- visual effect directory and behavior;
-- opacity;
-- blend mode;
-- repeat mode;
-- probability;
-- loop behavior;
-- fade behavior;
-- codecs and encoding options;
-- validation tolerance.
-
-The core does not introduce hidden visual defaults beyond documented loader defaults.
-
-## Overlays
-
-Smart overlays are controlled through the console only for `Proyecto completo`.
-
-Current runtime flow:
-
-```text
-input/tema.txt
-  -> OverlayFolderResolver.discover_valid_folders()
-  -> OverlayFolderResolver.resolve_categories()
-  -> OverlayCategoryResolution
-  -> VideoBuildContextFactory
-  -> OverlayConfig.folders + OverlayConfig.folder_weights
-  -> OverlaySelector
-  -> OverlayCategoryDistributionPolicy
-  -> selected overlay folder for the interval
-  -> existing MP4 file selection
-```
-
-The resolver returns:
-
-- `primary`: one thematic category or `None`;
-- `secondary`: zero or more additional thematic categories.
-
-All category names are validated against real folders discovered from `assets/videos/overlays/`. The resolver does not receive `Light Leaks` as a thematic category. `VideoBuildContextFactory` adds `Light Leaks` as neutral fallback when available.
-
-Current weighting policy:
-
-- primary category: `3.0`;
-- secondary categories: `2.0`;
-- `Light Leaks`: `1.0`.
-
-Cooldown policy:
-
-- lives only in memory;
-- belongs to `OverlaySelector`;
-- remembers the previous overlay category;
-- removes that category from the next weighted choice when alternatives exist;
-- does not create round-robin or fixed alternation;
-- resets through `OverlayBuilder.reset()`;
-- does not affect `VisualEffectSelector`.
-
-MP4 file selection remains the existing selector behavior: `avoid_repeats=True` prevents only immediate repetition of the same asset when alternatives exist.
-
-If no thematic category is valid, `NONE -> Light Leaks` is used when the neutral folder exists. If there is no valid thematic category and no neutral fallback, overlays are disabled safely in memory.
-
-## Music
-
-Music is selected from `assets/music/` when the user enables random music. The current console option is:
-
-```text
-MÚSICA
-
-1. Sin música
-2. Aleatoria
-```
-
-The existing `MusicSelector` selects from available music categories and does not require the user to choose a category manually in the current console flow.
-
-## External Runtimes
-
-The current local LLM provider is Ollama:
-
-```text
-provider: ollama
-model: qwen3:14b
-API: http://localhost:11434/api/generate
-```
-
-Normal startup requires:
-
-```bash
-ollama serve
-```
-
-The current image backend expects ComfyUI to run as an external local runtime using:
-
-```bat
-cd ComfyUI
-.\run_nvidia_gpu.bat
-```
-
-AI Visual Composer then starts from the project root:
-
-```bash
-python main.py
-```
-
-## Current Core Status
-
-The current core is functional and stable as AI Visual Composer V.1.
-
-Current restoration point:
-
-```text
-PR1
-```
-
-`PR1` is the first official restoration point inside `V.1`.
-
-Validated areas:
-
-- Motion
-- Transitions
-- Overlays
-- Visual Effects
-- Fade
-- Subtitles
-- FilterPipeline
-- CommandPlanBuilder
-- CommandBuilder
-- VideoBuilder
-- Runner
-- VideoValidator
+- further Motion optimization;
+- professional overlay refinement;
+- transition improvement;
+- deeper subtitle optimization;
+- subtitle synchronization with real voice/silence timing;
+- I2V quality vs VRAM evaluation;
+- processing time optimization;
+- PipelineSummary timing persistence.

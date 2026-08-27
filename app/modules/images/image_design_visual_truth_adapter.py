@@ -9,7 +9,7 @@ class ImageDesignVisualTruthAdapter:
     ) -> list[dict]:
         if prepared_design.expected_images != 1:
             raise ValueError(
-                "El diseno visual manual debe generar "
+                "El diseño visual manual debe generar "
                 "exactamente una imagen."
             )
 
@@ -17,30 +17,51 @@ class ImageDesignVisualTruthAdapter:
 
         if not text:
             raise ValueError(
-                "El diseno visual manual esta vacio."
+                "El diseño visual manual está vacío."
             )
 
+        visual_truth = dict(
+            prepared_design.visual_truth
+        )
+        visual_truth["scene"] = 1
+        visual_truth["text"] = text
+        visual_truth["duration"] = None
+        visual_truth["narrative_role"] = (
+            visual_truth.get(
+                "narrative_role",
+                ""
+            )
+        )
+        visual_truth["narrative_moment"] = (
+            visual_truth.get(
+                "narrative_moment",
+                ""
+            )
+        )
+        visual_truth["notes"] = (
+            visual_truth.get(
+                "notes",
+                ""
+            )
+        )
+        visual_truth["abstract_source"] = text
+        visual_truth["visual_constraints"] = tuple(
+            visual_truth.get(
+                "visual_constraints",
+                ()
+            )
+        ) + (
+            "single image",
+            "manual visual design",
+        )
+        visual_truth["visual_truth_status"] = (
+            visual_truth.get(
+                "visual_truth_status",
+                ""
+            )
+            or "manual_design_interpreted"
+        )
+
         return [
-            {
-                "scene": 1,
-                "text": text,
-                "duration": None,
-                "narrative_role": "",
-                "narrative_moment": "",
-                "notes": "",
-                "visible_subject": text,
-                "visible_action": text,
-                "visible_environment": text,
-                "time_context": "",
-                "key_objects": [],
-                "spatial_relationships": [],
-                "continuity_links": [],
-                "abstract_source": text,
-                "filmable_interpretation": text,
-                "visual_constraints": [
-                    "single image",
-                    "manual visual design"
-                ],
-                "visual_truth_status": "manual_design"
-            }
+            visual_truth
         ]

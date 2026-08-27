@@ -8,6 +8,35 @@ from app.modules.images import (
 )
 
 
+class FakeVisualDesignInterpreter:
+
+    def interpret(
+        self,
+        text
+    ):
+        return {
+            "scene": 1,
+            "visible_subject": "cientifica adulta",
+            "visible_action": "observa una luz azul",
+            "visible_environment": "laboratorio",
+            "time_context": "",
+            "key_objects": (
+                "luz azul",
+            ),
+            "spatial_relationships": (),
+            "continuity_links": (),
+            "abstract_source": text,
+            "filmable_interpretation": (
+                "Una cientifica adulta observa una luz "
+                "azul dentro de un laboratorio."
+            ),
+            "visual_constraints": (),
+            "visual_truth_status": (
+                "manual_design_interpreted"
+            )
+        }
+
+
 class ImageDesignPreparationServiceTest(unittest.TestCase):
 
     def test_reads_manual_image_design(self):
@@ -21,7 +50,9 @@ class ImageDesignPreparationServiceTest(unittest.TestCase):
                 encoding="utf-8"
             )
 
-            prepared = ImageDesignPreparationService().prepare(
+            prepared = ImageDesignPreparationService(
+                visual_interpreter=FakeVisualDesignInterpreter()
+            ).prepare(
                 input_path=design_path
             )
 
@@ -48,6 +79,14 @@ class ImageDesignPreparationServiceTest(unittest.TestCase):
         self.assertEqual(
             1,
             prepared.expected_images
+        )
+        self.assertEqual(
+            "cientifica adulta",
+            prepared.visual_truth["visible_subject"]
+        )
+        self.assertEqual(
+            "laboratorio",
+            prepared.visual_truth["visible_environment"]
         )
 
     def test_fails_when_design_file_is_missing(self):

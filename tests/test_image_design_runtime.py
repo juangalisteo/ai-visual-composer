@@ -6,6 +6,37 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.core import start
+from app.modules.images import ImageDesignPreparationService
+
+
+class FakeVisualDesignInterpreter:
+
+    def interpret(
+        self,
+        text
+    ):
+        normalized = str(
+            text
+        ).strip()
+        return {
+            "scene": 1,
+            "visible_subject": "ciudad futurista",
+            "visible_action": "la lluvia cae sobre la ciudad",
+            "visible_environment": "avenida futurista nocturna",
+            "time_context": "noche",
+            "key_objects": (
+                "neones",
+                "lluvia",
+            ),
+            "spatial_relationships": (),
+            "continuity_links": (),
+            "abstract_source": normalized,
+            "filmable_interpretation": normalized,
+            "visual_constraints": (),
+            "visual_truth_status": (
+                "manual_design_interpreted"
+            )
+        }
 
 
 class FakeImageBuilder:
@@ -97,6 +128,11 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     "app.core.start.ConfigManager",
                     side_effect=AssertionError(
                         "ConfigManager must not run before design route"
+                    )
+                ), patch(
+                    "app.core.start.ImageDesignPreparationService",
+                    return_value=ImageDesignPreparationService(
+                        visual_interpreter=FakeVisualDesignInterpreter()
                     )
                 ), patch(
                     "app.core.start.ImageBuilder",
@@ -213,6 +249,11 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     return_value=None
                 ):
                     result = start.ejecutar_diseno_imagen(
+                        preparation_service=ImageDesignPreparationService(
+                            visual_interpreter=(
+                                FakeVisualDesignInterpreter()
+                            )
+                        ),
                         image_builder=fake_image_builder
                     )
 
@@ -234,10 +275,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     len(fake_image_builder.received_scenes)
                 )
                 self.assertEqual(
-                    (
-                        "Diseno visual manual para una sola "
-                        "imagen."
-                    ),
+                    "Diseno visual manual para una sola imagen.",
                     fake_image_builder.received_scenes[0][
                         "filmable_interpretation"
                     ]

@@ -119,7 +119,7 @@ class ScriptComponentProfilesTest(
             printed
         )
         self.assertIn(
-            "2. Youtube",
+            "2. YouTube",
             printed
         )
         self.assertNotIn(

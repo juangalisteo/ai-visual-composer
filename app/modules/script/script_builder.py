@@ -75,7 +75,7 @@ class ScriptBuilder:
 
         if not prompt:
             raise ValueError(
-                "El prompt del guion esta vacio."
+                "El prompt del guion está vacío."
             )
 
         prompt_id = _prompt_id(
@@ -190,7 +190,7 @@ def _attempt_prompt(
         "La respuesta anterior incumple el formato requerido. "
         f"Motivo: {previous_reason}. "
         f"Tema: {topic}. "
-        "Devuelve unicamente el guion final valido, sin encabezados, "
+        "Devuelve únicamente el guion final válido, sin encabezados, "
         "sin comentarios, sin markdown, sin JSON y sin metadatos."
     )
 

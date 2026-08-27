@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import time
 from pathlib import Path
 
@@ -22,7 +23,13 @@ from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.subtitles.srt_optimizer import SrtOptimizer
 from app.modules.subtitles.subtitle_builder import SubtitleBuilder
 from app.modules.video.video_builder import VideoBuilder
+from app.modules.video_component import (
+    VideoComponentBuilder,
+    VideoDesignPreparationService,
+    VideoDesignVisualTruthAdapter,
+)
 
+from app.domain.adapters import StoryboardSceneAdapter
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
 
@@ -37,8 +44,19 @@ def iniciar():
         "full"
     ).strip().lower()
 
+    visual_pipeline = os.environ.get(
+        "MC_VISUAL_PIPELINE",
+        "image"
+    ).strip().lower()
+
     if pipeline_mode == "design_image":
         return ejecutar_diseno_imagen(
+            pipeline_start=pipeline_start,
+            project=project
+        )
+
+    if pipeline_mode == "design_video":
+        return ejecutar_diseno_video(
             pipeline_start=pipeline_start,
             project=project
         )
@@ -50,6 +68,13 @@ def iniciar():
 
     ai_config = config.get_ai_config()
     profile = config.get_profile_config()
+
+    if pipeline_mode == "video_i2v":
+        return ejecutar_video_i2v(
+            pipeline_start=pipeline_start,
+            project=project,
+            profile=profile
+        )
 
     builders = profile.get(
         "builders",
@@ -67,6 +92,8 @@ def iniciar():
     output_script_path = (
         project.script_path()
     )
+    storyboard_path = None
+    images_manifest_path = None
 
     summary = PipelineSummary(
         project.project_name
@@ -236,9 +263,55 @@ def iniciar():
             images_manifest_path
         )
 
-    if builders.get(
-        "video",
-        False
+    if (
+        visual_pipeline == "video"
+        and pipeline_mode == "full"
+    ):
+        video_clips_manifest_path, video_i2v_elapsed = (
+            _measure_stage(
+                generar_video_clips_i2v,
+                storyboard_path=(
+                    storyboard_path
+                    or project.storyboard_path()
+                ),
+                images_manifest_path=(
+                    images_manifest_path
+                    or project.images_manifest_path()
+                ),
+                project=project,
+                profile=profile
+            )
+        )
+
+        stage_times["Video I2V"] = (
+            video_i2v_elapsed
+        )
+
+        final_result = (
+            video_clips_manifest_path
+        )
+
+        video_path, video_elapsed = (
+            _measure_stage(
+                VideoBuilder().build,
+                video_clips_manifest_path=(
+                    video_clips_manifest_path
+                )
+            )
+        )
+
+        stage_times["Vídeo"] = (
+            video_elapsed
+        )
+
+        final_result = video_path
+
+    if (
+        visual_pipeline != "video"
+        and builders.get(
+            "video",
+            False
+        )
     ):
         video_path, video_elapsed = (
             _measure_stage(
@@ -392,6 +465,449 @@ def ejecutar_diseno_imagen(
     return images_manifest_path
 
 
+def ejecutar_diseno_video(
+    pipeline_start=None,
+    project=None,
+    input_design_path=None,
+    preparation_service=None,
+    visual_truth_adapter=None,
+    image_builder=None,
+    video_builder=None,
+    profile=None
+):
+    if pipeline_start is None:
+        pipeline_start = time.perf_counter()
+
+    project = (
+        project
+        or ProjectManager()
+    )
+
+    summary = PipelineSummary(
+        project.project_name
+    )
+
+    preparation_service = (
+        preparation_service
+        or VideoDesignPreparationService()
+    )
+    visual_truth_adapter = (
+        visual_truth_adapter
+        or VideoDesignVisualTruthAdapter()
+    )
+    image_builder = (
+        image_builder
+        or ImageBuilder()
+    )
+    video_builder = (
+        video_builder
+        or VideoComponentBuilder()
+    )
+    profile = (
+        profile
+        or ConfigManager().get_profile_config()
+    )
+
+    prepared_design = preparation_service.prepare(
+        input_path=(
+            input_design_path
+            or Path("input/guion_video.txt")
+        )
+    )
+
+    scenes = visual_truth_adapter.adapt(
+        prepared_design
+    )
+
+    _ensure_single_video_design_scene(
+        scenes
+    )
+
+    storyboard_path = (
+        project.storyboard_path()
+    )
+    storyboard_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+    storyboard_path.write_text(
+        json.dumps(
+            scenes,
+            ensure_ascii=False,
+            indent=4
+        ),
+        encoding="utf-8"
+    )
+
+    images_manifest_path, images_elapsed = _measure_stage(
+        image_builder.build,
+        storyboard_path=storyboard_path,
+        output_dir=project.images_dir()
+    )
+
+    _ensure_single_design_image(
+        images_manifest_path
+    )
+
+    video_clips_manifest_path, video_elapsed = _measure_stage(
+        generar_video_clips_i2v,
+        storyboard_path=storyboard_path,
+        images_manifest_path=images_manifest_path,
+        project=project,
+        profile=profile,
+        video_builder=video_builder
+    )
+
+    output_clip = _ensure_single_video_design_clip(
+        video_clips_manifest_path
+    )
+
+    _complete_summary(
+        summary=summary,
+        stage_times={
+            "Imágenes": images_elapsed,
+            "Video I2V": video_elapsed
+        },
+        project=project,
+        pipeline_start=pipeline_start
+    )
+
+    return output_clip
+
+
+def ejecutar_video_i2v(
+    pipeline_start=None,
+    project=None,
+    profile=None,
+    source_path=None,
+    video_builder=None
+):
+    if pipeline_start is None:
+        pipeline_start = time.perf_counter()
+
+    project = (
+        project
+        or ProjectManager()
+    )
+
+    project.setup()
+
+    profile = (
+        profile
+        or ConfigManager().get_profile_config()
+    )
+
+    video_builder = (
+        video_builder
+        or VideoComponentBuilder()
+    )
+
+    output_dir = (
+        project.base_path
+        / "video_clips"
+    )
+
+    result, video_elapsed = _measure_stage(
+        video_builder.generate_clip,
+        source_path=(
+            source_path
+            or Path("tests/fixtures/video/source.png")
+        ),
+        output_dir=output_dir,
+        **_video_i2v_overrides(
+            profile
+        )
+    )
+
+    summary = PipelineSummary(
+        project.project_name
+    )
+    summary.set_media_duration(
+        result.duration_seconds
+    )
+    summary.add_stage(
+        "Video I2V",
+        video_elapsed
+    )
+    summary.set_total_time(
+        time.perf_counter()
+        - pipeline_start
+    )
+    summary.print()
+
+    return result.output_clip
+
+
+def generar_video_clips_i2v(
+    storyboard_path,
+    images_manifest_path,
+    project=None,
+    profile=None,
+    video_builder=None
+):
+    project = (
+        project
+        or ProjectManager()
+    )
+
+    profile = (
+        profile
+        or ConfigManager().get_profile_config()
+    )
+
+    video_builder = (
+        video_builder
+        or VideoComponentBuilder()
+    )
+
+    storyboard_path = Path(
+        storyboard_path
+    )
+    images_manifest_path = Path(
+        images_manifest_path
+    )
+
+    scenes = _load_storyboard_scenes(
+        storyboard_path
+    )
+    image_entries = _load_image_manifest_entries(
+        images_manifest_path
+    )
+
+    scenes_by_number = {
+        int(
+            scene.get(
+                "scene"
+            )
+        ): scene
+        for scene in scenes
+    }
+
+    video_profile = _load_video_component_profile(
+        profile
+    )
+
+    output_dir = (
+        project.base_path
+        / "video_clips"
+    )
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    clip_entries = []
+
+    for entry in image_entries:
+        scene_number = _required_manifest_scene_number(
+            entry
+        )
+        scene = scenes_by_number.get(
+            scene_number
+        )
+        if scene is None:
+            raise ValueError(
+                "No existe una escena de storyboard "
+                f"para la imagen {scene_number}."
+            )
+
+        source_image = Path(
+            entry.get(
+                "image",
+                ""
+            )
+        )
+        if not source_image.exists():
+            raise FileNotFoundError(
+                "No existe la imagen base para Video: "
+                f"{source_image}"
+            )
+
+        storyboard_scene = (
+            StoryboardSceneAdapter.from_visual_truth(
+                scene=scene,
+                default_scene_number=scene_number
+            )
+        )
+
+        result = video_builder.generate_clip(
+            source_path=source_image,
+            output_dir=output_dir,
+            output_name=f"scene_{scene_number:03d}.mp4",
+            storyboard_scene=storyboard_scene,
+            **_video_i2v_overrides(
+                video_profile
+            )
+        )
+
+        clip_entries.append(
+            _build_video_clip_manifest_entry(
+                result=result,
+                storyboard_scene=storyboard_scene,
+                image_entry=entry
+            )
+        )
+
+    manifest_path = (
+        output_dir
+        / "video_clips_manifest.json"
+    )
+    manifest_path.write_text(
+        json.dumps(
+            clip_entries,
+            ensure_ascii=False,
+            indent=4
+        ),
+        encoding="utf-8"
+    )
+
+    return manifest_path
+
+
+def _load_storyboard_scenes(
+    storyboard_path
+):
+    data = json.loads(
+        Path(
+            storyboard_path
+        ).read_text(
+            encoding="utf-8"
+        )
+    )
+    if not isinstance(
+        data,
+        list
+    ):
+        raise ValueError(
+            "El storyboard de Video debe ser una lista de escenas."
+        )
+    return data
+
+
+def _load_image_manifest_entries(
+    images_manifest_path
+):
+    data = json.loads(
+        Path(
+            images_manifest_path
+        ).read_text(
+            encoding="utf-8"
+        )
+    )
+    if not isinstance(
+        data,
+        list
+    ):
+        raise ValueError(
+            "El manifiesto de imágenes debe ser una lista."
+        )
+    return data
+
+
+def _required_manifest_scene_number(
+    entry
+):
+    if not isinstance(
+        entry,
+        dict
+    ):
+        raise ValueError(
+            "Cada entrada del manifiesto de imágenes "
+            "debe ser un diccionario."
+        )
+
+    try:
+        return int(
+            entry[
+                "scene"
+            ]
+        )
+    except (
+        KeyError,
+        TypeError,
+        ValueError
+    ) as error:
+        raise ValueError(
+            "Cada imagen base de Video debe declarar scene."
+        ) from error
+
+
+def _load_video_component_profile(
+    visual_profile
+):
+    if visual_profile.get(
+        "video_component"
+    ):
+        return visual_profile
+
+    platform = str(
+        visual_profile.get(
+            "platform",
+            ""
+        )
+    ).strip().lower()
+    if not platform:
+        platform = str(
+            visual_profile.get(
+                "format",
+                ""
+            )
+        ).strip().lower()
+
+    profile_path = (
+        Path(
+            "config/profiles/video"
+        )
+        / f"{platform}.json"
+    )
+    if not profile_path.exists():
+        raise FileNotFoundError(
+            "No existe perfil técnico de Video para: "
+            f"{platform}"
+        )
+
+    return json.loads(
+        profile_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+
+def _build_video_clip_manifest_entry(
+    result,
+    storyboard_scene,
+    image_entry
+):
+    return {
+        "scene": storyboard_scene.scene_number,
+        "source_image": str(
+            result.source_image
+        ),
+        "image_manifest_entry": image_entry,
+        "output_clip": str(
+            result.output_clip
+        ),
+        "profile": result.profile_name,
+        "backend": result.backend,
+        "model": result.model,
+        "workflow": result.workflow,
+        "prompt_id": result.prompt_id,
+        "seed": result.seed,
+        "frames": result.frames,
+        "fps": result.fps,
+        "generation_width": result.generation_width,
+        "generation_height": result.generation_height,
+        "target_width": result.target_width,
+        "target_height": result.target_height,
+        "steps": result.steps,
+        "cfg": result.cfg,
+        "sampler": result.sampler,
+        "scheduler": result.scheduler,
+        "duration_seconds": result.duration_seconds,
+        "fingerprint": result.fingerprint,
+    }
+
+
 def preparar_guion(
     builders,
     ai_config,
@@ -418,6 +934,225 @@ def preparar_guion(
         input_topic_path=input_topic_path,
         output_script_path=output_script_path
     )
+
+
+def _video_i2v_overrides(
+    profile
+):
+    video_component = profile.get(
+        "video_component",
+        {}
+    )
+
+    if not video_component:
+        raise ValueError(
+            "El perfil de Video debe definir video_component."
+        )
+
+    generation = video_component.get(
+        "generation",
+        {}
+    )
+    target = video_component.get(
+        "target",
+        {}
+    )
+    sampling = video_component.get(
+        "sampling",
+        {}
+    )
+
+    return {
+        "profile_name": str(
+            video_component.get(
+                "profile",
+                profile.get(
+                    "platform",
+                    ""
+                )
+            )
+        ),
+        "generation_width": _required_int(
+            generation,
+            "width",
+            "generation.width"
+        ),
+        "generation_height": _required_int(
+            generation,
+            "height",
+            "generation.height"
+        ),
+        "target_width": _required_int(
+            target,
+            "width",
+            "target.width"
+        ),
+        "target_height": _required_int(
+            target,
+            "height",
+            "target.height"
+        ),
+        "frames": _required_int(
+            video_component,
+            "frames",
+            "frames"
+        ),
+        "fps": _required_float(
+            video_component,
+            "fps",
+            "fps"
+        ),
+        "seed": _resolve_video_seed(
+            video_component
+        ),
+        "steps": _required_int(
+            sampling,
+            "steps",
+            "sampling.steps"
+        ),
+        "cfg": _required_float(
+            sampling,
+            "cfg",
+            "sampling.cfg"
+        ),
+        "sampler": _required_text(
+            sampling,
+            "sampler",
+            "sampling.sampler"
+        ),
+        "scheduler": _required_text(
+            sampling,
+            "scheduler",
+            "sampling.scheduler"
+        ),
+    }
+
+
+def _resolve_video_seed(
+    video_component
+):
+    seed_mode = str(
+        video_component.get(
+            "seed_mode",
+            ""
+        )
+    ).strip().lower()
+
+    if seed_mode == "random":
+        return _random_video_seed()
+
+    if seed_mode == "fixed":
+        return _required_seed(
+            video_component
+        )
+
+    raise ValueError(
+        "Parámetro de vídeo inválido: seed_mode."
+    )
+
+
+def _random_video_seed():
+    return secrets.randbelow(
+        2 ** 63
+    )
+
+
+def _required_seed(
+    video_component
+):
+    try:
+        seed = int(
+            video_component[
+                "seed"
+            ]
+        )
+    except (
+        KeyError,
+        TypeError,
+        ValueError
+    ) as error:
+        raise ValueError(
+            "Parámetro de vídeo inválido: seed."
+        ) from error
+
+    if seed < 0:
+        raise ValueError(
+            "Parámetro de vídeo inválido: seed."
+        )
+
+    return seed
+
+
+def _required_int(
+    data,
+    key,
+    label
+):
+    try:
+        value = int(
+            data[key]
+        )
+    except (
+        KeyError,
+        TypeError,
+        ValueError
+    ) as error:
+        raise ValueError(
+            f"Parámetro de vídeo inválido: {label}."
+        ) from error
+
+    if value <= 0:
+        raise ValueError(
+            f"Parámetro de vídeo inválido: {label}."
+        )
+
+    return value
+
+
+def _required_float(
+    data,
+    key,
+    label
+):
+    try:
+        value = float(
+            data[key]
+        )
+    except (
+        KeyError,
+        TypeError,
+        ValueError
+    ) as error:
+        raise ValueError(
+            f"Parámetro de vídeo inválido: {label}."
+        ) from error
+
+    if value <= 0:
+        raise ValueError(
+            f"Parámetro de vídeo inválido: {label}."
+        )
+
+    return value
+
+
+def _required_text(
+    data,
+    key,
+    label
+):
+    value = str(
+        data.get(
+            key,
+            ""
+        )
+    ).strip()
+
+    if not value:
+        raise ValueError(
+            f"Parámetro de vídeo inválido: {label}."
+        )
+
+    return value
 
 
 def _measure_stage(
@@ -448,7 +1183,7 @@ def _ensure_single_design_scene(
         list
     ):
         raise ValueError(
-            "El diseno visual debe producir una lista "
+            "El diseño visual debe producir una lista "
             "de escenas."
         )
 
@@ -456,7 +1191,7 @@ def _ensure_single_design_scene(
         scenes
     ) != 1:
         raise ValueError(
-            "El diseno visual debe producir exactamente "
+            "El diseño visual debe producir exactamente "
             "una escena."
         )
 
@@ -478,15 +1213,15 @@ def _ensure_single_design_image(
         list
     ):
         raise ValueError(
-            "El manifiesto de diseno debe contener "
-            "una lista de imagenes."
+            "El manifiesto de diseño debe contener "
+            "una lista de imágenes."
         )
 
     if len(
         manifest
     ) != 1:
         raise ValueError(
-            "El diseno visual debe generar exactamente "
+            "El diseño visual debe generar exactamente "
             "una imagen."
         )
 
@@ -501,9 +1236,110 @@ def _ensure_single_design_image(
 
     if image_name != "scene_001.png":
         raise ValueError(
-            "La imagen de diseno debe corresponder a "
+            "La imagen de diseño debe corresponder a "
             "scene_001.png."
         )
+
+
+def _ensure_single_video_design_scene(
+    scenes
+):
+    _ensure_single_design_scene(
+        scenes
+    )
+
+    scene = scenes[0]
+    if not isinstance(
+        scene,
+        dict
+    ):
+        raise ValueError(
+            "El diseño de vídeo debe producir una escena válida."
+        )
+
+    if int(
+        scene.get(
+            "scene",
+            0
+        )
+    ) != 1:
+        raise ValueError(
+            "El diseño de vídeo debe producir scene 1."
+        )
+
+
+def _ensure_single_video_design_clip(
+    video_clips_manifest_path
+):
+    manifest_path = Path(
+        video_clips_manifest_path
+    )
+    manifest = json.loads(
+        manifest_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(
+        manifest,
+        list
+    ):
+        raise ValueError(
+            "El manifiesto de diseño de vídeo debe "
+            "contener una lista de clips."
+        )
+
+    if len(
+        manifest
+    ) != 1:
+        raise ValueError(
+            "El diseño de vídeo debe generar exactamente "
+            "un clip."
+        )
+
+    try:
+        scene_number = int(
+            manifest[0][
+                "scene"
+            ]
+        )
+    except (
+        KeyError,
+        TypeError,
+        ValueError
+    ) as error:
+        raise ValueError(
+            "El clip de diseño de vídeo debe declarar scene 1."
+        ) from error
+
+    if scene_number != 1:
+        raise ValueError(
+            "El clip de diseño de vídeo debe corresponder "
+            "a scene 1."
+        )
+
+    output_clip = Path(
+        str(
+            manifest[0].get(
+                "output_clip",
+                ""
+            )
+        )
+    )
+
+    if output_clip.name != "scene_001.mp4":
+        raise ValueError(
+            "El clip de diseño de vídeo debe corresponder "
+            "a scene_001.mp4."
+        )
+
+    if not output_clip.exists():
+        raise FileNotFoundError(
+            "No existe el clip de diseño de vídeo: "
+            f"{output_clip}"
+        )
+
+    return output_clip
 
 
 def _complete_summary(
@@ -540,6 +1376,7 @@ def _complete_summary(
         "Script",
         "Storyboard",
         "Imágenes",
+        "Video I2V",
         "Voces",
         "Subtítulos",
         "Audio",

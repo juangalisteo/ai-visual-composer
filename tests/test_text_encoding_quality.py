@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from app.controllers.run_controller import RunController
+from app.managers.pipeline_summary import PipelineSummary
 from app.modules.video.video_validator import VideoValidator
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
@@ -26,6 +28,45 @@ class Cp1252Stdout:
 
     def flush(self):
         pass
+
+
+class ReconfigurableBytesStdout:
+    def __init__(self):
+        self.encoding = "cp1252"
+        self.errors = "strict"
+        self.buffer = bytearray()
+
+    def reconfigure(
+        self,
+        encoding=None,
+        errors=None
+    ):
+        if encoding is not None:
+            self.encoding = encoding
+
+        if errors is not None:
+            self.errors = errors
+
+    def write(
+        self,
+        text
+    ):
+        self.buffer.extend(
+            text.encode(
+                self.encoding,
+                errors=self.errors
+            )
+        )
+
+    def flush(self):
+        pass
+
+    def get_utf8_output(self):
+        return bytes(
+            self.buffer
+        ).decode(
+            "utf-8"
+        )
 
 
 class TextEncodingQualityTest(unittest.TestCase):
@@ -207,6 +248,156 @@ class TextEncodingQualityTest(unittest.TestCase):
 
         self.assertTrue(
             scanned_files
+        )
+
+    def test_run_controller_menus_write_unicode_through_utf8_stdout_boundary(self):
+        stream = ReconfigurableBytesStdout()
+        controller = RunController()
+
+        with patch.object(
+            sys,
+            "stdout",
+            stream
+        ), patch(
+            "builtins.input",
+            return_value="1"
+        ):
+            controller.select_subtitle_config()
+            controller.select_music_category()
+            controller.select_overlays_mode()
+
+        output = stream.get_utf8_output()
+
+        self.assertIn(
+            "SUBTÍTULOS",
+            output
+        )
+        self.assertIn(
+            "Línea única",
+            output
+        )
+        self.assertIn(
+            "MÚSICA",
+            output
+        )
+        self.assertIn(
+            "Sí",
+            output
+        )
+        self.assertNotIn(
+            "SUBT" + chr(0xFFFD) + "TULOS",
+            output
+        )
+        self.assertNotIn(
+            "M" + chr(0xFFFD) + "SICA",
+            output
+        )
+
+    def test_run_controller_invalid_option_message_uses_utf8_stdout_boundary(self):
+        stream = ReconfigurableBytesStdout()
+        controller = RunController()
+
+        with patch.object(
+            sys,
+            "stdout",
+            stream
+        ), patch(
+            "builtins.input",
+            side_effect=(
+                "",
+                "Proyecto"
+            )
+        ):
+            controller.ask_project_name()
+
+        output = stream.get_utf8_output()
+
+        self.assertIn(
+            "Opción no válida.",
+            output
+        )
+        self.assertNotIn(
+            "Opci" + chr(0xFFFD) + "n",
+            output
+        )
+
+    def test_pipeline_summary_print_uses_utf8_stdout_boundary(self):
+        stream = ReconfigurableBytesStdout()
+        summary = PipelineSummary(
+            "unicode"
+        )
+        summary.set_image_count(
+            2
+        )
+        summary.set_media_duration(
+            3
+        )
+        summary.add_stage(
+            "Vídeo",
+            1.0
+        )
+        summary.add_stage(
+            "Transición 1→2",
+            0.5
+        )
+
+        with patch.object(
+            sys,
+            "stdout",
+            stream
+        ):
+            summary.print()
+
+        output = stream.get_utf8_output()
+
+        self.assertIn(
+            "Imágenes",
+            output
+        )
+        self.assertIn(
+            "Duración",
+            output
+        )
+        self.assertIn(
+            "Vídeo",
+            output
+        )
+        self.assertIn(
+            "Transición 1→2",
+            output
+        )
+        self.assertNotIn(
+            "Im" + chr(0xFFFD) + "genes",
+            output
+        )
+        self.assertNotIn(
+            "Duraci" + chr(0xFFFD) + "n",
+            output
+        )
+
+    def test_run_controller_unicode_output_still_supports_stringio_capture(self):
+        stream = io.StringIO()
+        controller = RunController()
+
+        with patch.object(
+            sys,
+            "stdout",
+            stream
+        ), patch(
+            "builtins.input",
+            return_value="1"
+        ):
+            controller.select_overlays_mode()
+
+        output = stream.getvalue()
+
+        self.assertIn(
+            "OVERLAYS",
+            output
+        )
+        self.assertIn(
+            "Sí",
+            output
         )
 
 

@@ -363,7 +363,7 @@ class ComfyUIBackendTest(unittest.TestCase):
         ):
             with self.assertRaisesRegex(
                 RuntimeError,
-                "ComfyUI devolvio un error durante la generacion."
+                "ComfyUI devolvió un error durante la generación."
             ):
                 ComfyUIBackend().wait_for_image(
                     "abc"

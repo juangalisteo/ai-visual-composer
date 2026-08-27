@@ -2,355 +2,255 @@
 
 Professional AI Visual Generation Platform
 
-AI Visual Composer is a profile-driven generation and video composition system. The current repository state is the official stable V.1 baseline.
+AI Visual Composer is a profile-driven local generation system for scripts, images, image-to-video clips, and final video composition. The current documented product state is V2.0.
 
-The system can generate scripts, voice, mixed audio, subtitles, storyboard, images through ComfyUI, and final FFmpeg videos with motion, transitions, overlays, visual effects, fade stages, and subtitles.
-
-## Current Status
-
-Status:
-
-- General system version: `V.1`.
-- State: `STABLE`.
-- Current restoration point: `PR1`.
-- `V.1` identifies the general system version.
-- `PR1` identifies the first official restoration point inside `V.1`.
-
-Current local AI provider:
-
-- Provider: `ollama`
-- Model: `qwen3:14b`
-- API: `http://localhost:11434/api/generate`
-
-Current ComfyUI workflow:
-
-- `config/comfyui_flux_workflow_api.json`
-
-## Main Capabilities
-
-- Console entry point through `python main.py`.
-- Execution modes:
-  - Proyecto completo.
-  - Solo guion.
-  - Solo audio.
-  - Audio + subtítulos.
-  - Audio + subtítulos + storyboard.
-- Script generation through Ollama.
-- Manual script support through `input/guion.txt`.
-- Topic input through `input/tema.txt`.
-- Voice generation through Edge TTS.
-- Optional random music selection from `assets/music/`.
-- Subtitle generation and optimization.
-- Storyboard generation with Visual Truth 2.0.
-- Visual Intelligence runtime for image generation.
-- Prompt Translation and backend-neutral prompt compilation.
-- ComfyUI backend integration.
-- Image manifest generation.
-- FFmpeg video rendering.
-- Motion, Transitions, Overlays, Visual Effects, Fade, and Subtitles stages.
-- Smart overlays with thematic category selection, `Light Leaks` neutral fallback, weighted distribution, and per-video category cooldown.
-
-## First Installation
-
-Clone the repository:
-
-```bash
-git clone <repository-url> ai-visual-composer
-cd ai-visual-composer
-```
-
-Create and activate a virtual environment:
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Verify FFmpeg:
-
-```bash
-ffmpeg -version
-```
-
-Install Ollama and pull the configured model:
-
-```bash
-ollama pull qwen3:14b
-```
-
-Install ComfyUI as a local external runtime. The working local startup flow expects a `ComfyUI/` directory beside the project root or otherwise reachable from the local development environment.
-
-Install the required ComfyUI models, checkpoints, and custom nodes required by:
-
-```text
-config/comfyui_flux_workflow_api.json
-```
-
-ComfyUI, models, checkpoints, generated output, logs, local secrets, and private development memory are not part of the public product repository.
-
-## Normal Startup
-
-Open three terminals and keep the external runtimes running while using AI Visual Composer.
-
-### Terminal 1 - Ollama
-
-Start Ollama first:
-
-```bash
-ollama serve
-```
-
-Ollama must remain running because AI Visual Composer calls the local Ollama API directly.
-
-Configured model:
-
-```text
-qwen3:14b
-```
-
-### Terminal 2 - ComfyUI
-
-Start ComfyUI second:
-
-```bat
-cd ComfyUI
-.\run_nvidia_gpu.bat
-```
-
-ComfyUI must remain running while using image generation.
-
-### Terminal 3 - AI Visual Composer
-
-From the project root:
+The application is operated from the console through:
 
 ```bash
 python main.py
 ```
 
-## Console Flow
+## Current Status
 
-The console starts with:
+- Version: `V2.0`.
+- State: validated by manual execution baselines.
+- Baseline evidence:
+  - `validation/v2_0/guion/`
+  - `validation/v2_0/imagen/`
+  - `validation/v2_0/video/`
+- Validated executions: 36 real runs.
+- Test suite at pre-checkpoint audit: 837 tests passing.
+
+## Product Entries
+
+The main console exposes:
 
 ```text
 AI VISUAL COMPOSER
 
-1. Imagen
-2. Vídeo
+1. Guion
+2. Imagen
+3. Video
 ```
 
-`Imagen` is the available product entry. `Vídeo` is visible in the console but remains unavailable as a separate product pipeline.
+Each entry is implemented and validated in V2.0.
 
-After selecting `Imagen`, the runtime offers:
+## Components
 
-```text
-MODO
+### Guion
 
-1. Proyecto completo
-2. Solo guion
-3. Solo audio
-4. Audio + subtítulos
-5. Audio + subtítulos + storyboard
-```
+The Guion component works with manual script input and can route the script toward Imagen, Video, or Diseno.
 
-Mode behavior:
+Validated routes include:
 
-- `Proyecto completo`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> Images -> Video.
-- `Solo guion`: Script -> stop.
-- `Solo audio`: Script -> Voice -> Audio -> stop.
-- `Audio + subtítulos`: Script -> Voice -> Audio -> Subtitles -> stop.
-- `Audio + subtítulos + storyboard`: Script -> Voice -> Audio -> Subtitles -> Storyboard -> stop.
+- Guion -> Imagen
+- Guion -> Video
+- Guion -> Diseno -> Imagen
+- Guion -> Diseno -> Video
 
-The global `0` rule exits the application:
+### Imagen
 
-```text
-Finalizando AI Visual Composer...
-```
+The Imagen component generates the visual image pipeline from script/storyboard evidence. It supports partial and complete execution modes.
+
+Validated modes:
+
+- Proyecto completo
+- Solo audio
+- Audio + subtitulos
+- Audio + subtitulos + storyboard
+
+### Video
+
+The Video component is available as a product entry in V2.0. It supports partial video-oriented routes and complete image-to-video generation.
+
+Validated modes:
+
+- Proyecto completo
+- Solo audio
+- Audio + subtitulos
+- Audio + subtitulos + storyboard
+
+The complete Video route includes image generation, I2V clip generation, and final FFmpeg composition with ping-pong I2V looping and composition Motion over generated clips.
+
+## Profiles
+
+Validated profiles:
+
+- Instagram
+- YouTube
+
+Profile configuration is loaded from `config/profiles/`.
+
+Current profile families include:
+
+- `config/profiles/guion/`
+- `config/profiles/instagram/`
+- `config/profiles/youtube/`
+- `config/profiles/diseno/imagen/`
+- `config/profiles/diseno/video/`
+- `config/profiles/video/`
 
 ## Inputs
 
-Main topic:
+Current input files:
 
 ```text
 input/tema.txt
-```
-
-Optional manual script:
-
-```text
 input/guion.txt
+input/guion_imagen.txt
+input/guion_video.txt
 ```
 
-If `input/guion.txt` exists and contains text, the system uses it as the script. Otherwise it generates the script from `input/tema.txt` through Ollama.
+Purpose:
 
-## Profiles And Configuration
+- `input/tema.txt`: topic for generated script flows.
+- `input/guion.txt`: manual script source for Guion routes.
+- `input/guion_imagen.txt`: manual design source for Diseno -> Imagen.
+- `input/guion_video.txt`: manual design source for Diseno -> Video.
 
-Current application profile configuration:
+## Outputs
 
-```text
-config/app.json
-platform: youtube
-profile: modo_conciencia
-language: es
-```
+Generated outputs are written under `output/` according to the selected product entry and route.
 
-Available profiles:
+`output/` is runtime-temporary storage. It may be reset between executions, is excluded from Git, and is not part of any version or restoration point.
 
-- `config/profiles/instagram/modo_conciencia.json`
-- `config/profiles/youtube/modo_conciencia.json`
+V2.0 baseline output families:
 
-Available voice configs:
+- `output/guion/`
+- `output/imagen/`
+- `output/video/`
 
-- `config/voice_configs/femenina.json`
-- `config/voice_configs/masculina.json`
+Typical project artifacts include:
 
-Available subtitle configs:
+- `scripts/guion.txt`
+- `audio/voz.mp3`
+- `audio/audio_final.mp3`
+- `subtitles/subtitulos.srt`
+- `subtitles/subtitulos_video.srt`
+- `storyboard/storyboard.json`
+- `images/images_manifest.json`
+- `images/scene_*.png`
+- `images/evidence/`
+- `video_clips/video_clips_manifest.json`
+- `video_clips/scene_*.mp4`
+- `video/*.mp4`
 
-- `config/subtitle_configs/single_line.json`
-- `config/subtitle_configs/word_by_word.json`
+## Pipeline Capabilities
+
+AI Visual Composer V2.0 includes:
+
+- script generation and manual script ingestion;
+- voice generation;
+- audio mixing;
+- subtitle generation and optimization;
+- storyboard generation;
+- Visual Truth based image runtime;
+- Visual Intelligence evidence;
+- prompt translation;
+- ComfyUI image generation;
+- ComfyUI I2V video clip generation;
+- ping-pong I2V clip looping;
+- image manifests;
+- video clip manifests;
+- Motion over images and I2V clips;
+- transitions;
+- overlays;
+- visual effects;
+- fade;
+- subtitles in final video;
+- FFmpeg final composition.
 
 ## Music
 
-The console currently offers:
+Music is optional.
+
+The current console presents:
 
 ```text
-MÚSICA
+MUSICA
 
-1. Sin música
+1. Sin musica
 2. Aleatoria
 ```
 
-When random music is enabled, the system selects from available categories under:
-
-```text
-assets/music/
-```
-
-Current categories include:
-
-- `action`
-- `ambient`
-- `calm`
-- `cinematic`
-- `documentary`
-- `electronic`
-- `emotional`
-- `epic`
-- `meditation`
-- `mystery`
+When enabled, music is selected from available assets under `assets/music/`.
 
 ## Overlays
 
-Overlays are available in `Proyecto completo` mode through:
+Overlays are optional in complete video composition.
 
-```text
-OVERLAYS
+Current behavior includes:
 
-1. Sí
-2. No
-```
-
-When overlays are enabled:
-
-1. The system reads the topic.
-2. It discovers real folders under `assets/videos/overlays/`.
-3. It asks the semantic overlay resolver for a primary thematic category and optional secondary categories.
-4. It validates all returned categories against real folders.
-5. It adds `Light Leaks` as neutral fallback when available.
-6. It applies weighted category selection:
-   - primary: `3.0`;
-   - secondary: `2.0`;
-   - `Light Leaks`: `1.0`.
-7. It applies per-video category cooldown to reduce immediate category repetition when alternatives exist.
-8. It selects a concrete MP4 using the existing file selector.
-
-Current overlay folders:
-
-- `Electricity`
-- `Light Leaks`
-
-Behavior:
-
-- If a clear thematic category exists, thematic overlays can participate.
-- If no clear thematic category exists, `NONE -> Light Leaks`.
-- If no neutral fallback exists and no thematic category is valid, overlays are disabled safely.
-- File selection still avoids only immediate MP4 repetition according to the existing selector behavior.
+- dynamic discovery under `assets/videos/overlays/`;
+- semantic category resolution;
+- `Light Leaks` neutral fallback;
+- weighted thematic distribution;
+- per-video category cooldown;
+- immediate asset repeat avoidance.
 
 ## Visual Effects
 
-Visual Effects are separate from overlays.
+Visual Effects are distinct from overlays. They are temporal video layer effects used by the video composition pipeline according to profile configuration.
 
-Current visual effects folder:
+## Video Composition Order
 
-```text
-assets/videos/visual_effects/LightLeak/
-```
-
-Visual Effects are used as temporal video layer effects according to the profile configuration. They are not the same as thematic overlays.
-
-## Video Composition Core
-
-The video composition order is:
-
-1. Motion
-2. Transitions
-3. Overlays
-4. Visual Effects
-5. Fade
-6. Subtitles
-
-The public video facade remains:
-
-```python
-from app.modules.video.video_builder import VideoBuilder
-
-VideoBuilder().build(
-    audio_path=None,
-    subtitle_path=None,
-    images_manifest_path=None,
-    output_path=None,
-)
-```
-
-## Project Structure
-
-The documentation tree is maintained in:
+The FFmpeg video composition core applies:
 
 ```text
-project_tree.txt
+Motion
+  -> Transitions
+  -> Overlays
+  -> Visual Effects
+  -> Fade
+  -> Subtitles
 ```
 
-This file is a documentation snapshot of the architecture, not a full inventory of local resources.
+## External Runtime Requirements
 
-## Official Documentation
+AI Visual Composer uses local external runtimes:
 
-- `README.md`: overview, setup, startup, and operational usage.
+- Ollama
+- ComfyUI
+- FFmpeg
+- Edge TTS
+
+The configured local AI provider is Ollama. ComfyUI workflows and models must be available in the local development environment.
+
+External runtimes, generated output, local logs, models, checkpoints, secrets, and private development memory are not part of the public product repository.
+
+## Validation
+
+V2.0 baseline evidence:
+
+- Guion: 20 executions.
+- Imagen: 8 executions.
+- Video: 8 executions.
+- Total: 36 executions.
+
+Permanent V2.0 baseline evidence is stored under `validation/v2_0/`. The baseline is self-contained for future comparisons and does not depend on the continued existence of the original runtime files under `output/`.
+
+Any historical `source` metadata pointing to `output/` records the original execution location only. Those paths are not live dependencies and may stop resolving after `output/` is reset.
+
+Baseline artifacts include:
+
+- `report.md`
+- `metrics.json`
+- `metrics.csv`
+- `inventory.json`
+- `samples_manifest.json`
+- `samples/`
+- `charts/`
+
+## Documentation
+
+- `README.md`: operational overview.
 - `ARCHITECTURE.md`: current architecture.
-- `ROADMAP.md`: future work for the stable V.1 baseline.
+- `ROADMAP.md`: implemented V2.0 and future V2.x work.
 - `CHANGELOG.md`: notable changes.
-- `docs/architecture/VISUAL_INTELLIGENCE_ARCHITECTURE_v1.0.md`: frozen Visual Intelligence architecture specification.
+- `project_tree.txt`: generated architecture tree.
 - `docs/reference/generate_project_tree.md`: project tree generator reference.
-- `docs/reference/prompt_music.md`: music prompt reference.
-- `docs/restoration/RESTORATION_POINT_PR1.md`: official V.1 stable restoration point.
 
-Private development memory and task reports live in `CODEX/` and are intentionally excluded from the public repository and official releases.
-
-## Restoration Structure
-
-Official restoration structure:
-
-```text
-V.1
-|
-└── PR1 - STABLE
-```
-
-Future stable restoration points inside `V.1` may be named `PR2`, `PR3`, `PR4`, and so on. `V.2` must only be created after an explicit owner decision.
+Private development memory and task handoff documents live in `CODEX/` and are intentionally excluded from the public repository and official releases.
 
 ## License
 
@@ -358,6 +258,6 @@ MIT License. See [LICENSE](LICENSE).
 
 ## Author
 
-Juan Bautista Galisteo Marqués
+Juan Bautista Galisteo Marques
 
 Creator and maintainer of AI Visual Composer.
