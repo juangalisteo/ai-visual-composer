@@ -397,11 +397,18 @@ Local machine-specific information should remain private or excluded from the pu
 
 ## 14. Local Inputs and Outputs
 
-Runtime inputs are maintained under:
+AI Visual Composer includes four empty runtime input files:
 
 ```text
-input/
+input/guion.txt
+input/tema.txt
+input/guion_imagen.txt
+input/guion_video.txt
 ```
+
+These files belong to the public project structure and are included in a clone or download of the repository.
+
+They are intentionally empty. The user writes into them when preparing a local generation.
 
 Generated projects are maintained under:
 
@@ -409,7 +416,7 @@ Generated projects are maintained under:
 output/
 ```
 
-Both directories represent local runtime state and are excluded from the public repository.
+Generated runtime output is excluded from the public repository.
 
 Permanent validation evidence is stored separately under:
 
@@ -420,6 +427,7 @@ validation/
 Do not confuse:
 
 ```text
+input/
 output/
 ```
 
@@ -428,6 +436,8 @@ with:
 ```text
 validation/
 ```
+
+Runtime input content is local user state.
 
 Runtime output may be regenerated or removed.
 

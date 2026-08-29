@@ -92,10 +92,11 @@ AI VISUAL COMPOSER
 1. Guion
 2. Imagen
 3. Video
-0. Salir
 ```
 
 Select the required product component and continue through the interactive options.
+
+Typing `0` in any menu exits AI Visual Composer immediately.
 
 ---
 
@@ -123,16 +124,10 @@ according to the selected product route and project name.
 
 When AI Visual Composer has finished the current operation:
 
-1. Return to the main menu when applicable.
-2. Select:
-
-```text
-0. Salir
-```
-
-3. Close the AI Visual Composer terminal when execution has finished.
-4. Close the ComfyUI terminal if it is no longer required.
-5. Close Ollama if it is no longer required.
+1. Type `0` in the current menu when applicable.
+2. Close the AI Visual Composer terminal when execution has finished.
+3. Close the ComfyUI terminal if it is no longer required.
+4. Close Ollama if it is no longer required.
 
 Do not terminate ComfyUI, Ollama, FFmpeg, or AI Visual Composer while an active generation is still running unless the process must intentionally be aborted.
 

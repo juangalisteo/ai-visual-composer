@@ -218,9 +218,9 @@ The difference corresponds to the additional subtitle timing and presentation te
 
 ### Current Status
 
-V2.0 is the stable version being consolidated as the reference state of AI Visual Composer.
+V2.0 is the current stable version and the reference state of AI Visual Composer.
 
-Final closure requires successful validation of the complete recovered runtime state before creation of the definitive restoration checkpoint.
+The V2.0 restoration checkpoint and full project backup preserve this state before the next deep general validation. That later validation will determine real runtime behavior, not whether V2.0 should be preserved.
 
 ---
 

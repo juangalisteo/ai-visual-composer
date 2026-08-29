@@ -636,17 +636,48 @@ Automated tests do not replace real runtime validation when external generation 
 
 ---
 
-# 16. Current Closure Tasks
+# 16. Current Preservation Sequence
 
-Before creating the definitive V2.0 restoration point, the current recovered system should complete the remaining closure validation.
+AI Visual Composer is currently identified as `V2.0`.
 
-## 16.1 Complete Real Runtime Validation
+V2.0 is the stable state that must be preserved before the next deep general validation.
 
-Execute the complete real pipeline after restoration of the current subtitle timing system.
+The established order is:
 
-The objective is to confirm that the recovered system works correctly with the real local runtime rather than only through automated tests.
+```text
+1. Correct documentation
+2. Review general documentation coherence
+3. Establish CHECKPOINT V2.0
+4. Create a full backup of the V2.0 state
+5. Execute deep general validation
+6. Correct any discovered issues afterwards from the preserved V2.0 base
+```
 
-## 16.2 Visual Video Quality Verification
+## 16.1 Documentation Consistency
+
+Ensure that official documentation consistently describes the current state as AI Visual Composer V2.0.
+
+The objective is to remove ambiguity before preserving the V2.0 state.
+
+## 16.2 V2.0 Restoration Checkpoint
+
+Create the definitive V2.0 restoration checkpoint for the current state.
+
+The checkpoint is not conditional on the future deep general validation. It preserves the current V2.0 state so that future corrections can start from a known base.
+
+## 16.3 Full V2.0 Backup
+
+Create a full backup of the V2.0 state after the checkpoint.
+
+The backup should preserve or identify the relevant local state needed to restore the project beyond Git-tracked files when applicable.
+
+## 16.4 Deep General Validation
+
+Execute the complete real pipeline after the V2.0 checkpoint and backup.
+
+The objective is to determine the real runtime behavior of the preserved V2.0 state with the local execution environment.
+
+## 16.5 Visual Video Quality Verification
 
 The existing V2.0 baseline should be used as reference when investigating perceived video-quality differences.
 
@@ -654,7 +685,7 @@ The objective is to determine whether any degradation exists and, if so, identif
 
 No generation parameters should be changed merely to compensate for an unlocated regression.
 
-## 16.3 Documentation Consistency
+## 16.6 Architecture Naming Reference
 
 Ensure that official documentation consistently describes:
 
@@ -673,9 +704,9 @@ Integrated capability:
 Diseño
 ```
 
-## 16.4 Definitive Restoration Point
+## 16.7 Post-Validation Corrections
 
-Only after successful validation and documentation review should the definitive V2.0 restoration point be created.
+Any issue discovered during the later deep general validation should be corrected from the preserved V2.0 base.
 
 ---
 
@@ -979,10 +1010,11 @@ PERMANENT BASELINE
 36 REAL EXECUTIONS
 
 PENDING BEFORE DEFINITIVE V2.0 CLOSURE
-- Complete real runtime validation
-- Resolve visual video-quality verification
 - Complete official documentation review
-- Create definitive full restoration checkpoint
+- Create definitive V2.0 restoration checkpoint
+- Create full V2.0 backup
+- Execute deep general validation afterwards
+- Resolve any discovered issues from the preserved V2.0 base
 ```
 
 ---
