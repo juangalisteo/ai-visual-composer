@@ -72,6 +72,8 @@ backup_codificacion_*/
 *.gguf
 
 # Codex/agent local state
+AGENT_AI/CODEX/
+AGENT_AI/ANTIGRAVITY/
 CODEX/
 .agents/
 .codex/

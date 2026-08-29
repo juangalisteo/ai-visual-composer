@@ -3,6 +3,7 @@
     "max_chars_per_line": 60,
     "min_duration": 1.0,
     "max_duration": 3.0,
+    "significant_gap_threshold": 0.35,
 
     "split_on_punctuation": true,
     "avoid_orphan_words": true,

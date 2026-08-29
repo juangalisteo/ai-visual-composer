@@ -1,263 +1,524 @@
 # AI Visual Composer
 
-Professional AI Visual Generation Platform
+**Professional AI Visual Generation Platform**
 
-AI Visual Composer is a profile-driven local generation system for scripts, images, image-to-video clips, and final video composition. The current documented product state is V2.0.
+AI Visual Composer is a local audiovisual generation platform designed to transform scripts, ideas, and visual concepts into structured multimedia content through artificial intelligence.
 
-The application is operated from the console through:
+The system integrates text processing, voice generation, audio, subtitles, storyboard construction, image generation, image-to-video generation, visual intelligence, motion, transitions, overlays, visual effects, and final video composition within a unified workflow.
 
-```bash
-python main.py
-```
+AI Visual Composer is designed around a modular, profile-driven architecture that keeps each stage of the generation process structured, traceable, configurable, and independently evolvable.
 
-## Current Status
+**Current stable version:** `V2.0`
 
-- Version: `V2.0`.
-- State: validated by manual execution baselines.
-- Baseline evidence:
-  - `validation/v2_0/guion/`
-  - `validation/v2_0/imagen/`
-  - `validation/v2_0/video/`
-- Validated executions: 36 real runs.
-- Test suite at pre-checkpoint audit: 837 tests passing.
+---
 
-## Product Entries
+## Overview
 
-The main console exposes:
+AI Visual Composer brings the main stages of AI-assisted audiovisual production into a single local system.
+
+Instead of treating image generation, video generation, subtitles, audio, and composition as isolated tools, the platform connects them through a structured production architecture.
+
+The system can process existing scripts, develop content from an idea or topic, generate visual scenes, transform images into video, create synchronized subtitles, and assemble the resulting assets into complete audiovisual projects.
+
+Its architecture is built around three main product components:
 
 ```text
 AI VISUAL COMPOSER
 
-1. Guion
-2. Imagen
-3. Video
+1. GUION
+2. IMAGEN
+3. VIDEO
 ```
 
-Each entry is implemented and validated in V2.0.
+These components define the core product architecture.
 
-## Components
+---
 
-### Guion
+## Guion
 
-The Guion component works with manual script input and can route the script toward Imagen, Video, or Diseno.
+**Guion** is the script-centered component.
 
-Validated routes include:
+It allows an existing text or complete script supplied by the user to become the source of an audiovisual generation process.
 
-- Guion -> Imagen
-- Guion -> Video
-- Guion -> Diseno -> Imagen
-- Guion -> Diseno -> Video
+From Guion, the system can process the supplied content toward different visual destinations while preserving the original textual source.
 
-### Imagen
+Its purpose is to provide a controlled workflow when the content already exists and the system's role is to transform that content into audiovisual material.
 
-The Imagen component generates the visual image pipeline from script/storyboard evidence. It supports partial and complete execution modes.
+---
 
-Validated modes:
+## Imagen
 
-- Proyecto completo
-- Solo audio
-- Audio + subtitulos
-- Audio + subtitulos + storyboard
+**Imagen** is the image-centered component.
 
-### Video
+It combines content preparation, storyboard generation, structured visual interpretation, prompt translation, and AI image generation.
 
-The Video component is available as a product entry in V2.0. It supports partial video-oriented routes and complete image-to-video generation.
+The visual pipeline is designed to preserve narrative intent while progressively translating it into information suitable for the generation backend.
 
-Validated modes:
+At a high level:
 
-- Proyecto completo
-- Solo audio
-- Audio + subtitulos
-- Audio + subtitulos + storyboard
+```text
+CONTENT
+   ↓
+STORYBOARD
+   ↓
+VISUAL TRUTH
+   ↓
+VISUAL INTELLIGENCE
+   ↓
+CINEMATIC DIRECTION
+   ↓
+PROMPT TRANSLATION
+   ↓
+IMAGE GENERATION
+```
 
-The complete Video route includes image generation, I2V clip generation, and final FFmpeg composition with ping-pong I2V looping and composition Motion over generated clips.
+This architecture separates narrative information from backend-specific generation instructions and provides greater control over the visual generation process.
+
+---
+
+## Video
+
+**Video** extends the visual generation architecture into complete audiovisual production.
+
+The system can generate source images, transform them into image-to-video clips, process temporal behavior, and integrate those assets into the final composition.
+
+At a high level:
+
+```text
+CONTENT
+   ↓
+STORYBOARD
+   ↓
+IMAGE GENERATION
+   ↓
+IMAGE-TO-VIDEO
+   ↓
+MOTION
+   ↓
+COMPOSITION
+   ↓
+FINAL VIDEO
+```
+
+The video architecture supports both generated I2V material and still-image based audiovisual composition.
+
+---
+
+## Integrated Design Capability
+
+AI Visual Composer also includes **Diseño** as an integrated visual generation capability.
+
+Diseño is not a fourth main product component.
+
+Instead, it provides a direct path for transforming visual descriptions or design intentions into:
+
+- standalone images;
+- standalone video clips.
+
+This capability reuses the existing image and video generation infrastructure while preserving the three-component architecture:
+
+```text
+GUION
+IMAGEN
+VIDEO
+```
+
+Diseño therefore acts as an additional input and scalability path rather than an independent product pipeline.
+
+---
+
+## Visual Truth
+
+Visual Truth is the structured visual contract used by the image generation architecture.
+
+Its purpose is to preserve the information that must survive between narrative interpretation and visual generation, including elements such as:
+
+- visible subjects;
+- actions;
+- environments;
+- objects;
+- spatial relationships;
+- continuity;
+- visual constraints;
+- filmable interpretation.
+
+Visual Truth remains independent from the specific generation backend.
+
+---
+
+## Visual Intelligence
+
+Visual Intelligence is the reasoning layer responsible for interpreting structured visual information before prompt translation.
+
+Its architecture follows three principal stages:
+
+```text
+VISUAL ANALYSIS
+      ↓
+VISUAL REASONING
+      ↓
+VISUAL SYNTHESIS
+```
+
+The resulting information is consolidated into an `EffectiveVisualBrief`.
+
+This allows the system to reason about visual intent, priorities, continuity, conflicts, composition, and generation strategy before communicating with the image backend.
+
+---
+
+## Prompt Translation
+
+Prompt Translation converts the structured visual representation into generation instructions suitable for the selected backend.
+
+Its responsibilities include:
+
+- selecting relevant visual information;
+- prioritizing prompt content;
+- removing unnecessary duplication;
+- respecting backend prompt budgets;
+- preserving visual intent;
+- maintaining generation traceability.
+
+This keeps narrative interpretation separated from backend-specific prompt construction.
+
+---
+
+## Image Generation
+
+AI Visual Composer uses a local ComfyUI-based image generation runtime.
+
+The current image architecture supports:
+
+- structured storyboard interpretation;
+- Visual Truth;
+- Visual Intelligence;
+- cinematic direction;
+- backend-neutral prompt translation;
+- generation manifests;
+- visual evidence;
+- profile-driven output.
+
+The generation backend and its models remain replaceable components of the wider architecture.
+
+---
+
+## Image-to-Video
+
+AI Visual Composer includes an Image-to-Video generation layer for transforming generated images into temporal visual assets.
+
+The I2V architecture supports:
+
+- source-image analysis;
+- motion intent;
+- video prompt translation;
+- ComfyUI integration;
+- Wan I2V generation;
+- clip manifests;
+- generated video assets.
+
+Generated clips remain available as independent project artifacts before final composition.
+
+---
+
+## Video Composition
+
+Final audiovisual composition is performed through a modular FFmpeg-based video engine.
+
+The composition pipeline supports:
+
+```text
+MOTION
+   ↓
+TRANSITIONS
+   ↓
+OVERLAYS
+   ↓
+VISUAL EFFECTS
+   ↓
+FADE
+   ↓
+SUBTITLES
+```
+
+The video engine also supports temporal preparation of generated I2V clips, including forward/reverse ping-pong looping when a generated clip must cover a longer scene duration.
+
+Motion can be applied to both still images and generated I2V material.
+
+---
+
+## Subtitle System
+
+AI Visual Composer includes a subtitle timing architecture designed to use real timing information whenever it is available.
+
+Timing resolution follows the hierarchy:
+
+```text
+EDGE TTS WORDBOUNDARY
+        ↓
+WHISPER WORD TIMESTAMPS
+        ↓
+LEGACY SRT TIMING
+```
+
+The system supports:
+
+- real word timing;
+- word-by-word subtitles;
+- single-line subtitles;
+- Whisper timing fallback;
+- legacy timing compatibility;
+- micro-cue handling for extremely short subtitle events.
+
+The micro-cue system operates exclusively on subtitle presentation and does not modify the original spoken content.
+
+---
+
+## Audio
+
+The audiovisual pipeline includes dedicated processing for:
+
+- voice generation;
+- audio preparation;
+- music;
+- final audio mixing;
+- subtitle timing sources.
+
+Voice generation and subtitle timing remain coordinated while preserving their responsibilities as separate parts of the system.
+
+---
 
 ## Profiles
 
-Validated profiles:
+AI Visual Composer uses a profile-driven architecture.
+
+Validated output targets currently include:
 
 - Instagram
 - YouTube
 
-Profile configuration is loaded from `config/profiles/`.
+Profiles allow generation and composition behavior to be adapted according to the target platform, orientation, resolution, subtitle configuration, motion behavior, and audiovisual requirements.
 
-Current profile families include:
+---
 
-- `config/profiles/guion/`
-- `config/profiles/instagram/`
-- `config/profiles/youtube/`
-- `config/profiles/diseno/imagen/`
-- `config/profiles/diseno/video/`
-- `config/profiles/video/`
+## Local Architecture
 
-## Inputs
+AI Visual Composer is designed to operate locally.
 
-Current input files:
+Its current ecosystem uses:
 
-```text
-input/tema.txt
-input/guion.txt
-input/guion_imagen.txt
-input/guion_video.txt
-```
-
-Purpose:
-
-- `input/tema.txt`: topic for generated script flows.
-- `input/guion.txt`: manual script source for Guion routes.
-- `input/guion_imagen.txt`: manual design source for Diseno -> Imagen.
-- `input/guion_video.txt`: manual design source for Diseno -> Video.
-
-## Outputs
-
-Generated outputs are written under `output/` according to the selected product entry and route.
-
-`output/` is runtime-temporary storage. It may be reset between executions, is excluded from Git, and is not part of any version or restoration point.
-
-V2.0 baseline output families:
-
-- `output/guion/`
-- `output/imagen/`
-- `output/video/`
-
-Typical project artifacts include:
-
-- `scripts/guion.txt`
-- `audio/voz.mp3`
-- `audio/audio_final.mp3`
-- `subtitles/subtitulos.srt`
-- `subtitles/subtitulos_video.srt`
-- `storyboard/storyboard.json`
-- `images/images_manifest.json`
-- `images/scene_*.png`
-- `images/evidence/`
-- `video_clips/video_clips_manifest.json`
-- `video_clips/scene_*.mp4`
-- `video/*.mp4`
-
-## Pipeline Capabilities
-
-AI Visual Composer V2.0 includes:
-
-- script generation and manual script ingestion;
-- voice generation;
-- audio mixing;
-- subtitle generation and optimization;
-- storyboard generation;
-- Visual Truth based image runtime;
-- Visual Intelligence evidence;
-- prompt translation;
-- ComfyUI image generation;
-- ComfyUI I2V video clip generation;
-- ping-pong I2V clip looping;
-- image manifests;
-- video clip manifests;
-- Motion over images and I2V clips;
-- transitions;
-- overlays;
-- visual effects;
-- fade;
-- subtitles in final video;
-- FFmpeg final composition.
-
-## Music
-
-Music is optional.
-
-The current console presents:
-
-```text
-MUSICA
-
-1. Sin musica
-2. Aleatoria
-```
-
-When enabled, music is selected from available assets under `assets/music/`.
-
-## Overlays
-
-Overlays are optional in complete video composition.
-
-Current behavior includes:
-
-- dynamic discovery under `assets/videos/overlays/`;
-- semantic category resolution;
-- `Light Leaks` neutral fallback;
-- weighted thematic distribution;
-- per-video category cooldown;
-- immediate asset repeat avoidance.
-
-## Visual Effects
-
-Visual Effects are distinct from overlays. They are temporal video layer effects used by the video composition pipeline according to profile configuration.
-
-## Video Composition Order
-
-The FFmpeg video composition core applies:
-
-```text
-Motion
-  -> Transitions
-  -> Overlays
-  -> Visual Effects
-  -> Fade
-  -> Subtitles
-```
-
-## External Runtime Requirements
-
-AI Visual Composer uses local external runtimes:
-
+- Python
 - Ollama
 - ComfyUI
 - FFmpeg
 - Edge TTS
+- OpenAI Whisper
+- Flux
+- Wan
 
-The configured local AI provider is Ollama. ComfyUI workflows and models must be available in the local development environment.
+Large AI models, external runtimes, generated content, temporary files, and private development resources remain outside the public source repository.
 
-External runtimes, generated output, local logs, models, checkpoints, secrets, and private development memory are not part of the public product repository.
+---
 
 ## Validation
 
-V2.0 baseline evidence:
+AI Visual Composer V2.0 maintains a permanent validation baseline created from real executions of the system.
 
-- Guion: 20 executions.
-- Imagen: 8 executions.
-- Video: 8 executions.
-- Total: 36 executions.
+The baseline contains:
 
-Permanent V2.0 baseline evidence is stored under `validation/v2_0/`. The baseline is self-contained for future comparisons and does not depend on the continued existence of the original runtime files under `output/`.
+```text
+GUION   20 real executions
+IMAGEN   8 real executions
+VIDEO    8 real executions
+────────────────────────
+TOTAL   36 real executions
+```
 
-Any historical `source` metadata pointing to `output/` records the original execution location only. Those paths are not live dependencies and may stop resolving after `output/` is reset.
+Validation evidence is preserved under:
 
-Baseline artifacts include:
+```text
+validation/v2_0/
+```
 
-- `report.md`
-- `metrics.json`
-- `metrics.csv`
-- `inventory.json`
-- `samples_manifest.json`
-- `samples/`
-- `charts/`
+with dedicated evidence for:
 
-## Documentation
+```text
+validation/v2_0/guion/
+validation/v2_0/imagen/
+validation/v2_0/video/
+```
 
-- `README.md`: operational overview.
-- `ARCHITECTURE.md`: current architecture.
-- `ROADMAP.md`: implemented V2.0 and future V2.x work.
-- `CHANGELOG.md`: notable changes.
-- `project_tree.txt`: generated architecture tree.
-- `docs/reference/generate_project_tree.md`: project tree generator reference.
+The validation system preserves representative artifacts such as:
 
-Private development memory and task handoff documents live in `CODEX/` and are intentionally excluded from the public repository and official releases.
+- reports;
+- metrics;
+- inventories;
+- manifests;
+- storyboards;
+- source images;
+- I2V clips;
+- final videos;
+- representative samples.
+
+This provides a permanent behavioral reference for future development, regression analysis, and restoration.
+
+---
+
+## Current Capabilities
+
+AI Visual Composer V2.0 includes:
+
+- script-based audiovisual processing;
+- topic-driven content generation;
+- voice generation;
+- audio processing and mixing;
+- subtitle generation;
+- real subtitle word timing;
+- word-by-word subtitle presentation;
+- micro-cue handling;
+- storyboard generation;
+- Visual Truth;
+- Visual Intelligence;
+- Visual Analysis;
+- Visual Reasoning;
+- Visual Synthesis;
+- Effective Visual Brief;
+- Cinematic Direction;
+- Prompt Translation;
+- ComfyUI image generation;
+- Flux support;
+- ComfyUI Image-to-Video generation;
+- Wan I2V support;
+- Motion;
+- ping-pong I2V looping;
+- transitions;
+- overlays;
+- visual effects;
+- fades;
+- FFmpeg final composition;
+- Instagram profiles;
+- YouTube profiles;
+- generation manifests;
+- visual evidence;
+- permanent validation baselines.
+
+---
+
+## Project Documentation
+
+Official project documentation is separated by responsibility:
+
+```text
+README.md
+```
+
+General product overview.
+
+```text
+ARCHITECTURE.md
+```
+
+Internal system architecture and component relationships.
+
+```text
+INSTALL.md
+```
+
+Initial installation and environment requirements.
+
+```text
+START.md
+```
+
+Normal startup and shutdown procedure.
+
+```text
+ROADMAP.md
+```
+
+Current development state and future evolution.
+
+```text
+CHANGELOG.md
+```
+
+Historical record of relevant product changes.
+
+```text
+validation/
+```
+
+Permanent validation evidence and historical behavioral baselines.
+
+---
+
+## Repository Boundaries
+
+The public repository contains the elements required to describe, understand, validate, and develop AI Visual Composer.
+
+This may include:
+
+- source code;
+- configuration;
+- official documentation;
+- official assets;
+- tests;
+- validation baselines;
+- technical references.
+
+Local or private resources are intentionally kept outside the public distribution, including:
+
+- generated runtime output;
+- temporary files;
+- local input content;
+- local logs;
+- secrets and credentials;
+- local ComfyUI installation;
+- downloaded AI models and checkpoints;
+- private development memory;
+- private agent workspaces.
+
+---
+
+## Installation
+
+Initial installation and environment preparation are documented in:
+
+**[INSTALL.md](INSTALL.md)**
+
+---
+
+## Startup
+
+Normal startup and shutdown procedures are documented in:
+
+**[START.md](START.md)**
+
+---
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+AI Visual Composer is released under the **MIT License**.
+
+See **[LICENSE](LICENSE)** for the complete license terms.
+
+---
+
+## Copyright
+
+Copyright © 2026 **Juan Bautista Galisteo Marqués**
+
+All copyright notices and license notices must be preserved in copies or substantial portions of the software in accordance with the MIT License.
+
+---
 
 ## Author
 
-Juan Bautista Galisteo Marques
+**Juan Bautista Galisteo Marqués**
 
-Creator and maintainer of AI Visual Composer.
+Creator and maintainer of **AI Visual Composer**.
+
+---
+
+AI Visual Composer  
+Professional AI Visual Generation Platform  
+© 2026 Juan Bautista Galisteo Marqués

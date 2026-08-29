@@ -12,6 +12,10 @@ from app.modules.subtitles.models.single_line_model import (
 from app.modules.subtitles.models.word_by_word_model import (
     WordByWordModel
 )
+from app.modules.subtitles.timing import (
+    SubtitleTimingResolver,
+    count_gaps
+)
 
 
 class SrtOptimizer:
@@ -23,6 +27,24 @@ class SrtOptimizer:
 
         subtitle_config = (
             config.get_subtitle_config()
+        )
+        subtitle_config = dict(
+            subtitle_config
+        )
+        profile = (
+            config.get_profile_config()
+        )
+        video_style = profile.get(
+            "video_style",
+            {}
+        )
+
+        subtitle_config.setdefault(
+            "render_fps",
+            video_style.get(
+                "fps",
+                30
+            )
         )
 
         mode = subtitle_config["mode"]
@@ -99,11 +121,57 @@ class SrtOptimizer:
             content.strip()
         )
 
+        timing = SubtitleTimingResolver().resolve(
+            subtitle_path=input_path,
+            audio_path=project.audio_path()
+        )
+
         optimized_blocks = (
             self.model.optimize(
-                blocks
+                blocks,
+                timing=timing
             )
         )
+
+        if timing is not None:
+            gap_threshold = float(
+                getattr(
+                    self.model,
+                    "significant_gap_threshold",
+                    0.35
+                )
+            )
+            ProgressLogger.info(
+                "Subtitle timing source: "
+                f"{timing.source} | "
+                f"words timed: {timing.word_count} | "
+                f"gaps detected: "
+                f"{count_gaps(timing.words, gap_threshold)}"
+            )
+
+            if timing.fallback_reason:
+                ProgressLogger.info(
+                    "Subtitle timing fallback: "
+                    f"{timing.fallback_reason}"
+                )
+
+            stats = getattr(
+                self.model,
+                "last_micro_cue_stats",
+                None
+            )
+
+            if stats is not None and stats.detected:
+                ProgressLogger.info(
+                    "Micro-cues detected: "
+                    f"{stats.detected} | "
+                    "Micro-cues merged: "
+                    f"{stats.merged}"
+                )
+        else:
+            ProgressLogger.info(
+                "Subtitle timing source: Legacy SRT"
+            )
 
         output_path.write_text(
             "\n\n".join(

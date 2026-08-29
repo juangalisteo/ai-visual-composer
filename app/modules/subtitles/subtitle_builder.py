@@ -1,9 +1,11 @@
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.subtitles.timing import whisper_timing_path
 from app.shared.progress_logger import ProgressLogger
 
 
@@ -54,49 +56,69 @@ class SubtitleBuilder:
                 f"{audio_path}"
             )
 
-        temp_output_dir = (
-            output_path.parent
-        )
-
-        command = [
-            "python",
-            "-m",
-            "whisper",
-            str(audio_path),
-            "--model",
-            self.model,
-            "--task",
-            "transcribe",
-            "--language",
-            self.language,
-            "--output_format",
-            "srt",
-            "--device",
-            self.device,
-            "--output_dir",
-            str(temp_output_dir)
-        ]
-
-        subprocess.run(
-            command,
-            check=True
-        )
-
-        generated_srt = (
-            temp_output_dir
-            / f"{audio_path.stem}.srt"
-        )
-
-        if not generated_srt.exists():
-            raise FileNotFoundError(
-                "No se generó el SRT esperado: "
-                f"{generated_srt}"
+        with tempfile.TemporaryDirectory(
+            dir=output_path.parent
+        ) as temp_dir:
+            temp_output_dir = Path(
+                temp_dir
             )
 
-        shutil.move(
-            str(generated_srt),
-            str(output_path)
-        )
+            command = [
+                "python",
+                "-m",
+                "whisper",
+                str(audio_path),
+                "--model",
+                self.model,
+                "--task",
+                "transcribe",
+                "--language",
+                self.language,
+                "--word_timestamps",
+                "True",
+                "--output_format",
+                "all",
+                "--device",
+                self.device,
+                "--output_dir",
+                str(temp_output_dir)
+            ]
+
+            subprocess.run(
+                command,
+                check=True
+            )
+
+            generated_srt = (
+                temp_output_dir
+                / f"{audio_path.stem}.srt"
+            )
+
+            if not generated_srt.exists():
+                raise FileNotFoundError(
+                    "No se generó el SRT esperado: "
+                    f"{generated_srt}"
+                )
+
+            shutil.move(
+                str(generated_srt),
+                str(output_path)
+            )
+
+            generated_json = (
+                temp_output_dir
+                / f"{audio_path.stem}.json"
+            )
+
+            if generated_json.exists():
+                shutil.move(
+                    str(generated_json),
+                    str(
+                        whisper_timing_path(
+                            output_path
+                        )
+                    )
+                )
 
         if not output_path.exists():
             raise FileNotFoundError(

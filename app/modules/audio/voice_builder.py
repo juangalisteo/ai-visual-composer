@@ -5,6 +5,7 @@ import time
 import edge_tts
 
 from app.managers.project_manager import ProjectManager
+from app.modules.subtitles.timing import edge_word_boundaries_path
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 
@@ -32,11 +33,17 @@ class VoiceBuilder:
             text=text,
             voice=self.voice,
             rate=self.rate,
-            volume=self.volume
+            volume=self.volume,
+            boundary="WordBoundary"
         )
 
         await communicate.save(
-            str(output_path)
+            str(output_path),
+            str(
+                edge_word_boundaries_path(
+                    output_path
+                )
+            )
         )
 
     def build(

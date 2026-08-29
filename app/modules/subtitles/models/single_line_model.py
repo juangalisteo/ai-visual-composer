@@ -49,7 +49,19 @@ class SingleLineModel(BaseSubtitleModel):
             config.get("max_duration", 3.0)
         )
 
-    def optimize(self, blocks):
+        self.significant_gap_threshold = float(
+            config.get("significant_gap_threshold", 0.35)
+        )
+
+    def optimize(self, blocks, timing=None):
+        if timing is not None and timing.is_usable():
+            optimized_blocks = self._optimize_with_timing(
+                timing
+            )
+
+            if optimized_blocks:
+                return optimized_blocks
+
         optimized_blocks = []
         new_index = 1
 
@@ -88,6 +100,123 @@ class SingleLineModel(BaseSubtitleModel):
                 new_index += 1
 
         return optimized_blocks
+
+    def _optimize_with_timing(self, timing):
+        optimized_blocks = []
+        new_index = 1
+
+        for segment in timing.segments:
+            for word_group in self._split_words_by_gap(
+                segment.words
+            ):
+                chunks = self._split_timed_words_by_sense(
+                    word_group
+                )
+
+                for chunk_words in chunks:
+                    text = self._clean_text(
+                        " ".join(
+                            word.text
+                            for word in chunk_words
+                        )
+                    )
+
+                    if not text:
+                        continue
+
+                    optimized_blocks.append(
+                        f"{new_index}\n"
+                        f"{self._seconds_to_time(chunk_words[0].start)} --> "
+                        f"{self._seconds_to_time(chunk_words[-1].end)}\n"
+                        f"{text}"
+                    )
+
+                    new_index += 1
+
+        return optimized_blocks
+
+    def _split_words_by_gap(self, words):
+        groups = []
+        current_group = []
+
+        for word in words:
+            if (
+                current_group
+                and word.start - current_group[-1].end
+                >= self.significant_gap_threshold
+            ):
+                groups.append(
+                    tuple(
+                        current_group
+                    )
+                )
+                current_group = []
+
+            if word.end > word.start:
+                current_group.append(
+                    word
+                )
+
+        if current_group:
+            groups.append(
+                tuple(
+                    current_group
+                )
+            )
+
+        return groups
+
+    def _split_timed_words_by_sense(self, words):
+        text = self._clean_text(
+            " ".join(
+                word.text
+                for word in words
+            )
+        )
+
+        if not text:
+            return []
+
+        chunks = self._split_text_by_sense(
+            text
+        )
+        chunks = self._avoid_orphan_words(
+            chunks
+        )
+
+        timed_chunks = []
+        cursor = 0
+
+        for chunk in chunks:
+            word_count = len(
+                chunk.split()
+            )
+
+            if word_count <= 0:
+                continue
+
+            chunk_words = tuple(
+                words[cursor:cursor + word_count]
+            )
+
+            if chunk_words:
+                timed_chunks.append(
+                    chunk_words
+                )
+
+            cursor += word_count
+
+        if cursor < len(words):
+            remaining = tuple(
+                words[cursor:]
+            )
+
+            if remaining:
+                timed_chunks.append(
+                    remaining
+                )
+
+        return timed_chunks
 
     def _split_text_by_sense(self, text):
         text = self._clean_text(text)
@@ -616,4 +745,12 @@ class SingleLineModel(BaseSubtitleModel):
             f"{minutes:02}:"
             f"{seconds:02},"
             f"{milliseconds:03}"
+        )
+
+    def _seconds_to_time(self, seconds):
+        return self._ms_to_time(
+            round(
+                float(seconds)
+                * 1000
+            )
         )

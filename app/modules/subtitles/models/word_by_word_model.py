@@ -1,5 +1,6 @@
 import re
 
+from app.modules.subtitles.micro_cue_policy import MicroCuePolicy
 from app.modules.subtitles.models.base_subtitle_model import BaseSubtitleModel
 
 
@@ -10,8 +11,26 @@ class WordByWordModel(BaseSubtitleModel):
         self.max_duration = float(config.get("max_duration", 0.65))
         self.uppercase = bool(config.get("uppercase", False))
         self.remove_extra_commas = bool(config.get("remove_extra_commas", True))
+        self.significant_gap_threshold = float(
+            config.get("significant_gap_threshold", 0.35)
+        )
+        self.render_fps = float(
+            config.get("render_fps", 30)
+        )
+        self.micro_cues = dict(
+            config.get(
+                "micro_cues",
+                {}
+            )
+        )
+        self.last_micro_cue_stats = None
 
-    def optimize(self, blocks):
+    def optimize(self, blocks, timing=None):
+        if timing is not None and timing.is_usable():
+            return self._optimize_with_timing(
+                timing
+            )
+
         optimized_blocks = []
         new_index = 1
 
@@ -49,6 +68,58 @@ class WordByWordModel(BaseSubtitleModel):
 
         return optimized_blocks
 
+    def _optimize_with_timing(self, timing):
+        optimized_blocks = []
+        new_index = 1
+        policy = self._micro_cue_policy()
+        result = policy.apply(
+            timing.words,
+            formatter=self._format_word
+        )
+        self.last_micro_cue_stats = result.stats
+
+        for cue in result.cues:
+            optimized_blocks.append(
+                f"{new_index}\n"
+                f"{self._seconds_to_time(cue.start)} --> "
+                f"{self._seconds_to_time(cue.end)}\n"
+                f"{cue.text}"
+            )
+
+            new_index += 1
+
+        return optimized_blocks
+
+    def _micro_cue_policy(self):
+        return MicroCuePolicy(
+            enabled=bool(
+                self.micro_cues.get(
+                    "enabled",
+                    True
+                )
+            ),
+            fps=self.render_fps,
+            min_frames=float(
+                self.micro_cues.get(
+                    "min_frames",
+                    1
+                )
+            ),
+            min_display_seconds=float(
+                self.micro_cues.get(
+                    "min_display_seconds",
+                    0.05
+                )
+            ),
+            significant_gap_threshold=self.significant_gap_threshold,
+            merge_preference=str(
+                self.micro_cues.get(
+                    "merge_preference",
+                    "next"
+                )
+            )
+        )
+
     def _split_words(self, text):
         text = self._clean_text(text)
 
@@ -61,6 +132,22 @@ class WordByWordModel(BaseSubtitleModel):
             words = [word.upper() for word in words]
 
         return words
+
+    def _format_word(self, text):
+        text = self._clean_text(
+            text
+        )
+
+        if self.remove_extra_commas:
+            text = text.replace(
+                ",",
+                ""
+            )
+
+        if self.uppercase:
+            text = text.upper()
+
+        return text
 
     def _distribute_time(self, start_ms, end_ms, words):
         duration_ms = end_ms - start_ms
@@ -155,3 +242,11 @@ class WordByWordModel(BaseSubtitleModel):
         milliseconds = total_ms % 1000
 
         return f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+
+    def _seconds_to_time(self, seconds):
+        return self._ms_to_time(
+            round(
+                float(seconds)
+                * 1000
+            )
+        )
