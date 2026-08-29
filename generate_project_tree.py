@@ -21,6 +21,7 @@ OMITTED_DIRECTORIES = {
     ".git",
     ".mypy_cache",
     ".pytest_cache",
+    "AGENT_AI",
     "CODEX",
     "ComfyUI",
     "input",
@@ -79,6 +80,7 @@ def main() -> None:
     output_path.write_text(
         "\n".join(result.lines) + "\n",
         encoding="utf-8",
+        newline="\n",
     )
     print(f"archivo generado: {output_path.name}")
     print(f"carpetas recorridas: {result.stats.traversed_directories}")

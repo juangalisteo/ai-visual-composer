@@ -40,7 +40,11 @@ logs/
 *.log
 
 # Local user inputs and generated media
-input/
+input/*
+!input/guion.txt
+!input/tema.txt
+!input/guion_imagen.txt
+!input/guion_video.txt
 assets/images/generated/
 assets/audio/voices/
 
