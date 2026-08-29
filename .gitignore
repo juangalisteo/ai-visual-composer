@@ -39,12 +39,7 @@ output/
 logs/
 *.log
 
-# Local user inputs and generated media
-input/*
-!input/guion.txt
-!input/tema.txt
-!input/guion_imagen.txt
-!input/guion_video.txt
+# Generated media
 assets/images/generated/
 assets/audio/voices/
 
