@@ -1,0 +1,111 @@
+import json
+import os
+from pathlib import Path
+
+
+class FFmpegDiagnostics:
+
+    def __init__(
+        self,
+        output_path,
+        scene_count,
+    ):
+        output_path = Path(output_path)
+        self.path = output_path.parent / "ffmpeg_diagnostics.json"
+        self.data = {
+            "profile": os.environ.get(
+                "MC_PROFILE_PATH",
+                "config/app.json",
+            ),
+            "scene_count": scene_count,
+            "normalization": {
+                "status": "NOT_REQUIRED",
+                "duration_seconds": 0.0,
+                "clips": [],
+            },
+            "final_assembly": {
+                "status": "PENDING",
+                "duration_seconds": None,
+                "command": [],
+                "stderr": "",
+            },
+            "result": "PENDING",
+            "peak_rss_bytes": None,
+            "peak_rss_note": (
+                "No se mide RSS para evitar dependencias "
+                "adicionales o una medicion fragil."
+            ),
+        }
+        self._persist()
+
+    def start_normalization(self):
+        self.data["normalization"]["status"] = "RUNNING"
+        self._persist()
+
+    def record_normalized_clip(
+        self,
+        scene_number,
+        command,
+        elapsed,
+        stderr="",
+        status="SUCCESS",
+    ):
+        self.data["normalization"]["clips"].append(
+            {
+                "scene": scene_number,
+                "command": list(command),
+                "duration_seconds": elapsed,
+                "stderr": stderr,
+                "status": status,
+            }
+        )
+        self._persist()
+
+    def finish_normalization(
+        self,
+        elapsed,
+        status="SUCCESS",
+    ):
+        normalization = self.data["normalization"]
+        normalization["status"] = status
+        normalization["duration_seconds"] = elapsed
+        self._persist()
+
+    def record_final_assembly(
+        self,
+        command,
+        elapsed,
+        stderr="",
+        status="SUCCESS",
+    ):
+        self.data["final_assembly"] = {
+            "status": status,
+            "duration_seconds": elapsed,
+            "command": list(command),
+            "stderr": stderr,
+        }
+        self._persist()
+
+    def finish(
+        self,
+        status,
+        error="",
+    ):
+        self.data["result"] = status
+        if error:
+            self.data["error"] = error
+        self._persist()
+
+    def _persist(self):
+        self.path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        self.path.write_text(
+            json.dumps(
+                self.data,
+                ensure_ascii=False,
+                indent=4,
+            ),
+            encoding="utf-8",
+        )

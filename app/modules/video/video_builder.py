@@ -14,6 +14,12 @@ from app.modules.video.video_filter_context_factory import (
 from app.modules.video.video_render_service import (
     VideoRenderService
 )
+from app.modules.video.ffmpeg.diagnostics import (
+    FFmpegDiagnostics
+)
+from app.modules.video.ffmpeg.i2v_normalizer import (
+    I2VClipNormalizer
+)
 
 
 class VideoBuilder:
@@ -46,56 +52,74 @@ class VideoBuilder:
             )
         )
 
-        components = (
-            VideoComponentFactory().create(
-                build_context.config
-            )
+        render_service = VideoRenderService()
+        diagnostics = FFmpegDiagnostics(
+            output_path=build_context.media.output_path,
+            scene_count=len(
+                build_context.media.image_paths
+            ),
         )
 
-        filter_context = (
-            VideoFilterContextFactory().build(
+        try:
+            build_context = I2VClipNormalizer().normalize(
                 build_context=build_context,
+                diagnostics=diagnostics,
+            )
+
+            components = (
+                VideoComponentFactory().create(
+                    build_context.config
+                )
+            )
+
+            filter_context = (
+                VideoFilterContextFactory().build(
+                    build_context=build_context,
+                    components=components
+                )
+            )
+
+            ProgressLogger.start(
+                "PREPARANDO FFMPEG"
+            )
+
+            prepare_start = time.perf_counter()
+
+            artifacts = render_service.build_artifacts(
+                build_context=build_context,
+                filter_context=filter_context,
                 components=components
             )
-        )
 
-        render_service = VideoRenderService()
+            ProgressLogger.finish(
+                "FFMPEG PREPARADO",
+                time.perf_counter() - prepare_start
+            )
 
-        ProgressLogger.start(
-            "PREPARANDO FFMPEG"
-        )
+            ProgressLogger.start(
+                "RENDERIZANDO VÍDEO"
+            )
 
-        prepare_start = time.perf_counter()
+            render_start = time.perf_counter()
 
-        artifacts = render_service.build_artifacts(
-            build_context=build_context,
-            filter_context=filter_context,
-            components=components
-        )
+            render_service.render_final(
+                build_context=build_context,
+                artifacts=artifacts,
+                diagnostics=diagnostics,
+            )
 
-        ProgressLogger.finish(
-            "FFMPEG PREPARADO",
-            time.perf_counter() - prepare_start
-        )
+            render_elapsed = (
+                time.perf_counter()
+                - render_start
+            )
 
-        ProgressLogger.start(
-            "RENDERIZANDO VÍDEO"
-        )
-
-        render_start = time.perf_counter()
-
-        render_service.run(
-            artifacts.command
-        )
-
-        render_elapsed = (
-            time.perf_counter()
-            - render_start
-        )
-
-        render_service.validate(
-            build_context
-        )
+            diagnostics.finish("SUCCESS")
+        except Exception as error:
+            diagnostics.finish(
+                "FAILED",
+                error=str(error),
+            )
+            raise
 
         total_elapsed = (
             time.perf_counter()

@@ -267,7 +267,7 @@ class FilterPipelineTest(
             )
         )
 
-    def test_motion_graph_pingpongs_and_animates_video_clips(
+    def test_motion_graph_does_not_rebuild_pingpong_for_normalized_clips(
         self
     ):
         class MotionBuilderSpy:
@@ -347,33 +347,70 @@ class FilterPipelineTest(
             )
         )
         self.assertIn(
-            "scale=640:360",
-            result.parts[0]
-        )
-        self.assertIn(
-            "reverse,trim=start_frame=1:end_frame=47",
-            result.parts[0]
-        )
-        self.assertIn(
-            "concat=n=2:v=1:a=0",
-            result.parts[0]
-        )
-        self.assertIn(
-            "loop=loop=-1:size=94:start=0",
-            result.parts[0]
-        )
-        self.assertIn(
             "trim=duration=4.000000",
             result.parts[0]
         )
         self.assertIn(
+            "fps=24,format=yuv420p",
+            result.parts[0]
+        )
+        self.assertNotIn(
+            "reverse",
+            result.parts[0]
+        )
+        self.assertNotIn(
+            "loop=",
+            result.parts[0]
+        )
+        self.assertNotIn(
             "zoompan",
             result.parts[0]
         )
         self.assertEqual(
-            motion_builder.calls[0]["duration"],
-            4.0
+            motion_builder.calls,
+            []
         )
+
+    def test_motion_graph_keeps_motion_for_static_images(self):
+        class MotionBuilderSpy:
+
+            def __init__(self):
+                self.calls = []
+
+            def build(self, **kwargs):
+                self.calls.append(kwargs)
+                return {
+                    "filter": "zoompan=z='1':d=1:s=640x360:fps=24",
+                }
+
+        context = SimpleNamespace(
+            media=SimpleNamespace(
+                image_paths=(Path("scene_001.png"),),
+                media_types=("image",),
+                media_durations=(None,),
+            ),
+            timeline=SimpleNamespace(image_duration=4.0),
+            config=SimpleNamespace(
+                transitions=SimpleNamespace(
+                    enabled=False,
+                    duration=0.4,
+                ),
+                width=640,
+                height=360,
+                fps=24,
+                pixel_format="yuv420p",
+            ),
+        )
+        result = MotionGraphBuilder(
+            MotionBuilderSpy()
+        ).build(
+            SimpleNamespace(
+                context=context,
+                filter_parts=[],
+            )
+        )
+
+        self.assertIn("zoompan", result.parts[0])
 
 
 if __name__ == "__main__":

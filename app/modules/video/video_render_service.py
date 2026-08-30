@@ -3,6 +3,8 @@ from app.modules.video.ffmpeg.filter_builder import FilterBuilder
 from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.video_build_context import VideoBuildArtifacts
 from app.modules.video.video_validator import VideoValidator
+from pathlib import Path
+import time
 
 
 class VideoRenderService:
@@ -29,10 +31,14 @@ class VideoRenderService:
             )
         )
 
+        render_output_path = self._render_output_path(
+            build_context.media.output_path
+        )
+
         command = CommandBuilder().build(
             images=build_context.media.image_paths,
             audio_path=build_context.media.audio_path,
-            output_path=build_context.media.output_path,
+            output_path=render_output_path,
             filter_complex=filter_complex,
             codec=build_context.config.codec,
             preset=build_context.config.preset,
@@ -77,24 +83,63 @@ class VideoRenderService:
 
         return VideoBuildArtifacts(
             filter_complex=filter_complex,
-            command=command
+            command=command,
+            render_output_path=render_output_path,
         )
 
     def run(
         self,
         command
     ):
-        Runner().run(
-            command
+        return Runner().run(command)
+
+    def render_final(
+        self,
+        build_context,
+        artifacts,
+        diagnostics,
+    ):
+        start = time.perf_counter()
+
+        try:
+            result = self.run(
+                artifacts.command
+            )
+            elapsed = time.perf_counter() - start
+            self.validate(
+                build_context=build_context,
+                output_path=artifacts.render_output_path,
+            )
+            Path(artifacts.render_output_path).replace(
+                build_context.media.output_path
+            )
+        except Exception as error:
+            diagnostics.record_final_assembly(
+                command=artifacts.command,
+                elapsed=time.perf_counter() - start,
+                stderr=str(
+                    getattr(error, "stderr", "")
+                    or ""
+                ),
+                status="FAILED",
+            )
+            raise
+
+        diagnostics.record_final_assembly(
+            command=artifacts.command,
+            elapsed=elapsed,
+            stderr=getattr(result, "stderr", ""),
         )
 
     def validate(
         self,
-        build_context
+        build_context,
+        output_path=None,
     ):
         return VideoValidator().validate(
             output_path=(
-                build_context.media.output_path
+                output_path
+                or build_context.media.output_path
             ),
             expected_duration=(
                 build_context.timeline.audio_duration
@@ -105,4 +150,14 @@ class VideoRenderService:
                 .validation
                 .max_duration_difference
             )
+        )
+
+    def _render_output_path(
+        self,
+        output_path,
+    ):
+        output_path = Path(output_path)
+        return output_path.with_name(
+            f"{output_path.stem}.rendering"
+            f"{output_path.suffix}"
         )

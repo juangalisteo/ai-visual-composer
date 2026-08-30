@@ -573,7 +573,7 @@ class VideoBuildFactoriesTest(
         command_builder_class.return_value.build.assert_called_once_with(
             images=build_context.media.image_paths,
             audio_path=build_context.media.audio_path,
-            output_path=build_context.media.output_path,
+            output_path=Path("out.rendering.mp4"),
             filter_complex="[filter][vout]",
             codec="libx264",
             preset="medium",

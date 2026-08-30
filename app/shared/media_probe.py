@@ -58,3 +58,54 @@ class MediaProbe:
                 "FFprobe devolvió una duración "
                 "que no se pudo interpretar."
             ) from error
+
+    @staticmethod
+    def get_video_frame_count(media_path):
+        media_path = Path(
+            media_path
+        )
+
+        if not media_path.exists():
+            raise FileNotFoundError(
+                f"No existe el archivo multimedia: "
+                f"{media_path}"
+            )
+
+        command = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-count_frames",
+            "-show_entries",
+            "stream=nb_read_frames",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(media_path),
+        ]
+
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        try:
+            frame_count = int(
+                result.stdout.strip()
+            )
+        except ValueError as error:
+            raise RuntimeError(
+                "FFprobe no devolvió un número de "
+                "fotogramas válido."
+            ) from error
+
+        if frame_count <= 0:
+            raise RuntimeError(
+                "FFprobe devolvió un número de "
+                "fotogramas no positivo."
+            )
+
+        return frame_count

@@ -59,9 +59,10 @@ class VideoValidator:
             duration_difference
             > max_duration_difference
         ):
-            ProgressLogger.warning(
+            raise RuntimeError(
                 "La duración del vídeo no coincide "
-                "con la duración del audio."
+                "con la duración del audio dentro de "
+                "la tolerancia configurada."
             )
 
         return generated_duration

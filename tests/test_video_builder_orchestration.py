@@ -22,9 +22,10 @@ class VideoBuilderOrchestrationTest(
         return VideoBuildContext(
             config=SimpleNamespace(),
             media=SimpleNamespace(
-                output_path=Path(
-                    output_path
-                )
+                output_path=Path(output_path),
+                image_paths=(),
+                media_types=(),
+                media_durations=(),
             ),
             timeline=SimpleNamespace()
         )
@@ -67,7 +68,10 @@ class VideoBuilderOrchestrationTest(
         ) as filter_context_factory_class, patch(
             "app.modules.video.video_builder"
             ".VideoRenderService"
-        ) as render_service_class:
+        ) as render_service_class, patch(
+            "app.modules.video.video_builder"
+            ".FFmpegDiagnostics"
+        ) as diagnostics_class:
             context_factory = (
                 context_factory_class.return_value
             )
@@ -124,23 +128,12 @@ class VideoBuilderOrchestrationTest(
                 )
                 return artifacts
 
-            def run_command(
-                command
+            def render_final(
+                build_context,
+                artifacts,
+                diagnostics,
             ):
-                order.append(
-                    "run"
-                )
-                self.assertEqual(
-                    command,
-                    artifacts.command
-                )
-
-            def validate(
-                build_context
-            ):
-                order.append(
-                    "validate"
-                )
+                order.append("render_final")
                 self.assertIs(
                     build_context,
                     context
@@ -158,11 +151,8 @@ class VideoBuilderOrchestrationTest(
             render_service.build_artifacts.side_effect = (
                 build_artifacts
             )
-            render_service.run.side_effect = (
-                run_command
-            )
-            render_service.validate.side_effect = (
-                validate
+            render_service.render_final.side_effect = (
+                render_final
             )
 
             output = VideoBuilder().build(
@@ -183,8 +173,7 @@ class VideoBuilderOrchestrationTest(
                 "components",
                 "filter_context",
                 "artifacts",
-                "run",
-                "validate"
+                "render_final"
             ]
         )
         context_factory.build.assert_called_once_with(
@@ -221,7 +210,10 @@ class VideoBuilderOrchestrationTest(
         ) as filter_context_factory_class, patch(
             "app.modules.video.video_builder"
             ".VideoRenderService"
-        ) as render_service_class:
+        ) as render_service_class, patch(
+            "app.modules.video.video_builder"
+            ".FFmpegDiagnostics"
+        ) as diagnostics_class:
             context_factory_class.return_value.build.return_value = (
                 context
             )
@@ -322,7 +314,10 @@ class VideoBuilderOrchestrationTest(
         ) as filter_context_factory_class, patch(
             "app.modules.video.video_builder"
             ".VideoRenderService"
-        ) as render_service_class:
+        ) as render_service_class, patch(
+            "app.modules.video.video_builder"
+            ".FFmpegDiagnostics"
+        ) as diagnostics_class:
             context_factory_class.return_value.build.side_effect = (
                 contexts
             )
@@ -335,10 +330,9 @@ class VideoBuilderOrchestrationTest(
             render_service_class.return_value.build_artifacts.side_effect = (
                 artifacts
             )
-            render_service_class.return_value.run.side_effect = (
-                lambda command: seen_commands.append(
-                    list(command)
-                )
+            render_service_class.return_value.render_final.side_effect = (
+                lambda build_context, artifacts, diagnostics:
+                seen_commands.append(list(artifacts.command))
             )
 
             builder = VideoBuilder()

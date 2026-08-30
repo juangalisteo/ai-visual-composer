@@ -23,3 +23,4 @@ class VideoBuildArtifacts:
 
     filter_complex: str
     command: list[str]
+    render_output_path: object = None

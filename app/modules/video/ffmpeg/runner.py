@@ -7,7 +7,9 @@ class Runner:
         self,
         command
     ):
-        subprocess.run(
+        return subprocess.run(
             command,
+            capture_output=True,
+            text=True,
             check=True
         )
