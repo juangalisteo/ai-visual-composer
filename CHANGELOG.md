@@ -30,7 +30,7 @@ V2.0 consolidates the validated audiovisual generation architecture, permanent r
 
 ### Added
 
-- Added permanent V2.0 validation baselines for Guion, Imagen, and Video under `validation/v2_0/`.
+- Added permanent V2.0 validation baselines for Guion, Imagen, and Video under `validation/01_VALIDACION_2026-08-24/`.
 - Added complete baseline evidence including reports, JSON metrics, CSV metrics, inventories, sample manifests, representative samples, and charts.
 - Added validated Video product routing with complete and partial execution modes.
 - Added validated I2V clip generation and `video_clips_manifest.json`.
@@ -187,9 +187,9 @@ Total    36 real executions
 Stored under:
 
 ```text
-validation/v2_0/guion/
-validation/v2_0/imagen/
-validation/v2_0/video/
+validation/01_VALIDACION_2026-08-24/guion/
+validation/01_VALIDACION_2026-08-24/imagen/
+validation/01_VALIDACION_2026-08-24/video/
 ```
 
 The validation baselines preserve representative evidence from real system executions for future regression analysis and behavioral comparison.
@@ -220,7 +220,7 @@ The difference corresponds to the additional subtitle timing and presentation te
 
 V2.0 is the current stable version and the reference state of AI Visual Composer.
 
-The V2.0 restoration checkpoint and full project backup preserve this state before the next deep general validation. That later validation will determine real runtime behavior, not whether V2.0 should be preserved.
+The V2.0 Git checkpoint and full physical backup preserve this state before the next deep general validation. That later validation will determine real runtime behavior, not whether V2.0 should be preserved.
 
 ---
 
@@ -233,8 +233,8 @@ V.1 established the first stable general system version before the V2.0 product 
 ### Changed
 
 - Established AI Visual Composer `V.1` as the official stable general system version.
-- Established `PR1` as the first official restoration point inside V.1.
-- Normalized the public restoration structure.
+- Established `PR1` as the first official stable Git reference inside V.1.
+- Normalized the public version-reference structure.
 - Updated public documentation for the stable system.
 - Documented the configured local Ollama model.
 - Documented console modes, music selection, smart overlays, neutral overlay fallback, weighted overlay distribution, and category cooldown.
@@ -280,13 +280,13 @@ Prompt Translation
 
 This architecture became the foundation of the later V2.0 visual generation system.
 
-### Restoration
+### Stable Git Reference
 
-`PR1` was established as the first official restoration point of the V.1 system.
+`PR1` was established as the first official stable Git reference of the V.1 system.
 
 It served as a stable reference for:
 
-- rollback;
+- Git comparison;
 - audits;
 - optimizations;
 - refactors;

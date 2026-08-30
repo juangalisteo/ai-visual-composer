@@ -602,7 +602,7 @@ video_clips/video_clips_manifest.json
 
 `output/` is temporary runtime storage.
 
-It is not a permanent validation baseline and must not be considered a restoration point.
+It is not a permanent validation baseline and is not a mechanism for integral system restoration.
 
 Permanent validation evidence is stored separately under:
 
@@ -1255,7 +1255,7 @@ AI Visual Composer V2.0 maintains permanent validation evidence created from rea
 The validation baseline is divided into the three main product components:
 
 ```text
-validation/v2_0/
+validation/01_VALIDACION_2026-08-24/
 │
 ├── guion/
 ├── imagen/

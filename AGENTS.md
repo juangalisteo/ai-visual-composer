@@ -86,7 +86,7 @@ Documentation must describe reality, not intended future behavior.
 
 ### CHECKPOINT
 
-Create a restoration point only after the relevant implementation has been validated and documented.
+Create a version checkpoint only after the relevant implementation has been validated and documented.
 
 ---
 

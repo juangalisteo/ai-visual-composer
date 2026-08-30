@@ -575,7 +575,7 @@ PRESERVED
 AI Visual Composer V2.0 maintains permanent validation evidence under:
 
 ```text
-validation/v2_0/
+validation/01_VALIDACION_2026-08-24/
 ```
 
 The baseline contains:
@@ -659,11 +659,11 @@ Ensure that official documentation consistently describes the current state as A
 
 The objective is to remove ambiguity before preserving the V2.0 state.
 
-## 16.2 V2.0 Restoration Checkpoint
+## 16.2 V2.0 Git Checkpoint
 
-Create the definitive V2.0 restoration checkpoint for the current state.
+Create the definitive V2.0 Git checkpoint for the current state.
 
-The checkpoint is not conditional on the future deep general validation. It preserves the current V2.0 state so that future corrections can start from a known base.
+The checkpoint is not conditional on the future deep general validation. It identifies the current V2.0 versioned state so that future corrections can start from a known Git reference.
 
 ## 16.3 Full V2.0 Backup
 
@@ -921,9 +921,9 @@ A version must correspond to identifiable evidence.
 
 ---
 
-# 20. Restoration Strategy
+# 20. Version and Backup Strategy
 
-Future restoration points should distinguish between:
+Future version references must distinguish between:
 
 ```text
 GIT CHECKPOINT
@@ -932,12 +932,12 @@ GIT CHECKPOINT
 and:
 
 ```text
-FULL PROJECT CHECKPOINT
+FULL PHYSICAL BACKUP
 ```
 
 A Git checkpoint preserves version-controlled files.
 
-A full project checkpoint must preserve or identify all relevant state required to reproduce the validated system.
+A full physical backup must preserve or identify all relevant state required to reproduce the validated system.
 
 Where appropriate, this may include:
 
@@ -953,9 +953,7 @@ Where appropriate, this may include:
 
 The objective is simple:
 
-```text
-A RESTORATION POINT MUST BE RESTORABLE.
-```
+Git commits and tags are exact version references. Full physical backups are the mechanism for integral restoration.
 
 ---
 
@@ -1011,7 +1009,7 @@ PERMANENT BASELINE
 
 PENDING BEFORE DEFINITIVE V2.0 CLOSURE
 - Complete official documentation review
-- Create definitive V2.0 restoration checkpoint
+- Create definitive V2.0 Git checkpoint
 - Create full V2.0 backup
 - Execute deep general validation afterwards
 - Resolve any discovered issues from the preserved V2.0 base

@@ -336,15 +336,15 @@ TOTAL   36 real executions
 Validation evidence is preserved under:
 
 ```text
-validation/v2_0/
+validation/01_VALIDACION_2026-08-24/
 ```
 
 with dedicated evidence for:
 
 ```text
-validation/v2_0/guion/
-validation/v2_0/imagen/
-validation/v2_0/video/
+validation/01_VALIDACION_2026-08-24/guion/
+validation/01_VALIDACION_2026-08-24/imagen/
+validation/01_VALIDACION_2026-08-24/video/
 ```
 
 The validation system preserves representative artifacts such as:

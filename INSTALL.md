@@ -338,7 +338,37 @@ Whisper relies on FFmpeg, so FFmpeg must also be available through the system `P
 
 ---
 
-## 12. Project Assets
+## 12. Triton Windows Reference Environment
+
+The validated Windows environment uses `triton-windows` to avoid Whisper Triton fallback warnings when PyTorch CUDA is already operational.
+
+Install the compatible Triton Windows package with:
+
+```powershell
+python -m pip install -U "triton-windows>=3.7,<3.8"
+```
+
+Validated reference environment:
+
+```text
+Python: 3.13.12
+PyTorch: 2.12.0.dev20260408+cu128
+PyTorch CUDA runtime: 12.8
+CUDA available: True
+GPU: NVIDIA GeForce RTX 5070 Laptop GPU
+triton-windows: 3.7.1.post27
+Imported Triton version: 3.7.1
+```
+
+In this validated environment, installing `triton-windows` removed Whisper warnings about failed Triton kernel launch and fallback to slower median kernel and DTW implementations.
+
+A full CUDA Toolkit installation was not required because PyTorch already provided a working CUDA runtime in this environment.
+
+These versions describe the validated Windows reference environment. They are not universal project requirements.
+
+---
+
+## 13. Project Assets
 
 AI Visual Composer uses local project assets under:
 
@@ -360,7 +390,7 @@ Do not remove official project assets unless the corresponding feature has been 
 
 ---
 
-## 13. Configuration
+## 14. Configuration
 
 System configuration is maintained under:
 
@@ -395,7 +425,7 @@ Local machine-specific information should remain private or excluded from the pu
 
 ---
 
-## 14. Local Inputs and Outputs
+## 15. Local Inputs and Outputs
 
 AI Visual Composer includes four empty runtime input files:
 
@@ -445,7 +475,7 @@ Validation evidence represents preserved historical system behavior.
 
 ---
 
-## 15. Private Development State
+## 16. Private Development State
 
 Private development and agent state may exist under:
 
@@ -473,7 +503,7 @@ Private agent configuration must not be copied into the public `AGENTS.md`.
 
 ---
 
-## 16. Environment and Secrets
+## 17. Environment and Secrets
 
 Local environment files are excluded from Git:
 
@@ -500,7 +530,7 @@ Even though AI Visual Composer is designed primarily around local execution, rep
 
 ---
 
-## 17. Initial Verification
+## 18. Initial Verification
 
 After installing the required components, verify the Python project before performing expensive generation tests.
 
@@ -540,7 +570,7 @@ It does not validate runtime behavior.
 
 ---
 
-## 18. External Runtime Verification
+## 19. External Runtime Verification
 
 Before the first complete generation, verify each external runtime independently.
 
@@ -584,7 +614,7 @@ Once these checks pass, return to the project root before starting AI Visual Com
 
 ---
 
-## 19. First Real Validation
+## 20. First Real Validation
 
 Installation is not fully demonstrated merely because dependencies import successfully.
 
@@ -622,7 +652,7 @@ If a real external stage has not been executed, do not consider that stage valid
 
 ---
 
-## 20. Normal Startup
+## 21. Normal Startup
 
 Once installation and initial verification are complete, normal daily use does not require repeating this installation procedure.
 
@@ -650,7 +680,7 @@ python main.py
 
 ---
 
-## 21. Installation Checklist
+## 22. Installation Checklist
 
 Before considering the local installation ready:
 
