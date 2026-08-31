@@ -8,8 +8,8 @@
     "video_component": {
         "profile": "YouTube",
         "generation": {
-            "width": 672,
-            "height": 384
+            "width": 800,
+            "height": 448
         },
         "target": {
             "width": 1920,
@@ -19,7 +19,7 @@
         "fps": 12,
         "seed_mode": "random",
         "sampling": {
-            "steps": 12,
+            "steps": 20,
             "cfg": 5.0,
             "sampler": "uni_pc",
             "scheduler": "simple"

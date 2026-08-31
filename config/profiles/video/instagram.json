@@ -8,8 +8,8 @@
     "video_component": {
         "profile": "Instagram",
         "generation": {
-            "width": 384,
-            "height": 672
+            "width": 448,
+            "height": 800
         },
         "target": {
             "width": 1080,
@@ -19,7 +19,7 @@
         "fps": 12,
         "seed_mode": "random",
         "sampling": {
-            "steps": 12,
+            "steps": 20,
             "cfg": 5.0,
             "sampler": "uni_pc",
             "scheduler": "simple"

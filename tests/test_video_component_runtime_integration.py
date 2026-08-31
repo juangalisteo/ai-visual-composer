@@ -360,17 +360,19 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         cases = (
             (
                 "config/profiles/video/instagram.json",
-                384,
-                672,
+                448,
+                800,
                 1080,
                 1920,
+                20,
             ),
             (
                 "config/profiles/video/youtube.json",
-                672,
-                384,
+                800,
+                448,
                 1920,
                 1080,
+                20,
             ),
         )
 
@@ -380,6 +382,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             generation_height,
             target_width,
             target_height,
+            steps,
         ) in cases:
             with self.subTest(
                 profile_path=profile_path
@@ -439,7 +442,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     ]
                 )
                 self.assertEqual(
-                    12,
+                    steps,
                     video_component[
                         "sampling"
                     ][
@@ -779,7 +782,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             builder.calls[0]["source_path"]
         )
         self.assertEqual(
-            384,
+            448,
             builder.calls[0]["overrides"]["generation_width"]
         )
         self.assertEqual(
