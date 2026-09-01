@@ -99,6 +99,20 @@ class ComfyUIVideoBackend:
             fingerprint=_file_sha256(
                 output_clip
             ),
+            positive_prompt=backend_prompt.positive_prompt,
+            negative_prompt=backend_prompt.negative_prompt,
+            motion_summary=backend_prompt.motion_summary,
+            camera_motion=backend_prompt.camera_motion,
+            motion_intensity=backend_prompt.motion_intensity,
+            stability=backend_prompt.stability,
+            temporal_rhythm=backend_prompt.temporal_rhythm,
+            preservation_constraints=(
+                backend_prompt.preservation_constraints
+            ),
+            avoidance_constraints=(
+                backend_prompt.avoidance_constraints
+            ),
+            source_trace=backend_prompt.source_trace,
         )
 
     def queue_prompt(
@@ -295,6 +309,21 @@ class ComfyUIVideoBackend:
                 output_clip
             ),
             "motion_summary": backend_prompt.motion_summary,
+            "positive_prompt": backend_prompt.positive_prompt,
+            "negative_prompt": backend_prompt.negative_prompt,
+            "camera_motion": backend_prompt.camera_motion,
+            "motion_intensity": backend_prompt.motion_intensity,
+            "stability": backend_prompt.stability,
+            "temporal_rhythm": backend_prompt.temporal_rhythm,
+            "preservation_constraints": list(
+                backend_prompt.preservation_constraints
+            ),
+            "avoidance_constraints": list(
+                backend_prompt.avoidance_constraints
+            ),
+            "source_trace": list(
+                backend_prompt.source_trace
+            ),
             "profile": backend_prompt.profile_name,
             "backend": backend_prompt.backend,
             "model": backend_prompt.model,

@@ -887,6 +887,22 @@ def _build_video_clip_manifest_entry(
         "output_clip": str(
             result.output_clip
         ),
+        "positive_prompt": result.positive_prompt,
+        "negative_prompt": result.negative_prompt,
+        "motion_summary": result.motion_summary,
+        "camera_motion": result.camera_motion,
+        "motion_intensity": result.motion_intensity,
+        "stability": result.stability,
+        "temporal_rhythm": result.temporal_rhythm,
+        "preservation_constraints": list(
+            result.preservation_constraints
+        ),
+        "avoidance_constraints": list(
+            result.avoidance_constraints
+        ),
+        "source_trace": list(
+            result.source_trace
+        ),
         "profile": result.profile_name,
         "backend": result.backend,
         "model": result.model,

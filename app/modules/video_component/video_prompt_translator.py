@@ -24,6 +24,11 @@ class VideoPromptTranslator:
             f"Temporal rhythm: {motion_intent.temporal_rhythm}. "
             f"Stability: {motion_intent.stability}. "
             "Preserve the source image faithfully. "
+            "Keep the source image composition locked across all frames. "
+            "Preserve the same subject identity, face, clothing, anatomy, "
+            "key objects and background layout. Animate only the declared "
+            "subtle motion; keep a single slow stable camera drift with no "
+            "reframing, zoom, orbit or camera shake. "
             f"Preservation constraints: {preservation}."
         )
 

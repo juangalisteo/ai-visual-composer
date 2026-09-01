@@ -28,6 +28,15 @@ class BackendVideoPromptTest(unittest.TestCase):
                 motion_intensity="subtle",
                 stability="high",
                 temporal_rhythm="slow and steady",
+                preservation_constraints=(
+                    "preserve source composition",
+                ),
+                avoidance_constraints=(
+                    "avoid abrupt motion",
+                ),
+                source_trace=(
+                    "MinimalVisualContext.width",
+                ),
             ),
             prompt_plan=VideoPromptPlan(
                 prompt="Create a cinematic I2V clip.",
@@ -35,6 +44,10 @@ class BackendVideoPromptTest(unittest.TestCase):
                 motion_summary="slow camera drift",
                 constraints=(
                     "preserve source composition",
+                ),
+                source_trace=(
+                    "MinimalVisualContext.width",
+                    "MotionIntent.camera_motion",
                 ),
             ),
         )
@@ -116,6 +129,41 @@ class BackendVideoPromptTest(unittest.TestCase):
                 "preserve source composition",
             ),
             prompt.constraints
+        )
+        self.assertEqual(
+            "slow subtle cinematic camera drift",
+            prompt.camera_motion
+        )
+        self.assertEqual(
+            "subtle",
+            prompt.motion_intensity
+        )
+        self.assertEqual(
+            "high",
+            prompt.stability
+        )
+        self.assertEqual(
+            "slow and steady",
+            prompt.temporal_rhythm
+        )
+        self.assertEqual(
+            (
+                "preserve source composition",
+            ),
+            prompt.preservation_constraints
+        )
+        self.assertEqual(
+            (
+                "avoid abrupt motion",
+            ),
+            prompt.avoidance_constraints
+        )
+        self.assertEqual(
+            (
+                "MinimalVisualContext.width",
+                "MotionIntent.camera_motion",
+            ),
+            prompt.source_trace
         )
 
     def test_rejects_invalid_generation_parameters(self):

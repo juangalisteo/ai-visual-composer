@@ -33,16 +33,29 @@ class VideoPromptTranslatorTest(unittest.TestCase):
             self._motion_intent()
         )
 
-        self.assertIn(
-            "slow subtle cinematic camera drift",
+        self.assertEqual(
+            (
+                "Create a short image-to-video clip with slow subtle "
+                "cinematic camera drift. Motion intensity: subtle. "
+                "Temporal rhythm: slow and steady. Stability: high. "
+                "Preserve the source image faithfully. Keep the source "
+                "image composition locked across all frames. Preserve the "
+                "same subject identity, face, clothing, anatomy, key objects "
+                "and background layout. Animate only the declared subtle "
+                "motion; keep a single slow stable camera drift with no "
+                "reframing, zoom, orbit or camera shake. Preservation "
+                "constraints: preserve_source_composition, "
+                "preserve_original_lighting."
+            ),
             plan.prompt
         )
-        self.assertIn(
-            "preserve_source_composition",
-            plan.prompt
-        )
-        self.assertIn(
-            "no invented action",
+        self.assertEqual(
+            (
+                "Avoid abrupt motion, invented actions, new subjects, "
+                "identity changes, geometry deformation, subject morphing, "
+                "and unstable composition. Avoidance constraints: no abrupt "
+                "motion, no invented action."
+            ),
             plan.negative_prompt
         )
         self.assertIn(

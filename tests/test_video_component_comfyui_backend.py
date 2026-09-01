@@ -200,9 +200,22 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                 },
                 backend_prompt=BackendVideoPrompt(
                     source_image=source,
-                    positive_prompt="prompt",
-                    negative_prompt="",
-                    motion_summary="motion",
+                    positive_prompt="exact positive prompt",
+                    negative_prompt="exact negative prompt",
+                    motion_summary="subtle motion, high stability",
+                    camera_motion="slow stable drift",
+                    motion_intensity="subtle",
+                    stability="high",
+                    temporal_rhythm="slow and steady",
+                    preservation_constraints=(
+                        "preserve source composition",
+                    ),
+                    avoidance_constraints=(
+                        "avoid abrupt motion",
+                    ),
+                    source_trace=(
+                        "VisualTruth.visible_subject",
+                    ),
                     target_width=1080,
                     target_height=1920,
                     steps=12,
@@ -272,6 +285,46 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
             self.assertEqual(
                 "uni_pc",
                 manifest["sampler"]
+            )
+            self.assertEqual(
+                "exact positive prompt",
+                manifest["positive_prompt"]
+            )
+            self.assertEqual(
+                "exact negative prompt",
+                manifest["negative_prompt"]
+            )
+            self.assertEqual(
+                "subtle motion, high stability",
+                manifest["motion_summary"]
+            )
+            self.assertEqual(
+                "slow stable drift",
+                manifest["camera_motion"]
+            )
+            self.assertEqual(
+                "subtle",
+                manifest["motion_intensity"]
+            )
+            self.assertEqual(
+                "high",
+                manifest["stability"]
+            )
+            self.assertEqual(
+                "slow and steady",
+                manifest["temporal_rhythm"]
+            )
+            self.assertEqual(
+                ["preserve source composition"],
+                manifest["preservation_constraints"]
+            )
+            self.assertEqual(
+                ["avoid abrupt motion"],
+                manifest["avoidance_constraints"]
+            )
+            self.assertEqual(
+                ["VisualTruth.visible_subject"],
+                manifest["source_trace"]
             )
 
 

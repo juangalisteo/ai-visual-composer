@@ -99,6 +99,22 @@ class FakeResult:
         self.profile_name = profile_name
         self.duration_seconds = 4.083333333333333
         self.fingerprint = "fake-fingerprint"
+        self.positive_prompt = "exact positive prompt"
+        self.negative_prompt = "exact negative prompt"
+        self.motion_summary = "subtle motion, high stability"
+        self.camera_motion = "slow stable drift"
+        self.motion_intensity = "subtle"
+        self.stability = "high"
+        self.temporal_rhythm = "slow and steady"
+        self.preservation_constraints = (
+            "preserve source composition",
+        )
+        self.avoidance_constraints = (
+            "avoid abrupt motion",
+        )
+        self.source_trace = (
+            "VisualTruth.visible_subject",
+        )
 
 
 class FakeVideoComponentBuilder:
@@ -821,6 +837,46 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             manifest[0]["output_clip"].endswith(
                 "scene_001.mp4"
             )
+        )
+        self.assertEqual(
+            "exact positive prompt",
+            manifest[0]["positive_prompt"]
+        )
+        self.assertEqual(
+            "exact negative prompt",
+            manifest[0]["negative_prompt"]
+        )
+        self.assertEqual(
+            "subtle motion, high stability",
+            manifest[0]["motion_summary"]
+        )
+        self.assertEqual(
+            "slow stable drift",
+            manifest[0]["camera_motion"]
+        )
+        self.assertEqual(
+            "subtle",
+            manifest[0]["motion_intensity"]
+        )
+        self.assertEqual(
+            "high",
+            manifest[0]["stability"]
+        )
+        self.assertEqual(
+            "slow and steady",
+            manifest[0]["temporal_rhythm"]
+        )
+        self.assertEqual(
+            ["preserve source composition"],
+            manifest[0]["preservation_constraints"]
+        )
+        self.assertEqual(
+            ["avoid abrupt motion"],
+            manifest[0]["avoidance_constraints"]
+        )
+        self.assertEqual(
+            ["VisualTruth.visible_subject"],
+            manifest[0]["source_trace"]
         )
 
 

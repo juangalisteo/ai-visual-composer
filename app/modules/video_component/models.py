@@ -218,6 +218,19 @@ class BackendVideoPrompt:
     constraints: tuple[str, ...] = field(
         default_factory=tuple
     )
+    camera_motion: str = ""
+    motion_intensity: str = ""
+    stability: str = ""
+    temporal_rhythm: str = ""
+    preservation_constraints: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    avoidance_constraints: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    source_trace: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     seed: int = 123456789
     frames: int = 17
     fps: float = 8.0
@@ -316,6 +329,21 @@ class BackendVideoPrompt:
         )
         object.__setattr__(
             self,
+            "preservation_constraints",
+            tuple(self.preservation_constraints)
+        )
+        object.__setattr__(
+            self,
+            "avoidance_constraints",
+            tuple(self.avoidance_constraints)
+        )
+        object.__setattr__(
+            self,
+            "source_trace",
+            tuple(self.source_trace)
+        )
+        object.__setattr__(
+            self,
             "sampler",
             self.sampler.strip()
         )
@@ -346,6 +374,17 @@ class BackendVideoPrompt:
                 preparation.prompt_plan.motion_summary
             ),
             "constraints": preparation.prompt_plan.constraints,
+            "camera_motion": preparation.motion_intent.camera_motion,
+            "motion_intensity": preparation.motion_intent.motion_intensity,
+            "stability": preparation.motion_intent.stability,
+            "temporal_rhythm": preparation.motion_intent.temporal_rhythm,
+            "preservation_constraints": (
+                preparation.motion_intent.preservation_constraints
+            ),
+            "avoidance_constraints": (
+                preparation.motion_intent.avoidance_constraints
+            ),
+            "source_trace": preparation.prompt_plan.source_trace,
         }
         values.update(
             overrides
@@ -404,6 +443,22 @@ class VideoClipGenerationResult:
     profile_name: str
     duration_seconds: float
     fingerprint: str
+    positive_prompt: str = ""
+    negative_prompt: str = ""
+    motion_summary: str = ""
+    camera_motion: str = ""
+    motion_intensity: str = ""
+    stability: str = ""
+    temporal_rhythm: str = ""
+    preservation_constraints: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    avoidance_constraints: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    source_trace: tuple[str, ...] = field(
+        default_factory=tuple
+    )
 
     def __post_init__(
         self
@@ -424,6 +479,21 @@ class VideoClipGenerationResult:
                 "manifest_path",
                 Path(self.manifest_path)
             )
+        object.__setattr__(
+            self,
+            "preservation_constraints",
+            tuple(self.preservation_constraints)
+        )
+        object.__setattr__(
+            self,
+            "avoidance_constraints",
+            tuple(self.avoidance_constraints)
+        )
+        object.__setattr__(
+            self,
+            "source_trace",
+            tuple(self.source_trace)
+        )
 
         if not self.output_clip.exists():
             raise FileNotFoundError(
