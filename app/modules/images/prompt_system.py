@@ -7,12 +7,29 @@ class ImagePromptSystem:
     )
 
     cinematic_operational_identity = (
-        "photorealistic film still, natural anatomy, accurate hands, "
-        "coherent faces, stable character identity when repeated across scenes, "
-        "preserve described face, age, hairstyle, body type and clothing across "
-        "scene sequence, consistent wardrobe and setting, "
+        "photorealistic film still, natural believable material detail, "
+        "coherent production design, consistent setting, "
         "motivated cinematic lighting, balanced composition, atmospheric depth, "
         "sharp subject detail"
+    )
+
+    human_casting_policy = (
+        "Do not add people, faces, or human figures unless the supplied visual "
+        "scene explicitly requires them. When people are explicitly described, "
+        "preserve only those people and make their casting coherent with the "
+        "stated geographic, cultural, historical, and narrative context. Honor "
+        "explicit European or Mediterranean, Asian, African, Latin American, "
+        "or other cultural context naturally; do not impose an unrelated default "
+        "ethnicity. For a neutral context, use natural human variation without "
+        "making a single phenotype dominant, while preserving coherence among "
+        "people in the same scene. Use natural anatomy, accurate hands, "
+        "distinctive facial structure, realistic skin texture, subtle "
+        "imperfections, expressive eyes, believable proportions, and "
+        "context-appropriate wardrobe. Avoid generic stock-looking faces, "
+        "repetitive facial archetypes, identical-looking characters across "
+        "scenes, overly symmetrical AI faces, plastic skin, flat expressions, "
+        "and repeated East Asian facial archetypes when unsupported by the "
+        "scene context"
     )
 
     cinematic_operational_restrictions = (
@@ -40,6 +57,7 @@ class ImagePromptSystem:
                     positive_prompt,
                     self.base_visual_identity,
                     self.cinematic_operational_identity,
+                    self.human_casting_policy,
                     self.cinematic_operational_restrictions
                 )
             )

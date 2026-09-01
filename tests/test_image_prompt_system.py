@@ -20,19 +20,31 @@ class ImagePromptSystemTest(unittest.TestCase):
             prompt,
         )
         self.assertIn(
-            "natural anatomy",
+            "Do not add people, faces, or human figures unless the supplied visual scene explicitly requires them",
             prompt,
         )
         self.assertIn(
-            "accurate hands",
+            "preserve only those people",
             prompt,
         )
         self.assertIn(
-            "stable character identity when repeated across scenes",
+            "stated geographic, cultural, historical, and narrative context",
             prompt,
         )
         self.assertIn(
-            "preserve described face, age, hairstyle, body type and clothing across scene sequence",
+            "European or Mediterranean, Asian, African, Latin American",
+            prompt,
+        )
+        self.assertIn(
+            "natural human variation without making a single phenotype dominant",
+            prompt,
+        )
+        self.assertIn(
+            "repeated East Asian facial archetypes when unsupported by the scene context",
+            prompt,
+        )
+        self.assertIn(
+            "realistic skin texture, subtle imperfections, expressive eyes",
             prompt,
         )
         self.assertIn(
@@ -43,6 +55,39 @@ class ImagePromptSystemTest(unittest.TestCase):
             "no text on books",
             prompt,
         )
+
+    def test_object_scene_explicitly_rejects_unrequested_human_presence(self):
+        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+            "A cracked porcelain cup sits alone on a dusty kitchen table"
+        )
+
+        self.assertTrue(
+            prompt.startswith(
+                "A cracked porcelain cup sits alone on a dusty kitchen table"
+            )
+        )
+        self.assertIn(
+            "Do not add people, faces, or human figures unless the supplied visual scene explicitly requires them",
+            prompt,
+        )
+
+    def test_human_casting_policy_preserves_context_and_avoids_generic_archetypes(self):
+        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+            "A Mediterranean historian studies a manuscript in a coastal archive"
+        )
+
+        for expected in (
+            "Honor explicit European or Mediterranean, Asian, African, Latin American, or other cultural context naturally",
+            "do not impose an unrelated default ethnicity",
+            "natural human variation without making a single phenotype dominant",
+            "distinctive facial structure",
+            "generic stock-looking faces",
+            "identical-looking characters across scenes",
+        ):
+            self.assertIn(
+                expected,
+                prompt,
+            )
 
     def test_prompt_parts_are_deduplicated_without_reordering(self):
         prompt_system = ImagePromptSystem()
@@ -76,6 +121,8 @@ class ImagePromptSystemTest(unittest.TestCase):
             "Request",
             "workflow",
             "manifest",
+            "Wan",
+            "VideoPromptTranslator",
         ):
             self.assertNotIn(
                 forbidden,
