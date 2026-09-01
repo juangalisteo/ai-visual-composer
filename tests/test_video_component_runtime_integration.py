@@ -460,6 +460,23 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     video_component
                 )
 
+    def test_active_video_profiles_keep_quality_encoding_settings(self):
+        profile_paths = (
+            "config/profiles/instagram/modo_conciencia.json",
+            "config/profiles/youtube/modo_conciencia.json",
+            "config/profiles/guion/instagram.json",
+            "config/profiles/guion/youtube.json",
+        )
+
+        for profile_path in profile_paths:
+            with self.subTest(profile_path=profile_path):
+                profile = json.loads(
+                    Path(profile_path).read_text(encoding="utf-8")
+                )
+
+                self.assertEqual("slow", profile["video"]["preset"])
+                self.assertEqual(16, profile["video"]["crf"])
+
     def test_random_seed_mode_resolves_single_valid_seed(self):
         profile = _video_profile(
             "Instagram"
