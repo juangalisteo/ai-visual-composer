@@ -53,8 +53,11 @@ class VideoPromptTranslatorTest(unittest.TestCase):
             (
                 "Avoid abrupt motion, invented actions, new subjects, "
                 "identity changes, geometry deformation, subject morphing, "
-                "and unstable composition. Avoidance constraints: no abrupt "
-                "motion, no invented action."
+                "unstable composition, temporal flicker, face or body "
+                "distortion, duplicate limbs, object mutation, warped "
+                "geometry, sudden scene changes, camera shake, and unintended "
+                "reframing. Avoidance constraints: no abrupt motion, no "
+                "invented action."
             ),
             plan.negative_prompt
         )

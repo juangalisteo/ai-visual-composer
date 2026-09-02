@@ -35,7 +35,10 @@ class VideoPromptTranslator:
         negative_prompt = (
             "Avoid abrupt motion, invented actions, new subjects, "
             "identity changes, geometry deformation, subject morphing, "
-            f"and unstable composition. Avoidance constraints: {avoidance}."
+            "unstable composition, temporal flicker, face or body distortion, "
+            "duplicate limbs, object mutation, warped geometry, sudden scene "
+            "changes, camera shake, and unintended reframing. Avoidance "
+            f"constraints: {avoidance}."
         )
 
         return VideoPromptPlan(
