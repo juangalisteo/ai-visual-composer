@@ -207,6 +207,7 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                     motion_intensity="subtle",
                     stability="high",
                     temporal_rhythm="slow and steady",
+                    motion_level="subtle",
                     preservation_constraints=(
                         "preserve source composition",
                     ),
@@ -313,6 +314,10 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
             self.assertEqual(
                 "slow and steady",
                 manifest["temporal_rhythm"]
+            )
+            self.assertEqual(
+                "subtle",
+                manifest["motion_level"]
             )
             self.assertEqual(
                 ["preserve source composition"],

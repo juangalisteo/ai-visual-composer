@@ -15,6 +15,7 @@ class VideoPromptTranslatorTest(unittest.TestCase):
             motion_intensity="subtle",
             stability="high",
             temporal_rhythm="slow and steady",
+            motion_level="subtle",
             preservation_constraints=(
                 "preserve_source_composition",
                 "preserve_original_lighting",
@@ -64,6 +65,10 @@ class VideoPromptTranslatorTest(unittest.TestCase):
         self.assertIn(
             "subtle motion",
             plan.motion_summary
+        )
+        self.assertIn(
+            "MotionIntent.motion_level",
+            plan.source_trace
         )
 
     def test_translation_is_deterministic(self):

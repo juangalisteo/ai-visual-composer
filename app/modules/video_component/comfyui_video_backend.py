@@ -106,6 +106,7 @@ class ComfyUIVideoBackend:
             motion_intensity=backend_prompt.motion_intensity,
             stability=backend_prompt.stability,
             temporal_rhythm=backend_prompt.temporal_rhythm,
+            motion_level=backend_prompt.motion_level,
             preservation_constraints=(
                 backend_prompt.preservation_constraints
             ),
@@ -315,6 +316,7 @@ class ComfyUIVideoBackend:
             "motion_intensity": backend_prompt.motion_intensity,
             "stability": backend_prompt.stability,
             "temporal_rhythm": backend_prompt.temporal_rhythm,
+            "motion_level": backend_prompt.motion_level,
             "preservation_constraints": list(
                 backend_prompt.preservation_constraints
             ),

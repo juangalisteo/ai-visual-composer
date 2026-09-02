@@ -105,6 +105,7 @@ class MotionIntent:
     motion_intensity: str
     stability: str
     temporal_rhythm: str
+    motion_level: str = "subtle"
     preservation_constraints: tuple[str, ...] = field(
         default_factory=tuple
     )
@@ -132,6 +133,15 @@ class MotionIntent:
                 raise ValueError(
                     f"{field_name} is required."
                 )
+
+        if self.motion_level not in {
+            "subtle",
+            "normal",
+            "intense",
+        }:
+            raise ValueError(
+                "motion_level must be subtle, normal, or intense."
+            )
 
         object.__setattr__(
             self,
@@ -222,6 +232,7 @@ class BackendVideoPrompt:
     motion_intensity: str = ""
     stability: str = ""
     temporal_rhythm: str = ""
+    motion_level: str = "subtle"
     preservation_constraints: tuple[str, ...] = field(
         default_factory=tuple
     )
@@ -378,6 +389,7 @@ class BackendVideoPrompt:
             "motion_intensity": preparation.motion_intent.motion_intensity,
             "stability": preparation.motion_intent.stability,
             "temporal_rhythm": preparation.motion_intent.temporal_rhythm,
+            "motion_level": preparation.motion_intent.motion_level,
             "preservation_constraints": (
                 preparation.motion_intent.preservation_constraints
             ),
@@ -450,6 +462,7 @@ class VideoClipGenerationResult:
     motion_intensity: str = ""
     stability: str = ""
     temporal_rhythm: str = ""
+    motion_level: str = "subtle"
     preservation_constraints: tuple[str, ...] = field(
         default_factory=tuple
     )

@@ -894,6 +894,7 @@ def _build_video_clip_manifest_entry(
         "motion_intensity": result.motion_intensity,
         "stability": result.stability,
         "temporal_rhythm": result.temporal_rhythm,
+        "motion_level": result.motion_level,
         "preservation_constraints": list(
             result.preservation_constraints
         ),

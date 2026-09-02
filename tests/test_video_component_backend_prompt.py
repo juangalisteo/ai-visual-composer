@@ -28,6 +28,7 @@ class BackendVideoPromptTest(unittest.TestCase):
                 motion_intensity="subtle",
                 stability="high",
                 temporal_rhythm="slow and steady",
+                motion_level="normal",
                 preservation_constraints=(
                     "preserve source composition",
                 ),
@@ -145,6 +146,10 @@ class BackendVideoPromptTest(unittest.TestCase):
         self.assertEqual(
             "slow and steady",
             prompt.temporal_rhythm
+        )
+        self.assertEqual(
+            "normal",
+            prompt.motion_level
         )
         self.assertEqual(
             (

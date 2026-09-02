@@ -11,6 +11,12 @@ class MotionIntentBuilder:
         visual_context: MinimalVisualContext,
         storyboard_scene=None
     ) -> MotionIntent:
+        motion_level = _motion_level(
+            storyboard_scene
+        )
+        motion_policy = _motion_policy(
+            motion_level
+        )
         constraints = (
             visual_context.stability_constraints
             + (
@@ -24,12 +30,11 @@ class MotionIntentBuilder:
 
         return MotionIntent(
             source="minimal_source_image_context",
-            camera_motion=(
-                "slow subtle cinematic camera drift"
-            ),
-            motion_intensity="subtle",
-            stability="high",
-            temporal_rhythm="slow and steady",
+            motion_level=motion_level,
+            camera_motion=motion_policy["camera_motion"],
+            motion_intensity=motion_policy["motion_intensity"],
+            stability=motion_policy["stability"],
+            temporal_rhythm=motion_policy["temporal_rhythm"],
             preservation_constraints=constraints,
             avoidance_constraints=(
                 "no abrupt motion",
@@ -54,6 +59,193 @@ class MotionIntentBuilder:
                 storyboard_scene
             )
         )
+
+
+MOTION_POLICIES = {
+    "subtle": {
+        "camera_motion": "slow micro camera drift",
+        "motion_intensity": "subtle",
+        "stability": "very high",
+        "temporal_rhythm": "slow and steady",
+    },
+    "normal": {
+        "camera_motion": "gentle slow push-in",
+        "motion_intensity": "moderate",
+        "stability": "high",
+        "temporal_rhythm": "natural and controlled",
+    },
+    "intense": {
+        "camera_motion": "controlled short tracking move",
+        "motion_intensity": "strong but controlled",
+        "stability": "high",
+        "temporal_rhythm": "dynamic but stable",
+    },
+}
+
+
+INTENSE_ACTION_CUES = (
+    "runs",
+    "running",
+    "sprints",
+    "sprinting",
+    "jumps",
+    "jumping",
+    "races",
+    "racing",
+    "falls",
+    "falling",
+    "fights",
+    "fighting",
+    "throws",
+    "throwing",
+    "flees",
+    "chases",
+    "dives",
+    "explodes",
+    "collapses",
+    "corre",
+    "corriendo",
+    "salta",
+    "saltando",
+    "cae",
+    "cayendo",
+    "lucha",
+    "luchando",
+    "lanza",
+    "lanzando",
+    "huye",
+    "persigue",
+    "se zambulle",
+    "explota",
+    "colapsa",
+)
+
+
+STATIC_ACTION_CUES = (
+    "sits",
+    "sitting",
+    "seated",
+    "stands still",
+    "standing still",
+    "contemplates",
+    "contemplating",
+    "rests",
+    "resting",
+    "observes",
+    "waiting",
+    "waits",
+    "still life",
+    "sentado",
+    "sentada",
+    "contempla",
+    "descansa",
+    "observa",
+    "espera",
+    "quieto",
+    "quieta",
+    "estático",
+    "estática",
+)
+
+
+STATIC_VISUAL_CONSTRAINT_CUES = (
+    "no motion",
+    "no movement",
+    "static composition",
+    "sin movimiento",
+    "composición estática",
+)
+
+
+def _motion_level(
+    storyboard_scene
+):
+    if storyboard_scene is None:
+        return "subtle"
+
+    action = _scene_text(
+        storyboard_scene,
+        "visible_action"
+    )
+    filmable_interpretation = _scene_text(
+        storyboard_scene,
+        "filmable_interpretation"
+    )
+    motion_context = " ".join(
+        (
+            action,
+            filmable_interpretation,
+        )
+    ).lower()
+
+    if _has_static_visual_constraint(
+        storyboard_scene
+    ) or _contains_any(
+        motion_context,
+        STATIC_ACTION_CUES
+    ):
+        return "subtle"
+
+    if _contains_any(
+        motion_context,
+        INTENSE_ACTION_CUES
+    ):
+        return "intense"
+
+    if action:
+        return "normal"
+
+    return "subtle"
+
+
+def _motion_policy(
+    motion_level
+):
+    return MOTION_POLICIES[
+        motion_level
+    ]
+
+
+def _has_static_visual_constraint(
+    storyboard_scene
+):
+    constraints = " ".join(
+        str(value).strip().lower()
+        for value in getattr(
+            storyboard_scene,
+            "visual_constraints",
+            (),
+        )
+        if str(value).strip()
+    )
+    return _contains_any(
+        constraints,
+        STATIC_VISUAL_CONSTRAINT_CUES
+    )
+
+
+def _scene_text(
+    storyboard_scene,
+    field_name
+):
+    return str(
+        getattr(
+            storyboard_scene,
+            field_name,
+            ""
+        )
+        or ""
+    ).strip()
+
+
+def _contains_any(
+    value,
+    cues
+):
+    return any(
+        cue in value
+        for cue in cues
+    )
 
 
 def _storyboard_preservation_constraints(

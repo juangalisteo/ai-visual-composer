@@ -106,6 +106,7 @@ class FakeResult:
         self.motion_intensity = "subtle"
         self.stability = "high"
         self.temporal_rhythm = "slow and steady"
+        self.motion_level = "subtle"
         self.preservation_constraints = (
             "preserve source composition",
         )
@@ -865,6 +866,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         self.assertEqual(
             "slow and steady",
             manifest[0]["temporal_rhythm"]
+        )
+        self.assertEqual(
+            "subtle",
+            manifest[0]["motion_level"]
         )
         self.assertEqual(
             ["preserve source composition"],

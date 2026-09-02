@@ -60,6 +60,7 @@ class VideoPromptTranslator:
                     "MotionIntent.motion_intensity",
                     "MotionIntent.stability",
                     "MotionIntent.temporal_rhythm",
+                    "MotionIntent.motion_level",
                     "MotionIntent.preservation_constraints",
                     "MotionIntent.avoidance_constraints",
                 )
