@@ -12,6 +12,7 @@ class VideoMedia:
     image_paths: tuple[Path, ...]
     media_types: tuple[str, ...] = ()
     media_durations: tuple[float | None, ...] = ()
+    scene_metadata: tuple[dict, ...] = ()
 
 
 class MediaLoader:
@@ -22,7 +23,8 @@ class MediaLoader:
         subtitle_path,
         images_manifest_path,
         output_path,
-        media_manifest_type="images"
+        media_manifest_type="images",
+        storyboard_path=None
     ):
         audio_path = Path(
             audio_path
@@ -57,19 +59,30 @@ class MediaLoader:
             )
             image_paths = tuple(
                 clip_path
-                for clip_path, _ in clip_entries
+                for _, clip_path, _ in clip_entries
             )
             media_durations = tuple(
                 duration
-                for _, duration in clip_entries
+                for _, _, duration in clip_entries
             )
             media_types = tuple(
                 "video"
                 for _ in image_paths
             )
+            scene_metadata = self._load_scene_metadata(
+                storyboard_path=storyboard_path,
+                image_entries=tuple(
+                    (scene_number, clip_path)
+                    for scene_number, clip_path, _ in clip_entries
+                )
+            )
         else:
-            image_paths = self._load_image_paths(
+            image_entries = self._load_image_entries(
                 images_manifest_path
+            )
+            image_paths = tuple(
+                image_path
+                for _, image_path in image_entries
             )
             media_durations = tuple(
                 None
@@ -78,6 +91,10 @@ class MediaLoader:
             media_types = tuple(
                 "image"
                 for _ in image_paths
+            )
+            scene_metadata = self._load_scene_metadata(
+                storyboard_path=storyboard_path,
+                image_entries=image_entries
             )
 
         return VideoMedia(
@@ -89,7 +106,8 @@ class MediaLoader:
                 image_paths
             ),
             media_types=media_types,
-            media_durations=media_durations
+            media_durations=media_durations,
+            scene_metadata=scene_metadata
         )
 
     def _validate_input_files(
@@ -121,6 +139,19 @@ class MediaLoader:
         self,
         images_manifest_path
     ):
+        return [
+            image_path
+            for _, image_path in (
+                self._load_image_entries(
+                    images_manifest_path
+                )
+            )
+        ]
+
+    def _load_image_entries(
+        self,
+        images_manifest_path
+    ):
         try:
             images_data = json.loads(
                 images_manifest_path.read_text(
@@ -143,7 +174,7 @@ class MediaLoader:
                 "debe contener una lista."
             )
 
-        image_paths = []
+        image_entries = []
 
         for item in images_data:
             if not isinstance(
@@ -164,17 +195,121 @@ class MediaLoader:
             )
 
             if image_path.exists():
-                image_paths.append(
-                    image_path
+                image_entries.append(
+                    (
+                        self._scene_number(
+                            item
+                        ),
+                        image_path
+                    )
                 )
 
-        if not image_paths:
+        if not image_entries:
             raise FileNotFoundError(
                 "No se encontraron imágenes válidas "
                 "para montar el vídeo."
             )
 
-        return image_paths
+        return image_entries
+
+    def _load_scene_metadata(
+        self,
+        storyboard_path,
+        image_entries
+    ):
+        scenes = self._load_storyboard_scenes(
+            storyboard_path
+        )
+
+        return tuple(
+            scenes.get(
+                scene_number,
+                {}
+            )
+            for scene_number, _ in image_entries
+        )
+
+    def _load_storyboard_scenes(
+        self,
+        storyboard_path
+    ):
+        if storyboard_path is None:
+            return {}
+
+        storyboard_path = Path(
+            storyboard_path
+        )
+
+        if not storyboard_path.exists():
+            return {}
+
+        try:
+            data = json.loads(
+                storyboard_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (
+            OSError,
+            json.JSONDecodeError
+        ):
+            return {}
+
+        if not isinstance(
+            data,
+            list
+        ):
+            return {}
+
+        fields = (
+            "visible_subject",
+            "visible_action",
+            "visible_environment",
+            "key_objects",
+            "visual_constraints"
+        )
+        scenes = {}
+
+        for item in data:
+            if not isinstance(
+                item,
+                dict
+            ):
+                continue
+
+            scene_number = self._scene_number(
+                item
+            )
+
+            if scene_number is None:
+                continue
+
+            scenes[scene_number] = {
+                field_name: item.get(
+                    field_name
+                )
+                for field_name in fields
+                if field_name in item
+            }
+
+        return scenes
+
+    def _scene_number(
+        self,
+        item
+    ):
+        try:
+            return int(
+                item.get(
+                    "scene"
+                )
+            )
+        except (
+            AttributeError,
+            TypeError,
+            ValueError
+        ):
+            return None
 
     def _load_video_clip_entries(
         self,
@@ -277,16 +412,10 @@ class MediaLoader:
                 "para montar el vídeo final."
             )
 
-        return [
-            (
-                clip_path,
-                duration
-            )
-            for _, clip_path, duration in sorted(
+        return sorted(
                 entries,
                 key=lambda entry: entry[0]
-            )
-        ]
+        )
 
     def _clip_duration(
         self,

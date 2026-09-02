@@ -107,7 +107,7 @@
             "directory": "assets/videos/overlays",
             "folder_selection": "random",
             "file_selection": "random",
-            "repeat_mode": "interval",
+            "repeat_mode": "scene",
             "min_seconds": 6,
             "max_seconds": 12,
             "loop_file": true,

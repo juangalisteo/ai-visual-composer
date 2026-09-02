@@ -45,6 +45,7 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
                 b"video-2"
             )
             manifest_path = root / "video_clips_manifest.json"
+            storyboard_path = root / "storyboard.json"
             manifest_path.write_text(
                 json.dumps(
                     [
@@ -68,13 +69,33 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
                 ),
                 encoding="utf-8"
             )
+            storyboard_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "scene": 1,
+                            "visible_subject": "stone temple",
+                        },
+                        {
+                            "scene": 2,
+                            "visible_subject": "Tesla coil",
+                            "visible_action": "electric sparks",
+                            "key_objects": [
+                                "electric generator",
+                            ],
+                        },
+                    ]
+                ),
+                encoding="utf-8"
+            )
 
             media = MediaLoader().load(
                 audio_path=audio_path,
                 subtitle_path=subtitle_path,
                 images_manifest_path=manifest_path,
                 output_path=output_path,
-                media_manifest_type="video_clips"
+                media_manifest_type="video_clips",
+                storyboard_path=storyboard_path
             )
 
         self.assertEqual(
@@ -97,6 +118,14 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
                 2.5,
             ),
             media.media_durations
+        )
+        self.assertEqual(
+            "stone temple",
+            media.scene_metadata[0]["visible_subject"]
+        )
+        self.assertEqual(
+            "Tesla coil",
+            media.scene_metadata[1]["visible_subject"]
         )
 
     def test_missing_clip_fails_clearly(self):

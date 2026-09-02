@@ -24,7 +24,8 @@ class FakeSelector:
     def select(
         self,
         scene_index,
-        scene_count
+        scene_count,
+        scene_metadata=None
     ):
         self.calls += 1
 

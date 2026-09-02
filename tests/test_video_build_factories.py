@@ -13,9 +13,6 @@ from app.modules.video.video_config import VideoConfig
 from app.modules.video.video_build_context_factory import (
     VideoBuildContextFactory
 )
-from app.modules.video.overlays.overlay_folder_resolver import (
-    OverlayCategoryResolution
-)
 from app.modules.video.video_component_factory import (
     VideoComponentFactory
 )
@@ -98,6 +95,9 @@ class VideoBuildFactoriesTest(
         project = SimpleNamespace(
             subtitle_path=lambda: Path(
                 "project.srt"
+            ),
+            storyboard_path=lambda: Path(
+                "project_storyboard.json"
             ),
             images_manifest_path=lambda: Path(
                 "project_images.json"
@@ -194,7 +194,10 @@ class VideoBuildFactoriesTest(
             subtitle_path=Path("subtitles.srt"),
             images_manifest_path=Path("images.json"),
             output_path=Path("out.mp4"),
-            media_manifest_type="images"
+            media_manifest_type="images",
+            storyboard_path=Path(
+                "project_storyboard.json"
+            )
         )
         timeline_builder_class.return_value.build.assert_called_once_with(
             audio_path=media.audio_path,
@@ -209,6 +212,9 @@ class VideoBuildFactoriesTest(
         project = SimpleNamespace(
             subtitle_path=lambda: Path(
                 "project.srt"
+            ),
+            storyboard_path=lambda: Path(
+                "project_storyboard.json"
             ),
             images_manifest_path=lambda: Path(
                 "project_images.json"
@@ -294,7 +300,10 @@ class VideoBuildFactoriesTest(
             subtitle_path=Path("subtitles.srt"),
             images_manifest_path=Path("video_clips.json"),
             output_path=Path("out.mp4"),
-            media_manifest_type="video_clips"
+            media_manifest_type="video_clips",
+            storyboard_path=Path(
+                "project_storyboard.json"
+            )
         )
 
     def test_component_factory_creates_fresh_builders_and_resets_layers(
@@ -617,17 +626,12 @@ class VideoBuildFactoriesTest(
             },
             clear=False
         ):
-            factory = VideoBuildContextFactory()
-            with patch.object(
-                factory,
-                "_read_topic",
-                return_value="Nikola Tesla"
-            ):
-                result = (
-                    factory._apply_overlay_mode(
-                        config
-                    )
+            result = (
+                VideoBuildContextFactory()
+                ._apply_overlay_mode(
+                    config
                 )
+            )
 
         self.assertFalse(
             result.overlays.enabled
@@ -642,7 +646,7 @@ class VideoBuildFactoriesTest(
             config.overlays.enabled
         )
 
-    def test_overlay_mode_smart_enables_selected_folders_in_memory(
+    def test_overlay_mode_smart_enables_scene_policy_folders_in_memory(
         self
     ):
         config = video_config(
@@ -667,26 +671,12 @@ class VideoBuildFactoriesTest(
                 "Technology",
                 "Light Leaks"
             )
-            resolver.resolve_categories.return_value = (
-                OverlayCategoryResolution(
-                    primary="Electricity",
-                    secondary=(
-                        "Technology",
-                    )
+            result = (
+                VideoBuildContextFactory()
+                ._apply_overlay_mode(
+                    config
                 )
             )
-
-            factory = VideoBuildContextFactory()
-            with patch.object(
-                factory,
-                "_read_topic",
-                return_value="Nikola Tesla"
-            ):
-                result = (
-                    factory._apply_overlay_mode(
-                        config
-                    )
-                )
 
         self.assertTrue(
             result.overlays.enabled
@@ -700,24 +690,17 @@ class VideoBuildFactoriesTest(
             result.overlays.folders
         )
         self.assertEqual(
-            {
-                "Electricity": 3.0,
-                "Technology": 2.0,
-                "Light Leaks": 1.0
-            },
+            {},
             result.overlays.folder_weights
+        )
+        self.assertEqual(
+            "scene",
+            result.overlays.repeat_mode
         )
         resolver.discover_valid_folders.assert_called_once_with(
             directory=config.overlays.directory,
             extensions=config.overlays.extensions,
             types=config.overlays.types
-        )
-        resolver.resolve_categories.assert_called_once_with(
-            topic="Nikola Tesla",
-            folders=(
-                "Electricity",
-                "Technology"
-            )
         )
         self.assertFalse(
             config.overlays.enabled
@@ -727,7 +710,7 @@ class VideoBuildFactoriesTest(
             config.overlays.folders
         )
 
-    def test_overlay_mode_smart_falls_back_to_neutral_folder(
+    def test_overlay_mode_smart_keeps_neutral_folder_available(
         self
     ):
         config = video_config(
@@ -754,36 +737,26 @@ class VideoBuildFactoriesTest(
                 "Electricity",
                 "Light Leaks"
             )
-            resolver.resolve_categories.return_value = (
-                OverlayCategoryResolution()
-            )
-
-            factory = VideoBuildContextFactory()
-            with patch.object(
-                factory,
-                "_read_topic",
-                return_value="Aleister Crowley"
-            ):
-                result = (
-                    factory._apply_overlay_mode(
-                        config
-                    )
+            result = (
+                VideoBuildContextFactory()
+                ._apply_overlay_mode(
+                    config
                 )
+            )
 
         self.assertTrue(
             result.overlays.enabled
         )
         self.assertEqual(
             (
-                "Light Leaks",
+                "Electricity",
+                "Light Leaks"
             ),
             result.overlays.folders
         )
-        resolver.resolve_categories.assert_called_once_with(
-            topic="Aleister Crowley",
-            folders=(
-                "Electricity",
-            )
+        self.assertEqual(
+            "scene",
+            result.overlays.repeat_mode
         )
         self.assertEqual(
             (
@@ -816,21 +789,12 @@ class VideoBuildFactoriesTest(
                 "Electricity",
                 "Smoke"
             )
-            resolver.resolve_categories.return_value = (
-                OverlayCategoryResolution()
-            )
-
-            factory = VideoBuildContextFactory()
-            with patch.object(
-                factory,
-                "_read_topic",
-                return_value="Nikola Tesla"
-            ):
-                result = (
-                    factory._apply_overlay_mode(
-                        config
-                    )
+            result = (
+                VideoBuildContextFactory()
+                ._apply_overlay_mode(
+                    config
                 )
+            )
 
         self.assertFalse(
             result.overlays.enabled
@@ -838,13 +802,6 @@ class VideoBuildFactoriesTest(
         self.assertEqual(
             (),
             result.overlays.folders
-        )
-        resolver.resolve_categories.assert_called_once_with(
-            topic="Nikola Tesla",
-            folders=(
-                "Electricity",
-                "Smoke"
-            )
         )
 
     def test_overlay_mode_smart_uses_neutral_when_no_thematic_folders_exist(
@@ -887,7 +844,6 @@ class VideoBuildFactoriesTest(
             ),
             result.overlays.folders
         )
-        resolver.resolve_categories.assert_not_called()
 
     def test_overlay_mode_smart_without_valid_overlays_does_not_block(
         self
@@ -925,7 +881,6 @@ class VideoBuildFactoriesTest(
             (),
             result.overlays.folders
         )
-        resolver.resolve_categories.assert_not_called()
 
     def test_overlay_override_does_not_modify_profile_file(
         self

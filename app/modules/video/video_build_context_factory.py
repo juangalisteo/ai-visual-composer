@@ -72,7 +72,8 @@ class VideoBuildContextFactory:
             subtitle_path=resolved_subtitle_path,
             images_manifest_path=resolved_manifest_path,
             output_path=resolved_output_path,
-            media_manifest_type=media_manifest_type
+            media_manifest_type=media_manifest_type,
+            storyboard_path=project.storyboard_path()
         )
 
         image_count = len(
@@ -184,29 +185,22 @@ class VideoBuildContextFactory:
         neutral_folder = self._neutral_overlay_folder(
             valid_folders
         )
-        thematic_folders = tuple(
-            folder
-            for folder in valid_folders
-            if folder != neutral_folder
-        )
-
-        if not thematic_folders:
+        if neutral_folder is None:
             return self._apply_selected_overlay_folder(
                 video_config=video_config,
-                selected_folder=neutral_folder
+                selected_folder=None
             )
 
-        resolution = (
-            resolver.resolve_categories(
-                topic=self._read_topic(),
-                folders=thematic_folders
+        return replace(
+            video_config,
+            overlays=replace(
+                video_config.overlays,
+                enabled=True,
+                folders=valid_folders,
+                repeat_mode="scene",
+                folder_selection="random",
+                folder_weights={}
             )
-        )
-
-        return self._apply_overlay_category_resolution(
-            video_config=video_config,
-            resolution=resolution,
-            neutral_folder=neutral_folder
         )
 
     def _neutral_overlay_folder(
@@ -241,73 +235,3 @@ class VideoBuildContextFactory:
                 folders=folders
             )
         )
-
-    def _apply_overlay_category_resolution(
-        self,
-        video_config,
-        resolution,
-        neutral_folder
-    ):
-        thematic_folders = (
-            resolution.thematic_folders
-        )
-
-        if not thematic_folders:
-            return self._apply_selected_overlay_folder(
-                video_config=video_config,
-                selected_folder=neutral_folder
-            )
-
-        folders = list(
-            thematic_folders
-        )
-
-        folder_weights = {}
-
-        if resolution.primary:
-            folder_weights[
-                resolution.primary
-            ] = 3.0
-
-        for folder in resolution.secondary:
-            folder_weights[
-                folder
-            ] = 2.0
-
-        if (
-            neutral_folder
-            and neutral_folder not in folders
-        ):
-            folders.append(
-                neutral_folder
-            )
-            folder_weights[
-                neutral_folder
-            ] = 1.0
-
-        return replace(
-            video_config,
-            overlays=replace(
-                video_config.overlays,
-                enabled=True,
-                folders=tuple(
-                    folders
-                ),
-                folder_selection="random",
-                folder_weights=folder_weights
-            )
-        )
-
-    def _read_topic(
-        self
-    ):
-        topic_path = Path(
-            "input/tema.txt"
-        )
-
-        if not topic_path.exists():
-            return ""
-
-        return topic_path.read_text(
-            encoding="utf-8"
-        ).strip()

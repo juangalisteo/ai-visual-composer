@@ -61,11 +61,13 @@ class OverlayBuilder:
     def build(
         self,
         scene_index,
-        scene_count
+        scene_count,
+        scene_metadata=None
     ):
         selection = self._asset_builder.build(
             scene_index=scene_index,
-            scene_count=scene_count
+            scene_count=scene_count,
+            scene_metadata=scene_metadata
         )
 
         if selection is None:

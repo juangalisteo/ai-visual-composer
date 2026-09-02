@@ -30,7 +30,9 @@ class AssetSelector:
     def select(
         self,
         scene_index,
-        scene_count
+        scene_count,
+        scene_metadata=None,
+        allowed_folders=None
     ):
         if scene_count <= 0:
             raise ValueError(
@@ -61,6 +63,18 @@ class AssetSelector:
         folders = self._load_folders(
             root_directory
         )
+
+        if allowed_folders is not None:
+            allowed_names = {
+                str(folder).strip()
+                for folder in allowed_folders
+                if str(folder).strip()
+            }
+            folders = tuple(
+                folder
+                for folder in folders
+                if folder.name in allowed_names
+            )
 
         if not folders:
             return None
