@@ -28,15 +28,19 @@ class ImagePromptSystemTest(unittest.TestCase):
             prompt,
         )
         self.assertIn(
-            "stated geographic, cultural, historical, and narrative context",
+            "Treat explicit geographic, cultural, historical, and narrative cues as primary casting direction",
             prompt,
         )
         self.assertIn(
-            "European or Mediterranean, Asian, African, Latin American",
+            "clearly European, Mediterranean, or Western",
             prompt,
         )
         self.assertIn(
-            "natural human variation without making a single phenotype dominant",
+            "Honor explicit Asian, African, Latin American, or other cultural context naturally",
+            prompt,
+        )
+        self.assertIn(
+            "natural human variation and cinematic coherence within the narrative block",
             prompt,
         )
         self.assertIn(
@@ -153,23 +157,56 @@ class ImagePromptSystemTest(unittest.TestCase):
             prompt.index("Non-human scientific and anatomical direction"),
             prompt.index("fully clothed"),
         )
-    def test_human_casting_policy_preserves_context_and_avoids_generic_archetypes(self):
+
+    def test_explicit_context_is_primary_casting_direction(self):
         prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
             "A Mediterranean historian studies a manuscript in a coastal archive"
         )
 
         for expected in (
-            "Honor explicit European or Mediterranean, Asian, African, Latin American, or other cultural context naturally",
+            "Treat explicit geographic, cultural, historical, and narrative cues as primary casting direction",
+            "adapt appearance, facial variation, and clothing to those cues rather than replacing them with generic casting",
+            "clearly European, Mediterranean, or Western",
+            "favor naturally coherent casting for that context",
+            "Honor explicit Asian, African, Latin American, or other cultural context naturally",
             "do not impose an unrelated default ethnicity",
-            "natural human variation without making a single phenotype dominant",
             "distinctive facial structure",
             "generic stock-looking faces",
-            "identical-looking characters across scenes",
         ):
             self.assertIn(
                 expected,
                 prompt,
             )
+
+    def test_neutral_context_avoids_arbitrary_casting_switches(self):
+        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+            "A scientist studies a luminous instrument in a quiet laboratory"
+        )
+
+        for expected in (
+            "natural human variation and cinematic coherence within the narrative block",
+            "do not switch phenotypes arbitrarily scene by scene",
+            "make a single archetype dominant",
+            "create unjustified heterogeneous mixing",
+        ):
+            self.assertIn(
+                expected,
+                prompt,
+            )
+
+    def test_continuity_cues_keep_related_scene_casting_coherent(self):
+        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+            "The same research team returns to the laboratory at dawn"
+        )
+
+        self.assertIn(
+            "Use available continuity cues to preserve coherent casting across related scenes, repeated characters, shared groups, eras, and environments",
+            prompt,
+        )
+        self.assertIn(
+            "arbitrary phenotype switching between related scenes",
+            prompt,
+        )
 
     def test_prompt_parts_are_deduplicated_without_reordering(self):
         prompt_system = ImagePromptSystem()
