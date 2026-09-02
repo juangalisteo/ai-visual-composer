@@ -71,6 +71,88 @@ class ImagePromptSystemTest(unittest.TestCase):
             prompt,
         )
 
+    def test_human_scene_does_not_receive_non_human_direction(self):
+        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+            "A person reading an open book"
+        )
+
+        self.assertIn(ImagePromptSystem.human_casting_policy, prompt)
+        self.assertNotIn(
+            "Non-human architectural direction",
+            prompt,
+        )
+        self.assertNotIn(
+            "Non-human symbolic object direction",
+            prompt,
+        )
+
+    def test_non_human_scene_families_receive_specific_visual_direction(self):
+        cases = (
+            (
+                "An ancient temple rises above a misty valley",
+                "Non-human architectural direction",
+                "credible spatial scale, layered depth",
+                "flat backdrops, generic buildings",
+            ),
+            (
+                "A weathered bronze amulet rests on dark velvet",
+                "Non-human symbolic object direction",
+                "clear visual protagonist",
+                "lost object, flat lighting",
+            ),
+            (
+                "A detailed human brain with visible neural pathways",
+                "Non-human scientific and anatomical direction",
+                "clean convincing structure, readable volume",
+                "soft deformed forms, generic illustration",
+            ),
+            (
+                "A controlled field of blue electric energy fills the frame",
+                "Non-human energy and abstraction direction",
+                "controlled layered composition",
+                "gratuitous chaos, oversaturation",
+            ),
+            (
+                "A luminous geometric symbol is suspended in darkness",
+                "Non-human symbolic geometry direction",
+                "clear and legible through refined balance",
+                "floating symbols without design",
+            ),
+        )
+
+        for source, title, quality, avoidance in cases:
+            with self.subTest(source=source):
+                prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+                    source
+                )
+
+                self.assertTrue(prompt.startswith(source))
+                self.assertIn(title, prompt)
+                self.assertIn(quality, prompt)
+                self.assertIn(avoidance, prompt)
+                self.assertIn(
+                    "professional cinematic realism",
+                    prompt,
+                )
+
+    def test_non_human_direction_keeps_prompt_parts_in_existing_order(self):
+        source = "A precise scientific structure of a glowing neuron"
+        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+            source
+        )
+
+        self.assertLess(
+            prompt.index(source),
+            prompt.index("professional cinematic realism"),
+        )
+        self.assertLess(
+            prompt.index("professional cinematic realism"),
+            prompt.index("Non-human scientific and anatomical direction"),
+        )
+        self.assertLess(
+            prompt.index("Non-human scientific and anatomical direction"),
+            prompt.index("fully clothed"),
+        )
     def test_human_casting_policy_preserves_context_and_avoids_generic_archetypes(self):
         prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
             "A Mediterranean historian studies a manuscript in a coastal archive"
