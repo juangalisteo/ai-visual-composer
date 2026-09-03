@@ -27,8 +27,8 @@ class VideoPromptTranslator:
             "Keep the source image composition locked across all frames. "
             "Preserve the same subject identity, face, clothing, anatomy, "
             "key objects and background layout. Animate only the declared "
-            "subtle motion; keep a single slow stable camera drift with no "
-            "reframing, zoom, orbit or camera shake. "
+            "motion. Use one stable camera move consistent with it; no "
+            "additional reframing, zoom, orbit, or camera shake. "
             f"Preservation constraints: {preservation}."
         )
 

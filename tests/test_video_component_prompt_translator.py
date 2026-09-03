@@ -42,9 +42,9 @@ class VideoPromptTranslatorTest(unittest.TestCase):
                 "Preserve the source image faithfully. Keep the source "
                 "image composition locked across all frames. Preserve the "
                 "same subject identity, face, clothing, anatomy, key objects "
-                "and background layout. Animate only the declared subtle "
-                "motion; keep a single slow stable camera drift with no "
-                "reframing, zoom, orbit or camera shake. Preservation "
+                "and background layout. Animate only the declared motion. "
+                "Use one stable camera move consistent with it; no additional "
+                "reframing, zoom, orbit, or camera shake. Preservation "
                 "constraints: preserve_source_composition, "
                 "preserve_original_lighting."
             ),
@@ -70,6 +70,41 @@ class VideoPromptTranslatorTest(unittest.TestCase):
             "MotionIntent.motion_level",
             plan.source_trace
         )
+
+    def test_preservation_block_respects_declared_motion_level(self):
+        for motion_level, camera_motion in (
+            ("normal", "gentle slow push-in"),
+            ("intense", "controlled short tracking move"),
+        ):
+            with self.subTest(motion_level=motion_level):
+                plan = VideoPromptTranslator().translate(
+                    MotionIntent(
+                        source="minimal_source_image_context",
+                        camera_motion=camera_motion,
+                        motion_intensity="moderate",
+                        stability="high",
+                        temporal_rhythm="natural and controlled",
+                        motion_level=motion_level,
+                    )
+                )
+
+                self.assertIn(camera_motion, plan.prompt)
+                self.assertIn(
+                    "Animate only the declared motion.",
+                    plan.prompt,
+                )
+                self.assertIn(
+                    "Use one stable camera move consistent with it;",
+                    plan.prompt,
+                )
+                self.assertNotIn(
+                    "declared subtle motion",
+                    plan.prompt,
+                )
+                self.assertNotIn(
+                    "single slow stable camera drift",
+                    plan.prompt,
+                )
 
     def test_translation_is_deterministic(self):
         translator = VideoPromptTranslator()
