@@ -32,6 +32,11 @@ from app.modules.video_component import (
 from app.domain.adapters import StoryboardSceneAdapter
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+)
+from app.shared.profile_resolver import ProfileResolver
 
 
 def iniciar():
@@ -854,22 +859,12 @@ def _load_video_component_profile(
             )
         ).strip().lower()
 
-    profile_path = (
-        Path(
-            "config/profiles/video"
-        )
-        / f"{platform}.json"
+    profile_key = ProfileKey.for_component(
+        ProfileComponent.VIDEO,
+        platform
     )
-    if not profile_path.exists():
-        raise FileNotFoundError(
-            "No existe perfil técnico de Video para: "
-            f"{platform}"
-        )
-
-    return json.loads(
-        profile_path.read_text(
-            encoding="utf-8"
-        )
+    return ProfileResolver().load_video_component(
+        profile_key
     )
 
 

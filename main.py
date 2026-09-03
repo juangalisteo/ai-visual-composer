@@ -12,6 +12,18 @@ def main():
     options = controller.run()
 
     os.environ["MC_PROFILE_PATH"] = options["profile_path"]
+    os.environ["MC_PROFILE_COMPONENT"] = options.get(
+        "profile_component",
+        ""
+    )
+    os.environ["MC_PROFILE_PLATFORM"] = options.get(
+        "profile_platform",
+        ""
+    )
+    os.environ["MC_PROFILE_ID"] = options.get(
+        "profile_id",
+        ""
+    )
     os.environ["MC_SUBTITLE_CONFIG"] = options["subtitle_config"]
     os.environ["MC_VOICE_CONFIG"] = options["voice_config"]
     os.environ["MC_MUSIC_CATEGORY"] = options["music_category"] or ""

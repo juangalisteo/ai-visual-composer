@@ -2,9 +2,24 @@ import sys
 from pathlib import Path
 
 from app.shared.progress_logger import ProgressLogger
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
+from app.shared.profile_resolver import ProfileResolver
 
 
 class RunController:
+
+    def __init__(
+        self,
+        profile_resolver=None
+    ):
+        self.profile_resolver = (
+            profile_resolver
+            or ProfileResolver()
+        )
 
     def run(self):
         visual_pipeline = self.select_visual_pipeline()
@@ -56,6 +71,9 @@ class RunController:
 
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
+        profile_key = profile.get(
+            "profile_key"
+        )
 
         return {
             "visual_pipeline": visual_pipeline,
@@ -63,6 +81,21 @@ class RunController:
             "design_target": design_target,
             "pipeline_mode": pipeline_mode,
             "profile_path": str(profile["path"]),
+            "profile_component": (
+                profile_key.component.value
+                if profile_key
+                else ""
+            ),
+            "profile_platform": (
+                profile_key.platform.value
+                if profile_key
+                else ""
+            ),
+            "profile_id": (
+                profile_key.profile_id
+                if profile_key
+                else ""
+            ),
             "subtitle_config": subtitle_config,
             "voice_config": voice_config,
             "music_category": music_category,
@@ -236,77 +269,72 @@ class RunController:
         self,
         visual_pipeline="image"
     ):
-        profiles_path = Path(
-            "config/profiles"
-        )
-
         profiles = []
 
         if visual_pipeline == "script":
-            profile_paths = sorted(
-                (
-                    profiles_path
-                    / "guion"
-                ).glob("*.json")
-            )
-
-            for profile in profile_paths:
+            for platform in ProfilePlatform:
+                profile_key = ProfileKey.for_component(
+                    ProfileComponent.GUION,
+                    platform
+                )
+                profile = self.profile_resolver.resolve(
+                    profile_key
+                )
                 profiles.append({
                     "platform": "guion",
                     "profile": profile.stem,
-                    "path": profile
+                    "path": profile,
+                    "profile_key": profile_key,
                 })
         elif visual_pipeline == "design_image":
-            profile_paths = sorted(
-                (
-                    profiles_path
-                    / "diseno"
-                    / "imagen"
-                ).glob("*.json")
-            )
-
-            for profile in profile_paths:
+            for platform in ProfilePlatform:
+                profile = self.profile_resolver.resolve_design(
+                    ProfileComponent.IMAGEN,
+                    platform
+                )
                 profiles.append({
                     "platform": "diseno",
                     "profile": profile.stem,
-                    "path": profile
+                    "path": profile,
+                    "profile_key": None,
                 })
         elif visual_pipeline == "design_video":
-            profile_paths = sorted(
-                (
-                    profiles_path
-                    / "diseno"
-                    / "video"
-                ).glob("*.json")
-            )
-
-            for profile in profile_paths:
+            for platform in ProfilePlatform:
+                profile = self.profile_resolver.resolve_design(
+                    ProfileComponent.VIDEO,
+                    platform
+                )
                 profiles.append({
                     "platform": "diseno",
                     "profile": profile.stem,
-                    "path": profile
+                    "path": profile,
+                    "profile_key": None,
                 })
         else:
-            platform_paths = [
-                platform
-                for platform in sorted(
-                    profiles_path.iterdir()
+            components = {
+                "image": ProfileComponent.IMAGEN,
+                "video": ProfileComponent.VIDEO,
+            }
+            if visual_pipeline not in components:
+                raise ValueError(
+                    "Ámbito de perfil no soportado: "
+                    f"{visual_pipeline}"
                 )
-                if platform.is_dir()
-                and platform.name != "guion"
-                and platform.name != "diseno"
-                and platform.name != "video"
-            ]
 
-            for platform in platform_paths:
-                for profile in sorted(
-                    platform.glob("*.json")
-                ):
-                    profiles.append({
-                        "platform": platform.name,
-                        "profile": profile.stem,
-                        "path": profile
-                    })
+            for platform in ProfilePlatform:
+                profile_key = ProfileKey.for_component(
+                    components[visual_pipeline],
+                    platform
+                )
+                profile = self.profile_resolver.resolve(
+                    profile_key
+                )
+                profiles.append({
+                    "platform": platform.value,
+                    "profile": profile.stem,
+                    "path": profile,
+                    "profile_key": profile_key,
+                })
 
         if not profiles:
             raise FileNotFoundError(
