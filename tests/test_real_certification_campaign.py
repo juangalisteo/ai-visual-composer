@@ -1,6 +1,5 @@
 import inspect
 import json
-import os
 import tempfile
 import unittest
 from dataclasses import FrozenInstanceError, asdict, is_dataclass
@@ -513,13 +512,7 @@ class RealCertificationCampaignTest(unittest.TestCase):
                 ),
             )
 
-            with patch.dict(
-                os.environ,
-                {
-                    "MC_PROFILE_PATH": "preserved-legacy-value"
-                },
-                clear=False
-            ), patch(
+            with patch(
                 "certification.real_image_runner.ProjectManager"
             ) as project_manager, patch(
                 "certification.real_image_runner.ImageBuilder"
@@ -538,16 +531,9 @@ class RealCertificationCampaignTest(unittest.TestCase):
                 observation = runner(
                     scenario
                 )
-                profile_path_value = os.environ[
-                    "MC_PROFILE_PATH"
-                ]
 
             self.assertTrue(
                 observation.approved
-            )
-            self.assertEqual(
-                "preserved-legacy-value",
-                profile_path_value
             )
             injected_profile = image_builder.call_args.kwargs[
                 "profile"

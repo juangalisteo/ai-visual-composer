@@ -319,12 +319,8 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 fps
             )
 
-    def test_legacy_execution_without_identity_remains_available(self):
-        legacy_path = Path(
-            "config/profiles/instagram/modo_conciencia.json"
-        )
+    def test_subtitle_execution_without_identity_fails_explicitly(self):
         environment = {
-            "MC_PROFILE_PATH": str(legacy_path),
             "MC_PROFILE_COMPONENT": "",
             "MC_PROFILE_PLATFORM": "",
             "MC_PROFILE_ID": "",
@@ -332,21 +328,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         }
 
         with patch.dict(os.environ, environment, clear=True):
-            resolved = ConfigManager().get_subtitle_profile()
-
-        legacy_profile = self._load(legacy_path)
-        self.assertTrue(resolved.legacy)
-        self.assertIsNone(resolved.key)
-        self.assertEqual(
-            self._load(
-                "config/subtitle_configs/word_by_word.json"
-            ),
-            resolved.cue_policy
-        )
-        self.assertEqual(
-            legacy_profile["video_style"]["subtitles"],
-            resolved.render_style
-        )
+            with self.assertRaisesRegex(
+                ValueError,
+                "Falta identidad estructurada de perfil"
+            ):
+                ConfigManager().get_subtitle_profile()
 
     def test_video_config_resolves_new_render_style_when_not_injected(self):
         environment = self._environment(
@@ -413,9 +399,6 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             "MC_PROFILE_COMPONENT": component.value,
             "MC_PROFILE_PLATFORM": platform.value,
             "MC_PROFILE_ID": main_key.profile_id,
-            "MC_PROFILE_PATH": str(
-                self.profile_resolver.resolve(main_key)
-            ),
             "MC_SUBTITLE_CONFIG": style.value,
         }
 

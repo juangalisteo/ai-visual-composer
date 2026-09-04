@@ -11,7 +11,6 @@ def main():
     controller = RunController()
     options = controller.run()
 
-    os.environ["MC_PROFILE_PATH"] = options["profile_path"]
     os.environ["MC_PROFILE_COMPONENT"] = options.get(
         "profile_component",
         ""

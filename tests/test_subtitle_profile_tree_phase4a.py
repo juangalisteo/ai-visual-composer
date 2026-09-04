@@ -225,12 +225,10 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 component,
                 platform
             )
-            main_path = self.MAIN_PROFILES[(component, platform)]
             environment = {
                 "MC_PROFILE_COMPONENT": component,
                 "MC_PROFILE_PLATFORM": platform,
                 "MC_PROFILE_ID": profile_key.profile_id,
-                "MC_PROFILE_PATH": str(main_path),
                 "MC_SUBTITLE_CONFIG": style,
             }
 

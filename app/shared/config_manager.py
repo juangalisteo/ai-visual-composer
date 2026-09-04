@@ -62,32 +62,13 @@ class ConfigManager:
 
     def get_profile_config(self):
         profile_key = self.get_profile_key()
-        selected_profile_path = os.environ.get("MC_PROFILE_PATH")
-
         if profile_key is not None:
-            resolved_path = self.profile_resolver.resolve(
-                profile_key
-            )
-            if selected_profile_path and (
-                Path(selected_profile_path).resolve()
-                != resolved_path.resolve()
-            ):
-                raise ValueError(
-                    "MC_PROFILE_PATH no coincide con la "
-                    "identidad de perfil seleccionada."
-                )
-            return self.profile_resolver.load(
-                profile_key
-            )
-
-        if selected_profile_path:
-            return self.load_json(Path(selected_profile_path))
+            return self.profile_resolver.load(profile_key)
 
         raise ValueError(
-            "No existe identidad ni ruta de perfil suficiente. "
-            "Configure MC_PROFILE_COMPONENT, "
-            "MC_PROFILE_PLATFORM y MC_PROFILE_ID, o use "
-            "MC_PROFILE_PATH para compatibilidad legacy."
+            "Falta identidad estructurada de perfil. Configure "
+            "MC_PROFILE_COMPONENT, MC_PROFILE_PLATFORM y "
+            "MC_PROFILE_ID."
         )
 
     def get_profile_key(self):

@@ -321,8 +321,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     platform
                 )
                 environment = self._identity_environment(
-                    profile_key,
-                    self.resolver.resolve(profile_key)
+                    profile_key
                 )
                 environment["MC_SUBTITLE_CONFIG"] = ""
 
@@ -374,39 +373,40 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     ProfileComponent.VIDEO,
                     platform
                 )
-                official_path = self.resolver.resolve(
-                    profile_key
-                )
                 legacy_path = (
                     Path("config/profiles")
                     / platform.value
                     / "modo_conciencia.json"
                 )
+                legacy_profile = self._load(
+                    legacy_path
+                )
 
                 with patch.dict(
                     os.environ,
-                    self._legacy_environment(legacy_path),
-                    clear=True
-                ):
-                    legacy_profile = (
-                        ConfigManager()
-                        .get_profile_config()
-                    )
-                    legacy_video = VideoConfigLoader().load()
-
-                with patch.dict(
-                    os.environ,
-                    self._identity_environment(
-                        profile_key,
-                        official_path
-                    ),
+                    self._identity_environment(profile_key),
                     clear=True
                 ):
                     identity_profile = (
                         ConfigManager()
                         .get_profile_config()
                     )
-                    identity_video = VideoConfigLoader().load()
+                    subtitle_profile = (
+                        ConfigManager()
+                        .get_subtitle_profile()
+                    )
+                    identity_video = VideoConfigLoader(
+                        subtitle_profile=subtitle_profile
+                    ).load()
+
+                with patch.object(
+                    ConfigManager,
+                    "get_profile_config",
+                    return_value=legacy_profile
+                ):
+                    legacy_video = VideoConfigLoader(
+                        subtitle_profile=subtitle_profile
+                    ).load()
 
                 self.assertEqual(
                     legacy_profile,
@@ -435,25 +435,12 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def _identity_environment(
         self,
-        profile_key,
-        path
+        profile_key
     ):
         return {
-            "MC_PROFILE_PATH": str(path),
             "MC_PROFILE_COMPONENT": profile_key.component.value,
             "MC_PROFILE_PLATFORM": profile_key.platform.value,
             "MC_PROFILE_ID": profile_key.profile_id,
-        }
-
-    def _legacy_environment(
-        self,
-        path
-    ):
-        return {
-            "MC_PROFILE_PATH": str(path),
-            "MC_PROFILE_COMPONENT": "",
-            "MC_PROFILE_PLATFORM": "",
-            "MC_PROFILE_ID": "",
         }
 
     def _load(

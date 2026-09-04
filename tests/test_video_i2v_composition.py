@@ -1,3 +1,5 @@
+import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import subprocess
@@ -14,6 +16,12 @@ from app.modules.video.video_build_context import (
 )
 from app.modules.video.video_render_service import VideoRenderService
 from app.modules.video.video_validator import VideoValidator
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
+from app.shared.profile_resolver import ProfileResolver
 
 
 class I2VCompositionTest(unittest.TestCase):
@@ -39,6 +47,46 @@ class I2VCompositionTest(unittest.TestCase):
             validation=SimpleNamespace(
                 max_duration_difference=0.2,
             ),
+        )
+
+    def test_diagnostics_uses_structured_profile_identity(self):
+        profile_key = ProfileKey.for_component(
+            ProfileComponent.VIDEO,
+            ProfilePlatform.INSTAGRAM
+        )
+        environment = {
+            "MC_PROFILE_COMPONENT": profile_key.component.value,
+            "MC_PROFILE_PLATFORM": profile_key.platform.value,
+            "MC_PROFILE_ID": profile_key.profile_id,
+            "MC_PROFILE_PATH": "C:/arbitrary/profile.json",
+        }
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            os.environ,
+            environment,
+            clear=True
+        ):
+            output_path = Path(directory) / "video" / "final.mp4"
+            diagnostics = FFmpegDiagnostics(
+                output_path=output_path,
+                scene_count=2
+            )
+            persisted = json.loads(
+                diagnostics.path.read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(
+            {
+                "component": "video",
+                "platform": "instagram",
+                "profile_id": "video_instagram",
+                "path": str(
+                    ProfileResolver().resolve(profile_key)
+                ),
+            },
+            persisted["profile"]
         )
 
     def test_pingpong_happens_before_delivery_scale_and_fps(self):

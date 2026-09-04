@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -290,7 +291,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             )
         )
 
-    def test_config_manager_accepts_identity_and_legacy_adapter(self):
+    def test_config_manager_identity_matches_legacy_profile_files(self):
         for component in ProfileComponent:
             for platform in ProfilePlatform:
                 with self.subTest(
@@ -301,7 +302,6 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         component,
                         platform
                     )
-                    official_path = self.resolver.resolve(profile_key)
                     if component is ProfileComponent.GUION:
                         legacy_path = (
                             Path("config/profiles/guion")
@@ -314,24 +314,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                             / "modo_conciencia.json"
                         )
 
-                    with patch.dict(
-                        os.environ,
-                        {
-                            "MC_PROFILE_PATH": str(legacy_path),
-                            "MC_PROFILE_COMPONENT": "",
-                            "MC_PROFILE_PLATFORM": "",
-                            "MC_PROFILE_ID": "",
-                        },
-                        clear=True
-                    ):
-                        legacy_profile = (
-                            ConfigManager().get_profile_config()
+                    legacy_profile = json.loads(
+                        legacy_path.read_text(
+                            encoding="utf-8"
                         )
+                    )
 
                     with patch.dict(
                         os.environ,
                         {
-                            "MC_PROFILE_PATH": str(official_path),
                             "MC_PROFILE_COMPONENT": component.value,
                             "MC_PROFILE_PLATFORM": platform.value,
                             "MC_PROFILE_ID": profile_key.profile_id,
@@ -376,7 +367,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         profile
                     )
 
-    def test_config_manager_rejects_partial_or_conflicting_identity(self):
+    def test_config_manager_rejects_partial_identity(self):
         with patch.dict(
             os.environ,
             {
@@ -392,6 +383,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             ):
                 ConfigManager().get_profile_config()
 
+    def test_external_profile_path_cannot_override_identity(self):
         with patch.dict(
             os.environ,
             {
@@ -404,13 +396,17 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             },
             clear=True
         ):
-            with self.assertRaisesRegex(
-                ValueError,
-                "MC_PROFILE_PATH no coincide"
-            ):
-                ConfigManager().get_profile_config()
+            profile = ConfigManager().get_profile_config()
 
-    def test_missing_identity_and_legacy_path_fails_without_app_fallback(self):
+        expected = self.resolver.load(
+            ProfileKey.for_component(
+                ProfileComponent.VIDEO,
+                ProfilePlatform.INSTAGRAM
+            )
+        )
+        self.assertEqual(expected, profile)
+
+    def test_missing_identity_fails_without_app_fallback(self):
         with patch.dict(
             os.environ,
             {},
@@ -425,9 +421,25 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 )
             ), self.assertRaisesRegex(
                 ValueError,
-                "No existe identidad ni ruta de perfil suficiente"
+                "Falta identidad estructurada de perfil"
             ):
                 manager.get_profile_config()
+
+    def test_external_profile_path_without_identity_does_not_resolve(self):
+        with patch.dict(
+            os.environ,
+            {
+                "MC_PROFILE_PATH": (
+                    "config/profiles/youtube/modo_conciencia.json"
+                )
+            },
+            clear=True
+        ):
+            with self.assertRaisesRegex(
+                ValueError,
+                "Falta identidad estructurada de perfil"
+            ):
+                ConfigManager().get_profile_config()
 
     def test_app_json_no_longer_declares_profile_selection(self):
         app = ConfigManager().get_app_config()
@@ -518,17 +530,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "video_instagram",
             options["profile_id"]
         )
-        self.assertEqual(
-            str(self.resolver.resolve(profile_key)),
-            options["profile_path"]
-        )
+        self.assertNotIn("profile_path", options)
 
-    def test_main_transports_profile_identity_without_removing_path_adapter(self):
+    def test_main_transports_only_structured_profile_identity(self):
         options = {
-            "profile_path": (
-                "config/profiles/video/instagram/"
-                "perfil_video_instagram.json"
-            ),
             "profile_component": "video",
             "profile_platform": "instagram",
             "profile_id": "video_instagram",
@@ -556,10 +561,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             controller_mock.return_value.run.return_value = options
 
             self.assertEqual(0, main.main())
-            self.assertEqual(
-                options["profile_path"],
-                os.environ["MC_PROFILE_PATH"]
-            )
+            self.assertNotIn("MC_PROFILE_PATH", os.environ)
             self.assertEqual(
                 "video",
                 os.environ["MC_PROFILE_COMPONENT"]
@@ -580,6 +582,20 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 self.resolver.load(profile_key),
                 ConfigManager().get_profile_config()
             )
+
+    def test_productive_runtime_has_no_profile_path_environment_contract(self):
+        paths = (
+            Path("main.py"),
+            *Path("app").rglob("*.py"),
+            *Path("certification").rglob("*.py"),
+        )
+
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertNotIn(
+                    "MC_PROFILE_PATH",
+                    path.read_text(encoding="utf-8")
+                )
 
 
 if __name__ == "__main__":

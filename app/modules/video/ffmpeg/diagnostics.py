@@ -1,6 +1,7 @@
 import json
-import os
 from pathlib import Path
+
+from app.shared.config_manager import ConfigManager
 
 
 class FFmpegDiagnostics:
@@ -13,10 +14,7 @@ class FFmpegDiagnostics:
         output_path = Path(output_path)
         self.path = output_path.parent / "ffmpeg_diagnostics.json"
         self.data = {
-            "profile": os.environ.get(
-                "MC_PROFILE_PATH",
-                "config/app.json",
-            ),
+            "profile": self._profile_metadata(),
             "scene_count": scene_count,
             "normalization": {
                 "status": "NOT_REQUIRED",
@@ -37,6 +35,23 @@ class FFmpegDiagnostics:
             ),
         }
         self._persist()
+
+    def _profile_metadata(self):
+        config = ConfigManager()
+        profile_key = config.get_profile_key()
+        if profile_key is None:
+            return None
+
+        return {
+            "component": profile_key.component.value,
+            "platform": profile_key.platform.value,
+            "profile_id": profile_key.profile_id,
+            "path": str(
+                config.profile_resolver.resolve(
+                    profile_key
+                )
+            ),
+        }
 
     def start_normalization(self):
         self.data["normalization"]["status"] = "RUNNING"

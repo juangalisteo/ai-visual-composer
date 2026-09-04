@@ -80,7 +80,6 @@ class RunController:
             "script_source": script_source,
             "design_target": design_target,
             "pipeline_mode": pipeline_mode,
-            "profile_path": str(profile["path"]),
             "profile_component": (
                 profile_key.component.value
                 if profile_key

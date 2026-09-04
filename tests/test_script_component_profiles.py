@@ -6,6 +6,11 @@ from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
 from app.shared.config_manager import ConfigManager
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
 
 
 class ScriptComponentProfilesTest(
@@ -162,15 +167,19 @@ class ScriptComponentProfilesTest(
             printed
         )
 
-    def test_config_manager_loads_selected_script_profile_path(self):
+    def test_config_manager_loads_selected_script_profile_identity(self):
+        profile_key = ProfileKey.for_component(
+            ProfileComponent.GUION,
+            ProfilePlatform.YOUTUBE
+        )
         with patch.dict(
             os.environ,
             {
-                "MC_PROFILE_PATH": (
-                    "config/profiles/guion/youtube.json"
-                )
+                "MC_PROFILE_COMPONENT": "guion",
+                "MC_PROFILE_PLATFORM": "youtube",
+                "MC_PROFILE_ID": profile_key.profile_id,
             },
-            clear=False
+            clear=True
         ):
             profile = ConfigManager().get_profile_config()
 

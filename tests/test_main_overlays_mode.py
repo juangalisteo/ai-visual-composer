@@ -13,7 +13,9 @@ class MainOverlaysModeTest(
         self
     ):
         options = {
-            "profile_path": "config/profiles/youtube/modo_conciencia.json",
+            "profile_component": "imagen",
+            "profile_platform": "youtube",
+            "profile_id": "imagen_youtube",
             "subtitle_config": "single_line",
             "voice_config": "masculina",
             "music_category": None,
