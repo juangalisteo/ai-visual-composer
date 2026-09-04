@@ -581,6 +581,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video"
                 / "video-runtime.mp4"
             )
+            resolved_subtitle_profile = object()
 
             class FakeConfig:
                 def get_ai_config(
@@ -607,6 +608,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                             "video": True,
                         },
                     }
+
+                def get_subtitle_profile(
+                    self
+                ):
+                    return resolved_subtitle_profile
 
             with patch.dict(
                 "os.environ",
@@ -681,6 +687,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             result
         )
         clips_builder.assert_called_once()
+        srt_optimizer.assert_called_once_with(
+            subtitle_profile=resolved_subtitle_profile,
+            render_fps=30
+        )
+        video_builder.assert_called_once_with(
+            subtitle_profile=resolved_subtitle_profile
+        )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=video_clips_manifest
         )

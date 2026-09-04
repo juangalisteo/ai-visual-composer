@@ -12,6 +12,8 @@ from app.modules.script import PreparedScript
 
 class FakeConfigManager:
 
+    subtitle_profile = object()
+
     def get_profile_key(
         self
     ):
@@ -41,6 +43,11 @@ class FakeConfigManager:
                 "video": True,
             },
         }
+
+    def get_subtitle_profile(
+        self
+    ):
+        return self.subtitle_profile
 
 
 class FakePromptEngine:

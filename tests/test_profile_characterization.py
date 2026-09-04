@@ -287,7 +287,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     video["sampling"]["scheduler"]
                 )
 
-    def test_subtitle_configuration_remains_effectively_split(self):
+    def test_official_subtitle_configuration_is_unified_and_equivalent(self):
         for platform, expected in self.PLATFORM_EXPECTATIONS.items():
             with self.subTest(platform=platform.value):
                 profile_key = ProfileKey.for_component(
@@ -305,9 +305,9 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     environment,
                     clear=True
                 ):
-                    subtitle_config = (
+                    subtitle_profile = (
                         ConfigManager()
-                        .get_subtitle_config()
+                        .get_subtitle_profile()
                     )
 
                 expected_path = Path(
@@ -315,8 +315,13 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 ) / f"{expected['subtitle_config']}.json"
                 self.assertEqual(
                     self._load(expected_path),
-                    subtitle_config
+                    subtitle_profile.cue_policy
                 )
+                self.assertEqual(
+                    expected["subtitle_config"],
+                    subtitle_profile.key.style.value
+                )
+                self.assertFalse(subtitle_profile.legacy)
 
     def test_structured_identity_controls_wan_profile_resolution(self):
         instagram_key = ProfileKey.for_component(

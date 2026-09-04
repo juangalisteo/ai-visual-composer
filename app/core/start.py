@@ -85,6 +85,22 @@ def iniciar():
         "builders",
         {}
     )
+    subtitle_profile = None
+
+    if (
+        pipeline_mode in {
+            "full",
+            "subtitles",
+            "storyboard",
+        }
+        and builders.get(
+            "subtitles",
+            False
+        )
+    ):
+        subtitle_profile = (
+            config.get_subtitle_profile()
+        )
 
     input_script_path = Path(
         "input/guion.txt"
@@ -201,7 +217,16 @@ def iniciar():
         )
 
         optimized_subtitle_path = (
-            SrtOptimizer().optimize()
+            SrtOptimizer(
+                subtitle_profile=subtitle_profile,
+                render_fps=profile.get(
+                    "video_style",
+                    {}
+                ).get(
+                    "fps",
+                    30
+                )
+            ).optimize()
         )
 
         stage_times["Subtítulos"] = (
@@ -300,7 +325,9 @@ def iniciar():
 
         video_path, video_elapsed = (
             _measure_stage(
-                VideoBuilder().build,
+                VideoBuilder(
+                    subtitle_profile=subtitle_profile
+                ).build,
                 video_clips_manifest_path=(
                     video_clips_manifest_path
                 )
@@ -322,7 +349,9 @@ def iniciar():
     ):
         video_path, video_elapsed = (
             _measure_stage(
-                VideoBuilder().build
+                VideoBuilder(
+                    subtitle_profile=subtitle_profile
+                ).build
             )
         )
 

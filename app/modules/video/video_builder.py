@@ -24,6 +24,12 @@ from app.modules.video.ffmpeg.i2v_normalizer import (
 
 class VideoBuilder:
 
+    def __init__(
+        self,
+        subtitle_profile=None
+    ):
+        self.subtitle_profile = subtitle_profile
+
     def build(
         self,
         audio_path=None,
@@ -39,7 +45,9 @@ class VideoBuilder:
         )
 
         build_context = (
-            VideoBuildContextFactory().build(
+            VideoBuildContextFactory(
+                subtitle_profile=self.subtitle_profile
+            ).build(
                 audio_path=audio_path,
                 subtitle_path=subtitle_path,
                 images_manifest_path=(

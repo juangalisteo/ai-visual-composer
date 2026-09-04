@@ -22,94 +22,98 @@ class SubtitleConfigLoader:
             {}
         )
 
-        subtitle_data = video_style.get(
-            "subtitles",
-            {}
+        return self.load_render_style(
+            video_style.get(
+                "subtitles",
+                {}
+            )
         )
 
+    def load_render_style(
+        self,
+        render_style
+    ):
         if not isinstance(
-            subtitle_data,
+            render_style,
             dict
         ):
             raise TypeError(
-                "La configuración "
-                "video_style.subtitles "
-                "debe ser un diccionario."
+                "render_style debe ser un diccionario."
             )
 
         return SubtitleConfig(
 
-            font=subtitle_data.get(
+            font=render_style.get(
                 "font",
                 "Arial"
             ),
 
             font_size=int(
-                subtitle_data.get(
+                render_style.get(
                     "font_size",
                     20
                 )
             ),
 
             bold=bool(
-                subtitle_data.get(
+                render_style.get(
                     "bold",
                     True
                 )
             ),
 
-            primary_colour=subtitle_data.get(
+            primary_colour=render_style.get(
                 "primary_colour",
                 "&H00FFFFFF"
             ),
 
-            outline_colour=subtitle_data.get(
+            outline_colour=render_style.get(
                 "outline_colour",
                 "&H00000000"
             ),
 
-            back_colour=subtitle_data.get(
+            back_colour=render_style.get(
                 "back_colour",
                 "&H00000000"
             ),
 
             border_style=int(
-                subtitle_data.get(
+                render_style.get(
                     "border_style",
                     1
                 )
             ),
 
             outline=int(
-                subtitle_data.get(
+                render_style.get(
                     "outline",
                     0
                 )
             ),
 
             shadow=int(
-                subtitle_data.get(
+                render_style.get(
                     "shadow",
                     1
                 )
             ),
 
             alignment=int(
-                subtitle_data.get(
+                render_style.get(
                     "alignment",
                     2
                 )
             ),
 
             margin_v=int(
-                subtitle_data.get(
+                render_style.get(
                     "margin_v",
                     25
                 )
             ),
 
             offset=float(
-                subtitle_data.get(
+                render_style.get(
                     "offset",
                     0.0
                 )

@@ -11,6 +11,7 @@ from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
 )
 from app.shared.config_manager import ConfigManager
+from app.shared.profile_identity import ProfileKey
 
 
 class SubtitleProfileTreePhase4ATest(unittest.TestCase):
@@ -218,32 +219,39 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                     hashlib.sha256(path.read_bytes()).hexdigest().upper()
                 )
 
-    def test_runtime_still_loads_legacy_cue_profiles(self):
-        for style, expected_path in self.CUE_PROFILES.items():
-            with self.subTest(style=style), patch.dict(
+    def test_official_runtime_loads_new_cue_profiles(self):
+        for component, platform, _, style, path in self._cases():
+            profile_key = ProfileKey.for_component(
+                component,
+                platform
+            )
+            main_path = self.MAIN_PROFILES[(component, platform)]
+            environment = {
+                "MC_PROFILE_COMPONENT": component,
+                "MC_PROFILE_PLATFORM": platform,
+                "MC_PROFILE_ID": profile_key.profile_id,
+                "MC_PROFILE_PATH": str(main_path),
+                "MC_SUBTITLE_CONFIG": style,
+            }
+
+            with self.subTest(path=path), patch.dict(
                 os.environ,
-                {"MC_SUBTITLE_CONFIG": style},
+                environment,
                 clear=True
             ):
-                manager = ConfigManager()
-                with patch.object(
-                    manager,
-                    "load_json",
-                    wraps=manager.load_json
-                ) as load_json:
-                    loaded = manager.get_subtitle_config()
+                loaded = ConfigManager().get_subtitle_profile()
 
-                self.assertEqual(self._load(expected_path), loaded)
-                load_json.assert_called_once_with(expected_path)
+            self.assertEqual(path, loaded.path)
+            self.assertEqual(self._load(path)["cue_policy"], loaded.cue_policy)
+            self.assertFalse(loaded.legacy)
 
-    def test_runtime_render_loader_still_uses_main_profile_subtitles(self):
+    def test_render_loader_accepts_new_profile_render_style(self):
         loader = SubtitleConfigLoader()
 
-        for key, path in self.MAIN_PROFILES.items():
-            with self.subTest(component=key[0], platform=key[1]):
-                main_profile = self._load(path)
-                render_style = main_profile["video_style"]["subtitles"]
-                loaded = loader.load(main_profile)
+        for component, platform, _, _, path in self._cases():
+            with self.subTest(component=component, platform=platform):
+                render_style = self._load(path)["render_style"]
+                loaded = loader.load_render_style(render_style)
 
                 self.assertEqual(render_style["font"], loaded.font)
                 self.assertEqual(render_style["font_size"], loaded.font_size)

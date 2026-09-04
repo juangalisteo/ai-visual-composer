@@ -89,11 +89,22 @@ class VideoConfig:
 
 class VideoConfigLoader:
 
+    def __init__(
+        self,
+        subtitle_profile=None,
+        config_manager=None
+    ):
+        self.subtitle_profile = subtitle_profile
+        self.config_manager = (
+            config_manager
+            or ConfigManager()
+        )
+
     def load(
         self
     ):
         profile = (
-            ConfigManager()
+            self.config_manager
             .get_profile_config()
         )
 
@@ -179,8 +190,11 @@ class VideoConfigLoader:
         )
 
         subtitle_config = (
-            SubtitleConfigLoader().load(
-                profile
+            SubtitleConfigLoader().load_render_style(
+                (
+                    self.subtitle_profile
+                    or self.config_manager.get_subtitle_profile()
+                ).render_style
             )
         )
 

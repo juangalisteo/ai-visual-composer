@@ -17,6 +17,12 @@ from app.modules.video.video_config import VideoConfigLoader
 
 class VideoBuildContextFactory:
 
+    def __init__(
+        self,
+        subtitle_profile=None
+    ):
+        self.subtitle_profile = subtitle_profile
+
     def build(
         self,
         audio_path=None,
@@ -58,7 +64,9 @@ class VideoBuildContextFactory:
         )
 
         video_config = (
-            VideoConfigLoader().load()
+            VideoConfigLoader(
+                subtitle_profile=self.subtitle_profile
+            ).load()
         )
 
         video_config = (

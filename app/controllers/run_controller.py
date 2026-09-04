@@ -370,19 +370,10 @@ class RunController:
         )
 
     def select_subtitle_config(self):
-        configs_path = Path(
-            "config/subtitle_configs"
+        configs = (
+            "single_line",
+            "word_by_word",
         )
-
-        configs = sorted(
-            configs_path.glob("*.json")
-        )
-
-        if not configs:
-            raise FileNotFoundError(
-                "No se encontraron configuraciones en "
-                "config/subtitle_configs."
-            )
 
         self._print(
             "\nSUBTÍTULOS\n"
@@ -394,14 +385,14 @@ class RunController:
         ):
             self._print(
                 f"{i}. "
-                f"{self._subtitle_label(config.stem)}"
+                f"{self._subtitle_label(config)}"
             )
 
         selected = self._select_from_list(
             configs
         )
 
-        return selected.stem
+        return selected
 
     def select_voice_config(self):
         configs_path = Path(

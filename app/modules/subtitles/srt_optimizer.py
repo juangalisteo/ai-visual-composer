@@ -1,4 +1,5 @@
 from pathlib import Path
+from copy import deepcopy
 import re
 import time
 
@@ -21,30 +22,32 @@ from app.modules.subtitles.timing import (
 class SrtOptimizer:
 
     def __init__(
-        self
+        self,
+        subtitle_profile=None,
+        render_fps=None
     ):
         config = ConfigManager()
 
-        subtitle_config = (
-            config.get_subtitle_config()
-        )
-        subtitle_config = dict(
-            subtitle_config
-        )
-        profile = (
-            config.get_profile_config()
-        )
-        video_style = profile.get(
-            "video_style",
-            {}
+        if subtitle_profile is None:
+            subtitle_profile = config.get_subtitle_profile()
+
+        subtitle_config = deepcopy(
+            subtitle_profile.cue_policy
         )
 
-        subtitle_config.setdefault(
-            "render_fps",
-            video_style.get(
+        if render_fps is None:
+            profile = config.get_profile_config()
+            render_fps = profile.get(
+                "video_style",
+                {}
+            ).get(
                 "fps",
                 30
             )
+
+        subtitle_config.setdefault(
+            "render_fps",
+            render_fps
         )
 
         mode = subtitle_config["mode"]
