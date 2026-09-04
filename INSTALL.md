@@ -404,10 +404,7 @@ Relevant profile families include:
 
 ```text
 config/profiles/guion/
-config/profiles/instagram/
-config/profiles/youtube/
-config/profiles/diseno/imagen/
-config/profiles/diseno/video/
+config/profiles/imagen/
 config/profiles/video/
 ```
 

@@ -420,7 +420,8 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "script_source": "manual",
                         "pipeline_mode": "full",
                         "profile_path": (
-                            "config/profiles/guion/instagram.json"
+                            "config/profiles/guion/instagram/"
+                            "perfil_guion_instagram.json"
                         ),
                         "subtitle_config": "single_line",
                         "voice_config": "masculina",
@@ -562,7 +563,8 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "script_source": "manual",
                         "pipeline_mode": "full",
                         "profile_path": (
-                            "config/profiles/guion/instagram.json"
+                            "config/profiles/guion/instagram/"
+                            "perfil_guion_instagram.json"
                         ),
                         "subtitle_config": "single_line",
                         "voice_config": "masculina",

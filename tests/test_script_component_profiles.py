@@ -17,62 +17,44 @@ class ScriptComponentProfilesTest(
     unittest.TestCase
 ):
 
-    def test_script_profiles_exist_as_independent_copies(self):
-        pairs = (
-            (
-                Path(
-                    "config/profiles/instagram/modo_conciencia.json"
-                ),
-                Path(
-                    "config/profiles/guion/instagram.json"
-                ),
+    def test_script_profiles_are_independent_component_files(self):
+        script_profiles = (
+            Path(
+                "config/profiles/guion/instagram/"
+                "perfil_guion_instagram.json"
             ),
-            (
-                Path(
-                    "config/profiles/youtube/modo_conciencia.json"
-                ),
-                Path(
-                    "config/profiles/guion/youtube.json"
-                ),
+            Path(
+                "config/profiles/guion/youtube/"
+                "perfil_guion_youtube.json"
             ),
         )
 
-        for original, script_profile in pairs:
+        for script_profile in script_profiles:
             with self.subTest(
                 script_profile=script_profile
             ):
                 self.assertTrue(
-                    original.is_file()
-                )
-                self.assertTrue(
                     script_profile.is_file()
                 )
                 self.assertFalse(
-                    os.path.samefile(
-                        original,
-                        script_profile
-                    )
+                    script_profile.is_symlink()
                 )
-                self.assertEqual(
-                    original.read_text(
-                        encoding="utf-8"
-                    ),
-                    script_profile.read_text(
-                        encoding="utf-8"
-                    )
-                )
+
+        self.assertFalse(os.path.samefile(*script_profiles))
 
     def test_script_profiles_preserve_source_orientation(self):
         instagram = json.loads(
             Path(
-                "config/profiles/guion/instagram.json"
+                "config/profiles/guion/instagram/"
+                "perfil_guion_instagram.json"
             ).read_text(
                 encoding="utf-8"
             )
         )
         youtube = json.loads(
             Path(
-                "config/profiles/guion/youtube.json"
+                "config/profiles/guion/youtube/"
+                "perfil_guion_youtube.json"
             ).read_text(
                 encoding="utf-8"
             )

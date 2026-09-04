@@ -265,7 +265,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 resolved.path
             )
 
-    def test_runtime_effective_behavior_matches_legacy_for_all_profiles(self):
+    def test_runtime_effective_behavior_matches_resolved_profiles(self):
         style_builder = SubtitleStyleBuilder(
             font_manager=_FontManager()
         )
@@ -278,13 +278,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             main_profile = self.profile_resolver.load(
                 ProfileKey.for_component(component, platform)
             )
-            legacy_cue = self._load(
-                Path("config/subtitle_configs")
-                / f"{style.value}.json"
+            expected_profile = self._load(
+                self._expected_path(component, platform, style)
             )
-            legacy_render = main_profile[
-                "video_style"
-            ]["subtitles"]
+            expected_cue = expected_profile["cue_policy"]
+            expected_render = expected_profile["render_style"]
             fps = main_profile["video_style"]["fps"]
 
             with self.subTest(
@@ -303,22 +301,22 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     subtitle_profile=resolved
                 ).load()
 
-            self.assertEqual(legacy_cue, resolved.cue_policy)
-            self.assertEqual(legacy_render, resolved.render_style)
+            self.assertEqual(expected_cue, resolved.cue_policy)
+            self.assertEqual(expected_render, resolved.render_style)
             self.assertEqual(
                 SubtitleConfigLoader().load_render_style(
-                    legacy_render
+                    expected_render
                 ),
                 video_config.subtitles
             )
             self.assertEqual(
-                style_builder.build(legacy_render),
+                style_builder.build(expected_render),
                 style_builder.build(video_config.subtitle_style)
             )
             self._assert_model_equivalent(
                 optimizer.model,
                 style,
-                legacy_cue,
+                expected_cue,
                 fps
             )
 
@@ -391,25 +389,8 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             SrtOptimizer()
 
-    def test_design_legacy_files_and_video_srt_boundaries_remain_unchanged(self):
-        for component in (
-            ProfileComponent.IMAGEN,
-            ProfileComponent.VIDEO,
-        ):
-            for platform in ProfilePlatform:
-                with self.subTest(
-                    component=component.value,
-                    platform=platform.value
-                ):
-                    legacy_path = (
-                        Path("config/profiles/diseno")
-                        / component.value
-                        / f"{platform.value}.json"
-                    )
-                    self.assertTrue(
-                        legacy_path.is_file()
-                    )
-
+    def test_design_has_no_profile_tree_and_video_srt_remains_unimplemented(self):
+        self.assertFalse(Path("config/profiles/diseno").exists())
         self.assertFalse(
             Path("config/profiles/video_srt").exists()
         )

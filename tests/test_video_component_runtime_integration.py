@@ -381,7 +381,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
     def test_video_profiles_exist_with_validated_parameters(self):
         cases = (
             (
-                "config/profiles/video/instagram.json",
+                "config/profiles/video/instagram/wan_i2v_instagram.json",
                 448,
                 800,
                 1080,
@@ -389,7 +389,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 20,
             ),
             (
-                "config/profiles/video/youtube.json",
+                "config/profiles/video/youtube/wan_i2v_youtube.json",
                 800,
                 448,
                 1920,
@@ -484,10 +484,12 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_active_video_profiles_keep_quality_encoding_settings(self):
         profile_paths = (
-            "config/profiles/instagram/modo_conciencia.json",
-            "config/profiles/youtube/modo_conciencia.json",
-            "config/profiles/guion/instagram.json",
-            "config/profiles/guion/youtube.json",
+            "config/profiles/guion/instagram/perfil_guion_instagram.json",
+            "config/profiles/guion/youtube/perfil_guion_youtube.json",
+            "config/profiles/imagen/instagram/perfil_imagen_instagram.json",
+            "config/profiles/imagen/youtube/perfil_imagen_youtube.json",
+            "config/profiles/video/instagram/perfil_video_instagram.json",
+            "config/profiles/video/youtube/perfil_video_youtube.json",
         )
 
         for profile_path in profile_paths:

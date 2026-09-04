@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import unittest
@@ -17,45 +16,6 @@ from app.shared.profile_resolver import ProfileResolver
 
 
 class ProfileCharacterizationTest(unittest.TestCase):
-
-    PROFILE_HASHES = {
-        "config/profiles/guion/instagram.json": (
-            "273c5e47d57e1021ee29618881dcaf0bb71238e46142879cb53ac6029f0d4411"
-        ),
-        "config/profiles/guion/youtube.json": (
-            "4c773e16bef9309462bdf89c6453795b6ddb5760a505818a5c3b6da393bbaa35"
-        ),
-        "config/profiles/instagram/modo_conciencia.json": (
-            "273c5e47d57e1021ee29618881dcaf0bb71238e46142879cb53ac6029f0d4411"
-        ),
-        "config/profiles/youtube/modo_conciencia.json": (
-            "4c773e16bef9309462bdf89c6453795b6ddb5760a505818a5c3b6da393bbaa35"
-        ),
-        "config/profiles/diseno/imagen/instagram.json": (
-            "68982a37116f836efe30129472656ae3aaf069f4fd83be87ecdb32777fb35558"
-        ),
-        "config/profiles/diseno/imagen/youtube.json": (
-            "b14ec85306a55359ba02d2a189a27750028fd66eb89f42d542df9f8cb5b4bb7c"
-        ),
-        "config/profiles/diseno/video/instagram.json": (
-            "1a03449be72a33a4844bc7cacdb24a7e8575b5e9ae9e23fabfb51424be81ac80"
-        ),
-        "config/profiles/diseno/video/youtube.json": (
-            "60cc016d66cd9d40f65bfde84ae6930916a83eed2faa51cb3c5389786efb8dc4"
-        ),
-        "config/profiles/video/instagram.json": (
-            "aa76732c4933d3f4b468f42f5ff168298e019dfb42e5f62c1a3fe61eeca392c7"
-        ),
-        "config/profiles/video/youtube.json": (
-            "b5a159a407de677ed7af082a2a93f2bc00835d52e3e53fd3e135af01018bb76d"
-        ),
-        "config/subtitle_configs/single_line.json": (
-            "2804e5bf5718b6412f74afb0e16b378081857364bd2cfaa3fa8104e7bac5203f"
-        ),
-        "config/subtitle_configs/word_by_word.json": (
-            "039fd25387dcc416c6f785edb7a9f781f064eb979d0158b58e9f21aa7089dcf8"
-        ),
-    }
 
     PLATFORM_EXPECTATIONS = {
         ProfilePlatform.INSTAGRAM: {
@@ -89,15 +49,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
     def setUp(self):
         self.resolver = ProfileResolver()
 
-    def test_all_current_profile_files_keep_semantic_hashes(self):
-        for path, expected_hash in self.PROFILE_HASHES.items():
-            with self.subTest(path=path):
-                data = self._load(Path(path))
-                self.assertEqual(
-                    expected_hash,
-                    self._semantic_hash(data)
-                )
-
     def test_guion_image_and_video_profiles_keep_effective_behavior(self):
         for component in ProfileComponent:
             for platform, expected in self.PLATFORM_EXPECTATIONS.items():
@@ -113,7 +64,20 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         profile_key
                     )
                     video_style = profile["video_style"]
-                    subtitles = video_style["subtitles"]
+                    environment = self._identity_environment(
+                        profile_key
+                    )
+                    with patch.dict(
+                        os.environ,
+                        environment,
+                        clear=True
+                    ):
+                        subtitle_profile = (
+                            ConfigManager().get_subtitle_profile(
+                                expected["subtitle_config"]
+                            )
+                        )
+                    subtitles = subtitle_profile.render_style
 
                     self.assertEqual(
                         platform.value,
@@ -143,6 +107,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         expected["subtitle_config"],
                         profile["subtitle_config"]
                     )
+                    self.assertNotIn("subtitles", video_style)
                     self.assertEqual(
                         expected["subtitle_font"],
                         subtitles["font"]
@@ -180,7 +145,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         profile["video"]["crf"]
                     )
 
-    def test_design_target_profiles_preserve_legacy_effective_fields(self):
+    def test_design_targets_use_component_profiles_without_own_tree(self):
         for target_component in (
             ProfileComponent.IMAGEN,
             ProfileComponent.VIDEO,
@@ -200,39 +165,15 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     profile = self.resolver.load(
                         profile_key
                     )
-                    legacy_path = (
-                        Path("config/profiles/diseno")
-                        / target_component.value
-                        / f"{platform.value}.json"
-                    )
-                    legacy_profile = self._load(
-                        legacy_path
-                    )
-
                     self.assertEqual(
                         self.resolver.resolve(
                             profile_key
                         ),
                         path
                     )
-                    for field in (
-                        "platform",
-                        "format",
-                        "resolution",
-                        "tone",
-                    ):
-                        self.assertEqual(
-                            legacy_profile[field],
-                            profile[field]
-                        )
-                    for field in (
-                        "width",
-                        "height",
-                    ):
-                        self.assertEqual(
-                            legacy_profile["video_style"][field],
-                            profile["video_style"][field]
-                        )
+                    self.assertFalse(
+                        Path("config/profiles/diseno").exists()
+                    )
                     self.assertEqual(
                         False,
                         bool(
@@ -335,12 +276,9 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         )
                     )
 
-                expected_path = Path(
-                    "config/subtitle_configs"
-                ) / f"{expected['subtitle_config']}.json"
                 self.assertEqual(
-                    self._load(expected_path),
-                    subtitle_profile.cue_policy
+                    expected["subtitle_config"],
+                    subtitle_profile.cue_policy["mode"]
                 )
                 self.assertEqual(
                     expected["subtitle_config"],
@@ -365,20 +303,12 @@ class ProfileCharacterizationTest(unittest.TestCase):
             )
         )
 
-    def test_runtime_objects_are_equal_for_legacy_and_identity_loading(self):
-        for platform in ProfilePlatform:
+    def test_runtime_objects_are_consistent_with_structured_identity(self):
+        for platform, expected in self.PLATFORM_EXPECTATIONS.items():
             with self.subTest(platform=platform.value):
                 profile_key = ProfileKey.for_component(
                     ProfileComponent.VIDEO,
                     platform
-                )
-                legacy_path = (
-                    Path("config/profiles")
-                    / platform.value
-                    / "modo_conciencia.json"
-                )
-                legacy_profile = self._load(
-                    legacy_path
                 )
 
                 with patch.dict(
@@ -400,31 +330,17 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         subtitle_profile=subtitle_profile
                     ).load()
 
-                with patch.object(
-                    ConfigManager,
-                    "get_profile_config",
-                    return_value=legacy_profile
-                ):
-                    legacy_video = VideoConfigLoader(
-                        subtitle_profile=subtitle_profile
-                    ).load()
-
                 self.assertEqual(
-                    legacy_profile,
+                    self.resolver.load(profile_key),
                     identity_profile
                 )
                 self.assertEqual(
-                    legacy_video,
-                    identity_video
+                    expected["width"],
+                    identity_video.width
                 )
                 self.assertEqual(
-                    self._load(
-                        Path("config/profiles/video")
-                        / f"{platform.value}.json"
-                    ),
-                    self.resolver.load_video_component(
-                        profile_key
-                    )
+                    expected["height"],
+                    identity_video.height
                 )
                 self.assertEqual(
                     self.resolver.load_video_component(profile_key),
@@ -453,21 +369,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-
-    def _semantic_hash(
-        self,
-        data
-    ):
-        normalized = json.dumps(
-            data,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False
-        ).encode("utf-8")
-        return hashlib.sha256(
-            normalized
-        ).hexdigest()
-
 
 if __name__ == "__main__":
     unittest.main()

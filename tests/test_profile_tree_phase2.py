@@ -1,5 +1,3 @@
-import hashlib
-import json
 import shutil
 import tempfile
 import unittest
@@ -15,86 +13,7 @@ from app.shared.profile_resolver import ProfileResolver
 
 class ProfileTreePhase2Test(unittest.TestCase):
 
-    COPY_PAIRS = (
-        (
-            Path("config/profiles/guion/instagram.json"),
-            Path(
-                "config/profiles/guion/instagram/"
-                "perfil_guion_instagram.json"
-            ),
-            "BA65B13A6C51A0C47FF020FCA59D09D07E5857CDFC7CF9A3B6B7B75794E7DE2B",
-        ),
-        (
-            Path("config/profiles/guion/youtube.json"),
-            Path(
-                "config/profiles/guion/youtube/"
-                "perfil_guion_youtube.json"
-            ),
-            "233B3FF4C76E5572E083F5F2ADEB6BB9728B24A7468EEA35E6F6917AF93A0135",
-        ),
-        (
-            Path(
-                "config/profiles/instagram/"
-                "modo_conciencia.json"
-            ),
-            Path(
-                "config/profiles/imagen/instagram/"
-                "perfil_imagen_instagram.json"
-            ),
-            "BA65B13A6C51A0C47FF020FCA59D09D07E5857CDFC7CF9A3B6B7B75794E7DE2B",
-        ),
-        (
-            Path(
-                "config/profiles/youtube/"
-                "modo_conciencia.json"
-            ),
-            Path(
-                "config/profiles/imagen/youtube/"
-                "perfil_imagen_youtube.json"
-            ),
-            "233B3FF4C76E5572E083F5F2ADEB6BB9728B24A7468EEA35E6F6917AF93A0135",
-        ),
-        (
-            Path(
-                "config/profiles/instagram/"
-                "modo_conciencia.json"
-            ),
-            Path(
-                "config/profiles/video/instagram/"
-                "perfil_video_instagram.json"
-            ),
-            "BA65B13A6C51A0C47FF020FCA59D09D07E5857CDFC7CF9A3B6B7B75794E7DE2B",
-        ),
-        (
-            Path("config/profiles/video/instagram.json"),
-            Path(
-                "config/profiles/video/instagram/"
-                "wan_i2v_instagram.json"
-            ),
-            "829C503BF01FAEFE9F7488D28EF128C901689FB8797AC1EF0B6AA6FF87032AF2",
-        ),
-        (
-            Path(
-                "config/profiles/youtube/"
-                "modo_conciencia.json"
-            ),
-            Path(
-                "config/profiles/video/youtube/"
-                "perfil_video_youtube.json"
-            ),
-            "233B3FF4C76E5572E083F5F2ADEB6BB9728B24A7468EEA35E6F6917AF93A0135",
-        ),
-        (
-            Path("config/profiles/video/youtube.json"),
-            Path(
-                "config/profiles/video/youtube/"
-                "wan_i2v_youtube.json"
-            ),
-            "E7A08A0371D651D3B5AEACBD4F59F54EE59EC70D6AF1038E9D2921815B88B9B1",
-        ),
-    )
-
-    NEW_COMPONENT_PATHS = {
+    COMPONENT_PATHS = {
         "guion_instagram": Path(
             "config/profiles/guion/instagram/"
             "perfil_guion_instagram.json"
@@ -121,91 +40,46 @@ class ProfileTreePhase2Test(unittest.TestCase):
         ),
     }
 
-    LEGACY_COMPONENT_PATHS = {
-        "guion_instagram": Path(
-            "config/profiles/guion/instagram.json"
+    WAN_PATHS = {
+        ProfilePlatform.INSTAGRAM: Path(
+            "config/profiles/video/instagram/"
+            "wan_i2v_instagram.json"
         ),
-        "guion_youtube": Path(
-            "config/profiles/guion/youtube.json"
-        ),
-        "imagen_instagram": Path(
-            "config/profiles/instagram/modo_conciencia.json"
-        ),
-        "imagen_youtube": Path(
-            "config/profiles/youtube/modo_conciencia.json"
-        ),
-        "video_instagram": Path(
-            "config/profiles/instagram/modo_conciencia.json"
-        ),
-        "video_youtube": Path(
-            "config/profiles/youtube/modo_conciencia.json"
+        ProfilePlatform.YOUTUBE: Path(
+            "config/profiles/video/youtube/"
+            "wan_i2v_youtube.json"
         ),
     }
 
-    def test_new_tree_contains_exact_byte_for_byte_copies(self):
-        for source, destination, expected_hash in self.COPY_PAIRS:
-            with self.subTest(destination=destination):
-                source_bytes = source.read_bytes()
-                destination_bytes = destination.read_bytes()
+    REMOVED_LEGACY_PATHS = (
+        Path("config/profiles/guion/instagram.json"),
+        Path("config/profiles/guion/youtube.json"),
+        Path("config/profiles/video/instagram.json"),
+        Path("config/profiles/video/youtube.json"),
+        Path("config/profiles/instagram/modo_conciencia.json"),
+        Path("config/profiles/youtube/modo_conciencia.json"),
+        Path("config/profiles/diseno"),
+    )
 
-                self.assertEqual(
-                    source_bytes,
-                    destination_bytes
-                )
-                self.assertEqual(
-                    json.loads(
-                        source_bytes.decode("utf-8")
-                    ),
-                    json.loads(
-                        destination_bytes.decode("utf-8")
-                    )
-                )
-                self.assertEqual(
-                    expected_hash,
-                    self._sha256(source_bytes)
-                )
-                self.assertEqual(
-                    expected_hash,
-                    self._sha256(destination_bytes)
-                )
-
-    def test_new_profiles_are_distinct_regular_files_without_symlinks(self):
-        destinations = tuple(
-            destination
-            for _, destination, _ in self.COPY_PAIRS
+    def test_component_tree_contains_distinct_regular_files(self):
+        paths = tuple(self.COMPONENT_PATHS.values()) + tuple(
+            self.WAN_PATHS.values()
         )
 
-        for source, destination, _ in self.COPY_PAIRS:
-            with self.subTest(destination=destination):
-                self.assertTrue(source.is_file())
-                self.assertTrue(destination.is_file())
-                self.assertFalse(source.is_symlink())
-                self.assertFalse(destination.is_symlink())
-                self.assertNotEqual(
-                    source.resolve(),
-                    destination.resolve()
-                )
+        self.assertEqual(len(paths), len(set(paths)))
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertTrue(path.is_file())
+                self.assertFalse(path.is_symlink())
 
-        self.assertEqual(
-            len(destinations),
-            len(set(destinations))
-        )
-        self.assertNotEqual(
-            self.NEW_COMPONENT_PATHS["imagen_instagram"],
-            self.NEW_COMPONENT_PATHS["video_instagram"]
-        )
-        self.assertNotEqual(
-            self.NEW_COMPONENT_PATHS["imagen_youtube"],
-            self.NEW_COMPONENT_PATHS["video_youtube"]
-        )
+    def test_removed_legacy_profile_paths_do_not_exist(self):
+        for path in self.REMOVED_LEGACY_PATHS:
+            with self.subTest(path=path):
+                self.assertFalse(path.exists())
 
-    def test_temporary_copies_can_diverge_without_cross_component_changes(self):
-        image_source = self.NEW_COMPONENT_PATHS[
-            "imagen_instagram"
-        ]
-        video_source = self.NEW_COMPONENT_PATHS[
-            "video_instagram"
-        ]
+    def test_component_profiles_can_diverge_independently(self):
+        image_source = self.COMPONENT_PATHS["imagen_instagram"]
+        video_source = self.COMPONENT_PATHS["video_instagram"]
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -215,126 +89,59 @@ class ProfileTreePhase2Test(unittest.TestCase):
             shutil.copyfile(video_source, video_copy)
             original_video = video_copy.read_bytes()
 
-            image_copy.write_bytes(
-                image_copy.read_bytes() + b"\n"
-            )
+            image_copy.write_bytes(image_copy.read_bytes() + b"\n")
 
-            self.assertNotEqual(
-                image_copy.read_bytes(),
-                video_copy.read_bytes()
-            )
-            self.assertEqual(
-                original_video,
-                video_copy.read_bytes()
-            )
+            self.assertNotEqual(image_copy.read_bytes(), video_copy.read_bytes())
+            self.assertEqual(original_video, video_copy.read_bytes())
 
-    def test_temporary_copies_can_diverge_without_cross_platform_changes(self):
-        instagram_source = self.NEW_COMPONENT_PATHS[
-            "imagen_instagram"
-        ]
-        youtube_source = self.NEW_COMPONENT_PATHS[
-            "imagen_youtube"
-        ]
+    def test_platform_profiles_can_diverge_independently(self):
+        instagram_source = self.COMPONENT_PATHS["imagen_instagram"]
+        youtube_source = self.COMPONENT_PATHS["imagen_youtube"]
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             instagram_copy = root / "instagram.json"
             youtube_copy = root / "youtube.json"
-            shutil.copyfile(
-                instagram_source,
-                instagram_copy
-            )
-            shutil.copyfile(
-                youtube_source,
-                youtube_copy
-            )
+            shutil.copyfile(instagram_source, instagram_copy)
+            shutil.copyfile(youtube_source, youtube_copy)
             original_youtube = youtube_copy.read_bytes()
 
-            instagram_copy.write_bytes(
-                instagram_copy.read_bytes() + b"\n"
-            )
+            instagram_copy.write_bytes(instagram_copy.read_bytes() + b"\n")
 
             self.assertNotEqual(
                 instagram_copy.read_bytes(),
-                youtube_copy.read_bytes()
+                youtube_copy.read_bytes(),
             )
-            self.assertEqual(
-                original_youtube,
-                youtube_copy.read_bytes()
-            )
+            self.assertEqual(original_youtube, youtube_copy.read_bytes())
 
-    def test_profile_resolver_uses_only_new_component_paths(self):
+    def test_profile_resolver_uses_component_scoped_paths(self):
         resolver = ProfileResolver()
 
         for component in ProfileComponent:
             for platform in ProfilePlatform:
-                profile_key = ProfileKey.for_component(
-                    component,
-                    platform
-                )
-                with self.subTest(
-                    profile_id=profile_key.profile_id
-                ):
-                    resolved = resolver.resolve(
-                        profile_key
-                    )
+                profile_key = ProfileKey.for_component(component, platform)
+                with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
-                        self.NEW_COMPONENT_PATHS[
-                            profile_key.profile_id
-                        ],
-                        resolved
-                    )
-                    self.assertNotEqual(
-                        self.LEGACY_COMPONENT_PATHS[
-                            profile_key.profile_id
-                        ],
-                        resolved
+                        self.COMPONENT_PATHS[profile_key.profile_id],
+                        resolver.resolve(profile_key),
                     )
 
-    def test_profile_resolver_uses_only_new_wan_paths(self):
+    def test_profile_resolver_uses_component_scoped_wan_paths(self):
         resolver = ProfileResolver()
-        expected_paths = {
-            ProfilePlatform.INSTAGRAM: Path(
-                "config/profiles/video/instagram/"
-                "wan_i2v_instagram.json"
-            ),
-            ProfilePlatform.YOUTUBE: Path(
-                "config/profiles/video/youtube/"
-                "wan_i2v_youtube.json"
-            ),
-        }
 
-        for platform, expected_path in expected_paths.items():
+        for platform, expected_path in self.WAN_PATHS.items():
             profile_key = ProfileKey.for_component(
                 ProfileComponent.VIDEO,
-                platform
+                platform,
             )
             with self.subTest(platform=platform.value):
-                resolved = resolver.resolve_video_component(
-                    profile_key
-                )
                 self.assertEqual(
                     expected_path,
-                    resolved
-                )
-                self.assertNotEqual(
-                    Path("config/profiles/video")
-                    / f"{platform.value}.json",
-                    resolved
+                    resolver.resolve_video_component(profile_key),
                 )
 
     def test_unimplemented_video_srt_profile_family_does_not_exist(self):
-        self.assertFalse(
-            Path("config/profiles/video_srt").exists()
-        )
-
-    def _sha256(
-        self,
-        content
-    ):
-        return hashlib.sha256(
-            content
-        ).hexdigest().upper()
+        self.assertFalse(Path("config/profiles/video_srt").exists())
 
 
 if __name__ == "__main__":

@@ -224,8 +224,14 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
         builder = ImageBuilder()
 
         for profile_path in (
-            Path("config/profiles/youtube/modo_conciencia.json"),
-            Path("config/profiles/instagram/modo_conciencia.json")
+            Path(
+                "config/profiles/imagen/youtube/"
+                "perfil_imagen_youtube.json"
+            ),
+            Path(
+                "config/profiles/imagen/instagram/"
+                "perfil_imagen_instagram.json"
+            ),
         ):
             with self.subTest(
                 profile_path=profile_path

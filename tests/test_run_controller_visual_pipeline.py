@@ -423,7 +423,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": "config/profiles/guion/instagram.json"
+                "path": (
+                    "config/profiles/guion/instagram/"
+                    "perfil_guion_instagram.json"
+                )
             }
         ) as profile_mock, patch.object(
             controller,
@@ -494,7 +497,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": "config/profiles/youtube/modo_conciencia.json"
+                "path": (
+                    "config/profiles/imagen/youtube/"
+                    "perfil_imagen_youtube.json"
+                )
             }
         ), patch.object(
             controller,
@@ -567,7 +573,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": "config/profiles/guion/instagram.json"
+                "path": (
+                    "config/profiles/guion/instagram/"
+                    "perfil_guion_instagram.json"
+                )
             }
         ) as profile_mock, patch.object(
             controller,
@@ -644,7 +653,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": "config/profiles/instagram/modo_conciencia.json"
+                "path": (
+                    "config/profiles/video/instagram/"
+                    "perfil_video_instagram.json"
+                )
             }
         ) as profile_mock, patch.object(
             controller,
@@ -939,7 +951,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": "config/profiles/youtube/modo_conciencia.json"
+                "path": (
+                    "config/profiles/imagen/youtube/"
+                    "perfil_imagen_youtube.json"
+                )
             }
         ), patch.object(
             controller,
@@ -1065,8 +1080,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/youtube/"
-                            "modo_conciencia.json"
+                            "config/profiles/imagen/youtube/"
+                            "perfil_imagen_youtube.json"
                         )
                     }
                 ), patch.object(
@@ -1192,8 +1207,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/youtube/"
-                            "modo_conciencia.json"
+                            "config/profiles/imagen/youtube/"
+                            "perfil_imagen_youtube.json"
                         )
                     }
                 ), patch.object(

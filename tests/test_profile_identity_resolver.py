@@ -291,7 +291,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             )
         )
 
-    def test_config_manager_identity_matches_legacy_profile_files(self):
+    def test_config_manager_identity_matches_component_profile_files(self):
         for component in ProfileComponent:
             for platform in ProfilePlatform:
                 with self.subTest(
@@ -302,22 +302,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         component,
                         platform
                     )
-                    if component is ProfileComponent.GUION:
-                        legacy_path = (
-                            Path("config/profiles/guion")
-                            / f"{platform.value}.json"
-                        )
-                    else:
-                        legacy_path = (
-                            Path("config/profiles")
-                            / platform.value
-                            / "modo_conciencia.json"
-                        )
-
-                    legacy_profile = json.loads(
-                        legacy_path.read_text(
-                            encoding="utf-8"
-                        )
+                    expected_profile = self.resolver.load(
+                        profile_key
                     )
 
                     with patch.dict(
@@ -334,7 +320,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         )
 
                     self.assertEqual(
-                        legacy_profile,
+                        expected_profile,
                         identity_profile
                     )
 
@@ -388,7 +374,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             os.environ,
             {
                 "MC_PROFILE_PATH": (
-                    "config/profiles/instagram/modo_conciencia.json"
+                    "ignored-profile.json"
                 ),
                 "MC_PROFILE_COMPONENT": "video",
                 "MC_PROFILE_PLATFORM": "instagram",
@@ -430,7 +416,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             os.environ,
             {
                 "MC_PROFILE_PATH": (
-                    "config/profiles/youtube/modo_conciencia.json"
+                    "ignored-profile.json"
                 )
             },
             clear=True

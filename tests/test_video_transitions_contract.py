@@ -218,10 +218,12 @@ class VideoTransitionsContractTest(
     ):
         profile_paths = (
             Path(
-                "config/profiles/youtube/modo_conciencia.json"
+                "config/profiles/video/youtube/"
+                "perfil_video_youtube.json"
             ),
             Path(
-                "config/profiles/instagram/modo_conciencia.json"
+                "config/profiles/video/instagram/"
+                "perfil_video_instagram.json"
             )
         )
 

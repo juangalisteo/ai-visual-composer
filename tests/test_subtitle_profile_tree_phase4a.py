@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import shutil
@@ -24,97 +23,84 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     }
     MAIN_PROFILES = {
         ("guion", "instagram"): Path(
-            "config/profiles/guion/instagram/"
-            "perfil_guion_instagram.json"
+            "config/profiles/guion/instagram/perfil_guion_instagram.json"
         ),
         ("guion", "youtube"): Path(
-            "config/profiles/guion/youtube/"
-            "perfil_guion_youtube.json"
+            "config/profiles/guion/youtube/perfil_guion_youtube.json"
         ),
         ("imagen", "instagram"): Path(
-            "config/profiles/imagen/instagram/"
-            "perfil_imagen_instagram.json"
+            "config/profiles/imagen/instagram/perfil_imagen_instagram.json"
         ),
         ("imagen", "youtube"): Path(
-            "config/profiles/imagen/youtube/"
-            "perfil_imagen_youtube.json"
+            "config/profiles/imagen/youtube/perfil_imagen_youtube.json"
         ),
         ("video", "instagram"): Path(
-            "config/profiles/video/instagram/"
-            "perfil_video_instagram.json"
+            "config/profiles/video/instagram/perfil_video_instagram.json"
         ),
         ("video", "youtube"): Path(
-            "config/profiles/video/youtube/"
-            "perfil_video_youtube.json"
+            "config/profiles/video/youtube/perfil_video_youtube.json"
         ),
     }
-    CUE_PROFILES = {
-        "single_line": Path(
-            "config/subtitle_configs/single_line.json"
-        ),
-        "word_by_word": Path(
-            "config/subtitle_configs/word_by_word.json"
-        ),
+    EXPECTED_CUE_POLICIES = {
+        "single_line": {
+            "mode": "single_line",
+            "max_chars_per_line": 60,
+            "min_duration": 1.0,
+            "max_duration": 3.0,
+            "significant_gap_threshold": 0.35,
+            "split_on_punctuation": True,
+            "avoid_orphan_words": True,
+            "merge_short_chunks": True,
+            "balance_duration": True,
+        },
+        "word_by_word": {
+            "mode": "word_by_word",
+            "min_duration": 0.30,
+            "max_duration": 1.20,
+            "significant_gap_threshold": 0.35,
+            "micro_cues": {
+                "enabled": True,
+                "min_frames": 1,
+                "min_display_seconds": 0.05,
+                "merge_preference": "next",
+            },
+            "uppercase": False,
+            "remove_extra_commas": True,
+        },
     }
-    SOURCE_HASHES = {
-        Path("config/subtitle_configs/single_line.json"): (
-            "628BEFAF60E6B3E40869E7AD60F56D599462B01D"
-            "EACD187DFB16A10ACC50F19A"
-        ),
-        Path("config/subtitle_configs/word_by_word.json"): (
-            "FF7D1826D42E1310EAE215CC6D9AF7486EBAC1FD"
-            "F59BD24F6038AED7B643A1E5"
-        ),
-        Path(
-            "config/profiles/guion/instagram/"
-            "perfil_guion_instagram.json"
-        ): (
-            "BA65B13A6C51A0C47FF020FCA59D09D07E5857C"
-            "DFC7CF9A3B6B7B75794E7DE2B"
-        ),
-        Path(
-            "config/profiles/guion/youtube/"
-            "perfil_guion_youtube.json"
-        ): (
-            "233B3FF4C76E5572E083F5F2ADEB6BB9728B24A7"
-            "468EEA35E6F6917AF93A0135"
-        ),
-        Path(
-            "config/profiles/imagen/instagram/"
-            "perfil_imagen_instagram.json"
-        ): (
-            "BA65B13A6C51A0C47FF020FCA59D09D07E5857C"
-            "DFC7CF9A3B6B7B75794E7DE2B"
-        ),
-        Path(
-            "config/profiles/imagen/youtube/"
-            "perfil_imagen_youtube.json"
-        ): (
-            "233B3FF4C76E5572E083F5F2ADEB6BB9728B24A7"
-            "468EEA35E6F6917AF93A0135"
-        ),
-        Path(
-            "config/profiles/video/instagram/"
-            "perfil_video_instagram.json"
-        ): (
-            "BA65B13A6C51A0C47FF020FCA59D09D07E5857C"
-            "DFC7CF9A3B6B7B75794E7DE2B"
-        ),
-        Path(
-            "config/profiles/video/youtube/"
-            "perfil_video_youtube.json"
-        ): (
-            "233B3FF4C76E5572E083F5F2ADEB6BB9728B24A7"
-            "468EEA35E6F6917AF93A0135"
-        ),
+    EXPECTED_RENDER_STYLES = {
+        "instagram": {
+            "font": "unisans",
+            "font_size": 14,
+            "bold": False,
+            "primary_colour": "&H00FFFFFF",
+            "outline_colour": "&H80000000",
+            "back_colour": "&H00000000",
+            "border_style": 1,
+            "outline": 0,
+            "shadow": 1,
+            "alignment": 2,
+            "margin_v": 55,
+            "offset": -0.06,
+        },
+        "youtube": {
+            "font": "gotham",
+            "font_size": 16,
+            "bold": False,
+            "primary_colour": "&H00FFFFFF",
+            "outline_colour": "&H00000000",
+            "back_colour": "&H00000000",
+            "border_style": 1,
+            "outline": 0,
+            "shadow": 1,
+            "alignment": 2,
+            "margin_v": 25,
+            "offset": 0.0,
+        },
     }
 
     def test_tree_contains_exactly_twelve_expected_profiles(self):
-        actual = set(
-            Path("config/profiles").glob(
-                "*/*/subtitulos/*.json"
-            )
-        )
+        actual = set(Path("config/profiles").glob("*/*/subtitulos/*.json"))
 
         self.assertEqual(self._expected_paths(), actual)
         self.assertEqual(12, len(actual))
@@ -126,9 +112,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         for component, platform, suffix, style, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
-                expected_id = (
-                    f"subtitulo_{component}_{platform}_{suffix}"
-                )
+                expected_id = f"subtitulo_{component}_{platform}_{suffix}"
 
                 self.assertEqual(
                     {
@@ -139,49 +123,33 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                         "cue_policy",
                         "render_style",
                     },
-                    set(profile)
+                    set(profile),
                 )
                 self.assertEqual(component, profile["component"])
                 self.assertEqual(platform, profile["platform"])
                 self.assertEqual(expected_id, profile["profile_id"])
                 self.assertEqual(style, profile["style"])
-                self.assertIsInstance(profile["cue_policy"], dict)
-                self.assertIsInstance(profile["render_style"], dict)
                 self.assertNotIn(expected_id, profile_ids)
                 profile_ids.add(expected_id)
 
         self.assertEqual(12, len(profile_ids))
 
-    def test_all_profiles_equal_their_effective_legacy_configuration(self):
-        for component, platform, _, style, path in self._cases():
+    def test_profiles_preserve_the_final_cue_and_render_contract(self):
+        for _, platform, _, style, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
-                main_profile = self._load(
-                    self.MAIN_PROFILES[(component, platform)]
-                )
-                legacy_effective = {
-                    "cue_policy": self._load(
-                        self.CUE_PROFILES[style]
-                    ),
-                    "render_style": main_profile[
-                        "video_style"
-                    ]["subtitles"],
-                }
-
                 self.assertEqual(
-                    legacy_effective,
-                    {
-                        "cue_policy": profile["cue_policy"],
-                        "render_style": profile["render_style"],
-                    }
+                    self.EXPECTED_CUE_POLICIES[style],
+                    profile["cue_policy"],
+                )
+                self.assertEqual(
+                    self.EXPECTED_RENDER_STYLES[platform],
+                    profile["render_style"],
                 )
 
     def test_profiles_are_independent_regular_files(self):
         paths = sorted(self._expected_paths())
-        source_bytes = {
-            path: path.read_bytes()
-            for path in paths
-        }
+        source_bytes = {path: path.read_bytes() for path in paths}
 
         self.assertEqual(len(paths), len({path.resolve() for path in paths}))
         for path in paths:
@@ -196,35 +164,27 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 shutil.copyfile(path, destination)
                 copies.append(destination)
 
-            original_bytes = {
-                path: path.read_bytes()
-                for path in copies
-            }
+            original_bytes = {path: path.read_bytes() for path in copies}
             first = copies[0]
             first.write_bytes(first.read_bytes() + b"\n")
 
             for path in copies[1:]:
                 self.assertEqual(original_bytes[path], path.read_bytes())
             for source in paths:
-                self.assertEqual(
-                    source_bytes[source],
-                    source.read_bytes()
-                )
+                self.assertEqual(source_bytes[source], source.read_bytes())
 
-    def test_legacy_sources_remain_byte_for_byte_intact(self):
-        for path, expected_hash in self.SOURCE_HASHES.items():
+    def test_removed_subtitle_legacy_sources_do_not_exist(self):
+        self.assertFalse(Path("config/subtitle_configs").exists())
+        for path in self.MAIN_PROFILES.values():
             with self.subTest(path=path):
-                self.assertEqual(
-                    expected_hash,
-                    hashlib.sha256(path.read_bytes()).hexdigest().upper()
+                self.assertNotIn(
+                    "subtitles",
+                    self._load(path)["video_style"],
                 )
 
     def test_official_runtime_loads_new_cue_profiles(self):
         for component, platform, _, style, path in self._cases():
-            profile_key = ProfileKey.for_component(
-                component,
-                platform
-            )
+            profile_key = ProfileKey.for_component(component, platform)
             environment = {
                 "MC_PROFILE_COMPONENT": component,
                 "MC_PROFILE_PLATFORM": platform,
@@ -234,11 +194,9 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             with self.subTest(path=path), patch.dict(
                 os.environ,
                 environment,
-                clear=True
+                clear=True,
             ):
-                loaded = ConfigManager().get_subtitle_profile(
-                    style
-                )
+                loaded = ConfigManager().get_subtitle_profile(style)
 
             self.assertEqual(path, loaded.path)
             self.assertEqual(self._load(path)["cue_policy"], loaded.cue_policy)
@@ -269,22 +227,14 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                         / component
                         / platform
                         / "subtitulos"
-                        / (
-                            f"subtitulo_{component}_{platform}_"
-                            f"{suffix}.json"
-                        ),
+                        / f"subtitulo_{component}_{platform}_{suffix}.json",
                     )
 
     def _expected_paths(self):
-        return {
-            path
-            for _, _, _, _, path in self._cases()
-        }
+        return {path for _, _, _, _, path in self._cases()}
 
     def _load(self, path):
-        return json.loads(
-            Path(path).read_text(encoding="utf-8")
-        )
+        return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -21,24 +21,6 @@
         "height": 1080,
         "fps": 30,
 
-        "subtitles": {
-            "font": "gotham",
-            "font_size": 16,
-            "bold": false,
-
-            "primary_colour": "&H00FFFFFF",
-            "outline_colour": "&H00000000",
-            "back_colour": "&H00000000",
-
-            "border_style": 1,
-            "outline": 0,
-            "shadow": 1,
-
-            "alignment": 2,
-            "margin_v": 25,
-            "offset": 0.0
-        },
-
         "storyboard": {
             "seconds_per_image": 15
         },

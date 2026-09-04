@@ -17,9 +17,10 @@ from certification.models import CertificationScenario
 class RealImageRunnerConfig:
     campaign_id: str = "rc0_quick"
     base_output_dir: Path = Path("output") / "certification"
-    profile_path: Path = Path(
-        "config/profiles/youtube/modo_conciencia.json"
-    )
+    platform: str = "youtube"
+    image_format: str = "horizontal"
+    image_width: int = 1920
+    image_height: int = 1080
     workflow_path: Path = Path(
         "config/comfyui_flux_workflow_api.json"
     )
@@ -179,23 +180,24 @@ class RealImageComponentRunner:
     def _build_campaign_profile(
         self
     ) -> dict[str, object]:
-        profile = json.loads(
-            self.config.profile_path.read_text(
-                encoding="utf-8"
-            )
-        )
-        profile[
-            "image_validation"
-        ] = {
-            "enabled": self.config.image_validation_enabled
+        return {
+            "platform": self.config.platform,
+            "format": self.config.image_format,
+            "resolution": (
+                f"{self.config.image_width}x"
+                f"{self.config.image_height}"
+            ),
+            "video_style": {
+                "width": self.config.image_width,
+                "height": self.config.image_height,
+            },
+            "image_validation": {
+                "enabled": self.config.image_validation_enabled
+            },
+            "visual_director": {
+                "enabled": True
+            },
         }
-        profile.setdefault(
-            "visual_director",
-            {}
-        )[
-            "enabled"
-        ] = True
-        return profile
 
     def _write_campaign_profile(
         self,

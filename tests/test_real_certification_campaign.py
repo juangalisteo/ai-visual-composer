@@ -460,19 +460,6 @@ class RealCertificationCampaignTest(unittest.TestCase):
             root = Path(
                 temp_dir
             )
-            source_profile_path = root / "source_profile.json"
-            source_profile_path.write_text(
-                json.dumps(
-                    {
-                        "format": "horizontal",
-                        "video_style": {
-                            "width": 640,
-                            "height": 360,
-                        },
-                    }
-                ),
-                encoding="utf-8"
-            )
             approved_asset = root / "approved.png"
             approved_asset.write_bytes(
                 b"approved"
@@ -494,7 +481,10 @@ class RealCertificationCampaignTest(unittest.TestCase):
             config = RealImageRunnerConfig(
                 campaign_id="explicit_profile",
                 base_output_dir=root / "certification",
-                profile_path=source_profile_path,
+                platform="youtube",
+                image_format="horizontal",
+                image_width=640,
+                image_height=360,
                 workflow_path=root / "workflow.json",
                 image_validation_enabled=True,
             )
@@ -544,6 +534,13 @@ class RealCertificationCampaignTest(unittest.TestCase):
             self.assertTrue(
                 injected_profile["visual_director"]["enabled"]
             )
+            self.assertEqual("youtube", injected_profile["platform"])
+            self.assertEqual("horizontal", injected_profile["format"])
+            self.assertEqual("640x360", injected_profile["resolution"])
+            self.assertEqual(
+                {"width": 640, "height": 360},
+                injected_profile["video_style"],
+            )
             persisted_profile = json.loads(
                 (
                     config.base_output_dir
@@ -569,6 +566,31 @@ class RealCertificationCampaignTest(unittest.TestCase):
                     )
                 )
             )
+            self.assertFalse(
+                hasattr(config, "profile_path")
+            )
+
+    def test_real_image_runner_default_profile_preserves_effective_contract(self):
+        runner = RealImageComponentRunner()
+
+        self.assertEqual(
+            {
+                "platform": "youtube",
+                "format": "horizontal",
+                "resolution": "1920x1080",
+                "video_style": {
+                    "width": 1920,
+                    "height": 1080,
+                },
+                "image_validation": {
+                    "enabled": True,
+                },
+                "visual_director": {
+                    "enabled": True,
+                },
+            },
+            runner._build_campaign_profile(),
+        )
 
 
 def _run_campaign(
