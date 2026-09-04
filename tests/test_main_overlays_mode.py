@@ -49,7 +49,13 @@ class MainOverlaysModeTest(
                 os.environ["MC_OVERLAYS_MODE"]
             )
 
-        iniciar_mock.assert_called_once_with()
+        iniciar_mock.assert_called_once_with(
+            subtitle_style="single_line"
+        )
+        self.assertNotIn(
+            "MC_SUBTITLE_CONFIG",
+            os.environ
+        )
         output_manager_class.assert_not_called()
 
 

@@ -229,7 +229,6 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 "MC_PROFILE_COMPONENT": component,
                 "MC_PROFILE_PLATFORM": platform,
                 "MC_PROFILE_ID": profile_key.profile_id,
-                "MC_SUBTITLE_CONFIG": style,
             }
 
             with self.subTest(path=path), patch.dict(
@@ -237,11 +236,12 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 environment,
                 clear=True
             ):
-                loaded = ConfigManager().get_subtitle_profile()
+                loaded = ConfigManager().get_subtitle_profile(
+                    style
+                )
 
             self.assertEqual(path, loaded.path)
             self.assertEqual(self._load(path)["cue_policy"], loaded.cue_policy)
-            self.assertFalse(loaded.legacy)
 
     def test_render_loader_accepts_new_profile_render_style(self):
         loader = SubtitleConfigLoader()

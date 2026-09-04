@@ -39,7 +39,9 @@ from app.shared.profile_identity import (
 from app.shared.profile_resolver import ProfileResolver
 
 
-def iniciar():
+def iniciar(
+    subtitle_style=None
+):
     pipeline_start = time.perf_counter()
 
     project = ProjectManager()
@@ -99,7 +101,9 @@ def iniciar():
         )
     ):
         subtitle_profile = (
-            config.get_subtitle_profile()
+            config.get_subtitle_profile(
+                subtitle_style
+            )
         )
 
     input_script_path = Path(

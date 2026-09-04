@@ -45,7 +45,8 @@ class FakeConfigManager:
         }
 
     def get_subtitle_profile(
-        self
+        self,
+        style
     ):
         return self.subtitle_profile
 

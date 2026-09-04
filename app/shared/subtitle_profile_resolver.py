@@ -71,8 +71,7 @@ class SubtitleProfileResolver:
             key=profile_key,
             path=path,
             cue_policy=deepcopy(cue_policy),
-            render_style=deepcopy(render_style),
-            legacy=False
+            render_style=deepcopy(render_style)
         )
 
     def _validate_identity(

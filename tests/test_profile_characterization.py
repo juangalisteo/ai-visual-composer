@@ -323,8 +323,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 environment = self._identity_environment(
                     profile_key
                 )
-                environment["MC_SUBTITLE_CONFIG"] = ""
-
                 with patch.dict(
                     os.environ,
                     environment,
@@ -332,7 +330,9 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 ):
                     subtitle_profile = (
                         ConfigManager()
-                        .get_subtitle_profile()
+                        .get_subtitle_profile(
+                            expected["subtitle_config"]
+                        )
                     )
 
                 expected_path = Path(
@@ -346,7 +346,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     expected["subtitle_config"],
                     subtitle_profile.key.style.value
                 )
-                self.assertFalse(subtitle_profile.legacy)
 
     def test_structured_identity_controls_wan_profile_resolution(self):
         instagram_key = ProfileKey.for_component(
@@ -393,7 +392,9 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     )
                     subtitle_profile = (
                         ConfigManager()
-                        .get_subtitle_profile()
+                        .get_subtitle_profile(
+                            identity_profile["subtitle_config"]
+                        )
                     )
                     identity_video = VideoConfigLoader(
                         subtitle_profile=subtitle_profile

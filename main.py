@@ -23,7 +23,6 @@ def main():
         "profile_id",
         ""
     )
-    os.environ["MC_SUBTITLE_CONFIG"] = options["subtitle_config"]
     os.environ["MC_VOICE_CONFIG"] = options["voice_config"]
     os.environ["MC_MUSIC_CATEGORY"] = options["music_category"] or ""
     os.environ["MC_OVERLAYS_MODE"] = options["overlays_mode"]
@@ -37,7 +36,12 @@ def main():
         OutputManager().reset()
 
     try:
-        iniciar()
+        iniciar(
+            subtitle_style=(
+                options["subtitle_config"]
+                or None
+            )
+        )
     except VisualDesignInterpretationError as error:
         print(
             f"ERROR: {error}"

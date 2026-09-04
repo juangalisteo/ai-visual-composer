@@ -23,13 +23,10 @@ class SrtOptimizer:
 
     def __init__(
         self,
-        subtitle_profile=None,
+        subtitle_profile,
         render_fps=None
     ):
         config = ConfigManager()
-
-        if subtitle_profile is None:
-            subtitle_profile = config.get_subtitle_profile()
 
         subtitle_config = deepcopy(
             subtitle_profile.cue_policy

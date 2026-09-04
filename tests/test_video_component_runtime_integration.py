@@ -582,6 +582,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video-runtime.mp4"
             )
             resolved_subtitle_profile = object()
+            requested_subtitle_styles = []
 
             class FakeConfig:
                 def get_ai_config(
@@ -610,8 +611,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     }
 
                 def get_subtitle_profile(
-                    self
+                    self,
+                    style
                 ):
+                    requested_subtitle_styles.append(style)
                     return resolved_subtitle_profile
 
             with patch.dict(
@@ -680,11 +683,17 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     final_video
                 )
 
-                result = start.iniciar()
+                result = start.iniciar(
+                    subtitle_style="single_line"
+                )
 
         self.assertEqual(
             final_video,
             result
+        )
+        self.assertEqual(
+            ["single_line"],
+            requested_subtitle_styles
         )
         clips_builder.assert_called_once()
         srt_optimizer.assert_called_once_with(

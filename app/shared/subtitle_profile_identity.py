@@ -120,8 +120,7 @@ class SubtitleProfileKey:
 
 @dataclass(frozen=True)
 class ResolvedSubtitleProfile:
-    key: SubtitleProfileKey | None
+    key: SubtitleProfileKey
     path: Path
     cue_policy: dict
     render_style: dict
-    legacy: bool = False

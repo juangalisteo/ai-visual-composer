@@ -1,14 +1,11 @@
 import json
 import os
-from copy import deepcopy
 from pathlib import Path
 
 from app.shared.profile_identity import ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import (
-    ResolvedSubtitleProfile,
     SubtitleProfileKey,
-    coerce_subtitle_style,
 )
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
@@ -101,58 +98,21 @@ class ConfigManager:
             profile_id=values[2]
         )
 
-    def get_subtitle_config(self):
-        return deepcopy(
-            self.get_subtitle_profile().cue_policy
-        )
-
-    def get_subtitle_profile(self):
+    def get_subtitle_profile(
+        self,
+        style
+    ):
         profile_key = self.get_profile_key()
-        profile = self.get_profile_config()
-        selected_subtitle_config = os.environ.get("MC_SUBTITLE_CONFIG")
-
-        if not selected_subtitle_config:
-            selected_subtitle_config = profile["subtitle_config"]
-
-        style = coerce_subtitle_style(
-            selected_subtitle_config
-        )
-
-        if profile_key is not None:
-            subtitle_key = SubtitleProfileKey.for_profile(
-                profile_key=profile_key,
-                style=style
-            )
-            return self.subtitle_profile_resolver.load(
-                subtitle_key
+        if profile_key is None:
+            raise ValueError(
+                "Falta identidad estructurada de perfil para "
+                "resolver subtitulos."
             )
 
-        subtitle_config_path = (
-            self.config_path
-            / "subtitle_configs"
-            / f"{style.value}.json"
+        subtitle_key = SubtitleProfileKey.for_profile(
+            profile_key=profile_key,
+            style=style
         )
-
-        video_style = profile.get(
-            "video_style",
-            {}
-        )
-        render_style = video_style.get(
-            "subtitles",
-            {}
-        )
-        if not isinstance(render_style, dict):
-            raise TypeError(
-                "La configuracion legacy "
-                "video_style.subtitles debe ser un diccionario."
-            )
-
-        return ResolvedSubtitleProfile(
-            key=None,
-            path=subtitle_config_path,
-            cue_policy=deepcopy(
-                self.load_json(subtitle_config_path)
-            ),
-            render_style=deepcopy(render_style),
-            legacy=True
+        return self.subtitle_profile_resolver.load(
+            subtitle_key
         )

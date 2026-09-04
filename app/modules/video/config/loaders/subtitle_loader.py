@@ -5,30 +5,6 @@ from app.modules.video.config.subtitle_config import (
 
 class SubtitleConfigLoader:
 
-    def load(
-        self,
-        profile
-    ):
-        if not isinstance(
-            profile,
-            dict
-        ):
-            raise TypeError(
-                "El perfil debe ser un diccionario."
-            )
-
-        video_style = profile.get(
-            "video_style",
-            {}
-        )
-
-        return self.load_render_style(
-            video_style.get(
-                "subtitles",
-                {}
-            )
-        )
-
     def load_render_style(
         self,
         render_style

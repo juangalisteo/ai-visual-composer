@@ -557,7 +557,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "main.RunController"
         ) as controller_mock, patch(
             "main.iniciar"
-        ):
+        ) as iniciar_mock:
             controller_mock.return_value.run.return_value = options
 
             self.assertEqual(0, main.main())
@@ -581,6 +581,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertEqual(
                 self.resolver.load(profile_key),
                 ConfigManager().get_profile_config()
+            )
+            self.assertNotIn(
+                "MC_SUBTITLE_CONFIG",
+                os.environ
+            )
+            iniciar_mock.assert_called_once_with(
+                subtitle_style="word_by_word"
             )
 
     def test_productive_runtime_has_no_profile_path_environment_contract(self):
