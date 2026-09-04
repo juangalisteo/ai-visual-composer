@@ -236,7 +236,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 image_key
             )
 
-    def test_design_stays_a_legacy_route_not_a_component(self):
+    def test_design_uses_target_component_identity_without_becoming_component(self):
         self.assertNotIn(
             "design",
             tuple(
@@ -244,32 +244,51 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 for item in ProfileComponent
             )
         )
-        self.assertEqual(
-            Path(
-                "config/profiles/diseno/imagen/instagram.json"
-            ),
-            self.resolver.resolve_design(
+        cases = (
+            (
                 ProfileComponent.IMAGEN,
-                ProfilePlatform.INSTAGRAM
-            )
-        )
-        self.assertEqual(
-            Path(
-                "config/profiles/diseno/video/youtube.json"
+                ProfilePlatform.INSTAGRAM,
+                "imagen_instagram",
             ),
-            self.resolver.resolve_design(
+            (
+                ProfileComponent.IMAGEN,
+                ProfilePlatform.YOUTUBE,
+                "imagen_youtube",
+            ),
+            (
                 ProfileComponent.VIDEO,
-                ProfilePlatform.YOUTUBE
+                ProfilePlatform.INSTAGRAM,
+                "video_instagram",
+            ),
+            (
+                ProfileComponent.VIDEO,
+                ProfilePlatform.YOUTUBE,
+                "video_youtube",
+            ),
+        )
+        for component, platform, profile_id in cases:
+            with self.subTest(profile_id=profile_id):
+                profile_key = ProfileKey.for_component(
+                    component,
+                    platform
+                )
+                self.assertEqual(
+                    profile_id,
+                    profile_key.profile_id
+                )
+                self.assertNotIn(
+                    "diseno",
+                    self.resolver.resolve(
+                        profile_key
+                    ).parts
+                )
+
+        self.assertFalse(
+            hasattr(
+                self.resolver,
+                "resolve_design"
             )
         )
-        with self.assertRaisesRegex(
-            ValueError,
-            "solo admite los destinos imagen y video"
-        ):
-            self.resolver.resolve_design(
-                ProfileComponent.GUION,
-                ProfilePlatform.INSTAGRAM
-            )
 
     def test_config_manager_accepts_identity_and_legacy_adapter(self):
         for component in ProfileComponent:

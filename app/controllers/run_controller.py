@@ -288,27 +288,33 @@ class RunController:
                 })
         elif visual_pipeline == "design_image":
             for platform in ProfilePlatform:
-                profile = self.profile_resolver.resolve_design(
+                profile_key = ProfileKey.for_component(
                     ProfileComponent.IMAGEN,
                     platform
                 )
-                profiles.append({
-                    "platform": "diseno",
-                    "profile": profile.stem,
-                    "path": profile,
-                    "profile_key": None,
-                })
-        elif visual_pipeline == "design_video":
-            for platform in ProfilePlatform:
-                profile = self.profile_resolver.resolve_design(
-                    ProfileComponent.VIDEO,
-                    platform
+                profile = self.profile_resolver.resolve(
+                    profile_key
                 )
                 profiles.append({
                     "platform": "diseno",
-                    "profile": profile.stem,
+                    "profile": platform.value,
                     "path": profile,
-                    "profile_key": None,
+                    "profile_key": profile_key,
+                })
+        elif visual_pipeline == "design_video":
+            for platform in ProfilePlatform:
+                profile_key = ProfileKey.for_component(
+                    ProfileComponent.VIDEO,
+                    platform
+                )
+                profile = self.profile_resolver.resolve(
+                    profile_key
+                )
+                profiles.append({
+                    "platform": "diseno",
+                    "profile": platform.value,
+                    "path": profile,
+                    "profile_key": profile_key,
                 })
         else:
             components = {

@@ -509,7 +509,8 @@ def ejecutar_diseno_video(
     visual_truth_adapter=None,
     image_builder=None,
     video_builder=None,
-    profile=None
+    profile=None,
+    profile_key=None
 ):
     if pipeline_start is None:
         pipeline_start = time.perf_counter()
@@ -539,10 +540,11 @@ def ejecutar_diseno_video(
         video_builder
         or VideoComponentBuilder()
     )
-    profile = (
-        profile
-        or ConfigManager().get_profile_config()
-    )
+    if profile is None:
+        config = ConfigManager()
+        profile = config.get_profile_config()
+        if profile_key is None:
+            profile_key = config.get_profile_key()
 
     prepared_design = preparation_service.prepare(
         input_path=(
@@ -591,7 +593,8 @@ def ejecutar_diseno_video(
         images_manifest_path=images_manifest_path,
         project=project,
         profile=profile,
-        video_builder=video_builder
+        video_builder=video_builder,
+        profile_key=profile_key
     )
 
     output_clip = _ensure_single_video_design_clip(

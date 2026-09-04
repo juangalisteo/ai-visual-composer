@@ -324,15 +324,17 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                 ]
             )
 
-    def test_design_profiles_define_independent_image_dimensions(self):
+    def test_design_uses_target_image_profile_dimensions(self):
         cases = (
             (
-                "config/profiles/diseno/imagen/instagram.json",
+                "config/profiles/imagen/instagram/"
+                "perfil_imagen_instagram.json",
                 1080,
                 1920
             ),
             (
-                "config/profiles/diseno/imagen/youtube.json",
+                "config/profiles/imagen/youtube/"
+                "perfil_imagen_youtube.json",
                 1920,
                 1080
             ),
@@ -357,22 +359,16 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     profile["video_style"]["height"]
                 )
                 self.assertEqual(
-                    {
-                        "images": True
-                    },
-                    profile["builders"]
-                )
-                self.assertNotIn(
-                    "voice",
-                    profile["builders"]
-                )
-                self.assertNotIn(
-                    "storyboard",
-                    profile["builders"]
-                )
-                self.assertNotIn(
-                    "video",
-                    profile["builders"]
+                    False,
+                    bool(
+                        profile.get(
+                            "image_validation",
+                            {}
+                        ).get(
+                            "enabled",
+                            False
+                        )
+                    )
                 )
 
 

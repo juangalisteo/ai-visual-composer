@@ -10,7 +10,13 @@ class MainErrorHandlingTest(unittest.TestCase):
 
     def test_visual_design_interpretation_error_is_user_visible(self):
         options = {
-            "profile_path": "config/profiles/diseno/video/instagram.json",
+            "profile_path": (
+                "config/profiles/video/instagram/"
+                "perfil_video_instagram.json"
+            ),
+            "profile_component": "video",
+            "profile_platform": "instagram",
+            "profile_id": "video_instagram",
             "subtitle_config": "",
             "voice_config": "",
             "music_category": None,

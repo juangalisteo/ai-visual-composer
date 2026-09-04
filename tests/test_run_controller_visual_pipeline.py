@@ -3,6 +3,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
 
 
 class RunControllerVisualPipelineTest(unittest.TestCase):
@@ -221,38 +226,82 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
 
-    def test_design_video_profile_selection_uses_design_video_directory(self):
+    def test_design_profile_selection_uses_target_component_identity(self):
         controller = RunController()
+        cases = (
+            (
+                "design_image",
+                ProfileComponent.IMAGEN,
+                ProfilePlatform.INSTAGRAM,
+                "1",
+            ),
+            (
+                "design_image",
+                ProfileComponent.IMAGEN,
+                ProfilePlatform.YOUTUBE,
+                "2",
+            ),
+            (
+                "design_video",
+                ProfileComponent.VIDEO,
+                ProfilePlatform.INSTAGRAM,
+                "1",
+            ),
+            (
+                "design_video",
+                ProfileComponent.VIDEO,
+                ProfilePlatform.YOUTUBE,
+                "2",
+            ),
+        )
 
-        with patch(
-            "builtins.input",
-            return_value="1"
-        ), patch(
-            "builtins.print"
-        ) as print_mock:
-            selected = controller.select_profile(
-                "design_video"
-            )
+        for scope, component, platform, selection in cases:
+            with self.subTest(scope=scope, platform=platform.value):
+                with patch(
+                    "builtins.input",
+                    return_value=selection
+                ), patch(
+                    "builtins.print"
+                ) as print_mock:
+                    selected = controller.select_profile(
+                        scope
+                    )
 
-        printed = "\n".join(
-            str(call.args[0])
-            for call in print_mock.call_args_list
-            if call.args
-        )
-        self.assertEqual(
-            "diseno",
-            selected["platform"]
-        )
-        self.assertIn(
-            "config\\profiles\\diseno\\video",
-            str(
-                selected["path"]
-            )
-        )
-        self.assertIn(
-            "PERFIL",
-            printed
-        )
+                profile_key = ProfileKey.for_component(
+                    component,
+                    platform
+                )
+                printed = "\n".join(
+                    str(call.args[0])
+                    for call in print_mock.call_args_list
+                    if call.args
+                )
+                self.assertEqual(
+                    "diseno",
+                    selected["platform"]
+                )
+                self.assertEqual(
+                    platform.value,
+                    selected["profile"]
+                )
+                self.assertEqual(
+                    profile_key,
+                    selected["profile_key"]
+                )
+                self.assertEqual(
+                    controller.profile_resolver.resolve(
+                        profile_key
+                    ),
+                    selected["path"]
+                )
+                self.assertNotIn(
+                    "diseno",
+                    selected["path"].parts
+                )
+                self.assertIn(
+                    "PERFIL",
+                    printed
+                )
 
     def test_image_modes_exclude_legacy_script_mode(self):
         controller = RunController()
@@ -659,6 +708,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_design_image_only_requests_design_image_inputs(self):
         controller = RunController()
+        profile_key = ProfileKey.for_component(
+            ProfileComponent.IMAGEN,
+            ProfilePlatform.INSTAGRAM
+        )
 
         with patch.object(
             controller,
@@ -679,10 +732,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": (
-                    "config/profiles/diseno/imagen/"
-                    "instagram.json"
-                )
+                "path": controller.profile_resolver.resolve(
+                    profile_key
+                ),
+                "profile_key": profile_key,
             }
         ) as profile_mock, patch.object(
             controller,
@@ -749,9 +802,25 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "off",
             options["overlays_mode"]
         )
+        self.assertEqual(
+            "imagen",
+            options["profile_component"]
+        )
+        self.assertEqual(
+            "instagram",
+            options["profile_platform"]
+        )
+        self.assertEqual(
+            "imagen_instagram",
+            options["profile_id"]
+        )
 
     def test_script_design_video_only_requests_design_video_inputs(self):
         controller = RunController()
+        profile_key = ProfileKey.for_component(
+            ProfileComponent.VIDEO,
+            ProfilePlatform.INSTAGRAM
+        )
 
         with patch.object(
             controller,
@@ -772,10 +841,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": (
-                    "config/profiles/diseno/video/"
-                    "instagram.json"
-                )
+                "path": controller.profile_resolver.resolve(
+                    profile_key
+                ),
+                "profile_key": profile_key,
             }
         ) as profile_mock, patch.object(
             controller,
@@ -841,6 +910,18 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         self.assertEqual(
             "off",
             options["overlays_mode"]
+        )
+        self.assertEqual(
+            "video",
+            options["profile_component"]
+        )
+        self.assertEqual(
+            "instagram",
+            options["profile_platform"]
+        )
+        self.assertEqual(
+            "video_instagram",
+            options["profile_id"]
         )
 
     def test_audio_mode_skips_subtitles_but_keeps_voice_and_music(self):

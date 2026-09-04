@@ -5,8 +5,6 @@ from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
     ProfilePlatform,
-    coerce_profile_component,
-    coerce_profile_platform,
 )
 
 
@@ -58,25 +56,6 @@ class ProfileResolver:
         ProfilePlatform.YOUTUBE: Path(
             "video/youtube/wan_i2v_youtube.json"
         ),
-    }
-
-    _LEGACY_DESIGN_PATHS = {
-        (
-            ProfileComponent.IMAGEN,
-            ProfilePlatform.INSTAGRAM,
-        ): Path("diseno/imagen/instagram.json"),
-        (
-            ProfileComponent.IMAGEN,
-            ProfilePlatform.YOUTUBE,
-        ): Path("diseno/imagen/youtube.json"),
-        (
-            ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM,
-        ): Path("diseno/video/instagram.json"),
-        (
-            ProfileComponent.VIDEO,
-            ProfilePlatform.YOUTUBE,
-        ): Path("diseno/video/youtube.json"),
     }
 
     def __init__(
@@ -142,44 +121,6 @@ class ProfileResolver:
         return self._load_json(
             self.resolve_video_component(
                 profile_key
-            )
-        )
-
-    def resolve_design(
-        self,
-        target_component,
-        platform
-    ):
-        target_component = coerce_profile_component(
-            target_component
-        )
-        platform = coerce_profile_platform(
-            platform
-        )
-        relative_path = self._LEGACY_DESIGN_PATHS.get(
-            (
-                target_component,
-                platform,
-            )
-        )
-        if relative_path is None:
-            raise ValueError(
-                "Diseño solo admite los destinos imagen "
-                "y video."
-            )
-        return self._existing_path(
-            relative_path
-        )
-
-    def load_design(
-        self,
-        target_component,
-        platform
-    ):
-        return self._load_json(
-            self.resolve_design(
-                target_component,
-                platform
             )
         )
 

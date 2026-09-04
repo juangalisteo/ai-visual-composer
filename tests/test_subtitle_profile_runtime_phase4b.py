@@ -373,7 +373,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         )["render_style"]
         self.assertEqual(expected, loaded.subtitle_style)
 
-    def test_design_and_video_srt_boundaries_remain_unchanged(self):
+    def test_design_legacy_files_and_video_srt_boundaries_remain_unchanged(self):
         for component in (
             ProfileComponent.IMAGEN,
             ProfileComponent.VIDEO,
@@ -383,15 +383,13 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     component=component.value,
                     platform=platform.value
                 ):
-                    path = self.profile_resolver.resolve_design(
-                        component,
-                        platform
-                    )
-                    self.assertEqual(
+                    legacy_path = (
                         Path("config/profiles/diseno")
                         / component.value
-                        / f"{platform.value}.json",
-                        path
+                        / f"{platform.value}.json"
+                    )
+                    self.assertTrue(
+                        legacy_path.is_file()
                     )
 
         self.assertFalse(

@@ -180,7 +180,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         profile["video"]["crf"]
                     )
 
-    def test_design_routes_keep_legacy_profiles_and_dimensions(self):
+    def test_design_target_profiles_preserve_legacy_effective_fields(self):
         for target_component in (
             ProfileComponent.IMAGEN,
             ProfileComponent.VIDEO,
@@ -190,34 +190,60 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     target=target_component.value,
                     platform=platform.value
                 ):
-                    path = self.resolver.resolve_design(
+                    profile_key = ProfileKey.for_component(
                         target_component,
                         platform
                     )
-                    profile = self.resolver.load_design(
-                        target_component,
-                        platform
+                    path = self.resolver.resolve(
+                        profile_key
+                    )
+                    profile = self.resolver.load(
+                        profile_key
+                    )
+                    legacy_path = (
+                        Path("config/profiles/diseno")
+                        / target_component.value
+                        / f"{platform.value}.json"
+                    )
+                    legacy_profile = self._load(
+                        legacy_path
                     )
 
                     self.assertEqual(
-                        Path(
-                            "config/profiles/diseno"
-                        ) / target_component.value / (
-                            f"{platform.value}.json"
+                        self.resolver.resolve(
+                            profile_key
                         ),
                         path
                     )
+                    for field in (
+                        "platform",
+                        "format",
+                        "resolution",
+                        "tone",
+                    ):
+                        self.assertEqual(
+                            legacy_profile[field],
+                            profile[field]
+                        )
+                    for field in (
+                        "width",
+                        "height",
+                    ):
+                        self.assertEqual(
+                            legacy_profile["video_style"][field],
+                            profile["video_style"][field]
+                        )
                     self.assertEqual(
-                        platform.value,
-                        profile["platform"]
-                    )
-                    self.assertEqual(
-                        expected["format"],
-                        profile["format"]
-                    )
-                    self.assertEqual(
-                        expected["resolution"],
-                        profile["resolution"]
+                        False,
+                        bool(
+                            profile.get(
+                                "image_validation",
+                                {}
+                            ).get(
+                                "enabled",
+                                False
+                            )
+                        )
                     )
                     self.assertEqual(
                         expected["width"],

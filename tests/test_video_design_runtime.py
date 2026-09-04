@@ -13,6 +13,12 @@ from app.modules.video_component import (
 )
 from app.modules.visual_design import VisualDesignInterpreter
 from app.modules.visual_design import VisualDesignInterpretationError
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
+from app.shared.profile_resolver import ProfileResolver
 
 
 class FakeImageBuilder:
@@ -503,6 +509,18 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 "Nikola Tesla sentado en su despacho "
                 "con una bombilla iluminandose."
             )
+            profile_resolver = ProfileResolver(
+                Path.cwd()
+                / "config"
+                / "profiles"
+            )
+            profile_key = ProfileKey.for_component(
+                ProfileComponent.VIDEO,
+                ProfilePlatform.INSTAGRAM
+            )
+            profile = profile_resolver.load(
+                profile_key
+            )
 
             try:
                 os.chdir(
@@ -587,7 +605,18 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 ), patch(
                     "app.core.start.MediaProbe.get_duration",
                     return_value=None
+                ), patch(
+                    "app.core.start.ConfigManager"
+                ) as config_manager_mock, patch(
+                    "app.core.start.ProfileResolver",
+                    return_value=profile_resolver
                 ):
+                    config_manager_mock.return_value.get_profile_config.return_value = (
+                        profile
+                    )
+                    config_manager_mock.return_value.get_profile_key.return_value = (
+                        profile_key
+                    )
                     result = start.ejecutar_diseno_video(
                         preparation_service=VideoDesignPreparationService(
                             visual_interpreter=(
@@ -595,31 +624,11 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                             )
                         ),
                         image_builder=fake_image_builder,
-                        video_builder=fake_video_builder,
-                        profile={
-                            "video_component": {
-                                "profile": "instagram",
-                                "generation": {
-                                    "width": 320,
-                                    "height": 320
-                                },
-                                "target": {
-                                    "width": 1080,
-                                    "height": 1920
-                                },
-                                "frames": 17,
-                                "fps": 8.0,
-                                "seed": 123,
-                                "seed_mode": "fixed",
-                                "sampling": {
-                                    "steps": 4,
-                                    "cfg": 5.0,
-                                    "sampler": "uni_pc",
-                                    "scheduler": "simple"
-                                }
-                            }
-                        }
+                        video_builder=fake_video_builder
                     )
+
+                config_manager_mock.return_value.get_profile_config.assert_called_once_with()
+                config_manager_mock.return_value.get_profile_key.assert_called_once_with()
 
                 self.assertEqual(
                     "scene_001.mp4",
@@ -659,6 +668,22 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 self.assertIn(
                     "bombilla",
                     call["storyboard_scene"].filmable_interpretation
+                )
+                self.assertEqual(
+                    448,
+                    call["overrides"]["generation_width"]
+                )
+                self.assertEqual(
+                    800,
+                    call["overrides"]["generation_height"]
+                )
+                self.assertEqual(
+                    49,
+                    call["overrides"]["frames"]
+                )
+                self.assertEqual(
+                    20,
+                    call["overrides"]["steps"]
                 )
                 manifest_path = (
                     root
