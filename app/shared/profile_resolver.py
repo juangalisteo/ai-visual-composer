@@ -12,39 +12,51 @@ from app.shared.profile_identity import (
 
 class ProfileResolver:
 
-    _LEGACY_PROFILE_PATHS = {
+    _PROFILE_PATHS = {
         (
             ProfileComponent.GUION,
             ProfilePlatform.INSTAGRAM,
-        ): Path("guion/instagram.json"),
+        ): Path(
+            "guion/instagram/perfil_guion_instagram.json"
+        ),
         (
             ProfileComponent.GUION,
             ProfilePlatform.YOUTUBE,
-        ): Path("guion/youtube.json"),
+        ): Path(
+            "guion/youtube/perfil_guion_youtube.json"
+        ),
         (
             ProfileComponent.IMAGEN,
             ProfilePlatform.INSTAGRAM,
-        ): Path("instagram/modo_conciencia.json"),
+        ): Path(
+            "imagen/instagram/perfil_imagen_instagram.json"
+        ),
         (
             ProfileComponent.IMAGEN,
             ProfilePlatform.YOUTUBE,
-        ): Path("youtube/modo_conciencia.json"),
+        ): Path(
+            "imagen/youtube/perfil_imagen_youtube.json"
+        ),
         (
             ProfileComponent.VIDEO,
             ProfilePlatform.INSTAGRAM,
-        ): Path("instagram/modo_conciencia.json"),
+        ): Path(
+            "video/instagram/perfil_video_instagram.json"
+        ),
         (
             ProfileComponent.VIDEO,
             ProfilePlatform.YOUTUBE,
-        ): Path("youtube/modo_conciencia.json"),
+        ): Path(
+            "video/youtube/perfil_video_youtube.json"
+        ),
     }
 
-    _LEGACY_VIDEO_COMPONENT_PATHS = {
+    _VIDEO_COMPONENT_PATHS = {
         ProfilePlatform.INSTAGRAM: Path(
-            "video/instagram.json"
+            "video/instagram/wan_i2v_instagram.json"
         ),
         ProfilePlatform.YOUTUBE: Path(
-            "video/youtube.json"
+            "video/youtube/wan_i2v_youtube.json"
         ),
     }
 
@@ -82,7 +94,7 @@ class ProfileResolver:
         profile_key = self._require_profile_key(
             profile_key
         )
-        relative_path = self._LEGACY_PROFILE_PATHS.get(
+        relative_path = self._PROFILE_PATHS.get(
             (
                 profile_key.component,
                 profile_key.platform,
@@ -118,7 +130,7 @@ class ProfileResolver:
                 "al componente video."
             )
         return self._existing_path(
-            self._LEGACY_VIDEO_COMPONENT_PATHS[
+            self._VIDEO_COMPONENT_PATHS[
                 profile_key.platform
             ]
         )
@@ -188,7 +200,7 @@ class ProfileResolver:
             )
         if not candidate.is_file():
             raise FileNotFoundError(
-                f"No existe el perfil legacy esperado: {candidate}"
+                f"No existe el perfil esperado: {candidate}"
             )
 
         return self.profiles_root / relative_path

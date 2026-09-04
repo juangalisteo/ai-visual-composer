@@ -272,6 +272,7 @@ def iniciar():
         visual_pipeline == "video"
         and pipeline_mode == "full"
     ):
+        profile_key = config.get_profile_key()
         video_clips_manifest_path, video_i2v_elapsed = (
             _measure_stage(
                 generar_video_clips_i2v,
@@ -284,7 +285,8 @@ def iniciar():
                     or project.images_manifest_path()
                 ),
                 project=project,
-                profile=profile
+                profile=profile,
+                profile_key=profile_key
             )
         )
 
@@ -648,7 +650,8 @@ def generar_video_clips_i2v(
     images_manifest_path,
     project=None,
     profile=None,
-    video_builder=None
+    video_builder=None,
+    profile_key=None
 ):
     project = (
         project
@@ -689,7 +692,8 @@ def generar_video_clips_i2v(
     }
 
     video_profile = _load_video_component_profile(
-        profile
+        profile,
+        profile_key=profile_key
     )
 
     output_dir = (
@@ -838,33 +842,45 @@ def _required_manifest_scene_number(
 
 
 def _load_video_component_profile(
-    visual_profile
+    visual_profile,
+    profile_key=None
 ):
     if visual_profile.get(
         "video_component"
     ):
         return visual_profile
 
-    platform = str(
-        visual_profile.get(
-            "platform",
-            ""
+    if profile_key is not None:
+        if not isinstance(profile_key, ProfileKey):
+            raise TypeError(
+                "La identidad del perfil debe ser un ProfileKey."
+            )
+        video_profile_key = ProfileKey.for_component(
+            ProfileComponent.VIDEO,
+            profile_key.platform
         )
-    ).strip().lower()
-    if not platform:
+    else:
         platform = str(
             visual_profile.get(
-                "format",
+                "platform",
                 ""
             )
         ).strip().lower()
+        if not platform:
+            platform = str(
+                visual_profile.get(
+                    "format",
+                    ""
+                )
+            ).strip().lower()
 
-    profile_key = ProfileKey.for_component(
-        ProfileComponent.VIDEO,
-        platform
-    )
+        video_profile_key = ProfileKey.for_component(
+            ProfileComponent.VIDEO,
+            platform
+        )
+
     return ProfileResolver().load_video_component(
-        profile_key
+        video_profile_key
     )
 
 

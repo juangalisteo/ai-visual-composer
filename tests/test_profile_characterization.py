@@ -256,7 +256,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
                 self.assertEqual(
                     Path("config/profiles/video")
-                    / f"{platform.value}.json",
+                    / platform.value
+                    / f"wan_i2v_{platform.value}.json",
                     path
                 )
                 self.assertEqual(
@@ -317,6 +318,24 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     subtitle_config
                 )
 
+    def test_structured_identity_controls_wan_profile_resolution(self):
+        instagram_key = ProfileKey.for_component(
+            ProfileComponent.VIDEO,
+            ProfilePlatform.INSTAGRAM
+        )
+        visual_profile = dict(
+            self.resolver.load(instagram_key)
+        )
+        visual_profile["platform"] = "youtube"
+
+        self.assertEqual(
+            self.resolver.load_video_component(instagram_key),
+            _load_video_component_profile(
+                visual_profile,
+                profile_key=instagram_key
+            )
+        )
+
     def test_runtime_objects_are_equal_for_legacy_and_identity_loading(self):
         for platform in ProfilePlatform:
             with self.subTest(platform=platform.value):
@@ -324,13 +343,18 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     ProfileComponent.VIDEO,
                     platform
                 )
-                path = self.resolver.resolve(
+                official_path = self.resolver.resolve(
                     profile_key
+                )
+                legacy_path = (
+                    Path("config/profiles")
+                    / platform.value
+                    / "modo_conciencia.json"
                 )
 
                 with patch.dict(
                     os.environ,
-                    self._legacy_environment(path),
+                    self._legacy_environment(legacy_path),
                     clear=True
                 ):
                     legacy_profile = (
@@ -343,7 +367,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     os.environ,
                     self._identity_environment(
                         profile_key,
-                        path
+                        official_path
                     ),
                     clear=True
                 ):
@@ -362,11 +386,19 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     identity_video
                 )
                 self.assertEqual(
+                    self._load(
+                        Path("config/profiles/video")
+                        / f"{platform.value}.json"
+                    ),
                     self.resolver.load_video_component(
                         profile_key
-                    ),
+                    )
+                )
+                self.assertEqual(
+                    self.resolver.load_video_component(profile_key),
                     _load_video_component_profile(
-                        identity_profile
+                        identity_profile,
+                        profile_key=profile_key
                     )
                 )
 

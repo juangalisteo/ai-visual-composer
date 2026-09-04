@@ -263,7 +263,7 @@ class ProfileTreePhase2Test(unittest.TestCase):
                 youtube_copy.read_bytes()
             )
 
-    def test_profile_resolver_still_uses_only_legacy_component_paths(self):
+    def test_profile_resolver_uses_only_new_component_paths(self):
         resolver = ProfileResolver()
 
         for component in ProfileComponent:
@@ -279,26 +279,28 @@ class ProfileTreePhase2Test(unittest.TestCase):
                         profile_key
                     )
                     self.assertEqual(
-                        self.LEGACY_COMPONENT_PATHS[
-                            profile_key.profile_id
-                        ],
-                        resolved
-                    )
-                    self.assertNotEqual(
                         self.NEW_COMPONENT_PATHS[
                             profile_key.profile_id
                         ],
                         resolved
                     )
+                    self.assertNotEqual(
+                        self.LEGACY_COMPONENT_PATHS[
+                            profile_key.profile_id
+                        ],
+                        resolved
+                    )
 
-    def test_profile_resolver_still_uses_only_legacy_wan_paths(self):
+    def test_profile_resolver_uses_only_new_wan_paths(self):
         resolver = ProfileResolver()
         expected_paths = {
             ProfilePlatform.INSTAGRAM: Path(
-                "config/profiles/video/instagram.json"
+                "config/profiles/video/instagram/"
+                "wan_i2v_instagram.json"
             ),
             ProfilePlatform.YOUTUBE: Path(
-                "config/profiles/video/youtube.json"
+                "config/profiles/video/youtube/"
+                "wan_i2v_youtube.json"
             ),
         }
 
@@ -316,11 +318,8 @@ class ProfileTreePhase2Test(unittest.TestCase):
                     resolved
                 )
                 self.assertNotEqual(
-                    Path(
-                        "config/profiles/video"
-                    ) / platform.value / (
-                        f"wan_i2v_{platform.value}.json"
-                    ),
+                    Path("config/profiles/video")
+                    / f"{platform.value}.json",
                     resolved
                 )
 

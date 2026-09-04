@@ -282,7 +282,7 @@ class RunController:
                 )
                 profiles.append({
                     "platform": "guion",
-                    "profile": profile.stem,
+                    "profile": platform.value,
                     "path": profile,
                     "profile_key": profile_key,
                 })
@@ -331,7 +331,7 @@ class RunController:
                 )
                 profiles.append({
                     "platform": platform.value,
-                    "profile": profile.stem,
+                    "profile": "modo_conciencia",
                     "path": profile,
                     "profile_key": profile_key,
                 })

@@ -12,6 +12,11 @@ from app.modules.script import PreparedScript
 
 class FakeConfigManager:
 
+    def get_profile_key(
+        self
+    ):
+        return None
+
     def get_ai_config(
         self
     ):

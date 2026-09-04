@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
@@ -319,11 +320,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 "youtube",
             )
         )
-        self.assertNotIn(
-            "config\\profiles\\video",
-            str(
-                selected["path"]
-            )
+        self.assertEqual(
+            Path(
+                "config/profiles/video/instagram/"
+                "perfil_video_instagram.json"
+            ),
+            selected["path"]
         )
         self.assertIn(
             "PERFIL",

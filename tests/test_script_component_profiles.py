@@ -105,7 +105,8 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/guion/instagram.json"
+                "config/profiles/guion/instagram/"
+                "perfil_guion_instagram.json"
             ),
             selected["path"]
         )
@@ -142,7 +143,8 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/instagram/modo_conciencia.json"
+                "config/profiles/imagen/instagram/"
+                "perfil_imagen_instagram.json"
             ),
             selected["path"]
         )

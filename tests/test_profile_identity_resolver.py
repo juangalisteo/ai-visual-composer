@@ -20,22 +20,28 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     EXPECTED_PATHS = {
         "guion_instagram": Path(
-            "config/profiles/guion/instagram.json"
+            "config/profiles/guion/instagram/"
+            "perfil_guion_instagram.json"
         ),
         "guion_youtube": Path(
-            "config/profiles/guion/youtube.json"
+            "config/profiles/guion/youtube/"
+            "perfil_guion_youtube.json"
         ),
         "imagen_instagram": Path(
-            "config/profiles/instagram/modo_conciencia.json"
+            "config/profiles/imagen/instagram/"
+            "perfil_imagen_instagram.json"
         ),
         "imagen_youtube": Path(
-            "config/profiles/youtube/modo_conciencia.json"
+            "config/profiles/imagen/youtube/"
+            "perfil_imagen_youtube.json"
         ),
         "video_instagram": Path(
-            "config/profiles/instagram/modo_conciencia.json"
+            "config/profiles/video/instagram/"
+            "perfil_video_instagram.json"
         ),
         "video_youtube": Path(
-            "config/profiles/youtube/modo_conciencia.json"
+            "config/profiles/video/youtube/"
+            "perfil_video_youtube.json"
         ),
     }
 
@@ -125,8 +131,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 "video_tiktok"
             )
 
-    def test_missing_legacy_file_fails_without_cross_platform_fallback(self):
+    def test_missing_official_file_fails_without_legacy_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
+            legacy_path = (
+                Path(directory)
+                / "instagram"
+                / "modo_conciencia.json"
+            )
+            legacy_path.parent.mkdir(parents=True)
+            legacy_path.write_text("{}", encoding="utf-8")
             resolver = ProfileResolver(directory)
             profile_key = ProfileKey.for_component(
                 ProfileComponent.VIDEO,
@@ -135,9 +148,30 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 FileNotFoundError,
-                "No existe el perfil legacy esperado"
+                "No existe el perfil esperado"
             ):
                 resolver.resolve(profile_key)
+
+    def test_missing_official_wan_file_fails_without_legacy_fallback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            legacy_path = (
+                Path(directory)
+                / "video"
+                / "instagram.json"
+            )
+            legacy_path.parent.mkdir(parents=True)
+            legacy_path.write_text("{}", encoding="utf-8")
+            resolver = ProfileResolver(directory)
+            profile_key = ProfileKey.for_component(
+                ProfileComponent.VIDEO,
+                ProfilePlatform.INSTAGRAM
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                "No existe el perfil esperado"
+            ):
+                resolver.resolve_video_component(profile_key)
 
     def test_platform_resolution_never_crosses_platforms(self):
         for component in ProfileComponent:
@@ -166,7 +200,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 youtube_path.parts
             )
 
-    def test_image_and_video_keep_distinct_identity_on_shared_legacy_file(self):
+    def test_image_and_video_keep_distinct_identity_and_physical_files(self):
         image_key = ProfileKey.for_component(
             ProfileComponent.IMAGEN,
             ProfilePlatform.INSTAGRAM
@@ -184,7 +218,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             image_key.profile_id,
             video_key.profile_id
         )
-        self.assertEqual(
+        self.assertNotEqual(
             self.resolver.resolve(image_key),
             self.resolver.resolve(video_key)
         )
@@ -238,42 +272,61 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             )
 
     def test_config_manager_accepts_identity_and_legacy_adapter(self):
-        profile_key = ProfileKey.for_component(
-            ProfileComponent.IMAGEN,
-            ProfilePlatform.YOUTUBE
-        )
-        profile_path = self.resolver.resolve(
-            profile_key
-        )
+        for component in ProfileComponent:
+            for platform in ProfilePlatform:
+                with self.subTest(
+                    component=component.value,
+                    platform=platform.value
+                ):
+                    profile_key = ProfileKey.for_component(
+                        component,
+                        platform
+                    )
+                    official_path = self.resolver.resolve(profile_key)
+                    if component is ProfileComponent.GUION:
+                        legacy_path = (
+                            Path("config/profiles/guion")
+                            / f"{platform.value}.json"
+                        )
+                    else:
+                        legacy_path = (
+                            Path("config/profiles")
+                            / platform.value
+                            / "modo_conciencia.json"
+                        )
 
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_PATH": str(profile_path),
-                "MC_PROFILE_COMPONENT": "",
-                "MC_PROFILE_PLATFORM": "",
-                "MC_PROFILE_ID": "",
-            },
-            clear=True
-        ):
-            legacy_profile = ConfigManager().get_profile_config()
+                    with patch.dict(
+                        os.environ,
+                        {
+                            "MC_PROFILE_PATH": str(legacy_path),
+                            "MC_PROFILE_COMPONENT": "",
+                            "MC_PROFILE_PLATFORM": "",
+                            "MC_PROFILE_ID": "",
+                        },
+                        clear=True
+                    ):
+                        legacy_profile = (
+                            ConfigManager().get_profile_config()
+                        )
 
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_PATH": str(profile_path),
-                "MC_PROFILE_COMPONENT": "imagen",
-                "MC_PROFILE_PLATFORM": "youtube",
-                "MC_PROFILE_ID": "imagen_youtube",
-            },
-            clear=True
-        ):
-            identity_profile = ConfigManager().get_profile_config()
+                    with patch.dict(
+                        os.environ,
+                        {
+                            "MC_PROFILE_PATH": str(official_path),
+                            "MC_PROFILE_COMPONENT": component.value,
+                            "MC_PROFILE_PLATFORM": platform.value,
+                            "MC_PROFILE_ID": profile_key.profile_id,
+                        },
+                        clear=True
+                    ):
+                        identity_profile = (
+                            ConfigManager().get_profile_config()
+                        )
 
-        self.assertEqual(
-            legacy_profile,
-            identity_profile
-        )
+                    self.assertEqual(
+                        legacy_profile,
+                        identity_profile
+                    )
 
     def test_config_manager_rejects_partial_or_conflicting_identity(self):
         with patch.dict(
@@ -295,7 +348,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             os.environ,
             {
                 "MC_PROFILE_PATH": (
-                    "config/profiles/youtube/modo_conciencia.json"
+                    "config/profiles/instagram/modo_conciencia.json"
                 ),
                 "MC_PROFILE_COMPONENT": "video",
                 "MC_PROFILE_PLATFORM": "instagram",
@@ -406,7 +459,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_main_transports_profile_identity_without_removing_path_adapter(self):
         options = {
             "profile_path": (
-                "config/profiles/instagram/modo_conciencia.json"
+                "config/profiles/video/instagram/"
+                "perfil_video_instagram.json"
             ),
             "profile_component": "video",
             "profile_platform": "instagram",
@@ -450,6 +504,14 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertEqual(
                 "video_instagram",
                 os.environ["MC_PROFILE_ID"]
+            )
+            profile_key = ProfileKey.for_component(
+                ProfileComponent.VIDEO,
+                ProfilePlatform.INSTAGRAM
+            )
+            self.assertEqual(
+                self.resolver.load(profile_key),
+                ConfigManager().get_profile_config()
             )
 
 

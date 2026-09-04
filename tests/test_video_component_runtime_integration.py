@@ -300,6 +300,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return {}
 
+                def get_profile_key(
+                    self
+                ):
+                    return None
+
                 def get_profile_config(
                     self
                 ):
@@ -582,6 +587,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     self
                 ):
                     return {}
+
+                def get_profile_key(
+                    self
+                ):
+                    return None
 
                 def get_profile_config(
                     self
