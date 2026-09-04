@@ -410,16 +410,35 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             ):
                 ConfigManager().get_profile_config()
 
-    def test_app_json_fallback_remains_available(self):
+    def test_missing_identity_and_legacy_path_fails_without_app_fallback(self):
         with patch.dict(
             os.environ,
             {},
             clear=True
         ):
-            profile = ConfigManager().get_profile_config()
+            manager = ConfigManager()
+            with patch.object(
+                manager,
+                "get_app_config",
+                side_effect=AssertionError(
+                    "app.json must not resolve profiles"
+                )
+            ), self.assertRaisesRegex(
+                ValueError,
+                "No existe identidad ni ruta de perfil suficiente"
+            ):
+                manager.get_profile_config()
 
-        self.assertEqual("youtube", profile["platform"])
-        self.assertEqual("horizontal", profile["format"])
+    def test_app_json_no_longer_declares_profile_selection(self):
+        app = ConfigManager().get_app_config()
+
+        self.assertNotIn("platform", app)
+        self.assertNotIn("profile", app)
+        self.assertEqual(
+            "MODO CONCIENCIA | IA",
+            app["project_name"]
+        )
+        self.assertEqual("es", app["language"])
 
     def test_run_controller_returns_structured_identity_for_main_routes(self):
         expected_components = {

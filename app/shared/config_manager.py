@@ -83,19 +83,12 @@ class ConfigManager:
         if selected_profile_path:
             return self.load_json(Path(selected_profile_path))
 
-        app = self.get_app_config()
-
-        platform = app["platform"]
-        profile = app["profile"]
-
-        profile_path = (
-            self.config_path
-            / "profiles"
-            / platform
-            / f"{profile}.json"
+        raise ValueError(
+            "No existe identidad ni ruta de perfil suficiente. "
+            "Configure MC_PROFILE_COMPONENT, "
+            "MC_PROFILE_PLATFORM y MC_PROFILE_ID, o use "
+            "MC_PROFILE_PATH para compatibilidad legacy."
         )
-
-        return self.load_json(profile_path)
 
     def get_profile_key(self):
         values = (
