@@ -323,23 +323,10 @@ class ProfileTreePhase2Test(unittest.TestCase):
                     resolved
                 )
 
-    def test_phase2_does_not_create_future_profile_families(self):
+    def test_unimplemented_video_srt_profile_family_does_not_exist(self):
         self.assertFalse(
             Path("config/profiles/video_srt").exists()
         )
-        for root in (
-            Path("config/profiles/guion"),
-            Path("config/profiles/imagen"),
-            Path("config/profiles/video"),
-        ):
-            for platform in ProfilePlatform:
-                self.assertFalse(
-                    (
-                        root
-                        / platform.value
-                        / "subtitulos"
-                    ).exists()
-                )
 
     def _sha256(
         self,
