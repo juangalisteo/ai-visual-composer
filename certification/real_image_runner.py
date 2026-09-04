@@ -52,21 +52,15 @@ class RealImageComponentRunner:
         project_name = (
             f"{self.config.campaign_id}_{scenario.scenario_id}"
         )
-        previous_profile = os.environ.get(
-            "MC_PROFILE_PATH"
-        )
         previous_project = os.environ.get(
             "MC_PROJECT_NAME"
         )
 
         try:
-            profile_path = self._write_campaign_profile(
+            profile = self._build_campaign_profile()
+            self._write_campaign_profile(
+                profile,
                 scenario_dir
-            )
-            os.environ[
-                "MC_PROFILE_PATH"
-            ] = str(
-                profile_path
             )
             os.environ[
                 "MC_PROJECT_NAME"
@@ -81,7 +75,8 @@ class RealImageComponentRunner:
 
             manifest_path = ImageBuilder(
                 comfyui_url=self.config.comfyui_url,
-                workflow_path=self.config.workflow_path
+                workflow_path=self.config.workflow_path,
+                profile=profile
             ).build(
                 storyboard_path=project.storyboard_path(),
                 output_dir=project.images_dir(),
@@ -177,18 +172,13 @@ class RealImageComponentRunner:
             )
         finally:
             _restore_env(
-                "MC_PROFILE_PATH",
-                previous_profile
-            )
-            _restore_env(
                 "MC_PROJECT_NAME",
                 previous_project
             )
 
-    def _write_campaign_profile(
-        self,
-        scenario_dir: Path
-    ) -> Path:
+    def _build_campaign_profile(
+        self
+    ) -> dict[str, object]:
         profile = json.loads(
             self.config.profile_path.read_text(
                 encoding="utf-8"
@@ -205,6 +195,13 @@ class RealImageComponentRunner:
         )[
             "enabled"
         ] = True
+        return profile
+
+    def _write_campaign_profile(
+        self,
+        profile: dict[str, object],
+        scenario_dir: Path
+    ) -> Path:
         profile_path = (
             scenario_dir
             / "profile.rc0.json"

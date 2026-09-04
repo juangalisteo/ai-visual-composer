@@ -156,6 +156,70 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["prompt"]
             )
 
+    def test_explicit_profile_bypasses_global_profile_resolution(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            storyboard_path = self._write_storyboard(
+                root
+            )
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(
+                root
+            )
+            profile = {
+                "format": "horizontal",
+                "video_style": {
+                    "width": 640,
+                    "height": 360
+                }
+            }
+
+            with patch(
+                "app.managers.project_manager."
+                "ProjectManager.images_manifest_path",
+                return_value=manifest_path
+            ), patch(
+                "app.modules.images.image_builder.ConfigManager",
+                side_effect=AssertionError(
+                    "Explicit profile must bypass ConfigManager"
+                )
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    profile=profile
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image
+                ):
+                    result_path = builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir
+                    )
+
+            self.assertEqual(
+                manifest_path,
+                result_path
+            )
+            manifest = json.loads(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                640,
+                manifest[0]["width"]
+            )
+            self.assertEqual(
+                360,
+                manifest[0]["height"]
+            )
+
     def test_official_profiles_remain_valid_for_image_dimensions(self):
         builder = ImageBuilder()
 

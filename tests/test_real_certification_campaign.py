@@ -1,9 +1,11 @@
 import inspect
 import json
+import os
 import tempfile
 import unittest
 from dataclasses import FrozenInstanceError, asdict, is_dataclass
 from pathlib import Path
+from unittest.mock import patch
 
 from certification import (
     CAMPAIGN_RESULTS,
@@ -14,6 +16,7 @@ from certification import (
     ImageCertificationObservation,
     RC0CampaignProfiles,
     RealImageComponentRunner,
+    RealImageRunnerConfig,
     RealCertificationCampaign,
     CertificationScenario,
 )
@@ -452,6 +455,134 @@ class RealCertificationCampaignTest(unittest.TestCase):
             "visual_idea",
             storyboard[0],
         )
+
+    def test_real_image_runner_injects_profile_without_global_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            source_profile_path = root / "source_profile.json"
+            source_profile_path.write_text(
+                json.dumps(
+                    {
+                        "format": "horizontal",
+                        "video_style": {
+                            "width": 640,
+                            "height": 360,
+                        },
+                    }
+                ),
+                encoding="utf-8"
+            )
+            approved_asset = root / "approved.png"
+            approved_asset.write_bytes(
+                b"approved"
+            )
+            manifest_path = root / "images_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "scene": 1,
+                            "image": str(
+                                approved_asset
+                            ),
+                        }
+                    ]
+                ),
+                encoding="utf-8"
+            )
+            config = RealImageRunnerConfig(
+                campaign_id="explicit_profile",
+                base_output_dir=root / "certification",
+                profile_path=source_profile_path,
+                workflow_path=root / "workflow.json",
+                image_validation_enabled=True,
+            )
+            runner = RealImageComponentRunner(
+                config
+            )
+            scenario = CertificationScenario(
+                scenario_id="portrait",
+                name="Portrait",
+                component="image",
+                objective="Certify explicit profile injection.",
+                tags=(
+                    "image",
+                    "portrait",
+                ),
+            )
+
+            with patch.dict(
+                os.environ,
+                {
+                    "MC_PROFILE_PATH": "preserved-legacy-value"
+                },
+                clear=False
+            ), patch(
+                "certification.real_image_runner.ProjectManager"
+            ) as project_manager, patch(
+                "certification.real_image_runner.ImageBuilder"
+            ) as image_builder:
+                project = project_manager.return_value
+                project.storyboard_path.return_value = (
+                    root / "project" / "storyboard.json"
+                )
+                project.images_dir.return_value = (
+                    root / "project" / "images"
+                )
+                image_builder.return_value.build.return_value = (
+                    manifest_path
+                )
+
+                observation = runner(
+                    scenario
+                )
+                profile_path_value = os.environ[
+                    "MC_PROFILE_PATH"
+                ]
+
+            self.assertTrue(
+                observation.approved
+            )
+            self.assertEqual(
+                "preserved-legacy-value",
+                profile_path_value
+            )
+            injected_profile = image_builder.call_args.kwargs[
+                "profile"
+            ]
+            self.assertTrue(
+                injected_profile["image_validation"]["enabled"]
+            )
+            self.assertTrue(
+                injected_profile["visual_director"]["enabled"]
+            )
+            persisted_profile = json.loads(
+                (
+                    config.base_output_dir
+                    / config.campaign_id
+                    / scenario.scenario_id
+                    / "profile.rc0.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                injected_profile,
+                persisted_profile
+            )
+            self.assertNotIn(
+                "MC_PROFILE_PATH",
+                inspect.getsource(
+                    __import__(
+                        "certification.real_image_runner",
+                        fromlist=[
+                            "x"
+                        ]
+                    )
+                )
+            )
 
 
 def _run_campaign(

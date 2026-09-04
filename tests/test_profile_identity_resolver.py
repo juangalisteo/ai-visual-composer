@@ -347,6 +347,35 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         identity_profile
                     )
 
+    def test_official_identity_does_not_require_profile_path_adapter(self):
+        for component in ProfileComponent:
+            for platform in ProfilePlatform:
+                with self.subTest(
+                    component=component.value,
+                    platform=platform.value
+                ):
+                    profile_key = ProfileKey.for_component(
+                        component,
+                        platform
+                    )
+                    with patch.dict(
+                        os.environ,
+                        {
+                            "MC_PROFILE_COMPONENT": component.value,
+                            "MC_PROFILE_PLATFORM": platform.value,
+                            "MC_PROFILE_ID": profile_key.profile_id,
+                        },
+                        clear=True
+                    ):
+                        profile = ConfigManager().get_profile_config()
+
+                    self.assertEqual(
+                        self.resolver.load(
+                            profile_key
+                        ),
+                        profile
+                    )
+
     def test_config_manager_rejects_partial_or_conflicting_identity(self):
         with patch.dict(
             os.environ,

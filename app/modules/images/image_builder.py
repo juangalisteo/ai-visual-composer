@@ -44,7 +44,8 @@ class ImageBuilder:
         visual_synthesis_orchestrator=None,
         backend_adapter=None,
         image_quality_flow=None,
-        evidence_writer=None
+        evidence_writer=None,
+        profile=None
     ):
         self.comfyui_url = comfyui_url
 
@@ -78,6 +79,7 @@ class ImageBuilder:
         self.backend_adapter = backend_adapter
         self.image_quality_flow = image_quality_flow
         self.evidence_writer = evidence_writer
+        self.profile = profile
 
     def build(
         self,
@@ -92,10 +94,10 @@ class ImageBuilder:
 
         project = ProjectManager()
 
-        config = ConfigManager()
-
         profile = (
-            config.get_profile_config()
+            self.profile
+            if self.profile is not None
+            else ConfigManager().get_profile_config()
         )
 
         width, height = (
