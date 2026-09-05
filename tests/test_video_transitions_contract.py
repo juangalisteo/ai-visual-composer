@@ -187,30 +187,19 @@ class VideoTransitionsContractTest(
             )
         )
 
-    def test_loader_defaults_to_supported_transitions(
+    def test_loader_rejects_missing_transition_contract(
         self
     ):
-        config = TransitionConfigLoader().load(
-            {
-                "video_style": {
-                    "transitions": {}
+        with self.assertRaisesRegex(
+            ValueError,
+            "video_style.transitions.enabled"
+        ):
+            TransitionConfigLoader().load(
+                {
+                    "video_style": {
+                        "transitions": {}
+                    }
                 }
-            }
-        )
-
-        self.assertEqual(
-            config.types,
-            (
-                "fade",
-                "smoothleft",
-                "fadeblack"
-            )
-        )
-
-        for transition_type in config.types:
-            self.assertIn(
-                transition_type,
-                SUPPORTED_TRANSITION_TYPES
             )
 
     def test_official_profiles_keep_loading_supported_transitions(

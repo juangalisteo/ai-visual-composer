@@ -31,6 +31,9 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                     "video_style": {
                         "width": 640,
                         "height": 360
+                    },
+                    "image_validation": {
+                        "enabled": False
                     }
                 }
             ):
@@ -128,6 +131,9 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                     "video_style": {
                         "width": 360,
                         "height": 640
+                    },
+                    "image_validation": {
+                        "enabled": False
                     }
                 }
             ):
@@ -174,6 +180,9 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 "video_style": {
                     "width": 640,
                     "height": 360
+                },
+                "image_validation": {
+                    "enabled": False
                 }
             }
 

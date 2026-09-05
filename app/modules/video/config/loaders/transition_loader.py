@@ -1,6 +1,13 @@
 from app.modules.video.config.transition_config import (
     TransitionConfig
 )
+from app.shared.config_contract import (
+    require_bool,
+    require_float,
+    require_mapping,
+    require_sequence,
+    require_text,
+)
 
 
 class TransitionConfigLoader:
@@ -17,14 +24,16 @@ class TransitionConfigLoader:
                 "El perfil debe ser un diccionario."
             )
 
-        video_style = profile.get(
+        video_style = require_mapping(
+            profile,
             "video_style",
-            {}
+            "video_style"
         )
 
-        transition_data = video_style.get(
+        transition_data = require_mapping(
+            video_style,
             "transitions",
-            {}
+            "video_style.transitions"
         )
 
         if not isinstance(
@@ -37,45 +46,38 @@ class TransitionConfigLoader:
                 "debe ser un diccionario."
             )
 
-        enabled = bool(
-            transition_data.get(
-                "enabled",
-                True
-            )
+        enabled = require_bool(
+            transition_data,
+            "enabled",
+            "video_style.transitions.enabled"
         )
 
-        duration = float(
-            transition_data.get(
-                "duration",
-                0.50
-            )
+        duration = require_float(
+            transition_data,
+            "duration",
+            "video_style.transitions.duration"
         )
 
-        selection = str(
-            transition_data.get(
-                "selection",
-                "sequence"
-            )
-        ).strip().lower()
+        selection = require_text(
+            transition_data,
+            "selection",
+            "video_style.transitions.selection"
+        ).lower()
 
-        avoid_repeats = bool(
-            transition_data.get(
-                "avoid_repeats",
-                False
-            )
+        avoid_repeats = require_bool(
+            transition_data,
+            "avoid_repeats",
+            "video_style.transitions.avoid_repeats"
         )
 
         types = tuple(
             str(
                 transition_type
             ).strip()
-            for transition_type in transition_data.get(
+            for transition_type in require_sequence(
+                transition_data,
                 "types",
-                [
-                    "fade",
-                    "smoothleft",
-                    "fadeblack"
-                ]
+                "video_style.transitions.types"
             )
             if str(
                 transition_type
@@ -84,9 +86,10 @@ class TransitionConfigLoader:
 
         weights = {
             str(key).strip(): float(value)
-            for key, value in transition_data.get(
+            for key, value in require_mapping(
+                transition_data,
                 "weights",
-                {}
+                "video_style.transitions.weights"
             ).items()
         }
 

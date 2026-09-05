@@ -9,6 +9,10 @@ from app.managers.project_manager import ProjectManager
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
+from app.shared.config_contract import (
+    require_float,
+    require_mapping,
+)
 
 from app.modules.storyboard.scene_splitter import SceneSplitter
 from app.modules.storyboard.storyboard_ai_builder import (
@@ -241,9 +245,10 @@ class StoryboardBuilder:
                 "El perfil debe ser un diccionario."
             )
 
-        video_style = profile.get(
+        video_style = require_mapping(
+            profile,
             "video_style",
-            {}
+            "video_style"
         )
 
         if not isinstance(
@@ -255,9 +260,10 @@ class StoryboardBuilder:
                 "debe ser un diccionario."
             )
 
-        storyboard_config = video_style.get(
+        storyboard_config = require_mapping(
+            video_style,
             "storyboard",
-            {}
+            "video_style.storyboard"
         )
 
         if not isinstance(
@@ -270,11 +276,10 @@ class StoryboardBuilder:
                 "debe ser un diccionario."
             )
 
-        return float(
-            storyboard_config.get(
-                "seconds_per_image",
-                10.0
-            )
+        return require_float(
+            storyboard_config,
+            "seconds_per_image",
+            "video_style.storyboard.seconds_per_image"
         )
 
     def _resolve_audio_path(

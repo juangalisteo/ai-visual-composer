@@ -1,6 +1,10 @@
 from app.modules.video.config.validation_config import (
     ValidationConfig
 )
+from app.shared.config_contract import (
+    require_float,
+    require_mapping,
+)
 
 
 class ValidationConfigLoader:
@@ -17,9 +21,10 @@ class ValidationConfigLoader:
                 "El perfil debe ser un diccionario."
             )
 
-        validation_data = profile.get(
+        validation_data = require_mapping(
+            profile,
             "validation",
-            {}
+            "validation"
         )
 
         if not isinstance(
@@ -31,11 +36,10 @@ class ValidationConfigLoader:
                 "debe ser un diccionario."
             )
 
-        max_duration_difference = float(
-            validation_data.get(
-                "max_duration_difference",
-                0.20
-            )
+        max_duration_difference = require_float(
+            validation_data,
+            "max_duration_difference",
+            "validation.max_duration_difference"
         )
 
         return ValidationConfig(

@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
 from app.shared.config_manager import ConfigManager
+from app.shared.config_contract import (
+    require_int,
+    require_mapping,
+    require_text,
+)
 
 from app.modules.video.config.motion_config import MotionConfig
 from app.modules.video.config.transition_config import TransitionConfig
@@ -117,19 +122,22 @@ class VideoConfigLoader:
                 "un diccionario."
             )
 
-        video_style = profile.get(
+        video_style = require_mapping(
+            profile,
             "video_style",
-            {}
+            "video_style"
         )
 
-        video = profile.get(
+        video = require_mapping(
+            profile,
             "video",
-            {}
+            "video"
         )
 
-        audio = profile.get(
+        audio = require_mapping(
+            profile,
             "audio",
-            {}
+            "audio"
         )
 
         if not isinstance(
@@ -201,32 +209,28 @@ class VideoConfigLoader:
             )
         )
 
-        width = int(
-            video_style.get(
-                "width",
-                1920
-            )
+        width = require_int(
+            video_style,
+            "width",
+            "video_style.width"
         )
 
-        height = int(
-            video_style.get(
-                "height",
-                1080
-            )
+        height = require_int(
+            video_style,
+            "height",
+            "video_style.height"
         )
 
-        fps = int(
-            video_style.get(
-                "fps",
-                30
-            )
+        fps = require_int(
+            video_style,
+            "fps",
+            "video_style.fps"
         )
 
-        crf = int(
-            video.get(
-                "crf",
-                18
-            )
+        crf = require_int(
+            video,
+            "crf",
+            "video.crf"
         )
 
         if width <= 0:
@@ -258,12 +262,11 @@ class VideoConfigLoader:
             height=height,
             fps=fps,
 
-            pixel_format=str(
-                video.get(
-                    "pixel_format",
-                    "yuv420p"
-                )
-            ).strip(),
+            pixel_format=require_text(
+                video,
+                "pixel_format",
+                "video.pixel_format"
+            ),
 
             subtitles=subtitle_config,
             motion=motion_config,
@@ -273,40 +276,35 @@ class VideoConfigLoader:
             fade=fade_config,
             validation=validation_config,
 
-            codec=str(
-                video.get(
-                    "codec",
-                    "libx264"
-                )
-            ).strip(),
+            codec=require_text(
+                video,
+                "codec",
+                "video.codec"
+            ),
 
-            preset=str(
-                video.get(
-                    "preset",
-                    "medium"
-                )
-            ).strip(),
+            preset=require_text(
+                video,
+                "preset",
+                "video.preset"
+            ),
 
             crf=crf,
 
-            audio_codec=str(
-                audio.get(
-                    "codec",
-                    "aac"
-                )
-            ).strip(),
+            audio_codec=require_text(
+                audio,
+                "codec",
+                "audio.codec"
+            ),
 
-            audio_bitrate=str(
-                audio.get(
-                    "bitrate",
-                    "192k"
-                )
-            ).strip(),
+            audio_bitrate=require_text(
+                audio,
+                "bitrate",
+                "audio.bitrate"
+            ),
 
-            movflags=str(
-                video.get(
-                    "movflags",
-                    "+faststart"
-                )
-            ).strip()
+            movflags=require_text(
+                video,
+                "movflags",
+                "video.movflags"
+            )
         )

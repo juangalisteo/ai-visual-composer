@@ -3,6 +3,7 @@ import re
 from functools import lru_cache
 
 from app.modules.subtitles.models.base_subtitle_model import BaseSubtitleModel
+from app.shared.config_contract import require_float, require_int
 
 
 class SingleLineModel(BaseSubtitleModel):
@@ -37,21 +38,50 @@ class SingleLineModel(BaseSubtitleModel):
     }
 
     def __init__(self, config):
-        self.max_chars_per_line = int(
-            config.get("max_chars_per_line", 60)
+        self.max_chars_per_line = require_int(
+            config,
+            "max_chars_per_line",
+            "cue_policy.max_chars_per_line"
         )
 
-        self.min_duration = float(
-            config.get("min_duration", 1.0)
+        self.min_duration = require_float(
+            config,
+            "min_duration",
+            "cue_policy.min_duration"
         )
 
-        self.max_duration = float(
-            config.get("max_duration", 3.0)
+        self.max_duration = require_float(
+            config,
+            "max_duration",
+            "cue_policy.max_duration"
         )
 
-        self.significant_gap_threshold = float(
-            config.get("significant_gap_threshold", 0.35)
+        self.significant_gap_threshold = require_float(
+            config,
+            "significant_gap_threshold",
+            "cue_policy.significant_gap_threshold"
         )
+
+        if self.max_chars_per_line <= 0:
+            raise ValueError(
+                "cue_policy.max_chars_per_line debe ser "
+                "superior a cero."
+            )
+        if self.min_duration <= 0 or self.max_duration <= 0:
+            raise ValueError(
+                "Las duraciones de cue_policy deben ser "
+                "superiores a cero."
+            )
+        if self.max_duration < self.min_duration:
+            raise ValueError(
+                "cue_policy.max_duration no puede ser menor "
+                "que cue_policy.min_duration."
+            )
+        if self.significant_gap_threshold <= 0:
+            raise ValueError(
+                "cue_policy.significant_gap_threshold debe ser "
+                "superior a cero."
+            )
 
     def optimize(self, blocks, timing=None):
         if timing is not None and timing.is_usable():

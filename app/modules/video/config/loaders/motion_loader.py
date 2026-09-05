@@ -1,4 +1,12 @@
 from app.modules.video.config.motion_config import MotionConfig
+from app.shared.config_contract import (
+    require_bool,
+    require_float,
+    require_int,
+    require_mapping,
+    require_sequence,
+    require_text,
+)
 
 
 class MotionConfigLoader:
@@ -15,14 +23,16 @@ class MotionConfigLoader:
                 "El perfil debe ser un diccionario."
             )
 
-        video_style = profile.get(
+        video_style = require_mapping(
+            profile,
             "video_style",
-            {}
+            "video_style"
         )
 
-        motion_data = video_style.get(
+        motion_data = require_mapping(
+            video_style,
             "motion",
-            {}
+            "video_style.motion"
         )
 
         if not isinstance(
@@ -34,76 +44,62 @@ class MotionConfigLoader:
                 "debe ser un diccionario."
             )
 
-        enabled = bool(
-            motion_data.get(
-                "enabled",
-                True
-            )
+        enabled = require_bool(
+            motion_data,
+            "enabled",
+            "video_style.motion.enabled"
         )
 
-        internal_scale = int(
-            motion_data.get(
-                "internal_scale",
-                2
-            )
+        internal_scale = require_int(
+            motion_data,
+            "internal_scale",
+            "video_style.motion.internal_scale"
         )
 
-        base_zoom = float(
-            motion_data.get(
-                "base_zoom",
-                0.00
-            )
+        base_zoom = require_float(
+            motion_data,
+            "base_zoom",
+            "video_style.motion.base_zoom"
         )
 
-        zoom_amount = float(
-            motion_data.get(
-                "zoom_amount",
-                0.10
-            )
+        zoom_amount = require_float(
+            motion_data,
+            "zoom_amount",
+            "video_style.motion.zoom_amount"
         )
 
-        pan_zoom_enabled = bool(
-            motion_data.get(
-                "pan_zoom_enabled",
-                False
-            )
+        pan_zoom_enabled = require_bool(
+            motion_data,
+            "pan_zoom_enabled",
+            "video_style.motion.pan_zoom_enabled"
         )
 
-        pan_zoom_start = float(
-            motion_data.get(
-                "pan_zoom_start",
-                0.00
-            )
+        pan_zoom_start = require_float(
+            motion_data,
+            "pan_zoom_start",
+            "video_style.motion.pan_zoom_start"
         )
 
-        selection = str(
-            motion_data.get(
-                "selection",
-                "sequence"
-            )
-        ).strip().lower()
+        selection = require_text(
+            motion_data,
+            "selection",
+            "video_style.motion.selection"
+        ).lower()
 
-        avoid_repeats = bool(
-            motion_data.get(
-                "avoid_repeats",
-                False
-            )
+        avoid_repeats = require_bool(
+            motion_data,
+            "avoid_repeats",
+            "video_style.motion.avoid_repeats"
         )
 
         types = tuple(
             str(
                 motion_type
             ).strip()
-            for motion_type in motion_data.get(
+            for motion_type in require_sequence(
+                motion_data,
                 "types",
-                [
-                    "zoom_in",
-                    "pan_left",
-                    "zoom_out",
-                    "pan_right",
-                    "pan_up",
-                    "pan_down"
-                ]
+                "video_style.motion.types"
             )
             if str(
                 motion_type
@@ -112,9 +108,10 @@ class MotionConfigLoader:
 
         weights = {
             str(key).strip(): float(value)
-            for key, value in motion_data.get(
+            for key, value in require_mapping(
+                motion_data,
                 "weights",
-                {}
+                "video_style.motion.weights"
             ).items()
         }
 

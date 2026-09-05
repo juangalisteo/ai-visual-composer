@@ -30,6 +30,11 @@ from app.modules.video_component import (
 )
 
 from app.domain.adapters import StoryboardSceneAdapter
+from app.shared.config_contract import (
+    require_bool,
+    require_int,
+    require_mapping,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
 from app.shared.profile_identity import (
@@ -83,9 +88,8 @@ def iniciar(
             profile=profile
         )
 
-    builders = profile.get(
-        "builders",
-        {}
+    builders = _required_builders(
+        profile
     )
     subtitle_profile = None
 
@@ -223,12 +227,8 @@ def iniciar(
         optimized_subtitle_path = (
             SrtOptimizer(
                 subtitle_profile=subtitle_profile,
-                render_fps=profile.get(
-                    "video_style",
-                    {}
-                ).get(
-                    "fps",
-                    30
+                render_fps=_required_render_fps(
+                    profile
                 )
             ).optimize()
         )
@@ -1217,6 +1217,49 @@ def _required_text(
         )
 
     return value
+
+
+def _required_builders(profile):
+    builders = require_mapping(
+        profile,
+        "builders",
+        "builders"
+    )
+    required_names = (
+        "script",
+        "voice",
+        "subtitles",
+        "storyboard",
+        "images",
+        "video",
+    )
+    return {
+        name: require_bool(
+            builders,
+            name,
+            f"builders.{name}"
+        )
+        for name in required_names
+    }
+
+
+def _required_render_fps(profile):
+    video_style = require_mapping(
+        profile,
+        "video_style",
+        "video_style"
+    )
+    fps = require_int(
+        video_style,
+        "fps",
+        "video_style.fps"
+    )
+    if fps <= 0:
+        raise ValueError(
+            "La configuracion video_style.fps debe ser "
+            "superior a cero."
+        )
+    return fps
 
 
 def _measure_stage(

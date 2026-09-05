@@ -13,6 +13,11 @@ from app.domain.adapters import (
     StoryboardSceneAdapter
 )
 from app.modules.images.backends import ComfyUIBackend
+from app.shared.config_contract import (
+    require_bool,
+    require_mapping,
+    require_text,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 from app.modules.images.manifest_writer import ImageManifestWriter
@@ -616,41 +621,19 @@ class ImageBuilder:
     ):
         if not profile:
             return ""
-        video_style = profile.get(
-            "video_style",
-            {}
-        )
-        image_format = str(
-            profile.get(
-                "format",
-                ""
-            )
-            or ""
+        image_format = require_text(
+            profile,
+            "format",
+            "format"
         ).lower()
-        width = video_style.get(
-            "width"
-        )
-        height = video_style.get(
-            "height"
-        )
         if image_format == "vertical":
             return "vertical 9:16"
         if image_format == "horizontal":
             return "wide horizontal 16:9"
-        if width and height:
-            if int(
-                height
-            ) > int(
-                width
-            ):
-                return "vertical 9:16"
-            if int(
-                width
-            ) > int(
-                height
-            ):
-                return "wide horizontal 16:9"
-        return ""
+        raise ValueError(
+            "La configuracion format debe ser vertical "
+            "u horizontal."
+        )
 
     def _has_visual_truth_content(
         self,
@@ -793,22 +776,15 @@ class ImageBuilder:
         self,
         profile
     ):
-        image_validation = profile.get(
+        image_validation = require_mapping(
+            profile,
             "image_validation",
-            {}
+            "image_validation"
         )
-
-        if not isinstance(
+        return require_bool(
             image_validation,
-            dict
-        ):
-            return False
-
-        return bool(
-            image_validation.get(
-                "enabled",
-                False
-            )
+            "enabled",
+            "image_validation.enabled"
         )
 
     def _dedupe_prompt_parts(

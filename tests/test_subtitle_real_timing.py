@@ -242,12 +242,8 @@ class SubtitleRealTimingTest(unittest.TestCase):
         self.assertIsNone(timing)
 
     def test_word_by_word_uses_real_word_timing_and_preserves_gap(self):
-        model = WordByWordModel(
-            {
-                "min_duration": 0.3,
-                "max_duration": 1.2,
-                "remove_extra_commas": True,
-            }
+        model = self._word_by_word_model(
+            fps=30
         )
         timing = SubtitleTiming(
             source="edge_tts",
@@ -271,12 +267,8 @@ class SubtitleRealTimingTest(unittest.TestCase):
         self.assertIn("00:00:00,700 --> 00:00:01,000", blocks[1])
 
     def test_word_by_word_preserves_legacy_distribution_without_timing(self):
-        model = WordByWordModel(
-            {
-                "min_duration": 0.3,
-                "max_duration": 1.2,
-                "remove_extra_commas": True,
-            }
+        model = self._word_by_word_model(
+            fps=30
         )
         blocks = model.optimize(
             [
@@ -328,6 +320,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 "max_chars_per_line": 60,
                 "min_duration": 1.0,
                 "max_duration": 3.0,
+                "significant_gap_threshold": 0.35,
             }
         )
         blocks = model.optimize(
@@ -734,6 +727,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
             {
                 "min_duration": 0.3,
                 "max_duration": 1.2,
+                "uppercase": False,
                 "remove_extra_commas": remove_extra_commas,
                 "render_fps": fps,
                 "significant_gap_threshold": 0.35,

@@ -16,6 +16,10 @@
         "video": true
     },
 
+    "image_validation": {
+        "enabled": false
+    },
+
     "video_style": {
         "width": 1080,
         "height": 1920,

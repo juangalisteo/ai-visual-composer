@@ -225,6 +225,9 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                         "width": 640,
                         "height": 360,
                     },
+                    "image_validation": {
+                        "enabled": False,
+                    },
                 },
             ):
                 builder = ImageBuilder(

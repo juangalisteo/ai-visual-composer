@@ -2,27 +2,94 @@ import re
 
 from app.modules.subtitles.micro_cue_policy import MicroCuePolicy
 from app.modules.subtitles.models.base_subtitle_model import BaseSubtitleModel
+from app.shared.config_contract import (
+    require_bool,
+    require_float,
+    require_mapping,
+    require_text,
+)
 
 
 class WordByWordModel(BaseSubtitleModel):
 
     def __init__(self, config):
-        self.min_duration = float(config.get("min_duration", 0.18))
-        self.max_duration = float(config.get("max_duration", 0.65))
-        self.uppercase = bool(config.get("uppercase", False))
-        self.remove_extra_commas = bool(config.get("remove_extra_commas", True))
-        self.significant_gap_threshold = float(
-            config.get("significant_gap_threshold", 0.35)
+        self.min_duration = require_float(
+            config,
+            "min_duration",
+            "cue_policy.min_duration"
         )
-        self.render_fps = float(
-            config.get("render_fps", 30)
+        self.max_duration = require_float(
+            config,
+            "max_duration",
+            "cue_policy.max_duration"
         )
-        self.micro_cues = dict(
-            config.get(
-                "micro_cues",
-                {}
+        self.uppercase = require_bool(
+            config,
+            "uppercase",
+            "cue_policy.uppercase"
+        )
+        self.remove_extra_commas = require_bool(
+            config,
+            "remove_extra_commas",
+            "cue_policy.remove_extra_commas"
+        )
+        self.significant_gap_threshold = require_float(
+            config,
+            "significant_gap_threshold",
+            "cue_policy.significant_gap_threshold"
+        )
+        self.render_fps = require_float(
+            config,
+            "render_fps",
+            "cue_policy.render_fps"
+        )
+        micro_cues = require_mapping(
+            config,
+            "micro_cues",
+            "cue_policy.micro_cues"
+        )
+        self.micro_cues = {
+            "enabled": require_bool(
+                micro_cues,
+                "enabled",
+                "cue_policy.micro_cues.enabled"
+            ),
+            "min_frames": require_float(
+                micro_cues,
+                "min_frames",
+                "cue_policy.micro_cues.min_frames"
+            ),
+            "min_display_seconds": require_float(
+                micro_cues,
+                "min_display_seconds",
+                "cue_policy.micro_cues.min_display_seconds"
+            ),
+            "merge_preference": require_text(
+                micro_cues,
+                "merge_preference",
+                "cue_policy.micro_cues.merge_preference"
+            ),
+        }
+
+        if self.min_duration <= 0 or self.max_duration <= 0:
+            raise ValueError(
+                "Las duraciones de cue_policy deben ser "
+                "superiores a cero."
             )
-        )
+        if self.max_duration < self.min_duration:
+            raise ValueError(
+                "cue_policy.max_duration no puede ser menor "
+                "que cue_policy.min_duration."
+            )
+        if self.significant_gap_threshold <= 0:
+            raise ValueError(
+                "cue_policy.significant_gap_threshold debe ser "
+                "superior a cero."
+            )
+        if self.render_fps <= 0:
+            raise ValueError(
+                "cue_policy.render_fps debe ser superior a cero."
+            )
         self.last_micro_cue_stats = None
 
     def optimize(self, blocks, timing=None):
@@ -92,32 +159,14 @@ class WordByWordModel(BaseSubtitleModel):
 
     def _micro_cue_policy(self):
         return MicroCuePolicy(
-            enabled=bool(
-                self.micro_cues.get(
-                    "enabled",
-                    True
-                )
-            ),
+            enabled=self.micro_cues["enabled"],
             fps=self.render_fps,
-            min_frames=float(
-                self.micro_cues.get(
-                    "min_frames",
-                    1
-                )
-            ),
-            min_display_seconds=float(
-                self.micro_cues.get(
-                    "min_display_seconds",
-                    0.05
-                )
-            ),
+            min_frames=self.micro_cues["min_frames"],
+            min_display_seconds=self.micro_cues[
+                "min_display_seconds"
+            ],
             significant_gap_threshold=self.significant_gap_threshold,
-            merge_preference=str(
-                self.micro_cues.get(
-                    "merge_preference",
-                    "next"
-                )
-            )
+            merge_preference=self.micro_cues["merge_preference"]
         )
 
     def _split_words(self, text):

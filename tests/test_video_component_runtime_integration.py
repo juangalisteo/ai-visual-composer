@@ -610,6 +610,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                             "images": True,
                             "video": True,
                         },
+                        "video_style": {
+                            "fps": 30,
+                        },
                     }
 
                 def get_subtitle_profile(

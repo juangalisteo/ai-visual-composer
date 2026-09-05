@@ -1,6 +1,12 @@
 from app.modules.video.config.subtitle_config import (
     SubtitleConfig
 )
+from app.shared.config_contract import (
+    require_bool,
+    require_float,
+    require_int,
+    require_text,
+)
 
 
 class SubtitleConfigLoader:
@@ -19,79 +25,75 @@ class SubtitleConfigLoader:
 
         return SubtitleConfig(
 
-            font=render_style.get(
+            font=require_text(
+                render_style,
                 "font",
-                "Arial"
+                "render_style.font"
             ),
 
-            font_size=int(
-                render_style.get(
-                    "font_size",
-                    20
-                )
+            font_size=require_int(
+                render_style,
+                "font_size",
+                "render_style.font_size"
             ),
 
-            bold=bool(
-                render_style.get(
-                    "bold",
-                    True
-                )
+            bold=require_bool(
+                render_style,
+                "bold",
+                "render_style.bold"
             ),
 
-            primary_colour=render_style.get(
+            primary_colour=require_text(
+                render_style,
                 "primary_colour",
-                "&H00FFFFFF"
+                "render_style.primary_colour"
             ),
 
-            outline_colour=render_style.get(
+            outline_colour=require_text(
+                render_style,
                 "outline_colour",
-                "&H00000000"
+                "render_style.outline_colour"
             ),
 
-            back_colour=render_style.get(
+            back_colour=require_text(
+                render_style,
                 "back_colour",
-                "&H00000000"
+                "render_style.back_colour"
             ),
 
-            border_style=int(
-                render_style.get(
-                    "border_style",
-                    1
-                )
+            border_style=require_int(
+                render_style,
+                "border_style",
+                "render_style.border_style"
             ),
 
-            outline=int(
-                render_style.get(
-                    "outline",
-                    0
-                )
+            outline=require_int(
+                render_style,
+                "outline",
+                "render_style.outline"
             ),
 
-            shadow=int(
-                render_style.get(
-                    "shadow",
-                    1
-                )
+            shadow=require_int(
+                render_style,
+                "shadow",
+                "render_style.shadow"
             ),
 
-            alignment=int(
-                render_style.get(
-                    "alignment",
-                    2
-                )
+            alignment=require_int(
+                render_style,
+                "alignment",
+                "render_style.alignment"
             ),
 
-            margin_v=int(
-                render_style.get(
-                    "margin_v",
-                    25
-                )
+            margin_v=require_int(
+                render_style,
+                "margin_v",
+                "render_style.margin_v"
             ),
 
-            offset=float(
-                render_style.get(
-                    "offset",
-                    0.0
-                )
+            offset=require_float(
+                render_style,
+                "offset",
+                "render_style.offset"
             )
         )

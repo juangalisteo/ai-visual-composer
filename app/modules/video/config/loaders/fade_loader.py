@@ -1,6 +1,11 @@
 from app.modules.video.config.fade_config import (
     FadeConfig
 )
+from app.shared.config_contract import (
+    require_bool,
+    require_float,
+    require_mapping,
+)
 
 
 class FadeConfigLoader:
@@ -17,14 +22,16 @@ class FadeConfigLoader:
                 "El perfil debe ser un diccionario."
             )
 
-        video_style = profile.get(
+        video_style = require_mapping(
+            profile,
             "video_style",
-            {}
+            "video_style"
         )
 
-        fade_data = video_style.get(
+        fade_data = require_mapping(
+            video_style,
             "fade",
-            {}
+            "video_style.fade"
         )
 
         if not isinstance(
@@ -37,32 +44,28 @@ class FadeConfigLoader:
                 "debe ser un diccionario."
             )
 
-        enabled = bool(
-            fade_data.get(
-                "enabled",
-                True
-            )
+        enabled = require_bool(
+            fade_data,
+            "enabled",
+            "video_style.fade.enabled"
         )
 
-        fade_in = bool(
-            fade_data.get(
-                "fade_in",
-                False
-            )
+        fade_in = require_bool(
+            fade_data,
+            "fade_in",
+            "video_style.fade.fade_in"
         )
 
-        fade_out = bool(
-            fade_data.get(
-                "fade_out",
-                True
-            )
+        fade_out = require_bool(
+            fade_data,
+            "fade_out",
+            "video_style.fade.fade_out"
         )
 
-        duration = float(
-            fade_data.get(
-                "duration",
-                0.50
-            )
+        duration = require_float(
+            fade_data,
+            "duration",
+            "video_style.fade.duration"
         )
 
         return FadeConfig(

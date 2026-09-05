@@ -4,6 +4,11 @@ import re
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.shared.config_contract import (
+    require_float,
+    require_mapping,
+    require_text,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 
@@ -34,12 +39,22 @@ class SrtOptimizer:
 
         if render_fps is None:
             profile = config.get_profile_config()
-            render_fps = profile.get(
+            video_style = require_mapping(
+                profile,
                 "video_style",
-                {}
-            ).get(
+                "video_style"
+            )
+            render_fps = require_float(
+                video_style,
                 "fps",
-                30
+                "video_style.fps"
+            )
+
+        render_fps = float(render_fps)
+        if render_fps <= 0:
+            raise ValueError(
+                "La configuracion video_style.fps debe ser "
+                "superior a cero."
             )
 
         subtitle_config.setdefault(
@@ -47,7 +62,11 @@ class SrtOptimizer:
             render_fps
         )
 
-        mode = subtitle_config["mode"]
+        mode = require_text(
+            subtitle_config,
+            "mode",
+            "cue_policy.mode"
+        )
 
         if mode == "single_line":
             self.model = SingleLineModel(

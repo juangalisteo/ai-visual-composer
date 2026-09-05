@@ -344,6 +344,9 @@ class ImageManifestWriterTest(unittest.TestCase):
                         "width": 640,
                         "height": 360
                     },
+                    "image_validation": {
+                        "enabled": False
+                    },
                     "visual_director": {
                         "enabled": False
                     }
