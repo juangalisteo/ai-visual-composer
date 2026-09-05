@@ -35,6 +35,15 @@ class StudioRenderResult:
     silence_added: bool
     light_leaks_enabled: bool
     light_leaks_operations: tuple
+    music_path: Path | None
+
+
+@dataclass(frozen=True)
+class StudioInputLayout:
+    source_video: int
+    light_leaks: tuple[int, ...]
+    source_audio: int
+    music: int | None
 
 
 class StudioOutputPathResolver:
@@ -48,6 +57,7 @@ class StudioOutputPathResolver:
         profile_key,
         subtitle_profile,
         light_leaks_enabled=False,
+        music_path=None,
     ):
         if not isinstance(profile_key, ProfileKey):
             raise TypeError("STUDIO requiere un ProfileKey explicito.")
@@ -62,6 +72,13 @@ class StudioOutputPathResolver:
         style = subtitle_profile.key.style
         style = style.value if hasattr(style, "value") else str(style)
         suffix = "_light_leaks" if light_leaks_enabled else ""
+        if music_path is not None:
+            music_stem = re.sub(
+                r"[^A-Za-z0-9._-]+",
+                "_",
+                Path(music_path).stem,
+            ).strip("._") or "music"
+            suffix += f"_music_{music_stem}"
         filename = (
             f"{source_stem}_studio_{profile_key.platform.value}_{style}"
             f"{suffix}.mp4"
@@ -157,6 +174,7 @@ class StudioRenderService:
         subtitle_profile,
         output_path,
         light_leaks_enabled=False,
+        music_path=None,
     ):
         self._require_contract(
             video_path,
@@ -167,6 +185,11 @@ class StudioRenderService:
         video_path = Path(video_path)
         subtitle_path = Path(subtitle_path)
         output_path = Path(output_path)
+        music_path = Path(music_path) if music_path is not None else None
+        if music_path is not None and not music_path.is_file():
+            raise FileNotFoundError(
+                f"No existe la pista musical STUDIO: {music_path}"
+            )
         if output_path.exists():
             raise FileExistsError(
                 f"Ya existe el output STUDIO determinista: {output_path}"
@@ -205,6 +228,7 @@ class StudioRenderService:
             profile=profile,
             subtitle_style=subtitle_style,
             light_leaks_operations=light_leaks_operations,
+            music_path=music_path,
         )
 
         try:
@@ -230,6 +254,7 @@ class StudioRenderService:
             silence_added=not source_info.has_audio,
             light_leaks_enabled=light_leaks_enabled,
             light_leaks_operations=light_leaks_operations,
+            music_path=music_path,
         )
 
     def build_command(
@@ -241,29 +266,16 @@ class StudioRenderService:
         profile,
         subtitle_style,
         light_leaks_operations=(),
+        music_path=None,
     ):
-        command = ["ffmpeg", "-y", "-i", str(Path(video_path))]
-        for operation in light_leaks_operations:
-            command.extend([
-                "-stream_loop",
-                "-1",
-                "-i",
-                str(operation.asset_path),
-            ])
-        if source_info.has_audio:
-            audio_source = "[0:a:0]"
-        else:
-            command.extend([
-                "-f",
-                "lavfi",
-                "-i",
-                (
-                    "anullsrc="
-                    f"r={profile.audio_sample_rate}:"
-                    f"cl={self._channel_layout(profile.audio_channels)}"
-                ),
-            ])
-            audio_source = f"[{len(light_leaks_operations) + 1}:a:0]"
+        command, inputs = self._build_inputs(
+            video_path=video_path,
+            source_info=source_info,
+            profile=profile,
+            light_leaks_operations=light_leaks_operations,
+            music_path=music_path,
+        )
+        audio_source = f"[{inputs.source_audio}:a:0]"
 
         escaped_subtitle = self._escape_filter_path(subtitle_path)
         escaped_fonts = self._escape_filter_path(self.FONTS_DIRECTORY)
@@ -282,7 +294,9 @@ class StudioRenderService:
             "setpts=PTS-STARTPTS",
         ]
         filter_parts = [
-            "[0:v:0]" + ",".join(video_filters) + "[studio_base]"
+            f"[{inputs.source_video}:v:0]"
+            + ",".join(video_filters)
+            + "[studio_base]"
         ]
         current_stream = "[studio_base]"
         for operation_index, operation in enumerate(light_leaks_operations):
@@ -295,7 +309,7 @@ class StudioRenderService:
                     "blend_mode": operation.blend_mode,
                     "opacity": operation.opacity,
                 },
-                input_index=operation.input_position + 1,
+                input_index=inputs.light_leaks[operation_index],
                 operation_index=operation_index,
                 source_prefix="studio_leak_source",
                 output_prefix="studio_leak",
@@ -310,20 +324,33 @@ class StudioRenderService:
         )
 
         duration = f"{source_info.duration:.6f}"
-        filter_complex = (
-            ";".join(filter_parts)
-            + ";"
-            + audio_source
-            + f"aresample={profile.audio_sample_rate},"
-            + (
-                "aformat="
-                f"sample_rates={profile.audio_sample_rate}:"
-                f"channel_layouts={self._channel_layout(profile.audio_channels)},"
-            )
-            + "apad,"
-            + f"atrim=duration={duration},"
-            + "asetpts=PTS-STARTPTS[aout]"
+        audio_format = (
+            f"aresample={profile.audio_sample_rate},"
+            "aformat="
+            f"sample_rates={profile.audio_sample_rate}:"
+            f"channel_layouts={self._channel_layout(profile.audio_channels)},"
+            "apad,"
+            f"atrim=duration={duration},"
+            "asetpts=PTS-STARTPTS"
         )
+        if inputs.music is None:
+            audio_graph = audio_source + audio_format + "[aout]"
+        else:
+            audio_graph = (
+                audio_source
+                + audio_format
+                + "[studio_source_audio];"
+                + f"[{inputs.music}:a:0]"
+                + f"volume={profile.music.volume:.6f},"
+                + audio_format
+                + "[studio_music];"
+                + "[studio_source_audio][studio_music]"
+                + "amix=inputs=2:duration=first:"
+                + "dropout_transition=0:normalize=0,"
+                + f"alimiter=limit={profile.music.limiter_limit:.6f}:"
+                + "level=false:latency=true[aout]"
+            )
+        filter_complex = ";".join(filter_parts) + ";" + audio_graph
         command.extend([
             "-filter_complex",
             filter_complex,
@@ -356,6 +383,60 @@ class StudioRenderService:
             str(Path(output_path)),
         ])
         return command
+
+    def _build_inputs(
+        self,
+        video_path,
+        source_info,
+        profile,
+        light_leaks_operations,
+        music_path,
+    ):
+        command = ["ffmpeg", "-y", "-i", str(Path(video_path))]
+        next_index = 1
+        light_leak_indices = []
+        for operation in light_leaks_operations:
+            command.extend([
+                "-stream_loop",
+                "-1",
+                "-i",
+                str(operation.asset_path),
+            ])
+            light_leak_indices.append(next_index)
+            next_index += 1
+
+        if source_info.has_audio:
+            source_audio_index = 0
+        else:
+            command.extend([
+                "-f",
+                "lavfi",
+                "-i",
+                (
+                    "anullsrc="
+                    f"r={profile.audio_sample_rate}:"
+                    f"cl={self._channel_layout(profile.audio_channels)}"
+                ),
+            ])
+            source_audio_index = next_index
+            next_index += 1
+
+        music_index = None
+        if music_path is not None:
+            command.extend([
+                "-stream_loop",
+                "-1",
+                "-i",
+                str(Path(music_path)),
+            ])
+            music_index = next_index
+
+        return command, StudioInputLayout(
+            source_video=0,
+            light_leaks=tuple(light_leak_indices),
+            source_audio=source_audio_index,
+            music=music_index,
+        )
 
     def _light_leaks_operations(self, duration, profile, enabled):
         if not enabled:

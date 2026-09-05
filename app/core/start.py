@@ -55,6 +55,7 @@ def iniciar(
     subtitle_style=None,
     intro_outro_selection=None,
     studio_light_leaks_enabled=False,
+    studio_music_path=None,
 ):
     pipeline_start = time.perf_counter()
 
@@ -67,6 +68,7 @@ def iniciar(
         return ejecutar_studio_fase_2(
             subtitle_style=subtitle_style,
             light_leaks_enabled=studio_light_leaks_enabled,
+            music_path=studio_music_path,
         )
 
     project = ProjectManager()
@@ -448,6 +450,7 @@ def ejecutar_studio_fase_1(
 def ejecutar_studio_fase_2(
     subtitle_style,
     light_leaks_enabled=False,
+    music_path=None,
     preparation_service=None,
     render_service=None,
     output_path_resolver=None,
@@ -464,6 +467,7 @@ def ejecutar_studio_fase_2(
         profile_key=preparation.profile_key,
         subtitle_profile=preparation.subtitle_profile,
         light_leaks_enabled=light_leaks_enabled,
+        music_path=music_path,
     )
     return (render_service or StudioRenderService()).render(
         video_path=preparation.video_path,
@@ -473,6 +477,7 @@ def ejecutar_studio_fase_2(
         subtitle_profile=preparation.subtitle_profile,
         output_path=output_path,
         light_leaks_enabled=light_leaks_enabled,
+        music_path=music_path,
     )
 
 

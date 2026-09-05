@@ -41,6 +41,26 @@ class MusicSelector:
             categories
         )
 
+    def discover_tracks(
+        self
+    ):
+        tracks = []
+
+        for category in self.get_categories():
+            tracks.extend(
+                self._valid_tracks(
+                    self.music_path / category
+                )
+            )
+
+        if not tracks:
+            raise FileNotFoundError(
+                "No se encontraron pistas musicales "
+                f"validas en: {self.music_path}"
+            )
+
+        return tuple(tracks)
+
     def select(
         self,
         category

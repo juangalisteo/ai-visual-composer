@@ -5,6 +5,7 @@ from app.modules.studio.input_preparation import (
 from app.modules.studio.profile import (
     StudioProfile,
     StudioLightLeaksConfig,
+    StudioMusicConfig,
     StudioProfileLoader,
     StudioPhase1Preparation,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "StudioInputPreparationService",
     "StudioProfile",
     "StudioLightLeaksConfig",
+    "StudioMusicConfig",
     "StudioProfileLoader",
     "StudioPhase1Preparation",
     "StudioOutputPathResolver",

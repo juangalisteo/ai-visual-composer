@@ -242,6 +242,7 @@ class StudioPhase3Test(unittest.TestCase):
             profile_key=preparation.profile_key,
             subtitle_profile=preparation.subtitle_profile,
             light_leaks_enabled=True,
+            music_path=None,
         )
         self.assertTrue(render.render.call_args.kwargs["light_leaks_enabled"])
 

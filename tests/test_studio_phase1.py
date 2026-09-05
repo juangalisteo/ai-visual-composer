@@ -185,6 +185,10 @@ class StudioPhase1Test(unittest.TestCase):
             controller,
             "select_studio_light_leaks",
             return_value=False,
+        ), patch.object(
+            controller,
+            "select_studio_music",
+            return_value=None,
         ):
             options = controller.run()
 
@@ -192,6 +196,7 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual("studio", options["profile_component"])
         self.assertEqual("single_line", options["subtitle_config"])
         self.assertFalse(options["studio_light_leaks_enabled"])
+        self.assertIsNone(options["studio_music_path"])
         self.assertFalse(options["clear_output"])
         self.assertEqual("off", options["overlays_mode"])
         self.assertIsNone(options["intro_outro_selection"])
@@ -227,6 +232,7 @@ class StudioPhase1Test(unittest.TestCase):
             "design_target": "",
             "pipeline_mode": "studio",
             "studio_light_leaks_enabled": False,
+            "studio_music_path": None,
             "clear_output": False,
         }
         with patch.dict(os.environ, {}, clear=True), patch(
@@ -242,6 +248,7 @@ class StudioPhase1Test(unittest.TestCase):
         start.assert_called_once_with(
             subtitle_style="single_line",
             studio_light_leaks_enabled=False,
+            studio_music_path=None,
         )
         output_manager.assert_not_called()
 
@@ -263,6 +270,7 @@ class StudioPhase1Test(unittest.TestCase):
         render.assert_called_once_with(
             subtitle_style="single_line",
             light_leaks_enabled=False,
+            music_path=None,
         )
         project_manager.assert_not_called()
 

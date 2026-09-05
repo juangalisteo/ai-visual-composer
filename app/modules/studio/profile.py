@@ -27,6 +27,13 @@ class StudioLightLeaksConfig:
 
 
 @dataclass(frozen=True)
+class StudioMusicConfig:
+    volume: float
+    loop_shorter: bool
+    limiter_limit: float
+
+
+@dataclass(frozen=True)
 class StudioProfile:
     platform: str
     profile_id: str
@@ -48,7 +55,7 @@ class StudioProfile:
     audio_channels: int
     max_duration_difference: float
     light_leaks: StudioLightLeaksConfig
-    music_enabled: bool
+    music: StudioMusicConfig
 
 
 @dataclass(frozen=True)
@@ -153,6 +160,20 @@ class StudioProfileLoader:
             ).lower(),
         )
         self._validate_light_leaks(light_leaks_config)
+        music_config = StudioMusicConfig(
+            volume=require_float(music, "volume", "studio.music.volume"),
+            loop_shorter=require_bool(
+                music,
+                "loop_shorter",
+                "studio.music.loop_shorter"
+            ),
+            limiter_limit=require_float(
+                music,
+                "limiter_limit",
+                "studio.music.limiter_limit"
+            ),
+        )
+        self._validate_music(music_config)
 
         return StudioProfile(
             platform=require_text(profile, "platform", "platform"),
@@ -195,7 +216,7 @@ class StudioProfileLoader:
                 "studio.output.validation.max_duration_difference"
             ),
             light_leaks=light_leaks_config,
-            music_enabled=require_bool(music, "enabled", "studio.music.enabled")
+            music=music_config,
         )
 
     def _require_identity(self, profile, profile_key):
@@ -251,4 +272,19 @@ class StudioProfileLoader:
         if config.blend_mode not in {"normal", "screen", "add", "lighten", "overlay"}:
             raise ValueError(
                 "studio.light_leaks.blend_mode no es compatible."
+            )
+
+    @staticmethod
+    def _validate_music(config):
+        if not 0 < config.volume <= 1:
+            raise ValueError(
+                "studio.music.volume debe estar entre 0 (exclusivo) y 1."
+            )
+        if not config.loop_shorter:
+            raise ValueError(
+                "studio.music.loop_shorter debe ser true en STUDIO V1."
+            )
+        if not 0.0625 <= config.limiter_limit <= 1:
+            raise ValueError(
+                "studio.music.limiter_limit debe estar entre 0.0625 y 1."
             )

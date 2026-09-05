@@ -52,6 +52,9 @@ def main():
         start_options["studio_light_leaks_enabled"] = bool(
             options.get("studio_light_leaks_enabled", False)
         )
+        start_options["studio_music_path"] = options.get(
+            "studio_music_path"
+        )
 
     try:
         iniciar(**start_options)

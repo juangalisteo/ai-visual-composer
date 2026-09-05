@@ -39,7 +39,9 @@
             "blend_mode": "screen"
         },
         "music": {
-            "enabled": false
+            "volume": 0.25,
+            "loop_shorter": true,
+            "limiter_limit": 0.95
         }
     }
 }

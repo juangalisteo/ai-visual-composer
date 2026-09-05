@@ -8,6 +8,33 @@ from app.modules.audio.music_selector import MusicSelector
 
 class MusicSelectorTest(unittest.TestCase):
 
+    def test_discovers_all_valid_tracks_deterministically(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first = root / "ambient"
+            second = root / "cinematic"
+            first.mkdir()
+            second.mkdir()
+            expected = (
+                first / "a.wav",
+                first / "b.mp3",
+                second / "c.flac",
+            )
+            for track in reversed(expected):
+                track.write_bytes(b"audio")
+            (first / "ignored.txt").write_text("ignored", encoding="utf-8")
+
+            discovered = MusicSelector(root).discover_tracks()
+
+        self.assertEqual(expected, discovered)
+
+    def test_discovery_fails_clearly_without_tracks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "empty").mkdir()
+            with self.assertRaisesRegex(FileNotFoundError, "pistas musicales"):
+                MusicSelector(root).discover_tracks()
+
     def test_without_music_returns_none(self):
         self.assertIsNone(
             MusicSelector().select(

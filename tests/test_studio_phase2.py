@@ -94,6 +94,7 @@ class StudioPhase2Test(unittest.TestCase):
             subtitle_profile=preparation.subtitle_profile,
             output_path=Path("output/studio/result.mp4"),
             light_leaks_enabled=False,
+            music_path=None,
         )
 
     def test_runtime_studio_bypasses_all_audiovisual_builders(self):
@@ -111,6 +112,7 @@ class StudioPhase2Test(unittest.TestCase):
         studio.assert_called_once_with(
             subtitle_style="single_line",
             light_leaks_enabled=False,
+            music_path=None,
         )
         projects.assert_not_called()
         video.assert_not_called()

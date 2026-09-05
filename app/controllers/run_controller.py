@@ -15,6 +15,7 @@ from app.modules.video.intro_outro import (
     IntroOutroCatalog,
     IntroOutroSelection,
 )
+from app.modules.audio.music_selector import MusicSelector
 
 
 class RunController:
@@ -24,6 +25,7 @@ class RunController:
         profile_resolver=None,
         subtitle_profile_resolver=None,
         intro_outro_catalog=None,
+        studio_music_selector=None,
     ):
         self.profile_resolver = (
             profile_resolver
@@ -36,6 +38,10 @@ class RunController:
         self.subtitle_profile_resolver = (
             subtitle_profile_resolver
             or SubtitleProfileResolver()
+        )
+        self.studio_music_selector = (
+            studio_music_selector
+            or MusicSelector()
         )
 
     def run(self):
@@ -463,6 +469,26 @@ class RunController:
         self._print("2. SÍ")
         return self._select_from_list((False, True))
 
+    def select_studio_music(self):
+        self._print("\n¿UTILIZAR MÚSICA?\n")
+        self._print("1. NO")
+        self._print("2. SÍ")
+        enabled = self._select_from_list((False, True))
+        if not enabled:
+            return None
+
+        tracks = self.studio_music_selector.discover_tracks()
+        self._print("\nMÚSICA\n")
+        for index, track in enumerate(tracks, start=1):
+            try:
+                label = track.relative_to(
+                    self.studio_music_selector.music_path
+                )
+            except ValueError:
+                label = track.name
+            self._print(f"{index}. {label}")
+        return self._select_from_list(tracks)
+
     def select_voice_config(self):
         configs_path = Path(
             "config/voice_configs"
@@ -714,6 +740,7 @@ class RunController:
             profile_key
         )
         light_leaks_enabled = self.select_studio_light_leaks()
+        music_path = self.select_studio_music()
 
         return {
             "visual_pipeline": "studio",
@@ -725,6 +752,7 @@ class RunController:
             "profile_id": profile_key.profile_id,
             "subtitle_config": subtitle_config,
             "studio_light_leaks_enabled": light_leaks_enabled,
+            "studio_music_path": str(music_path) if music_path else None,
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",
