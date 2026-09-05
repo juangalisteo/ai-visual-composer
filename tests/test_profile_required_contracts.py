@@ -26,6 +26,12 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 class RequiredProfileContractsTest(unittest.TestCase):
 
+    RUNTIME_COMPONENTS = (
+        ProfileComponent.GUION,
+        ProfileComponent.IMAGEN,
+        ProfileComponent.VIDEO,
+    )
+
     EXPECTED = {
         ProfilePlatform.INSTAGRAM: {
             "format": "vertical",
@@ -62,7 +68,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
         self.subtitle_resolver = SubtitleProfileResolver()
 
     def test_official_profiles_preserve_effective_configuration(self):
-        for component in ProfileComponent:
+        for component in self.RUNTIME_COMPONENTS:
             for platform, expected in self.EXPECTED.items():
                 with self.subTest(
                     component=component.value,

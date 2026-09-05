@@ -1,0 +1,38 @@
+{
+    "component": "studio",
+    "platform": "instagram",
+    "profile_id": "studio_instagram",
+    "format": "vertical",
+    "resolution": "1080x1920",
+    "studio": {
+        "input": {
+            "video_extensions": [".mp4"],
+            "subtitle_extensions": [".srt"]
+        },
+        "output": {
+            "width": 1080,
+            "height": 1920,
+            "fps": 30,
+            "video": {
+                "codec": "libx264",
+                "preset": "slow",
+                "crf": 16,
+                "pixel_format": "yuv420p",
+                "movflags": "+faststart"
+            },
+            "audio": {
+                "codec": "aac",
+                "bitrate": "192k"
+            },
+            "validation": {
+                "max_duration_difference": 0.2
+            }
+        },
+        "light_leaks": {
+            "enabled": false
+        },
+        "music": {
+            "enabled": false
+        }
+    }
+}

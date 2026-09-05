@@ -47,6 +47,18 @@ class ProfileResolver:
         ): Path(
             "video/youtube/perfil_video_youtube.json"
         ),
+        (
+            ProfileComponent.STUDIO,
+            ProfilePlatform.INSTAGRAM,
+        ): Path(
+            "studio/instagram/perfil_studio_instagram.json"
+        ),
+        (
+            ProfileComponent.STUDIO,
+            ProfilePlatform.YOUTUBE,
+        ): Path(
+            "studio/youtube/perfil_studio_youtube.json"
+        ),
     }
 
     _VIDEO_COMPONENT_PATHS = {

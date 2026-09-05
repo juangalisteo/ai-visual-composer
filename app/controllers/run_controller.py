@@ -8,6 +8,9 @@ from app.shared.profile_identity import (
     ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_resolver import (
+    SubtitleProfileResolver,
+)
 from app.modules.video.intro_outro import (
     IntroOutroCatalog,
     IntroOutroSelection,
@@ -19,6 +22,7 @@ class RunController:
     def __init__(
         self,
         profile_resolver=None,
+        subtitle_profile_resolver=None,
         intro_outro_catalog=None,
     ):
         self.profile_resolver = (
@@ -28,6 +32,10 @@ class RunController:
         self.intro_outro_catalog = (
             intro_outro_catalog
             or IntroOutroCatalog()
+        )
+        self.subtitle_profile_resolver = (
+            subtitle_profile_resolver
+            or SubtitleProfileResolver()
         )
 
     def run(self):
@@ -42,6 +50,9 @@ class RunController:
                 script_source = "manual_design"
                 design_target = self.select_design_target()
                 visual_pipeline = design_target
+
+        if visual_pipeline == "studio":
+            return self._run_studio()
 
         if script_source == "manual_design":
             pipeline_mode = f"design_{design_target}"
@@ -135,6 +146,10 @@ class RunController:
             {
                 "name": "Video",
                 "pipeline": "video"
+            },
+            {
+                "name": "Studio",
+                "pipeline": "studio"
             }
         ]
 
@@ -338,6 +353,7 @@ class RunController:
             components = {
                 "image": ProfileComponent.IMAGEN,
                 "video": ProfileComponent.VIDEO,
+                "studio": ProfileComponent.STUDIO,
             }
             if visual_pipeline not in components:
                 raise ValueError(
@@ -346,16 +362,25 @@ class RunController:
                 )
 
             for platform in ProfilePlatform:
+                component = components[visual_pipeline]
                 profile_key = ProfileKey.for_component(
-                    components[visual_pipeline],
+                    component,
                     platform
                 )
                 profile = self.profile_resolver.resolve(
                     profile_key
                 )
                 profiles.append({
-                    "platform": platform.value,
-                    "profile": "modo_conciencia",
+                    "platform": (
+                        "studio"
+                        if component is ProfileComponent.STUDIO
+                        else platform.value
+                    ),
+                    "profile": (
+                        platform.value
+                        if component is ProfileComponent.STUDIO
+                        else "modo_conciencia"
+                    ),
                     "path": profile,
                     "profile_key": profile_key,
                 })
@@ -374,7 +399,8 @@ class RunController:
         ):
             if item["platform"] in {
                 "guion",
-                "diseno"
+                "diseno",
+                "studio",
             }:
                 label = self._label(
                     item["profile"]
@@ -417,6 +443,19 @@ class RunController:
         )
 
         return selected
+
+    def select_studio_subtitle_config(self, profile_key):
+        configs = self.subtitle_profile_resolver.discover_styles(
+            profile_key
+        )
+
+        self._print("\nSUBTITULOS\n")
+        for index, config in enumerate(configs, start=1):
+            self._print(
+                f"{index}. {self._subtitle_label(config)}"
+            )
+
+        return self._select_from_list(configs)
 
     def select_voice_config(self):
         configs_path = Path(
@@ -661,6 +700,30 @@ class RunController:
             return f"design_{design_target}"
 
         return visual_pipeline
+
+    def _run_studio(self):
+        profile = self.select_profile("studio")
+        profile_key = profile["profile_key"]
+        subtitle_config = self.select_studio_subtitle_config(
+            profile_key
+        )
+
+        return {
+            "visual_pipeline": "studio",
+            "script_source": "external",
+            "design_target": "",
+            "pipeline_mode": "studio",
+            "profile_component": profile_key.component.value,
+            "profile_platform": profile_key.platform.value,
+            "profile_id": profile_key.profile_id,
+            "subtitle_config": subtitle_config,
+            "voice_config": "",
+            "music_category": None,
+            "overlays_mode": "off",
+            "intro_outro_selection": None,
+            "project_name": "",
+            "clear_output": False,
+        }
 
     def _exit_application(self):
         self._print(

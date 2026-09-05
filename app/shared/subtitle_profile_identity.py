@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+import re
 
 from app.shared.profile_identity import (
     ProfileComponent,
@@ -23,22 +24,25 @@ def coerce_subtitle_style(value):
     normalized = str(value).strip().lower()
     try:
         return SubtitleStyle(normalized)
-    except ValueError as error:
+    except ValueError:
+        pass
+    if not re.fullmatch(r"[a-z0-9]+(?:_[a-z0-9]+)*", normalized):
         raise ValueError(
             f"Estilo de subtitulos no soportado: {value}"
-        ) from error
+        )
+    return normalized
 
 
 @dataclass(frozen=True)
 class SubtitleProfileKey:
     component: ProfileComponent
     platform: ProfilePlatform
-    style: SubtitleStyle
+    style: SubtitleStyle | str
     profile_id: str
 
-    _STYLE_SUFFIXES = {
-        SubtitleStyle.SINGLE_LINE: "linea_unica",
-        SubtitleStyle.WORD_BY_WORD: "palabra_por_palabra",
+    _STYLE_PROFILE_SUFFIXES = {
+        "single_line": "linea_unica",
+        "word_by_word": "palabra_por_palabra",
     }
 
     def __post_init__(self):
@@ -106,7 +110,19 @@ class SubtitleProfileKey:
         style = coerce_subtitle_style(style)
         return (
             f"subtitulo_{component.value}_{platform.value}_"
-            f"{cls._STYLE_SUFFIXES[style]}"
+            f"{cls._profile_suffix(style)}"
+        )
+
+    @classmethod
+    def _profile_suffix(cls, style):
+        style = (
+            style.value
+            if isinstance(style, SubtitleStyle)
+            else style
+        )
+        return cls._STYLE_PROFILE_SUFFIXES.get(
+            style,
+            style
         )
 
     @property

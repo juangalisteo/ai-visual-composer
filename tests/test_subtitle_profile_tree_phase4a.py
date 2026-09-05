@@ -100,7 +100,13 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     }
 
     def test_tree_contains_exactly_twelve_expected_profiles(self):
-        actual = set(Path("config/profiles").glob("*/*/subtitulos/*.json"))
+        actual = {
+            path
+            for component in self.COMPONENTS
+            for path in Path(
+                "config/profiles"
+            ).glob(f"{component}/*/subtitulos/*.json")
+        }
 
         self.assertEqual(self._expected_paths(), actual)
         self.assertEqual(12, len(actual))

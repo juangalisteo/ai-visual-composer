@@ -44,7 +44,11 @@ class _FontManager:
 
 class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
-    COMPONENTS = tuple(ProfileComponent)
+    COMPONENTS = (
+        ProfileComponent.GUION,
+        ProfileComponent.IMAGEN,
+        ProfileComponent.VIDEO,
+    )
     PLATFORMS = tuple(ProfilePlatform)
     STYLES = tuple(SubtitleStyle)
 
@@ -95,7 +99,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             SubtitleProfileKey(
                 component="video",
                 platform="instagram",
-                style="karaoke",
+                style="invalid style",
                 profile_id="invalid"
             )
 

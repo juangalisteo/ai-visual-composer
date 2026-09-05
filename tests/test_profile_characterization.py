@@ -17,6 +17,12 @@ from app.shared.profile_resolver import ProfileResolver
 
 class ProfileCharacterizationTest(unittest.TestCase):
 
+    RUNTIME_COMPONENTS = (
+        ProfileComponent.GUION,
+        ProfileComponent.IMAGEN,
+        ProfileComponent.VIDEO,
+    )
+
     PLATFORM_EXPECTATIONS = {
         ProfilePlatform.INSTAGRAM: {
             "format": "vertical",
@@ -50,7 +56,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
         self.resolver = ProfileResolver()
 
     def test_guion_image_and_video_profiles_keep_effective_behavior(self):
-        for component in ProfileComponent:
+        for component in self.RUNTIME_COMPONENTS:
             for platform, expected in self.PLATFORM_EXPECTATIONS.items():
                 with self.subTest(
                     component=component.value,

@@ -28,6 +28,11 @@ from app.modules.video_component import (
     VideoDesignPreparationService,
     VideoDesignVisualTruthAdapter,
 )
+from app.modules.studio import (
+    StudioInputPreparationService,
+    StudioPhase1Preparation,
+    StudioProfileLoader,
+)
 
 from app.domain.adapters import StoryboardSceneAdapter
 from app.shared.config_contract import (
@@ -50,12 +55,17 @@ def iniciar(
 ):
     pipeline_start = time.perf_counter()
 
-    project = ProjectManager()
-
     pipeline_mode = os.environ.get(
         "MC_PIPELINE_MODE",
         "full"
     ).strip().lower()
+
+    if pipeline_mode == "studio":
+        return ejecutar_studio_fase_1(
+            subtitle_style=subtitle_style
+        )
+
+    project = ProjectManager()
 
     visual_pipeline = os.environ.get(
         "MC_VISUAL_PIPELINE",
@@ -392,6 +402,43 @@ def iniciar(
     )
 
     return final_result
+
+
+def ejecutar_studio_fase_1(
+    subtitle_style,
+    config_manager=None,
+    profile_loader=None,
+    input_preparation_service=None,
+):
+    """Validate and transport Studio inputs without creating a project."""
+    config = config_manager or ConfigManager()
+    profile_key = config.get_profile_key()
+    if profile_key is None:
+        raise ValueError(
+            "STUDIO requiere una identidad de perfil estructurada."
+        )
+    if profile_key.component is not ProfileComponent.STUDIO:
+        raise ValueError(
+            "La ejecucion STUDIO requiere component=studio."
+        )
+
+    profile = (profile_loader or StudioProfileLoader()).load(
+        config.get_profile_config(),
+        profile_key,
+    )
+    subtitle_profile = config.get_subtitle_profile(subtitle_style)
+    prepared_input = (
+        input_preparation_service
+        or StudioInputPreparationService()
+    ).prepare(profile)
+
+    return StudioPhase1Preparation(
+        profile_key=profile_key,
+        profile=profile,
+        subtitle_profile=subtitle_profile,
+        video_path=prepared_input.video_path,
+        subtitle_path=prepared_input.subtitle_path,
+    )
 
 
 def cargar_o_generar_guion(

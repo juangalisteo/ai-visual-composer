@@ -6,6 +6,7 @@ class ProfileComponent(str, Enum):
     GUION = "guion"
     IMAGEN = "imagen"
     VIDEO = "video"
+    STUDIO = "studio"
 
 
 class ProfilePlatform(str, Enum):

@@ -289,10 +289,12 @@ class LayerConfigLoaderTest(
         self
     ):
         profile_paths = sorted(
-            Path(
+            path
+            for component in ("guion", "imagen", "video")
+            for path in Path(
                 "config/profiles"
             ).glob(
-                "*/*/perfil_*.json"
+                f"{component}/*/perfil_*.json"
             )
         )
 

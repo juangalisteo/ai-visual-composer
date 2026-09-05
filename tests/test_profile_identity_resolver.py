@@ -44,6 +44,14 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "config/profiles/video/youtube/"
             "perfil_video_youtube.json"
         ),
+        "studio_instagram": Path(
+            "config/profiles/studio/instagram/"
+            "perfil_studio_instagram.json"
+        ),
+        "studio_youtube": Path(
+            "config/profiles/studio/youtube/"
+            "perfil_studio_youtube.json"
+        ),
     }
 
     def setUp(self):
