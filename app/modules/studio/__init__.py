@@ -7,7 +7,7 @@ from app.modules.studio.profile import (
     StudioLightLeaksConfig,
     StudioMusicConfig,
     StudioProfileLoader,
-    StudioPhase1Preparation,
+    StudioPreparation,
 )
 from app.modules.studio.light_leaks import (
     StudioLightLeakOperation,
@@ -30,7 +30,7 @@ __all__ = [
     "StudioLightLeaksConfig",
     "StudioMusicConfig",
     "StudioProfileLoader",
-    "StudioPhase1Preparation",
+    "StudioPreparation",
     "StudioOutputPathResolver",
     "StudioOutputValidator",
     "StudioRenderResult",

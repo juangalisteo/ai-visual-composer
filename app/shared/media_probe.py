@@ -16,6 +16,7 @@ class MediaInfo:
     audio_codec: str | None
     audio_sample_rate: int | None
     audio_channels: int | None
+    nominal_fps: float | None = None
 
     @property
     def has_audio(self):
@@ -41,7 +42,7 @@ class MediaProbe:
                 (
                     "format=duration:"
                     "stream=codec_type,codec_name,width,height,"
-                    "avg_frame_rate,pix_fmt,sample_rate,channels"
+                    "avg_frame_rate,r_frame_rate,pix_fmt,sample_rate,channels"
                 ),
                 "-of",
                 "json",
@@ -79,6 +80,7 @@ class MediaProbe:
             width = int(video["width"])
             height = int(video["height"])
             fps = float(Fraction(video["avg_frame_rate"]))
+            nominal_fps = float(Fraction(video["r_frame_rate"]))
         except (KeyError, TypeError, ValueError, ZeroDivisionError) as error:
             raise RuntimeError(
                 "FFprobe devolvio metadata multimedia incompleta."
@@ -111,6 +113,7 @@ class MediaProbe:
                 if audio is not None and audio.get("channels")
                 else None
             ),
+            nominal_fps=nominal_fps,
         )
 
     @staticmethod

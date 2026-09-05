@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 
 import main
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio_fase_2, iniciar
+from app.core.start import ejecutar_studio, iniciar
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.studio import (
     StudioLightLeakOperation,
@@ -131,7 +131,7 @@ class StudioPhase4Test(unittest.TestCase):
         )
 
         with patch.dict("os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True), patch(
-            "app.core.start.ejecutar_studio_fase_2"
+            "app.core.start.ejecutar_studio"
         ) as studio, patch("app.core.start.ProjectManager") as project_manager:
             iniciar(subtitle_style="single_line", studio_music_path=selected)
         studio.assert_called_once_with(
@@ -154,7 +154,7 @@ class StudioPhase4Test(unittest.TestCase):
         renderer.render.return_value = "rendered"
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
-        result = ejecutar_studio_fase_2(
+        result = ejecutar_studio(
             subtitle_style="single_line",
             light_leaks_enabled=True,
             music_path=track,

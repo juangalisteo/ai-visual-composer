@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from app.core.start import ejecutar_studio_fase_2, iniciar
+from app.core.start import ejecutar_studio, iniciar
 from app.modules.studio import (
     StudioOutputPathResolver,
     StudioOutputValidator,
@@ -77,7 +77,7 @@ class StudioPhase2Test(unittest.TestCase):
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
 
-        result = ejecutar_studio_fase_2(
+        result = ejecutar_studio(
             subtitle_style="single_line",
             preparation_service=prepare,
             render_service=renderer,
@@ -102,7 +102,7 @@ class StudioPhase2Test(unittest.TestCase):
             "os.environ",
             {"MC_PIPELINE_MODE": "studio"},
             clear=True,
-        ), patch("app.core.start.ejecutar_studio_fase_2") as studio, patch(
+        ), patch("app.core.start.ejecutar_studio") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects, patch("app.core.start.VideoBuilder") as video, patch(
             "app.core.start.SrtOptimizer"

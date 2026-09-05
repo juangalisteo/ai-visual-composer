@@ -4,7 +4,7 @@ Professional AI Visual Generation Platform
 
 This document describes the internal architecture of AI Visual Composer V2.0.
 
-AI Visual Composer is organized around three main product components:
+AI Visual Composer is organized around four main product components:
 
 ```text
 AI VISUAL COMPOSER
@@ -12,9 +12,10 @@ AI VISUAL COMPOSER
 1. Guion
 2. Imagen
 3. Video
+4. Studio
 ```
 
-Diseño is an integrated capability and scalability path. It is not a fourth main product component.
+Diseño is an integrated capability and scalability path. It is not a fifth main product component.
 
 The architecture is profile-driven and locally executed. It separates product selection, runtime orchestration, script preparation, audio, subtitle timing, storyboard construction, visual interpretation, image generation, image-to-video generation, temporal processing, and final FFmpeg composition.
 
@@ -24,8 +25,8 @@ The architecture is profile-driven and locally executed. It separates product se
 
 AI Visual Composer follows several fundamental architectural principles:
 
-- Guion, Imagen, and Video are the three main product components.
-- Diseño is an integrated capability, not an independent fourth component.
+- Guion, Imagen, Video, and Studio are the four main product components.
+- Diseño is an integrated capability, not an independent fifth component.
 - Product architecture and operational routing are separate concepts.
 - Narrative information must remain separated from backend-specific generation instructions.
 - Visual generation must pass through structured visual contracts.
@@ -81,7 +82,7 @@ Runtime execution is delegated to the internal orchestration layer.
 
 ## 3. Product Architecture
 
-The conceptual product architecture contains exactly three main components:
+The conceptual product architecture contains exactly four main components:
 
 ```text
 AI VISUAL COMPOSER
@@ -90,7 +91,9 @@ AI VISUAL COMPOSER
 │
 ├── IMAGEN
 │
-└── VIDEO
+├── VIDEO
+│
+└── STUDIO
 ```
 
 This level describes what the product is.
@@ -302,13 +305,55 @@ Final Video
 
 ---
 
-# 7. INTEGRATED DESIGN CAPABILITY
+# 7. STUDIO
+
+Studio is the finishing component for externally supplied audiovisual material.
+
+Its source contract is:
+
+```text
+input/studio/
+├── exactly one MP4
+└── exactly one UTF-8 SRT
+```
+
+The SRT is authoritative: Studio preserves its text, order, and timings, applies the selected component-scoped subtitle render style with zero offset, and does not invoke Whisper, SubtitleBuilder, or SrtOptimizer.
+
+The complete flow is:
+
+```text
+External MP4 + SRT
+   ↓
+Studio profile (Instagram / YouTube)
+   ↓
+Subtitle style
+   ↓
+Optional Light Leaks (1 s active / 4 s clean)
+   ↓
+Optional explicit music selection
+   ↓
+Single audiovisual FFmpeg render
+   ↓
+Optional INTRO / OUTRO concat with stream copy
+   ↓
+Validated output/studio/<platform>/ result
+```
+
+Studio has its own `ProfileKey`, main profiles, subtitle profiles, input preparation, output naming, and render service. It does not fall back to Guion, Imagen, or Video and does not invoke Ollama, Flux, Wan, ComfyUI, Motion, storyboard generation, or narrative audio generation.
+
+Its base render preserves aspect ratio through `scale` plus `pad`, emits H.264/yuv420p video and AAC 48 kHz stereo audio, and uses the profile resolution and FPS. Source audio remains at nominal gain; a compatible silent stream is supplied when the source has no audio. Optional music is mixed at `0.25` with `amix normalize=0` and a `0.95` limiter.
+
+When INTRO or OUTRO is selected, only incompatible assets are normalized. The validated Studio principal is then concatenated through the concat demuxer with `-c copy`, so it is not encoded a second time.
+
+---
+
+# 8. INTEGRATED DESIGN CAPABILITY
 
 Diseño is an integrated capability that allows direct visual intent to become the source for image or video generation.
 
 It is a scalability path.
 
-It is not a fourth main product component.
+It is not a fifth main product component.
 
 Diseño uses dedicated manual inputs and converts direct visual descriptions into information compatible with the existing generation architecture.
 
@@ -401,12 +446,12 @@ Diseño must not:
 - replace Guion;
 - replace Imagen;
 - replace Video;
-- become a fourth main product component;
+- become a fifth main product component;
 - create an independent parallel generation architecture.
 
 ---
 
-# 8. EXECUTION MODES
+# 9. EXECUTION MODES
 
 Validated execution modes for Imagen and Video include:
 
@@ -501,7 +546,7 @@ Final Video
 
 ---
 
-# 9. INPUT ARCHITECTURE
+# 10. INPUT ARCHITECTURE
 
 The current manual input files are:
 
@@ -510,6 +555,7 @@ input/guion.txt
 input/tema.txt
 input/guion_imagen.txt
 input/guion_video.txt
+input/studio/ (one MP4 and one SRT at runtime)
 ```
 
 Their responsibilities are deliberately separated.
@@ -567,7 +613,13 @@ Produces standalone I2V video clips.
 
 ---
 
-# 10. OUTPUT ARCHITECTURE
+## `input/studio/`
+
+Runtime source directory for Studio. It requires exactly one MP4 and one UTF-8 SRT, discovered by extension rather than by a fixed filename. Runtime media is ignored by Git while `.gitkeep` preserves the directory.
+
+---
+
+# 11. OUTPUT ARCHITECTURE
 
 Generated runtime projects are grouped by main product entry:
 
@@ -575,6 +627,7 @@ Generated runtime projects are grouped by main product entry:
 output/guion/
 output/imagen/
 output/video/
+output/studio/
 ```
 
 Depending on the execution path, projects may contain:
@@ -612,7 +665,7 @@ validation/
 
 ---
 
-# 11. SCRIPT LAYER
+# 12. SCRIPT LAYER
 
 The script layer is implemented primarily under:
 
@@ -639,7 +692,7 @@ ScriptOutputValidator
 
 ---
 
-# 12. AUDIO AND VOICE LAYER
+# 13. AUDIO AND VOICE LAYER
 
 The audio architecture coordinates voice generation and final audio preparation.
 
@@ -658,7 +711,7 @@ Audio generation remains logically separated from subtitle presentation.
 
 ---
 
-# 13. SUBTITLE LAYER
+# 14. SUBTITLE LAYER
 
 The subtitle layer is implemented under:
 
@@ -740,7 +793,7 @@ Subtitle timing and presentation remain isolated from visual generation.
 
 ---
 
-# 14. STORYBOARD LAYER
+# 15. STORYBOARD LAYER
 
 Storyboard generation is implemented primarily under:
 
@@ -760,7 +813,7 @@ The storyboard acts as the narrative-to-visual transition point of the system.
 
 ---
 
-# 15. VISUAL TRUTH
+# 16. VISUAL TRUTH
 
 Visual Truth is the operational visual contract of the Image Pipeline.
 
@@ -783,7 +836,7 @@ It must not contain ComfyUI-specific execution instructions.
 
 ---
 
-# 16. VISUAL INTELLIGENCE
+# 17. VISUAL INTELLIGENCE
 
 Visual Intelligence is the structured interpretation layer between Visual Truth and Prompt Translation.
 
@@ -842,7 +895,7 @@ Visual Intelligence does not generate backend prompts directly.
 
 ---
 
-# 17. CINEMATIC DIRECTION
+# 18. CINEMATIC DIRECTION
 
 Cinematic Direction operates after Visual Intelligence and before final backend prompt construction.
 
@@ -860,7 +913,7 @@ Cinematic Direction remains part of the structured visual interpretation process
 
 ---
 
-# 18. PROMPT TRANSLATION
+# 19. PROMPT TRANSLATION
 
 Prompt Translation is implemented under:
 
@@ -886,7 +939,7 @@ It translates structured visual intent rather than replacing it.
 
 ---
 
-# 19. IMAGE RUNTIME
+# 20. IMAGE RUNTIME
 
 The image runtime is implemented primarily through:
 
@@ -936,7 +989,7 @@ The image runtime remains separated from final FFmpeg composition.
 
 ---
 
-# 20. VIDEO COMPONENT
+# 21. VIDEO COMPONENT
 
 The I2V video component is implemented under:
 
@@ -989,7 +1042,7 @@ DISEÑO -> VIDEO
 
 ---
 
-# 21. I2V
+# 22. I2V
 
 I2V generation transforms a source image into a generated video clip.
 
@@ -1008,7 +1061,7 @@ They are later consumed by the FFmpeg composition architecture when producing a 
 
 ---
 
-# 22. TEMPORAL PREPARATION
+# 23. TEMPORAL PREPARATION
 
 Generated I2V clips have their own native duration.
 
@@ -1034,7 +1087,7 @@ This allows an existing I2V clip to cover the required scene duration without re
 
 ---
 
-# 23. FFMPEG VIDEO COMPOSITION CORE
+# 24. FFMPEG VIDEO COMPOSITION CORE
 
 The final video composition architecture is implemented primarily under:
 
@@ -1085,7 +1138,7 @@ VideoValidator
 
 ---
 
-# 24. MOTION
+# 25. MOTION
 
 Motion is part of the FFmpeg composition graph.
 
@@ -1106,7 +1159,7 @@ Motion can subsequently apply additional compositional movement during final FFm
 
 ---
 
-# 25. TRANSITIONS
+# 26. TRANSITIONS
 
 Transitions are handled by the FFmpeg composition layer.
 
@@ -1123,7 +1176,7 @@ This separation allows each stage to evolve independently.
 
 ---
 
-# 26. OVERLAYS
+# 27. OVERLAYS
 
 Overlay assets are sourced from:
 
@@ -1144,7 +1197,7 @@ Overlay processing remains independent from transitions and visual effects.
 
 ---
 
-# 27. VISUAL EFFECTS
+# 28. VISUAL EFFECTS
 
 Visual Effects are applied as an independent stage of the FFmpeg composition pipeline.
 
@@ -1152,7 +1205,7 @@ They remain configurable through video profiles and are not structurally coupled
 
 ---
 
-# 28. FADE
+# 29. FADE
 
 Fade behavior is controlled independently through profile configuration.
 
@@ -1160,7 +1213,7 @@ It operates after visual effects and before subtitle rendering in the validated 
 
 ---
 
-# 29. MUSIC
+# 30. MUSIC
 
 Music is selected when enabled by runtime configuration.
 
@@ -1174,7 +1227,7 @@ Music remains part of the audiovisual composition process and does not affect vi
 
 ---
 
-# 30. PROFILES AND CONFIGURATION
+# 31. PROFILES AND CONFIGURATION
 
 AI Visual Composer is profile-driven.
 
@@ -1184,6 +1237,7 @@ Relevant profile families include:
 config/profiles/guion/
 config/profiles/imagen/
 config/profiles/video/
+config/profiles/studio/
 ```
 
 Design routes use the profile family of their target component: Image or Video.
@@ -1200,7 +1254,7 @@ Profiles control behavior without requiring the core architecture to be rewritte
 
 ---
 
-# 31. EXTERNAL RUNTIMES
+# 32. EXTERNAL RUNTIMES
 
 AI Visual Composer relies on several local external runtimes and tools.
 
@@ -1228,6 +1282,7 @@ Used for:
 - fades;
 - subtitles;
 - final audiovisual composition.
+- Studio rendering and optional INTRO/OUTRO stream-copy composition.
 
 ## Edge TTS
 
@@ -1247,11 +1302,11 @@ External runtimes, downloaded models, checkpoints, generated outputs, secrets, a
 
 ---
 
-# 32. VALIDATION ARCHITECTURE
+# 33. VALIDATION ARCHITECTURE
 
 AI Visual Composer V2.0 maintains permanent validation evidence created from real executions of the system.
 
-The validation baseline is divided into the three main product components:
+The historical V2.0 validation baseline is divided into three preserved areas that predate Studio:
 
 ```text
 validation/01_VALIDACION_2026-08-24/
@@ -1301,7 +1356,7 @@ This makes the validation baseline independent from temporary runtime output.
 
 ---
 
-# 33. RUNTIME OUTPUT VS VALIDATION
+# 34. RUNTIME OUTPUT VS VALIDATION
 
 The architecture deliberately separates:
 
@@ -1337,7 +1392,7 @@ Validation evidence must remain preserved when runtime output is cleaned.
 
 ---
 
-# 34. REPOSITORY BOUNDARIES
+# 35. REPOSITORY BOUNDARIES
 
 The public repository may contain:
 
@@ -1366,7 +1421,7 @@ Personal absolute filesystem paths must not be introduced into public documentat
 
 ---
 
-# 35. DOCUMENTATION RESPONSIBILITIES
+# 36. DOCUMENTATION RESPONSIBILITIES
 
 Official documentation is separated by responsibility.
 
@@ -1400,7 +1455,7 @@ Permanent behavioral validation evidence.
 
 ---
 
-# 36. VERSION STATE
+# 37. VERSION STATE
 
 The current stable architecture is:
 
@@ -1414,6 +1469,7 @@ V2.0 includes the validated architecture for:
 GUION
 IMAGEN
 VIDEO
+STUDIO
 ```
 
 together with the integrated Diseño capability and the current subtitle timing architecture.
@@ -1424,61 +1480,31 @@ Future architectural changes must be validated before becoming part of a new sta
 
 ---
 
-# 37. ARCHITECTURAL SUMMARY
+# 38. ARCHITECTURAL SUMMARY
 
 The complete conceptual architecture can be summarized as:
 
 ```text
-                         AI VISUAL COMPOSER
-                                  │
-              ┌───────────────────┼───────────────────┐
-              │                   │                   │
-            GUION               IMAGEN              VIDEO
-              │                   │                   │
-              └───────────────┬───┴───────────────┬───┘
-                              │                   │
-                         STORYBOARD          AUDIO / SUBTITLES
-                              │
-                         VISUAL TRUTH
-                              │
-                    VISUAL INTELLIGENCE
-                              │
-             ┌────────────────┼────────────────┐
-             │                │                │
-          ANALYSIS         REASONING        SYNTHESIS
-                                               │
-                                    EFFECTIVE VISUAL BRIEF
-                                               │
-                                    CINEMATIC DIRECTION
-                                               │
-                                     PROMPT TRANSLATION
-                                               │
-                                          IMAGE
-                                               │
-                              ┌────────────────┴─────────────┐
-                              │                              │
-                       IMAGE OUTPUT                      I2V / WAN
-                                                             │
-                                                       VIDEO CLIPS
-                                                             │
-                                                  TEMPORAL PREPARATION
-                                                             │
-                                                           MOTION
-                                                             │
-                                                       TRANSITIONS
-                                                             │
-                                                         OVERLAYS
-                                                             │
-                                                     VISUAL EFFECTS
-                                                             │
-                                                           FADE
-                                                             │
-                                                        SUBTITLES
-                                                             │
-                                                        FINAL VIDEO
+AI VISUAL COMPOSER
+│
+├── GUION / IMAGEN / VIDEO
+│      ↓
+│   CONTENT + STORYBOARD + VISUAL GENERATION
+│      ↓
+│   AUDIO + SUBTITLES + VIDEO COMPOSITION
+│
+└── STUDIO
+       ↓
+    EXTERNAL MP4 + AUTHORITATIVE SRT
+       ↓
+    SUBTITLE RENDER + OPTIONAL LIGHT LEAKS / MUSIC
+       ↓
+    OPTIONAL INTRO / OUTRO STREAM COPY
+       ↓
+    VALIDATED FINAL VIDEO
 ```
 
-Diseño integrates into the existing visual infrastructure through dedicated direct visual inputs without changing the three-component product architecture.
+Diseño integrates into the Image and Video infrastructure through dedicated direct visual inputs without becoming a fifth product component.
 
 ---
 
@@ -1491,7 +1517,7 @@ ARCHITECTURE: MODULAR
 EXECUTION: LOCAL
 CONFIGURATION: PROFILE-DRIVEN
 VALIDATION: 36 REAL BASELINE EXECUTIONS
-MAIN COMPONENTS: GUION / IMAGEN / VIDEO
+MAIN COMPONENTS: GUION / IMAGEN / VIDEO / STUDIO
 INTEGRATED CAPABILITY: DISEÑO
 ```
 

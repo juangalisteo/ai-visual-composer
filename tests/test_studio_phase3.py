@@ -8,7 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
-from app.core.start import ejecutar_studio_fase_2
+from app.core.start import ejecutar_studio
 from app.modules.studio import (
     StudioLightLeakSelector,
     StudioLightLeaksPlanBuilder,
@@ -229,7 +229,7 @@ class StudioPhase3Test(unittest.TestCase):
         resolver = Mock(return_value=Path("output/studio/result.mp4"))
         self.assertEqual(
             "rendered",
-            ejecutar_studio_fase_2(
+            ejecutar_studio(
                 subtitle_style="single_line",
                 light_leaks_enabled=True,
                 preparation_service=Mock(return_value=preparation),

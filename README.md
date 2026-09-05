@@ -20,7 +20,7 @@ Instead of treating image generation, video generation, subtitles, audio, and co
 
 The system can process existing scripts, develop content from an idea or topic, generate visual scenes, transform images into video, create synchronized subtitles, and assemble the resulting assets into complete audiovisual projects.
 
-Its architecture is built around three main product components:
+Its architecture is built around four main product components:
 
 ```text
 AI VISUAL COMPOSER
@@ -28,6 +28,7 @@ AI VISUAL COMPOSER
 1. GUION
 2. IMAGEN
 3. VIDEO
+4. STUDIO
 ```
 
 These components define the core product architecture.
@@ -104,23 +105,46 @@ The video architecture supports both generated I2V material and still-image base
 
 ---
 
+## Studio
+
+**Studio** is the finishing component for externally supplied media.
+
+It accepts exactly one MP4 and one authoritative SRT from `input/studio/`, applies the selected Instagram or YouTube profile, and renders the subtitles without rewriting their text or timing. Light Leaks, music, and INTRO/OUTRO assets can be selected independently.
+
+```text
+MP4 + SRT
+   ↓
+PLATFORM + SUBTITLE STYLE
+   ↓
+OPTIONAL LIGHT LEAKS + MUSIC
+   ↓
+OPTIONAL INTRO / OUTRO
+   ↓
+VALIDATED STUDIO OUTPUT
+```
+
+Studio uses FFmpeg locally and does not invoke script generation, Whisper, Flux, Wan, or ComfyUI.
+
+---
+
 ## Integrated Design Capability
 
 AI Visual Composer also includes **Diseño** as an integrated visual generation capability.
 
-Diseño is not a fourth main product component.
+Diseño is not a fifth main product component.
 
 Instead, it provides a direct path for transforming visual descriptions or design intentions into:
 
 - standalone images;
 - standalone video clips.
 
-This capability reuses the existing image and video generation infrastructure while preserving the three-component architecture:
+This capability reuses the existing image and video generation infrastructure while preserving the four-component architecture:
 
 ```text
 GUION
 IMAGEN
 VIDEO
+STUDIO
 ```
 
 Diseño therefore acts as an additional input and scalability path rather than an independent product pipeline.
@@ -395,6 +419,8 @@ AI Visual Composer V2.0 includes:
 - visual effects;
 - fades;
 - FFmpeg final composition;
+- Studio rendering from an external MP4 and authoritative SRT;
+- optional Studio Light Leaks, music, and INTRO/OUTRO composition;
 - Instagram profiles;
 - YouTube profiles;
 - generation manifests;

@@ -31,7 +31,7 @@ from app.modules.video_component import (
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioOutputPathResolver,
-    StudioPhase1Preparation,
+    StudioPreparation,
     StudioProfileLoader,
     StudioRenderService,
 )
@@ -72,7 +72,7 @@ def iniciar(
         }
         if intro_outro_selection is not None:
             studio_options["intro_outro_selection"] = intro_outro_selection
-        return ejecutar_studio_fase_2(
+        return ejecutar_studio(
             **studio_options
         )
 
@@ -415,7 +415,7 @@ def iniciar(
     return final_result
 
 
-def ejecutar_studio_fase_1(
+def preparar_studio(
     subtitle_style,
     config_manager=None,
     profile_loader=None,
@@ -443,7 +443,7 @@ def ejecutar_studio_fase_1(
         or StudioInputPreparationService()
     ).prepare(profile)
 
-    return StudioPhase1Preparation(
+    return StudioPreparation(
         profile_key=profile_key,
         profile=profile,
         subtitle_profile=subtitle_profile,
@@ -452,7 +452,7 @@ def ejecutar_studio_fase_1(
     )
 
 
-def ejecutar_studio_fase_2(
+def ejecutar_studio(
     subtitle_style,
     light_leaks_enabled=False,
     music_path=None,
@@ -463,7 +463,7 @@ def ejecutar_studio_fase_2(
 ):
     preparation = (
         preparation_service
-        or ejecutar_studio_fase_1
+        or preparar_studio
     )(subtitle_style=subtitle_style)
     output_options = {
         "video_path": preparation.video_path,

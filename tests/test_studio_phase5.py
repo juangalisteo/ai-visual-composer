@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 
 import main
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio_fase_2, iniciar
+from app.core.start import ejecutar_studio, iniciar
 from app.modules.studio import (
     StudioLightLeakSelector,
     StudioOutputPathResolver,
@@ -165,7 +165,7 @@ class StudioPhase5Test(unittest.TestCase):
 
         with patch.dict(
             "os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True
-        ), patch("app.core.start.ejecutar_studio_fase_2") as studio:
+        ), patch("app.core.start.ejecutar_studio") as studio:
             iniciar(subtitle_style="single_line", intro_outro_selection=plan)
         studio.assert_called_once_with(
             subtitle_style="single_line",
@@ -190,7 +190,7 @@ class StudioPhase5Test(unittest.TestCase):
         renderer.render.return_value = "rendered"
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
-        result = ejecutar_studio_fase_2(
+        result = ejecutar_studio(
             subtitle_style="single_line",
             intro_outro_selection=plan,
             preparation_service=Mock(return_value=preparation),

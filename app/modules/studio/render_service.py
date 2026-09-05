@@ -140,7 +140,12 @@ class StudioOutputValidator:
         mismatches = []
         if (info.width, info.height) != (profile.width, profile.height):
             mismatches.append("resolucion")
-        if abs(info.fps - profile.fps) > 0.01:
+        effective_fps = (
+            info.nominal_fps
+            if info.nominal_fps is not None
+            else info.fps
+        )
+        if abs(effective_fps - profile.fps) > 0.01:
             mismatches.append("fps")
         if info.video_codec != expected_codec:
             mismatches.append("codec de video")
@@ -252,7 +257,7 @@ class StudioRenderService:
             )
         if bool(subtitle_profile.cue_policy.get("uppercase", False)):
             raise ValueError(
-                "STUDIO Fase 2 no altera el texto SRT para aplicar uppercase."
+                "STUDIO no altera el texto SRT para aplicar uppercase."
             )
         subtitle_style = self.style_builder.build(
             subtitle_profile.render_style

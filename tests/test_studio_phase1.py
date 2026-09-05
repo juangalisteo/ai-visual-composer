@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import main
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio_fase_1, iniciar
+from app.core.start import preparar_studio, iniciar
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioProfileLoader,
@@ -267,7 +267,7 @@ class StudioPhase1Test(unittest.TestCase):
             },
             clear=True,
         ), patch("app.core.start.ProjectManager") as project_manager, patch(
-            "app.core.start.ejecutar_studio_fase_2"
+            "app.core.start.ejecutar_studio"
         ) as render:
             iniciar(subtitle_style="single_line")
 
@@ -296,7 +296,7 @@ class StudioPhase1Test(unittest.TestCase):
                 "1\n00:00:00,000 --> 00:00:01,000\nTexto intacto\n",
                 encoding="utf-8",
             )
-            result = ejecutar_studio_fase_1(
+            result = preparar_studio(
                 subtitle_style="single_line",
                 input_preparation_service=StudioInputPreparationService(input_dir),
             )

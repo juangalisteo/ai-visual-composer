@@ -59,7 +59,7 @@ class StudioProfile:
 
 
 @dataclass(frozen=True)
-class StudioPhase1Preparation:
+class StudioPreparation:
     profile_key: ProfileKey
     profile: StudioProfile
     subtitle_profile: ResolvedSubtitleProfile

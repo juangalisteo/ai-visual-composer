@@ -12,13 +12,15 @@ INSTALL.md
 
 ## 1. Startup Order
 
-Start the required services in this order:
+For Guion, Imagen, and Video generation, start the required services in this order:
 
 ```text
 1. Ollama
 2. ComfyUI
 3. AI Visual Composer
 ```
+
+Studio processes an existing MP4 and SRT with FFmpeg. It does not require Ollama or ComfyUI unless another component will also be used in the same session.
 
 ---
 
@@ -92,6 +94,7 @@ AI VISUAL COMPOSER
 1. Guion
 2. Imagen
 3. Video
+4. Studio
 ```
 
 Select the required product component and continue through the interactive options.
@@ -117,6 +120,16 @@ output/
 ```
 
 according to the selected product route and project name.
+
+### Studio Runtime
+
+Place exactly one `.mp4` and one UTF-8 `.srt` file in:
+
+```text
+input/studio/
+```
+
+Then select `Studio`, the platform and subtitle style, followed by the optional Light Leaks, music, and INTRO/OUTRO choices. Studio preserves the source files and writes its validated result under `output/studio/<platform>/`.
 
 ---
 
@@ -145,7 +158,7 @@ START COMFYUI
 python main.py
      ↓
 SELECT
-GUION / IMAGEN / VIDEO
+GUION / IMAGEN / VIDEO / STUDIO
 ```
 
 ComfyUI:
