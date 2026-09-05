@@ -31,7 +31,12 @@
             }
         },
         "light_leaks": {
-            "enabled": false
+            "pattern": "AB",
+            "active_duration_seconds": 1.0,
+            "clean_duration_seconds": 4.0,
+            "avoid_immediate_repeat": true,
+            "opacity": 0.15,
+            "blend_mode": "screen"
         },
         "music": {
             "enabled": false

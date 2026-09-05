@@ -457,6 +457,12 @@ class RunController:
 
         return self._select_from_list(configs)
 
+    def select_studio_light_leaks(self):
+        self._print("\n¿UTILIZAR LIGHT LEAKS?\n")
+        self._print("1. NO")
+        self._print("2. SÍ")
+        return self._select_from_list((False, True))
+
     def select_voice_config(self):
         configs_path = Path(
             "config/voice_configs"
@@ -707,6 +713,7 @@ class RunController:
         subtitle_config = self.select_studio_subtitle_config(
             profile_key
         )
+        light_leaks_enabled = self.select_studio_light_leaks()
 
         return {
             "visual_pipeline": "studio",
@@ -717,6 +724,7 @@ class RunController:
             "profile_platform": profile_key.platform.value,
             "profile_id": profile_key.profile_id,
             "subtitle_config": subtitle_config,
+            "studio_light_leaks_enabled": light_leaks_enabled,
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",

@@ -93,6 +93,7 @@ class StudioPhase2Test(unittest.TestCase):
             profile=preparation.profile,
             subtitle_profile=preparation.subtitle_profile,
             output_path=Path("output/studio/result.mp4"),
+            light_leaks_enabled=False,
         )
 
     def test_runtime_studio_bypasses_all_audiovisual_builders(self):
@@ -107,7 +108,10 @@ class StudioPhase2Test(unittest.TestCase):
         ) as optimizer:
             iniciar(subtitle_style="single_line")
 
-        studio.assert_called_once_with(subtitle_style="single_line")
+        studio.assert_called_once_with(
+            subtitle_style="single_line",
+            light_leaks_enabled=False,
+        )
         projects.assert_not_called()
         video.assert_not_called()
         optimizer.assert_not_called()

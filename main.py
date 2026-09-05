@@ -48,6 +48,10 @@ def main():
         start_options["intro_outro_selection"] = (
             intro_outro_selection
         )
+    if options.get("pipeline_mode") == "studio":
+        start_options["studio_light_leaks_enabled"] = bool(
+            options.get("studio_light_leaks_enabled", False)
+        )
 
     try:
         iniciar(**start_options)

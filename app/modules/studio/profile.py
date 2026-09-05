@@ -17,6 +17,16 @@ from app.shared.subtitle_profile_identity import (
 
 
 @dataclass(frozen=True)
+class StudioLightLeaksConfig:
+    pattern: str
+    active_duration_seconds: float
+    clean_duration_seconds: float
+    avoid_immediate_repeat: bool
+    opacity: float
+    blend_mode: str
+
+
+@dataclass(frozen=True)
 class StudioProfile:
     platform: str
     profile_id: str
@@ -37,7 +47,7 @@ class StudioProfile:
     audio_sample_rate: int
     audio_channels: int
     max_duration_difference: float
-    light_leaks_enabled: bool
+    light_leaks: StudioLightLeaksConfig
     music_enabled: bool
 
 
@@ -110,6 +120,40 @@ class StudioProfileLoader:
                 "resolution no coincide con studio.output.width/height."
             )
 
+        light_leaks_config = StudioLightLeaksConfig(
+            pattern=require_text(
+                light_leaks,
+                "pattern",
+                "studio.light_leaks.pattern"
+            ).upper(),
+            active_duration_seconds=require_float(
+                light_leaks,
+                "active_duration_seconds",
+                "studio.light_leaks.active_duration_seconds"
+            ),
+            clean_duration_seconds=require_float(
+                light_leaks,
+                "clean_duration_seconds",
+                "studio.light_leaks.clean_duration_seconds"
+            ),
+            avoid_immediate_repeat=require_bool(
+                light_leaks,
+                "avoid_immediate_repeat",
+                "studio.light_leaks.avoid_immediate_repeat"
+            ),
+            opacity=require_float(
+                light_leaks,
+                "opacity",
+                "studio.light_leaks.opacity"
+            ),
+            blend_mode=require_text(
+                light_leaks,
+                "blend_mode",
+                "studio.light_leaks.blend_mode"
+            ).lower(),
+        )
+        self._validate_light_leaks(light_leaks_config)
+
         return StudioProfile(
             platform=require_text(profile, "platform", "platform"),
             profile_id=require_text(profile, "profile_id", "profile_id"),
@@ -150,11 +194,7 @@ class StudioProfileLoader:
                 "max_duration_difference",
                 "studio.output.validation.max_duration_difference"
             ),
-            light_leaks_enabled=require_bool(
-                light_leaks,
-                "enabled",
-                "studio.light_leaks.enabled"
-            ),
+            light_leaks=light_leaks_config,
             music_enabled=require_bool(music, "enabled", "studio.music.enabled")
         )
 
@@ -189,3 +229,26 @@ class StudioProfileLoader:
                 f"La configuracion {path} debe contener extensiones unicas."
             )
         return normalized
+
+    @staticmethod
+    def _validate_light_leaks(config):
+        if config.pattern != "AB":
+            raise ValueError(
+                "studio.light_leaks.pattern solo admite AB en V1."
+            )
+        if config.active_duration_seconds <= 0:
+            raise ValueError(
+                "studio.light_leaks.active_duration_seconds debe ser positiva."
+            )
+        if config.clean_duration_seconds <= 0:
+            raise ValueError(
+                "studio.light_leaks.clean_duration_seconds debe ser positiva."
+            )
+        if not 0 <= config.opacity <= 1:
+            raise ValueError(
+                "studio.light_leaks.opacity debe estar entre 0 y 1."
+            )
+        if config.blend_mode not in {"normal", "screen", "add", "lighten", "overlay"}:
+            raise ValueError(
+                "studio.light_leaks.blend_mode no es compatible."
+            )

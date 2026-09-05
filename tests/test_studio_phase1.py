@@ -181,12 +181,17 @@ class StudioPhase1Test(unittest.TestCase):
             controller,
             "select_studio_subtitle_config",
             return_value="single_line",
+        ), patch.object(
+            controller,
+            "select_studio_light_leaks",
+            return_value=False,
         ):
             options = controller.run()
 
         self.assertEqual("studio", options["pipeline_mode"])
         self.assertEqual("studio", options["profile_component"])
         self.assertEqual("single_line", options["subtitle_config"])
+        self.assertFalse(options["studio_light_leaks_enabled"])
         self.assertFalse(options["clear_output"])
         self.assertEqual("off", options["overlays_mode"])
         self.assertIsNone(options["intro_outro_selection"])
@@ -221,6 +226,7 @@ class StudioPhase1Test(unittest.TestCase):
             "script_source": "external",
             "design_target": "",
             "pipeline_mode": "studio",
+            "studio_light_leaks_enabled": False,
             "clear_output": False,
         }
         with patch.dict(os.environ, {}, clear=True), patch(
@@ -233,7 +239,10 @@ class StudioPhase1Test(unittest.TestCase):
             self.assertEqual("studio", os.environ["MC_PROFILE_COMPONENT"])
             self.assertEqual("studio", os.environ["MC_PIPELINE_MODE"])
 
-        start.assert_called_once_with(subtitle_style="single_line")
+        start.assert_called_once_with(
+            subtitle_style="single_line",
+            studio_light_leaks_enabled=False,
+        )
         output_manager.assert_not_called()
 
     def test_start_routes_studio_to_phase_two_without_project_manager(self):
@@ -251,7 +260,10 @@ class StudioPhase1Test(unittest.TestCase):
         ) as render:
             iniciar(subtitle_style="single_line")
 
-        render.assert_called_once_with(subtitle_style="single_line")
+        render.assert_called_once_with(
+            subtitle_style="single_line",
+            light_leaks_enabled=False,
+        )
         project_manager.assert_not_called()
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):
