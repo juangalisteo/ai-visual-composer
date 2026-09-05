@@ -35,13 +35,22 @@ def main():
     if options["clear_output"]:
         OutputManager().reset()
 
-    try:
-        iniciar(
-            subtitle_style=(
-                options["subtitle_config"]
-                or None
-            )
+    start_options = {
+        "subtitle_style": (
+            options["subtitle_config"]
+            or None
         )
+    }
+    intro_outro_selection = options.get(
+        "intro_outro_selection"
+    )
+    if intro_outro_selection is not None:
+        start_options["intro_outro_selection"] = (
+            intro_outro_selection
+        )
+
+    try:
+        iniciar(**start_options)
     except VisualDesignInterpretationError as error:
         print(
             f"ERROR: {error}"

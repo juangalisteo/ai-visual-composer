@@ -596,6 +596,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             return_value="smart"
         ) as overlays_mock, patch.object(
             controller,
+            "select_intro_outro",
+            return_value=None
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="script video project"
         ) as project_mock, patch.object(
@@ -635,6 +639,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
+        intro_outro_mock.assert_called_once()
 
     def test_video_entry_reuses_complete_image_user_flow(
         self
@@ -676,6 +681,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             return_value="smart"
         ) as overlays_mock, patch.object(
             controller,
+            "select_intro_outro",
+            return_value=None
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="video runtime"
         ), patch.object(
@@ -693,6 +702,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
+        intro_outro_mock.assert_called_once()
         self.assertEqual(
             "video",
             options["visual_pipeline"]

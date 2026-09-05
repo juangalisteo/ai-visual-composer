@@ -26,9 +26,13 @@ class VideoBuilder:
 
     def __init__(
         self,
-        subtitle_profile=None
+        subtitle_profile=None,
+        intro_outro_selection=None,
     ):
         self.subtitle_profile = subtitle_profile
+        self.intro_outro_selection = (
+            intro_outro_selection
+        )
 
     def build(
         self,
@@ -60,7 +64,14 @@ class VideoBuilder:
             )
         )
 
-        render_service = VideoRenderService()
+        if self.intro_outro_selection is None:
+            render_service = VideoRenderService()
+        else:
+            render_service = VideoRenderService(
+                intro_outro_selection=(
+                    self.intro_outro_selection
+                )
+            )
         diagnostics = FFmpegDiagnostics(
             output_path=build_context.media.output_path,
             scene_count=len(

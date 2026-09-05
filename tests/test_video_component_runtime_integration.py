@@ -594,6 +594,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video-runtime.mp4"
             )
             resolved_subtitle_profile = object()
+            intro_outro_selection = object()
             requested_subtitle_styles = []
 
             class FakeConfig:
@@ -702,7 +703,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 )
 
                 result = start.iniciar(
-                    subtitle_style="single_line"
+                    subtitle_style="single_line",
+                    intro_outro_selection=(
+                        intro_outro_selection
+                    ),
                 )
 
         self.assertEqual(
@@ -719,7 +723,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             render_fps=30
         )
         video_builder.assert_called_once_with(
-            subtitle_profile=resolved_subtitle_profile
+            subtitle_profile=resolved_subtitle_profile,
+            intro_outro_selection=intro_outro_selection,
         )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=video_clips_manifest

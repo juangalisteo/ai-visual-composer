@@ -248,6 +248,40 @@ class VideoBuilderOrchestrationTest(
             output_path="final.mp4"
         )
 
+    def test_build_passes_intro_outro_only_to_render_service(self):
+        context = self.make_context("final.mp4")
+        selection = object()
+
+        with patch(
+            "app.modules.video.video_builder.VideoBuildContextFactory"
+        ) as context_factory_class, patch(
+            "app.modules.video.video_builder.VideoComponentFactory"
+        ) as component_factory_class, patch(
+            "app.modules.video.video_builder.VideoFilterContextFactory"
+        ), patch(
+            "app.modules.video.video_builder.VideoRenderService"
+        ) as render_service_class, patch(
+            "app.modules.video.video_builder.FFmpegDiagnostics"
+        ):
+            context_factory_class.return_value.build.return_value = context
+            component_factory_class.return_value.create.return_value = (
+                self.make_components()
+            )
+            render_service_class.return_value.build_artifacts.return_value = (
+                VideoBuildArtifacts(
+                    filter_complex="[vout]",
+                    command=["ffmpeg"],
+                )
+            )
+
+            VideoBuilder(
+                intro_outro_selection=selection
+            ).build()
+
+        render_service_class.assert_called_once_with(
+            intro_outro_selection=selection
+        )
+
     def test_exception_from_context_preparation_propagates(
         self
     ):

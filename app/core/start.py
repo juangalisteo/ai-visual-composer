@@ -45,7 +45,8 @@ from app.shared.profile_resolver import ProfileResolver
 
 
 def iniciar(
-    subtitle_style=None
+    subtitle_style=None,
+    intro_outro_selection=None,
 ):
     pipeline_start = time.perf_counter()
 
@@ -337,10 +338,18 @@ def iniciar(
             video_clips_manifest_path
         )
 
+        video_builder_options = {
+            "subtitle_profile": subtitle_profile
+        }
+        if intro_outro_selection is not None:
+            video_builder_options[
+                "intro_outro_selection"
+            ] = intro_outro_selection
+
         video_path, video_elapsed = (
             _measure_stage(
                 VideoBuilder(
-                    subtitle_profile=subtitle_profile
+                    **video_builder_options
                 ).build,
                 video_clips_manifest_path=(
                     video_clips_manifest_path

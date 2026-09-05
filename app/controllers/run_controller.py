@@ -8,17 +8,26 @@ from app.shared.profile_identity import (
     ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.modules.video.intro_outro import (
+    IntroOutroCatalog,
+    IntroOutroSelection,
+)
 
 
 class RunController:
 
     def __init__(
         self,
-        profile_resolver=None
+        profile_resolver=None,
+        intro_outro_catalog=None,
     ):
         self.profile_resolver = (
             profile_resolver
             or ProfileResolver()
+        )
+        self.intro_outro_catalog = (
+            intro_outro_catalog
+            or IntroOutroCatalog()
         )
 
     def run(self):
@@ -50,6 +59,7 @@ class RunController:
         voice_config = ""
         music_category = None
         overlays_mode = "off"
+        intro_outro_selection = None
 
         if pipeline_mode in {
             "full",
@@ -68,6 +78,14 @@ class RunController:
 
         if pipeline_mode == "full":
             overlays_mode = self.select_overlays_mode()
+
+        if (
+            pipeline_mode == "full"
+            and visual_pipeline == "video"
+        ):
+            intro_outro_selection = (
+                self.select_intro_outro()
+            )
 
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
@@ -99,6 +117,7 @@ class RunController:
             "voice_config": voice_config,
             "music_category": music_category,
             "overlays_mode": overlays_mode,
+            "intro_outro_selection": intro_outro_selection,
             "project_name": project_name,
             "clear_output": clear_output
         }
@@ -464,6 +483,51 @@ class RunController:
         )
 
         return selected
+
+    def select_intro_outro(self):
+        self._print("\nINTRO / OUTRO\n")
+        self._print("\u00bfUTILIZAR INTRO / OUTRO?")
+        self._print("1. No")
+        self._print("2. S\u00ed")
+
+        enabled = self._select_from_list(
+            (False, True)
+        )
+        if not enabled:
+            return None
+
+        assets = self.intro_outro_catalog.discover()
+        if not assets:
+            self._print(
+                "\nNo hay archivos MP4 disponibles en "
+                "assets/videos/intro_outro/."
+            )
+            return None
+
+        self._print("\nSELECCIONAR ARCHIVO\n")
+        for index, asset_path in enumerate(
+            assets,
+            start=1,
+        ):
+            self._print(
+                f"{index}. {asset_path.name}"
+            )
+        asset_path = self._select_from_list(
+            assets
+        )
+
+        positions = ("intro", "outro")
+        self._print("\nPOSICI\u00d3N\n")
+        self._print("1. INTRO")
+        self._print("2. OUTRO")
+        position = self._select_from_list(
+            positions
+        )
+
+        return IntroOutroSelection(
+            asset_path=asset_path,
+            position=position,
+        )
 
     def ask_project_name(self):
         self._print(

@@ -3,11 +3,25 @@ from app.modules.video.ffmpeg.filter_builder import FilterBuilder
 from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.video_build_context import VideoBuildArtifacts
 from app.modules.video.video_validator import VideoValidator
+from app.modules.video.intro_outro import IntroOutroComposer
 from pathlib import Path
 import time
 
 
 class VideoRenderService:
+
+    def __init__(
+        self,
+        intro_outro_selection=None,
+        intro_outro_composer=None,
+    ):
+        self.intro_outro_selection = (
+            intro_outro_selection
+        )
+        self.intro_outro_composer = (
+            intro_outro_composer
+            or IntroOutroComposer()
+        )
 
     def build_artifacts(
         self,
@@ -105,17 +119,51 @@ class VideoRenderService:
             result = self.run(
                 artifacts.command
             )
-            elapsed = time.perf_counter() - start
             self.validate(
                 build_context=build_context,
                 output_path=artifacts.render_output_path,
             )
-            Path(artifacts.render_output_path).replace(
+            promoted_path = Path(
+                artifacts.render_output_path
+            )
+            final_command = artifacts.command
+            final_stderr = getattr(
+                result,
+                "stderr",
+                "",
+            )
+
+            if self.intro_outro_selection is not None:
+                composition = (
+                    self.intro_outro_composer.compose(
+                        main_path=artifacts.render_output_path,
+                        final_path=build_context.media.output_path,
+                        selection=self.intro_outro_selection,
+                        config=build_context.config,
+                        expected_main_duration=(
+                            build_context.timeline.audio_duration
+                        ),
+                    )
+                )
+                promoted_path = composition.output_path
+                final_command = list(composition.command)
+                final_stderr = composition.stderr
+
+            promoted_path.replace(
                 build_context.media.output_path
             )
+            if (
+                self.intro_outro_selection is not None
+                and Path(artifacts.render_output_path).exists()
+            ):
+                Path(artifacts.render_output_path).unlink()
+            elapsed = time.perf_counter() - start
         except Exception as error:
             diagnostics.record_final_assembly(
-                command=artifacts.command,
+                command=(
+                    getattr(error, "cmd", None)
+                    or artifacts.command
+                ),
                 elapsed=time.perf_counter() - start,
                 stderr=str(
                     getattr(error, "stderr", "")
@@ -126,9 +174,9 @@ class VideoRenderService:
             raise
 
         diagnostics.record_final_assembly(
-            command=artifacts.command,
+            command=final_command,
             elapsed=elapsed,
-            stderr=getattr(result, "stderr", ""),
+            stderr=final_stderr,
         )
 
     def validate(
