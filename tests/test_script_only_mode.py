@@ -8,6 +8,11 @@ import main as app_main
 
 from app.core import start
 from app.modules.script import PreparedScript
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
 
 
 class FakeConfigManager:
@@ -521,6 +526,13 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as run_controller, patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
+                ), patch.object(
+                    FakeConfigManager,
+                    "get_profile_key",
+                    return_value=ProfileKey.for_component(
+                        ProfileComponent.GUION,
+                        ProfilePlatform.YOUTUBE
+                    )
                 ), patch(
                     "app.modules.script.preparation.PromptEngine",
                     side_effect=AssertionError(
@@ -565,10 +577,9 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "visual_pipeline": "video",
                         "script_source": "manual",
                         "pipeline_mode": "full",
-                        "profile_path": (
-                            "config/profiles/guion/instagram/"
-                            "perfil_guion_instagram.json"
-                        ),
+                        "profile_component": "guion",
+                        "profile_platform": "youtube",
+                        "profile_id": "guion_youtube",
                         "subtitle_config": "single_line",
                         "voice_config": "masculina",
                         "music_category": None,
@@ -621,6 +632,15 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     FakeVoiceBuilder.received_scripts
                 )
                 video_clips_builder.assert_called_once()
+                self.assertEqual(
+                    ProfileKey.for_component(
+                        ProfileComponent.VIDEO,
+                        ProfilePlatform.YOUTUBE
+                    ),
+                    video_clips_builder.call_args.kwargs[
+                        "profile_key"
+                    ]
+                )
                 video_builder.return_value.build.assert_called_once_with(
                     video_clips_manifest_path=Path(
                         "output/guion video/video_clips/"

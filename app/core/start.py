@@ -85,7 +85,7 @@ def iniciar(
         return ejecutar_video_i2v(
             pipeline_start=pipeline_start,
             project=project,
-            profile=profile
+            profile_key=config.get_profile_key()
         )
 
     builders = _required_builders(
@@ -302,6 +302,17 @@ def iniciar(
         and pipeline_mode == "full"
     ):
         profile_key = config.get_profile_key()
+        if (
+            isinstance(
+                profile_key,
+                ProfileKey
+            )
+            and profile_key.component is ProfileComponent.GUION
+        ):
+            profile_key = ProfileKey.for_component(
+                ProfileComponent.VIDEO,
+                profile_key.platform
+            )
         video_clips_manifest_path, video_i2v_elapsed = (
             _measure_stage(
                 generar_video_clips_i2v,
@@ -314,7 +325,6 @@ def iniciar(
                     or project.images_manifest_path()
                 ),
                 project=project,
-                profile=profile,
                 profile_key=profile_key
             )
         )
@@ -596,7 +606,6 @@ def ejecutar_diseno_video(
         storyboard_path=storyboard_path,
         images_manifest_path=images_manifest_path,
         project=project,
-        profile=profile,
         video_builder=video_builder,
         profile_key=profile_key
     )
@@ -621,7 +630,7 @@ def ejecutar_diseno_video(
 def ejecutar_video_i2v(
     pipeline_start=None,
     project=None,
-    profile=None,
+    profile_key=None,
     source_path=None,
     video_builder=None
 ):
@@ -635,9 +644,8 @@ def ejecutar_video_i2v(
 
     project.setup()
 
-    profile = (
-        profile
-        or ConfigManager().get_profile_config()
+    video_profile = _load_video_component_profile(
+        profile_key
     )
 
     video_builder = (
@@ -658,7 +666,7 @@ def ejecutar_video_i2v(
         ),
         output_dir=output_dir,
         **_video_i2v_overrides(
-            profile
+            video_profile
         )
     )
 
@@ -685,7 +693,6 @@ def generar_video_clips_i2v(
     storyboard_path,
     images_manifest_path,
     project=None,
-    profile=None,
     video_builder=None,
     profile_key=None
 ):
@@ -694,9 +701,8 @@ def generar_video_clips_i2v(
         or ProjectManager()
     )
 
-    profile = (
-        profile
-        or ConfigManager().get_profile_config()
+    video_profile = _load_video_component_profile(
+        profile_key
     )
 
     video_builder = (
@@ -726,11 +732,6 @@ def generar_video_clips_i2v(
         ): scene
         for scene in scenes
     }
-
-    video_profile = _load_video_component_profile(
-        profile,
-        profile_key=profile_key
-    )
 
     output_dir = (
         project.base_path
@@ -878,45 +879,25 @@ def _required_manifest_scene_number(
 
 
 def _load_video_component_profile(
-    visual_profile,
-    profile_key=None
+    profile_key
 ):
-    if visual_profile.get(
-        "video_component"
+    if not isinstance(
+        profile_key,
+        ProfileKey
     ):
-        return visual_profile
-
-    if profile_key is not None:
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError(
-                "La identidad del perfil debe ser un ProfileKey."
-            )
-        video_profile_key = ProfileKey.for_component(
-            ProfileComponent.VIDEO,
-            profile_key.platform
+        raise TypeError(
+            "La configuracion Wan requiere un ProfileKey "
+            "VIDEO explicito."
         )
-    else:
-        platform = str(
-            visual_profile.get(
-                "platform",
-                ""
-            )
-        ).strip().lower()
-        if not platform:
-            platform = str(
-                visual_profile.get(
-                    "format",
-                    ""
-                )
-            ).strip().lower()
 
-        video_profile_key = ProfileKey.for_component(
-            ProfileComponent.VIDEO,
-            platform
+    if profile_key.component is not ProfileComponent.VIDEO:
+        raise ValueError(
+            "La configuracion Wan requiere identidad del "
+            "componente video."
         )
 
     return ProfileResolver().load_video_component(
-        video_profile_key
+        profile_key
     )
 
 

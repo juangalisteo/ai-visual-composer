@@ -5,6 +5,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.core import start
+from app.shared.profile_identity import (
+    ProfileComponent,
+    ProfileKey,
+    ProfilePlatform,
+)
 
 
 class FakeProject:
@@ -200,8 +205,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 result = start.ejecutar_video_i2v(
                     pipeline_start=0,
                     project=project,
-                    profile=_video_profile(
-                        "Instagram"
+                    profile_key=ProfileKey.for_component(
+                        ProfileComponent.VIDEO,
+                        ProfilePlatform.INSTAGRAM
                     ),
                     source_path=root / "source.png",
                     video_builder=builder,
@@ -233,11 +239,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             call["output_dir"]
         )
         self.assertEqual(
-            384,
+            448,
             call["overrides"]["generation_width"]
         )
         self.assertEqual(
-            672,
+            800,
             call["overrides"]["generation_height"]
         )
         self.assertEqual(
@@ -257,7 +263,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             call["overrides"]["fps"]
         )
         self.assertEqual(
-            12,
+            20,
             call["overrides"]["steps"]
         )
         self.assertEqual(
@@ -303,7 +309,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_profile_key(
                     self
                 ):
-                    return None
+                    return ProfileKey.for_component(
+                        ProfileComponent.VIDEO,
+                        ProfilePlatform.YOUTUBE
+                    )
 
                 def get_profile_config(
                     self
@@ -341,11 +350,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             result
         )
         self.assertEqual(
-            672,
+            800,
             builder.calls[0]["overrides"]["generation_width"]
         )
         self.assertEqual(
-            384,
+            448,
             builder.calls[0]["overrides"]["generation_height"]
         )
         self.assertEqual(
@@ -372,8 +381,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         )
                         / "output"
                     ),
-                    profile=_video_profile(
-                        "Instagram"
+                    profile_key=ProfileKey.for_component(
+                        ProfileComponent.VIDEO,
+                        ProfilePlatform.INSTAGRAM
                     ),
                     source_path=missing,
                 )
@@ -595,7 +605,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_profile_key(
                     self
                 ):
-                    return None
+                    return ProfileKey.for_component(
+                        ProfileComponent.VIDEO,
+                        ProfilePlatform.INSTAGRAM
+                    )
 
                 def get_profile_config(
                     self
@@ -813,10 +826,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     storyboard_path=storyboard_path,
                     images_manifest_path=images_manifest_path,
                     project=project,
-                    profile={
-                        "platform": "instagram"
-                    },
                     video_builder=builder,
+                    profile_key=ProfileKey.for_component(
+                        ProfileComponent.VIDEO,
+                        ProfilePlatform.INSTAGRAM
+                    ),
                 )
                 manifest = json.loads(
                     manifest_path.read_text(

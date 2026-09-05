@@ -290,18 +290,56 @@ class ProfileCharacterizationTest(unittest.TestCase):
             ProfileComponent.VIDEO,
             ProfilePlatform.INSTAGRAM
         )
-        visual_profile = dict(
-            self.resolver.load(instagram_key)
-        )
-        visual_profile["platform"] = "youtube"
 
         self.assertEqual(
             self.resolver.load_video_component(instagram_key),
             _load_video_component_profile(
-                visual_profile,
-                profile_key=instagram_key
+                instagram_key
             )
         )
+
+    def test_wan_profile_rejects_legacy_platform_and_format_inference(self):
+        for legacy_profile in (
+            {
+                "platform": "instagram"
+            },
+            {
+                "format": "youtube"
+            },
+            {
+                "video_component": {}
+            },
+        ):
+            with self.subTest(
+                legacy_profile=legacy_profile
+            ), self.assertRaisesRegex(
+                TypeError,
+                "ProfileKey VIDEO explicito"
+            ):
+                _load_video_component_profile(
+                    legacy_profile
+                )
+
+    def test_wan_profile_rejects_missing_or_incompatible_identity(self):
+        with self.assertRaisesRegex(
+            TypeError,
+            "ProfileKey VIDEO explicito"
+        ):
+            _load_video_component_profile(
+                None
+            )
+
+        image_key = ProfileKey.for_component(
+            ProfileComponent.IMAGEN,
+            ProfilePlatform.INSTAGRAM
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "componente video"
+        ):
+            _load_video_component_profile(
+                image_key
+            )
 
     def test_runtime_objects_are_consistent_with_structured_identity(self):
         for platform, expected in self.PLATFORM_EXPECTATIONS.items():
@@ -345,8 +383,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 self.assertEqual(
                     self.resolver.load_video_component(profile_key),
                     _load_video_component_profile(
-                        identity_profile,
-                        profile_key=profile_key
+                        profile_key
                     )
                 )
 
