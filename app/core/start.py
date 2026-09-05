@@ -65,10 +65,15 @@ def iniciar(
     ).strip().lower()
 
     if pipeline_mode == "studio":
+        studio_options = {
+            "subtitle_style": subtitle_style,
+            "light_leaks_enabled": studio_light_leaks_enabled,
+            "music_path": studio_music_path,
+        }
+        if intro_outro_selection is not None:
+            studio_options["intro_outro_selection"] = intro_outro_selection
         return ejecutar_studio_fase_2(
-            subtitle_style=subtitle_style,
-            light_leaks_enabled=studio_light_leaks_enabled,
-            music_path=studio_music_path,
+            **studio_options
         )
 
     project = ProjectManager()
@@ -451,6 +456,7 @@ def ejecutar_studio_fase_2(
     subtitle_style,
     light_leaks_enabled=False,
     music_path=None,
+    intro_outro_selection=None,
     preparation_service=None,
     render_service=None,
     output_path_resolver=None,
@@ -459,26 +465,29 @@ def ejecutar_studio_fase_2(
         preparation_service
         or ejecutar_studio_fase_1
     )(subtitle_style=subtitle_style)
+    output_options = {
+        "video_path": preparation.video_path,
+        "profile_key": preparation.profile_key,
+        "subtitle_profile": preparation.subtitle_profile,
+        "light_leaks_enabled": light_leaks_enabled,
+        "music_path": music_path,
+    }
+    render_options = {
+        **output_options,
+        "profile": preparation.profile,
+    }
+    if intro_outro_selection is not None:
+        output_options["intro_outro_selection"] = intro_outro_selection
+        render_options["intro_outro_selection"] = intro_outro_selection
     output_path = (
         output_path_resolver
         or StudioOutputPathResolver()
     ).resolve(
-        video_path=preparation.video_path,
-        profile_key=preparation.profile_key,
-        subtitle_profile=preparation.subtitle_profile,
-        light_leaks_enabled=light_leaks_enabled,
-        music_path=music_path,
+        **output_options
     )
-    return (render_service or StudioRenderService()).render(
-        video_path=preparation.video_path,
-        subtitle_path=preparation.subtitle_path,
-        profile_key=preparation.profile_key,
-        profile=preparation.profile,
-        subtitle_profile=preparation.subtitle_profile,
-        output_path=output_path,
-        light_leaks_enabled=light_leaks_enabled,
-        music_path=music_path,
-    )
+    render_options["subtitle_path"] = preparation.subtitle_path
+    render_options["output_path"] = output_path
+    return (render_service or StudioRenderService()).render(**render_options)
 
 
 def cargar_o_generar_guion(

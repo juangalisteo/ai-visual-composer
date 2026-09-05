@@ -36,6 +36,42 @@ class IntroOutroSelection:
         object.__setattr__(self, "position", position)
 
 
+@dataclass(frozen=True)
+class IntroOutroPlan:
+    intro: IntroOutroSelection | None = None
+    outro: IntroOutroSelection | None = None
+
+    def __post_init__(self):
+        if self.intro is None and self.outro is None:
+            raise ValueError(
+                "El plan INTRO / OUTRO debe incluir al menos un recurso."
+            )
+        if (
+            self.intro is not None
+            and (
+                not isinstance(self.intro, IntroOutroSelection)
+                or self.intro.position != "intro"
+            )
+        ):
+            raise ValueError("El recurso INTRO debe ocupar la posicion intro.")
+        if (
+            self.outro is not None
+            and (
+                not isinstance(self.outro, IntroOutroSelection)
+                or self.outro.position != "outro"
+            )
+        ):
+            raise ValueError("El recurso OUTRO debe ocupar la posicion outro.")
+
+    @property
+    def selections(self):
+        return tuple(
+            selection
+            for selection in (self.intro, self.outro)
+            if selection is not None
+        )
+
+
 class IntroOutroCatalog:
 
     def __init__(
@@ -185,6 +221,7 @@ class IntroOutroComposition:
     stderr: str
     expected_duration: float
     asset_was_normalized: bool
+    normalized_positions: tuple[str, ...] = ()
 
 
 class IntroOutroComposer:
@@ -209,60 +246,74 @@ class IntroOutroComposer:
     ):
         main_path = Path(main_path)
         final_path = Path(final_path)
-        selection = self._require_selection(selection)
-        asset_path = selection.asset_path
+        selections = self._require_selections(selection)
 
         main_info = self.probe.inspect(main_path)
-        asset_info = self.probe.inspect(asset_path)
         self._require_main_audio(main_info)
+        asset_infos = tuple(
+            (item, self.probe.inspect(item.asset_path))
+            for item in selections
+        )
 
-        normalized_path = self._normalized_path(final_path)
+        normalized_paths = {
+            item.position: self._normalized_path(
+                final_path,
+                item.position if len(selections) > 1 else None,
+            )
+            for item in selections
+        }
         composition_path = self._composition_path(final_path)
         concat_list_path = self._concat_list_path(final_path)
-        self._remove_temporary(normalized_path)
+        for normalized_path in normalized_paths.values():
+            self._remove_temporary(normalized_path)
         self._remove_temporary(composition_path)
         self._remove_temporary(concat_list_path)
 
-        prepared_asset_path = asset_path
-        asset_was_normalized = self.requires_normalization(
-            asset_info=asset_info,
-            main_info=main_info,
-            config=config,
-        )
+        prepared_assets = {}
+        normalized_positions = []
 
         try:
-            if asset_was_normalized:
-                normalize_command = self.build_normalize_command(
-                    source_path=asset_path,
-                    output_path=normalized_path,
-                    source_info=asset_info,
-                    target_info=main_info,
-                    config=config,
-                )
-                self.runner.run(normalize_command)
-                self.validator.validate(
-                    output_path=normalized_path,
-                    expected_duration=asset_info.duration,
-                    max_duration_difference=(
-                        config.validation.max_duration_difference
-                    ),
-                )
-                normalized_info = self.probe.inspect(normalized_path)
+            for item, asset_info in asset_infos:
+                prepared_asset_path = item.asset_path
                 if self.requires_normalization(
-                    asset_info=normalized_info,
+                    asset_info=asset_info,
                     main_info=main_info,
                     config=config,
                 ):
-                    raise RuntimeError(
-                        "El recurso INTRO / OUTRO normalizado no cumple "
-                        "el contrato tecnico del video final."
+                    normalized_path = normalized_paths[item.position]
+                    normalize_command = self.build_normalize_command(
+                        source_path=item.asset_path,
+                        output_path=normalized_path,
+                        source_info=asset_info,
+                        target_info=main_info,
+                        config=config,
                     )
-                prepared_asset_path = normalized_path
+                    self.runner.run(normalize_command)
+                    self.validator.validate(
+                        output_path=normalized_path,
+                        expected_duration=asset_info.duration,
+                        max_duration_difference=(
+                            self._max_duration_difference(config)
+                        ),
+                    )
+                    normalized_info = self.probe.inspect(normalized_path)
+                    if self.requires_normalization(
+                        asset_info=normalized_info,
+                        main_info=main_info,
+                        config=config,
+                    ):
+                        raise RuntimeError(
+                            "El recurso INTRO / OUTRO normalizado no cumple "
+                            "el contrato tecnico del video final."
+                        )
+                    prepared_asset_path = normalized_path
+                    normalized_positions.append(item.position)
+                prepared_assets[item.position] = prepared_asset_path
 
-            sources = self.ordered_sources(
+            sources = self.ordered_plan_sources(
                 main_path=main_path,
-                asset_path=prepared_asset_path,
-                selection=selection,
+                prepared_assets=prepared_assets,
+                selections=selections,
             )
             self.write_concat_list(
                 concat_list_path,
@@ -274,22 +325,23 @@ class IntroOutroComposer:
                 config=config,
             )
             result = self.runner.run(concat_command)
-            expected_duration = (
-                float(expected_main_duration)
-                + asset_info.duration
+            expected_duration = float(expected_main_duration) + sum(
+                asset_info.duration
+                for _, asset_info in asset_infos
             )
             self.validator.validate(
                 output_path=composition_path,
                 expected_duration=expected_duration,
                 max_duration_difference=(
-                    config.validation.max_duration_difference
+                    self._max_duration_difference(config)
                 ),
             )
         except Exception:
             self._remove_temporary(composition_path)
             raise
         finally:
-            self._remove_temporary(normalized_path)
+            for normalized_path in normalized_paths.values():
+                self._remove_temporary(normalized_path)
             self._remove_temporary(concat_list_path)
 
         return IntroOutroComposition(
@@ -297,7 +349,8 @@ class IntroOutroComposer:
             command=tuple(concat_command),
             stderr=str(getattr(result, "stderr", "") or ""),
             expected_duration=expected_duration,
-            asset_was_normalized=asset_was_normalized,
+            asset_was_normalized=bool(normalized_positions),
+            normalized_positions=tuple(normalized_positions),
         )
 
     def requires_normalization(
@@ -443,6 +496,20 @@ class IntroOutroComposer:
             return (asset_path, main_path)
         return (main_path, asset_path)
 
+    def ordered_plan_sources(
+        self,
+        main_path,
+        prepared_assets,
+        selections,
+    ):
+        sources = []
+        if any(item.position == "intro" for item in selections):
+            sources.append(Path(prepared_assets["intro"]))
+        sources.append(Path(main_path))
+        if any(item.position == "outro" for item in selections):
+            sources.append(Path(prepared_assets["outro"]))
+        return tuple(sources)
+
     def write_concat_list(
         self,
         concat_list_path,
@@ -470,6 +537,16 @@ class IntroOutroComposer:
             )
         return selection
 
+    def _require_selections(self, selection):
+        if isinstance(selection, IntroOutroSelection):
+            return (self._require_selection(selection),)
+        if not isinstance(selection, IntroOutroPlan):
+            raise TypeError("La seleccion INTRO / OUTRO no es valida.")
+        return tuple(
+            self._require_selection(item)
+            for item in selection.selections
+        )
+
     def _require_main_audio(self, main_info):
         if (
             not main_info.has_audio
@@ -496,10 +573,18 @@ class IntroOutroComposer:
             "El audio principal debe ser mono o estereo para INTRO / OUTRO."
         )
 
-    def _normalized_path(self, final_path):
+    def _normalized_path(self, final_path, position=None):
+        position_suffix = f".{position}" if position else ""
         return final_path.with_name(
-            f"{final_path.stem}.intro-outro.normalized.mp4"
+            f"{final_path.stem}.intro-outro{position_suffix}.normalized.mp4"
         )
+
+    @staticmethod
+    def _max_duration_difference(config):
+        validation = getattr(config, "validation", None)
+        if validation is not None:
+            return validation.max_duration_difference
+        return config.max_duration_difference
 
     def _composition_path(self, final_path):
         return final_path.with_name(

@@ -189,6 +189,10 @@ class StudioPhase1Test(unittest.TestCase):
             controller,
             "select_studio_music",
             return_value=None,
+        ), patch.object(
+            controller,
+            "select_studio_intro_outro",
+            return_value=None,
         ):
             options = controller.run()
 

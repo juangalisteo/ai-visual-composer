@@ -13,6 +13,11 @@ from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
 from app.modules.video.video_validator import VideoValidator
+from app.modules.video.intro_outro import (
+    IntroOutroComposer,
+    IntroOutroPlan,
+    IntroOutroSelection,
+)
 from app.shared.media_probe import MediaProbe
 from app.shared.profile_identity import ProfileComponent, ProfileKey
 from app.shared.subtitle_profile_identity import ResolvedSubtitleProfile
@@ -36,6 +41,9 @@ class StudioRenderResult:
     light_leaks_enabled: bool
     light_leaks_operations: tuple
     music_path: Path | None
+    intro_outro_selection: IntroOutroPlan | None = None
+    intro_outro_command: tuple[str, ...] = ()
+    normalized_intro_outro_positions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -58,6 +66,7 @@ class StudioOutputPathResolver:
         subtitle_profile,
         light_leaks_enabled=False,
         music_path=None,
+        intro_outro_selection=None,
     ):
         if not isinstance(profile_key, ProfileKey):
             raise TypeError("STUDIO requiere un ProfileKey explicito.")
@@ -79,11 +88,35 @@ class StudioOutputPathResolver:
                 Path(music_path).stem,
             ).strip("._") or "music"
             suffix += f"_music_{music_stem}"
+        if intro_outro_selection is not None:
+            plan = self._intro_outro_plan(intro_outro_selection)
+            if plan.intro is not None:
+                suffix += f"_intro_{self._safe_stem(plan.intro.asset_path)}"
+            if plan.outro is not None:
+                suffix += f"_outro_{self._safe_stem(plan.outro.asset_path)}"
         filename = (
             f"{source_stem}_studio_{profile_key.platform.value}_{style}"
             f"{suffix}.mp4"
         )
         return self.output_root / profile_key.platform.value / filename
+
+    @staticmethod
+    def _safe_stem(path):
+        return re.sub(
+            r"[^A-Za-z0-9._-]+",
+            "_",
+            Path(path).stem,
+        ).strip("._") or "asset"
+
+    @staticmethod
+    def _intro_outro_plan(selection):
+        if isinstance(selection, IntroOutroPlan):
+            return selection
+        if isinstance(selection, IntroOutroSelection):
+            if selection.position == "intro":
+                return IntroOutroPlan(intro=selection)
+            return IntroOutroPlan(outro=selection)
+        raise TypeError("La seleccion INTRO / OUTRO de STUDIO no es valida.")
 
 
 class StudioOutputValidator:
@@ -157,6 +190,7 @@ class StudioRenderService:
         style_builder=None,
         light_leaks_selector=None,
         layer_compositor=None,
+        intro_outro_composer=None,
     ):
         self.runner = runner or Runner()
         self.probe = probe or MediaProbe()
@@ -164,6 +198,9 @@ class StudioRenderService:
         self.style_builder = style_builder or SubtitleStyleBuilder()
         self.light_leaks_selector = light_leaks_selector
         self.layer_compositor = layer_compositor or LayerCompositor()
+        self.intro_outro_composer = (
+            intro_outro_composer or IntroOutroComposer()
+        )
 
     def render(
         self,
@@ -175,6 +212,7 @@ class StudioRenderService:
         output_path,
         light_leaks_enabled=False,
         music_path=None,
+        intro_outro_selection=None,
     ):
         self._require_contract(
             video_path,
@@ -193,6 +231,15 @@ class StudioRenderService:
         if output_path.exists():
             raise FileExistsError(
                 f"Ya existe el output STUDIO determinista: {output_path}"
+            )
+        principal_path = (
+            self._principal_path(output_path)
+            if intro_outro_selection is not None
+            else output_path
+        )
+        if principal_path != output_path and principal_path.exists():
+            raise FileExistsError(
+                f"Ya existe el principal STUDIO temporal: {principal_path}"
             )
 
         source_info = self.probe.inspect(video_path)
@@ -215,8 +262,8 @@ class StudioRenderService:
             profile,
             light_leaks_enabled,
         )
-        temporary_path = output_path.with_name(
-            f"{output_path.stem}.rendering{output_path.suffix}"
+        temporary_path = principal_path.with_name(
+            f"{principal_path.stem}.rendering{principal_path.suffix}"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         self._remove_temporary(temporary_path)
@@ -238,23 +285,59 @@ class StudioRenderService:
                 expected_duration=source_info.duration,
                 profile=profile,
             )
-            self.promote(temporary_path, output_path)
+            self.promote(temporary_path, principal_path)
         except Exception:
             self._remove_temporary(temporary_path)
             raise
 
+        final_output_path = principal_path
+        final_expected_duration = source_info.duration
+        final_generated_duration = generated_duration
+        intro_outro_command = ()
+        normalized_positions = ()
+        normalized_selection = None
+        if intro_outro_selection is not None:
+            normalized_selection = StudioOutputPathResolver._intro_outro_plan(
+                intro_outro_selection
+            )
+            composition = self.intro_outro_composer.compose(
+                main_path=principal_path,
+                final_path=output_path,
+                selection=normalized_selection,
+                config=profile,
+                expected_main_duration=generated_duration,
+            )
+            try:
+                final_generated_duration = self.output_validator.validate(
+                    output_path=composition.output_path,
+                    expected_duration=composition.expected_duration,
+                    profile=profile,
+                )
+                self.promote(composition.output_path, output_path)
+            except Exception:
+                self._remove_temporary(composition.output_path)
+                raise
+            principal_path.unlink()
+            final_output_path = output_path
+            final_expected_duration = composition.expected_duration
+            intro_outro_command = composition.command
+            normalized_positions = composition.normalized_positions
+
         return StudioRenderResult(
             source_video_path=video_path,
             source_subtitle_path=subtitle_path,
-            output_path=output_path,
+            output_path=final_output_path,
             command=tuple(command),
-            expected_duration=source_info.duration,
-            generated_duration=generated_duration,
+            expected_duration=final_expected_duration,
+            generated_duration=final_generated_duration,
             source_had_audio=source_info.has_audio,
             silence_added=not source_info.has_audio,
             light_leaks_enabled=light_leaks_enabled,
             light_leaks_operations=light_leaks_operations,
             music_path=music_path,
+            intro_outro_selection=normalized_selection,
+            intro_outro_command=intro_outro_command,
+            normalized_intro_outro_positions=normalized_positions,
         )
 
     def build_command(
@@ -511,3 +594,10 @@ class StudioRenderService:
         path = Path(path)
         if path.exists():
             path.unlink()
+
+    @staticmethod
+    def _principal_path(output_path):
+        output_path = Path(output_path)
+        return output_path.with_name(
+            f"{output_path.stem}.studio-principal{output_path.suffix}"
+        )

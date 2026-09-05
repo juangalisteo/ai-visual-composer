@@ -13,6 +13,7 @@ from app.shared.subtitle_profile_resolver import (
 )
 from app.modules.video.intro_outro import (
     IntroOutroCatalog,
+    IntroOutroPlan,
     IntroOutroSelection,
 )
 from app.modules.audio.music_selector import MusicSelector
@@ -489,6 +490,44 @@ class RunController:
             self._print(f"{index}. {label}")
         return self._select_from_list(tracks)
 
+    def select_studio_intro_outro(self):
+        modes = ("none", "intro", "outro", "both")
+        self._print("\nINTRO / OUTRO\n")
+        self._print("1. NINGUNO")
+        self._print("2. SOLO INTRO")
+        self._print("3. SOLO OUTRO")
+        self._print("4. INTRO + OUTRO")
+        mode = self._select_from_list(modes)
+        if mode == "none":
+            return None
+
+        assets = self.intro_outro_catalog.discover()
+        if not assets:
+            raise FileNotFoundError(
+                "No hay archivos MP4 disponibles en "
+                "assets/videos/intro_outro/."
+            )
+
+        intro = None
+        outro = None
+        if mode in {"intro", "both"}:
+            intro = IntroOutroSelection(
+                self._select_studio_intro_outro_asset(assets, "INTRO"),
+                "intro",
+            )
+        if mode in {"outro", "both"}:
+            outro = IntroOutroSelection(
+                self._select_studio_intro_outro_asset(assets, "OUTRO"),
+                "outro",
+            )
+        return IntroOutroPlan(intro=intro, outro=outro)
+
+    def _select_studio_intro_outro_asset(self, assets, position):
+        self._print(f"\nSELECCIONAR {position}\n")
+        for index, asset_path in enumerate(assets, start=1):
+            self._print(f"{index}. {asset_path.name}")
+        return self._select_from_list(assets)
+
     def select_voice_config(self):
         configs_path = Path(
             "config/voice_configs"
@@ -741,6 +780,7 @@ class RunController:
         )
         light_leaks_enabled = self.select_studio_light_leaks()
         music_path = self.select_studio_music()
+        intro_outro_selection = self.select_studio_intro_outro()
 
         return {
             "visual_pipeline": "studio",
@@ -756,7 +796,7 @@ class RunController:
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",
-            "intro_outro_selection": None,
+            "intro_outro_selection": intro_outro_selection,
             "project_name": "",
             "clear_output": False,
         }
