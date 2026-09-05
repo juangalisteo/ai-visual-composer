@@ -30,8 +30,10 @@ from app.modules.video_component import (
 )
 from app.modules.studio import (
     StudioInputPreparationService,
+    StudioOutputPathResolver,
     StudioPhase1Preparation,
     StudioProfileLoader,
+    StudioRenderService,
 )
 
 from app.domain.adapters import StoryboardSceneAdapter
@@ -61,7 +63,7 @@ def iniciar(
     ).strip().lower()
 
     if pipeline_mode == "studio":
-        return ejecutar_studio_fase_1(
+        return ejecutar_studio_fase_2(
             subtitle_style=subtitle_style
         )
 
@@ -438,6 +440,34 @@ def ejecutar_studio_fase_1(
         subtitle_profile=subtitle_profile,
         video_path=prepared_input.video_path,
         subtitle_path=prepared_input.subtitle_path,
+    )
+
+
+def ejecutar_studio_fase_2(
+    subtitle_style,
+    preparation_service=None,
+    render_service=None,
+    output_path_resolver=None,
+):
+    preparation = (
+        preparation_service
+        or ejecutar_studio_fase_1
+    )(subtitle_style=subtitle_style)
+    output_path = (
+        output_path_resolver
+        or StudioOutputPathResolver()
+    ).resolve(
+        video_path=preparation.video_path,
+        profile_key=preparation.profile_key,
+        subtitle_profile=preparation.subtitle_profile,
+    )
+    return (render_service or StudioRenderService()).render(
+        video_path=preparation.video_path,
+        subtitle_path=preparation.subtitle_path,
+        profile_key=preparation.profile_key,
+        profile=preparation.profile,
+        subtitle_profile=preparation.subtitle_profile,
+        output_path=output_path,
     )
 
 

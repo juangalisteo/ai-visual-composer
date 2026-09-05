@@ -236,7 +236,7 @@ class StudioPhase1Test(unittest.TestCase):
         start.assert_called_once_with(subtitle_style="single_line")
         output_manager.assert_not_called()
 
-    def test_start_prepares_studio_without_project_or_render_services(self):
+    def test_start_routes_studio_to_phase_two_without_project_manager(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
             {
@@ -247,11 +247,11 @@ class StudioPhase1Test(unittest.TestCase):
             },
             clear=True,
         ), patch("app.core.start.ProjectManager") as project_manager, patch(
-            "app.core.start.ejecutar_studio_fase_1"
-        ) as prepare:
+            "app.core.start.ejecutar_studio_fase_2"
+        ) as render:
             iniciar(subtitle_style="single_line")
 
-        prepare.assert_called_once_with(subtitle_style="single_line")
+        render.assert_called_once_with(subtitle_style="single_line")
         project_manager.assert_not_called()
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):

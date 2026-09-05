@@ -42,6 +42,8 @@ logs/
 # Generated media
 assets/images/generated/
 assets/audio/voices/
+input/studio/*
+!input/studio/.gitkeep
 
 # Official product assets under assets/fonts, assets/music, and
 # assets/videos/visual_effects are intentionally versioned.

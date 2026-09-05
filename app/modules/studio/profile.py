@@ -34,6 +34,8 @@ class StudioProfile:
     movflags: str
     audio_codec: str
     audio_bitrate: str
+    audio_sample_rate: int
+    audio_channels: int
     max_duration_difference: float
     light_leaks_enabled: bool
     music_enabled: bool
@@ -80,12 +82,27 @@ class StudioProfileLoader:
         height = require_int(output, "height", "studio.output.height")
         fps = require_int(output, "fps", "studio.output.fps")
         crf = require_int(video, "crf", "studio.output.video.crf")
+        audio_sample_rate = require_int(
+            audio,
+            "sample_rate",
+            "studio.output.audio.sample_rate"
+        )
+        audio_channels = require_int(
+            audio,
+            "channels",
+            "studio.output.audio.channels"
+        )
         if width <= 0 or height <= 0 or fps <= 0:
             raise ValueError(
                 "Las dimensiones y FPS de STUDIO deben ser positivos."
             )
         if crf < 0 or crf > 51:
             raise ValueError("El CRF de STUDIO debe estar entre 0 y 51.")
+        if audio_sample_rate <= 0 or audio_channels not in {1, 2}:
+            raise ValueError(
+                "El audio STUDIO requiere sample_rate positivo y "
+                "uno o dos canales."
+            )
 
         resolution = require_text(profile, "resolution", "resolution")
         if resolution != f"{width}x{height}":
@@ -126,6 +143,8 @@ class StudioProfileLoader:
             ),
             audio_codec=require_text(audio, "codec", "studio.output.audio.codec"),
             audio_bitrate=require_text(audio, "bitrate", "studio.output.audio.bitrate"),
+            audio_sample_rate=audio_sample_rate,
+            audio_channels=audio_channels,
             max_duration_difference=require_float(
                 validation,
                 "max_duration_difference",

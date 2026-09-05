@@ -22,7 +22,9 @@
             },
             "audio": {
                 "codec": "aac",
-                "bitrate": "192k"
+                "bitrate": "192k",
+                "sample_rate": 48000,
+                "channels": 2
             },
             "validation": {
                 "max_duration_difference": 0.2

@@ -7,6 +7,12 @@ from app.modules.studio.profile import (
     StudioProfileLoader,
     StudioPhase1Preparation,
 )
+from app.modules.studio.render_service import (
+    StudioOutputPathResolver,
+    StudioOutputValidator,
+    StudioRenderResult,
+    StudioRenderService,
+)
 
 __all__ = [
     "PreparedStudioInput",
@@ -14,4 +20,8 @@ __all__ = [
     "StudioProfile",
     "StudioProfileLoader",
     "StudioPhase1Preparation",
+    "StudioOutputPathResolver",
+    "StudioOutputValidator",
+    "StudioRenderResult",
+    "StudioRenderService",
 ]
