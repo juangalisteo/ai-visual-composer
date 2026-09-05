@@ -37,9 +37,7 @@ class LayerConfigLoader:
     def load_common(
         self,
         data,
-        default_directory,
-        use_legacy_selection,
-        use_legacy_weights
+        default_directory
     ):
         enabled = bool(
             data.get(
@@ -55,30 +53,17 @@ class LayerConfigLoader:
             )
         ).strip()
 
-        legacy_selection = str(
-            data.get(
-                "selection",
-                "random"
-            )
-        ).strip().lower()
-
-        default_selection = (
-            legacy_selection
-            if use_legacy_selection
-            else "random"
-        )
-
         folder_selection = str(
             data.get(
                 "folder_selection",
-                default_selection
+                "random"
             )
         ).strip().lower()
 
         file_selection = str(
             data.get(
                 "file_selection",
-                default_selection
+                "random"
             )
         ).strip().lower()
 
@@ -176,20 +161,11 @@ class LayerConfigLoader:
             ).items()
         }
 
-        default_file_weights = (
-            data.get(
-                "weights",
-                {}
-            )
-            if use_legacy_weights
-            else {}
-        )
-
         file_weights = {
             str(key).strip(): float(value)
             for key, value in data.get(
                 "file_weights",
-                default_file_weights
+                {}
             ).items()
         }
 

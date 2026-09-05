@@ -123,34 +123,30 @@ class LayerConfigLoaderTest(
             {}
         )
 
-    def test_overlay_legacy_selection_and_weights_are_preserved(
+    def test_overlay_legacy_selection_and_weights_are_rejected(
         self
     ):
-        config = OverlayConfigLoader().load(
-            profile(
-                overlays={
-                    "selection": "sequence",
-                    "weights": {
-                        "spark.mov": 2
-                    }
-                }
-            )
-        )
-
-        self.assertEqual(
-            config.folder_selection,
-            "sequence"
-        )
-        self.assertEqual(
-            config.file_selection,
-            "sequence"
-        )
-        self.assertEqual(
-            config.file_weights,
+        for legacy_data in (
             {
-                "spark.mov": 2.0
-            }
-        )
+                "selection": "sequence"
+            },
+            {
+                "weights": {
+                    "spark.mov": 2
+                }
+            },
+        ):
+            with self.subTest(
+                legacy_data=legacy_data
+            ), self.assertRaisesRegex(
+                ValueError,
+                "no admite las claves legacy selection/weights"
+            ):
+                OverlayConfigLoader().load(
+                    profile(
+                        overlays=legacy_data
+                    )
+                )
 
     def test_visual_effect_legacy_selection_and_weights_remain_ignored(
         self
@@ -292,16 +288,18 @@ class LayerConfigLoaderTest(
     def test_current_profiles_remain_compatible(
         self
     ):
-        profile_paths = [
+        profile_paths = sorted(
             Path(
-                "config/profiles/video/instagram/"
-                "perfil_video_instagram.json"
-            ),
-            Path(
-                "config/profiles/video/youtube/"
-                "perfil_video_youtube.json"
+                "config/profiles"
+            ).glob(
+                "*/*/perfil_*.json"
             )
-        ]
+        )
+
+        self.assertEqual(
+            6,
+            len(profile_paths)
+        )
 
         for profile_path in profile_paths:
             with self.subTest(
@@ -331,6 +329,45 @@ class LayerConfigLoaderTest(
                 self.assertIsInstance(
                     visual_effect_config,
                     VisualEffectConfig
+                )
+                self.assertNotIn(
+                    "selection",
+                    data["video_style"]["overlays"]
+                )
+                self.assertNotIn(
+                    "weights",
+                    data["video_style"]["overlays"]
+                )
+                self.assertEqual(
+                    "random",
+                    overlay_config.folder_selection
+                )
+                self.assertEqual(
+                    "random",
+                    overlay_config.file_selection
+                )
+                self.assertTrue(
+                    overlay_config.avoid_repeats
+                )
+                self.assertEqual(
+                    "scene",
+                    overlay_config.repeat_mode
+                )
+                self.assertEqual(
+                    0.15,
+                    overlay_config.opacity
+                )
+                self.assertEqual(
+                    "screen",
+                    overlay_config.blend_mode
+                )
+                self.assertEqual(
+                    {},
+                    overlay_config.folder_weights
+                )
+                self.assertEqual(
+                    {},
+                    overlay_config.file_weights
                 )
 
 

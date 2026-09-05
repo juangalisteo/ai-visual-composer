@@ -36,9 +36,7 @@ class VisualEffectConfigLoader:
 
         layer_data = self.layer_loader.load_common(
             data=effect_data,
-            default_directory="assets/videos/visual_effects",
-            use_legacy_selection=False,
-            use_legacy_weights=False
+            default_directory="assets/videos/visual_effects"
         )
 
         return VisualEffectConfig(

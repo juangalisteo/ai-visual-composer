@@ -25,11 +25,25 @@ class OverlayConfigLoader:
             )
         )
 
+        legacy_keys = tuple(
+            key
+            for key in (
+                "selection",
+                "weights"
+            )
+            if key in overlay_data
+        )
+        if legacy_keys:
+            raise ValueError(
+                "video_style.overlays no admite las claves "
+                "legacy selection/weights. Use "
+                "folder_selection, file_selection, "
+                "folder_weights y file_weights."
+            )
+
         layer_data = self.layer_loader.load_common(
             data=overlay_data,
-            default_directory="assets/videos/overlays",
-            use_legacy_selection=True,
-            use_legacy_weights=True
+            default_directory="assets/videos/overlays"
         )
 
         return OverlayConfig(
