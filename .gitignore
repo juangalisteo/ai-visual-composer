@@ -43,7 +43,16 @@ logs/
 assets/images/generated/
 assets/audio/voices/
 input/studio/*
-!input/studio/.gitkeep
+!input/studio/srt_video/
+input/studio/srt_video/*
+!input/studio/srt_video/.gitkeep
+!input/studio/video/
+input/studio/video/*
+!input/studio/video/.gitkeep
+assets/videos/intro_outro/intro/*
+!assets/videos/intro_outro/intro/.gitkeep
+assets/videos/intro_outro/outro/*
+!assets/videos/intro_outro/outro/.gitkeep
 
 # Official product assets under assets/fonts, assets/music, and
 # assets/videos/visual_effects are intentionally versioned.

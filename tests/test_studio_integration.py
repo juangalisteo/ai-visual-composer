@@ -12,7 +12,7 @@ from pathlib import Path
 from app.core import start
 from app.modules.studio import (
     StudioInputPreparationService,
-    StudioLightLeakSelector,
+    StudioInputMode,
     StudioOutputPathResolver,
     StudioProfileLoader,
     StudioRenderService,
@@ -66,8 +66,10 @@ class StudioFinalContractTest(unittest.TestCase):
     def test_realistic_input_names_are_discovered_without_hardcoding(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            video = root / "Vídeo prueba (01).mp4"
-            subtitle = root / "Subtítulos vídeo 01.srt"
+            source_directory = root / "srt_video"
+            source_directory.mkdir()
+            video = source_directory / "Vídeo prueba (01).mp4"
+            subtitle = source_directory / "Subtítulos vídeo 01.srt"
             video.touch()
             subtitle.write_text(
                 "1\n00:00:00,000 --> 00:00:01,000\nTexto íntegro.\n",
@@ -77,17 +79,22 @@ class StudioFinalContractTest(unittest.TestCase):
             profile = StudioProfileLoader().load(
                 ProfileResolver().load(key), key
             )
-            prepared = StudioInputPreparationService(root).prepare(profile)
+            prepared = StudioInputPreparationService(root).prepare(
+                profile,
+                StudioInputMode.SRT_VIDEO,
+            )
 
         self.assertEqual(video, prepared.video_path)
         self.assertEqual(subtitle, prepared.subtitle_path)
 
-    def test_output_names_are_unique_for_feature_combinations(self):
+    def test_output_path_is_project_owned_for_all_feature_combinations(self):
         key = ProfileKey.for_component("studio", "instagram")
-        subtitle = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(key, "single_line")
-        )
-        resolver = StudioOutputPathResolver("output/studio-test")
+        project = type("Project", (), {
+            "video_path": lambda self: Path(
+                "output/studio-test/video/studio-test.mp4"
+            ),
+        })()
+        resolver = StudioOutputPathResolver(project)
         intro = IntroOutroSelection(Path("Intro marca (01).mp4"), "intro")
         outro = IntroOutroSelection(Path("Outro marca (01).mp4"), "outro")
         plans = {
@@ -96,23 +103,15 @@ class StudioFinalContractTest(unittest.TestCase):
             "outro": IntroOutroPlan(outro=outro),
             "both": IntroOutroPlan(intro=intro, outro=outro),
         }
-        names = set()
-        for leaks in (False, True):
-            for music in (None, Path("Música ambiente 01.mp3")):
-                for plan in plans.values():
-                    path = resolver.resolve(
-                        "Vídeo prueba (01).mp4",
-                        key,
-                        subtitle,
-                        light_leaks_enabled=leaks,
-                        music_path=music,
-                        intro_outro_selection=plan,
-                    )
-                    names.add(path.name)
+        paths = set()
+        for music in (None, Path("Música ambiente 01.mp3")):
+            for plan in plans.values():
+                paths.add(resolver.resolve(key))
 
-        self.assertEqual(16, len(names))
-        self.assertTrue(all(" " not in name for name in names))
-        self.assertTrue(all("(" not in name and ")" not in name for name in names))
+        self.assertEqual(
+            {Path("output/studio-test/video/studio-test.mp4")},
+            paths,
+        )
 
     def test_runtime_scaffolding_names_are_retired(self):
         self.assertTrue(hasattr(start, "preparar_studio"))
@@ -315,7 +314,6 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         duration,
         style="single_line",
         source_audio=True,
-        leaks=False,
         music=False,
         intro=False,
         outro=False,
@@ -339,14 +337,6 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
             )
             self._music(music_path)
             protected.append(music_path)
-
-        selector = None
-        if leaks:
-            leak_paths = self._leaks(root / "Light Leaks (prueba ágil)")
-            selector = StudioLightLeakSelector(
-                root / "Light Leaks (prueba ágil)", self._FirstAssetRng()
-            )
-            protected.extend(leak_paths)
 
         intro_path = None
         outro_path = None
@@ -373,24 +363,21 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
                     IntroOutroSelection(outro_path, "outro") if outro else None
                 ),
             )
-        output = StudioOutputPathResolver(root / "salida STUDIO").resolve(
-            source,
-            key,
-            subtitle_profile,
-            light_leaks_enabled=leaks,
-            music_path=music_path,
-            intro_outro_selection=plan,
-        )
+        project = type("Project", (), {
+            "video_path": lambda self: (
+                root / "salida STUDIO" / "video" / "studio.mp4"
+            ),
+        })()
+        output = StudioOutputPathResolver(project).resolve(key)
         expected_duration = duration + (0.5 if intro else 0) + (0.5 if outro else 0)
         before = self._hashes(protected)
-        result = StudioRenderService(light_leaks_selector=selector).render(
+        result = StudioRenderService().render(
             source,
             subtitle,
             key,
             profile,
             subtitle_profile,
             output,
-            light_leaks_enabled=leaks,
             music_path=music_path,
             intro_outro_selection=plan,
         )
@@ -406,11 +393,6 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
             self.assertGreater(
                 self._tone_amplitude(result.output_path, 880, start=0.6 if intro else 0.1),
                 0.008,
-            )
-        if leaks:
-            self.assertLess(
-                self._tone_amplitude(result.output_path, 1760, start=0.6 if intro else 0.1),
-                0.005,
             )
         if plan is not None:
             self.assertEqual("copy", result.intro_outro_command[
@@ -442,7 +424,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             result = self._render(
                 Path(directory), "instagram", 5.4,
-                leaks=True, music=True, intro=True, outro=True,
+                music=True, intro=True, outro=True,
             )
             self.assertGreater(self._frame_mean(result.output_path, 0.7), 10)
             self.assertLess(self._frame_mean(result.output_path, 3.0), 10)
@@ -452,7 +434,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             result = self._render(
                 Path(directory), "youtube", 5.4,
-                style="word_by_word", leaks=True, music=True,
+                style="word_by_word", music=True,
                 intro=True, outro=True,
             )
             self.assertGreater(self._frame_mean(result.output_path, 0.7), 10)
@@ -471,7 +453,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="STUDIO prueba (área) ") as directory:
             result = self._render(
                 Path(directory), "youtube", 1.4,
-                leaks=True, music=True, intro=True, outro=True,
+                music=True, intro=True, outro=True,
                 special_names=True,
             )
             self.assertNotIn(" ", result.output_path.name)

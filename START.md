@@ -123,13 +123,16 @@ according to the selected product route and project name.
 
 ### Studio Runtime
 
-Place exactly one `.mp4` and one UTF-8 `.srt` file in:
+Choose one Studio input mode and place its source files in the matching directory:
 
 ```text
-input/studio/
+input/studio/srt_video/  # exactly one .mp4 and one UTF-8 .srt
+input/studio/video/      # exactly one .mp4
 ```
 
-Then select `Studio`, the platform and subtitle style, followed by the optional Light Leaks, music, and INTRO/OUTRO choices. Studio preserves the source files and writes its validated result under `output/studio/<platform>/`.
+Then select `Studio`, the platform, input mode, subtitle style, optional music, and INTRO/OUTRO. Studio preserves source files and writes its validated result under the selected project output.
+
+Place optional INTRO assets in `assets/videos/intro_outro/intro/` and optional OUTRO assets in `assets/videos/intro_outro/outro/`. The selected position determines which directory is queried.
 
 ---
 

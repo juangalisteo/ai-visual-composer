@@ -29,13 +29,11 @@ class SubtitleBuilder:
 
         start = time.perf_counter()
 
-        project = ProjectManager()
-
         if audio_path is None:
-            audio_path = project.audio_path()
+            audio_path = ProjectManager().audio_path()
 
         if output_path is None:
-            output_path = project.subtitle_path()
+            output_path = ProjectManager().subtitle_path()
 
         audio_path = Path(
             audio_path

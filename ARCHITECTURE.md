@@ -313,22 +313,20 @@ Its source contract is:
 
 ```text
 input/studio/
-├── exactly one MP4
-└── exactly one UTF-8 SRT
+├── srt_video/  # exactly one MP4 and one UTF-8 SRT
+└── video/      # exactly one MP4
 ```
 
-The SRT is authoritative: Studio preserves its text, order, and timings, applies the selected component-scoped subtitle render style with zero offset, and does not invoke Whisper, SubtitleBuilder, or SrtOptimizer.
+For `SRT + VIDEO`, the SRT is authoritative: Studio preserves its text, order, and timings. For `VIDEO`, Studio uses the canonical external-media subtitle preparation. Both modes apply the selected component-scoped subtitle profile with zero offset.
 
 The complete flow is:
 
 ```text
-External MP4 + SRT
+External MP4 + SRT or MP4
    ↓
 Studio profile (Instagram / YouTube)
    ↓
 Subtitle style
-   ↓
-Optional Light Leaks (1 s active / 4 s clean)
    ↓
 Optional explicit music selection
    ↓
@@ -336,7 +334,7 @@ Single audiovisual FFmpeg render
    ↓
 Optional INTRO / OUTRO concat with stream copy
    ↓
-Validated output/studio/<platform>/ result
+Validated project video result
 ```
 
 Studio has its own `ProfileKey`, main profiles, subtitle profiles, input preparation, output naming, and render service. It does not fall back to Guion, Imagen, or Video and does not invoke Ollama, Flux, Wan, ComfyUI, Motion, storyboard generation, or narrative audio generation.
@@ -344,6 +342,10 @@ Studio has its own `ProfileKey`, main profiles, subtitle profiles, input prepara
 Its base render preserves aspect ratio through `scale` plus `pad`, emits H.264/yuv420p video and AAC 48 kHz stereo audio, and uses the profile resolution and FPS. Source audio remains at nominal gain; a compatible silent stream is supplied when the source has no audio. Optional music is mixed at `0.25` with `amix normalize=0` and a `0.95` limiter.
 
 When INTRO or OUTRO is selected, only incompatible assets are normalized. The validated Studio principal is then concatenated through the concat demuxer with `-c copy`, so it is not encoded a second time.
+
+The shared `IntroOutroCatalog` resolves assets only from the semantic directories
+`assets/videos/intro_outro/intro/` and `assets/videos/intro_outro/outro/`.
+The same catalog, plan, and stream-copy composer are used by every flow that produces a final audiovisual video.
 
 ---
 
@@ -555,7 +557,7 @@ input/guion.txt
 input/tema.txt
 input/guion_imagen.txt
 input/guion_video.txt
-input/studio/ (one MP4 and one SRT at runtime)
+input/studio/ (selected `srt_video` or `video` runtime input)
 ```
 
 Their responsibilities are deliberately separated.
@@ -615,7 +617,7 @@ Produces standalone I2V video clips.
 
 ## `input/studio/`
 
-Runtime source directory for Studio. It requires exactly one MP4 and one UTF-8 SRT, discovered by extension rather than by a fixed filename. Runtime media is ignored by Git while `.gitkeep` preserves the directory.
+Runtime source directory for Studio. `srt_video/` requires exactly one MP4 and one UTF-8 SRT; `video/` requires exactly one MP4. Candidates are discovered by extension rather than by fixed filenames. Runtime media is ignored by Git while `.gitkeep` preserves both input-mode directories.
 
 ---
 
@@ -627,7 +629,7 @@ Generated runtime projects are grouped by main product entry:
 output/guion/
 output/imagen/
 output/video/
-output/studio/
+output/<project>/video/
 ```
 
 Depending on the execution path, projects may contain:
@@ -1497,7 +1499,7 @@ AI VISUAL COMPOSER
        ↓
     EXTERNAL MP4 + AUTHORITATIVE SRT
        ↓
-    SUBTITLE RENDER + OPTIONAL LIGHT LEAKS / MUSIC
+    SUBTITLE RENDER + OPTIONAL MUSIC
        ↓
     OPTIONAL INTRO / OUTRO STREAM COPY
        ↓

@@ -3,6 +3,7 @@ import os
 import secrets
 import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from app.managers.pipeline_summary import PipelineSummary
 from app.managers.project_manager import ProjectManager
@@ -30,10 +31,14 @@ from app.modules.video_component import (
 )
 from app.modules.studio import (
     StudioInputPreparationService,
+    StudioInputMode,
     StudioOutputPathResolver,
     StudioPreparation,
     StudioProfileLoader,
     StudioRenderService,
+)
+from app.modules.subtitles.external_media_subtitles import (
+    ExternalMediaSubtitlePreparationService,
 )
 
 from app.domain.adapters import StoryboardSceneAdapter
@@ -54,8 +59,8 @@ from app.shared.profile_resolver import ProfileResolver
 def iniciar(
     subtitle_style=None,
     intro_outro_selection=None,
-    studio_light_leaks_enabled=False,
     studio_music_path=None,
+    studio_input_mode=None,
 ):
     pipeline_start = time.perf_counter()
 
@@ -65,10 +70,13 @@ def iniciar(
     ).strip().lower()
 
     if pipeline_mode == "studio":
+        project = ProjectManager()
+        project.setup()
         studio_options = {
             "subtitle_style": subtitle_style,
-            "light_leaks_enabled": studio_light_leaks_enabled,
             "music_path": studio_music_path,
+            "input_mode": studio_input_mode,
+            "project": project,
         }
         if intro_outro_selection is not None:
             studio_options["intro_outro_selection"] = intro_outro_selection
@@ -319,6 +327,14 @@ def iniciar(
             images_manifest_path
         )
 
+    video_builder_options = {
+        "subtitle_profile": subtitle_profile
+    }
+    if intro_outro_selection is not None:
+        video_builder_options[
+            "intro_outro_selection"
+        ] = intro_outro_selection
+
     if (
         visual_pipeline == "video"
         and pipeline_mode == "full"
@@ -359,14 +375,6 @@ def iniciar(
             video_clips_manifest_path
         )
 
-        video_builder_options = {
-            "subtitle_profile": subtitle_profile
-        }
-        if intro_outro_selection is not None:
-            video_builder_options[
-                "intro_outro_selection"
-            ] = intro_outro_selection
-
         video_path, video_elapsed = (
             _measure_stage(
                 VideoBuilder(
@@ -394,7 +402,7 @@ def iniciar(
         video_path, video_elapsed = (
             _measure_stage(
                 VideoBuilder(
-                    subtitle_profile=subtitle_profile
+                    **video_builder_options
                 ).build
             )
         )
@@ -417,6 +425,7 @@ def iniciar(
 
 def preparar_studio(
     subtitle_style,
+    input_mode,
     config_manager=None,
     profile_loader=None,
     input_preparation_service=None,
@@ -441,7 +450,7 @@ def preparar_studio(
     prepared_input = (
         input_preparation_service
         or StudioInputPreparationService()
-    ).prepare(profile)
+    ).prepare(profile, input_mode)
 
     return StudioPreparation(
         profile_key=profile_key,
@@ -449,45 +458,66 @@ def preparar_studio(
         subtitle_profile=subtitle_profile,
         video_path=prepared_input.video_path,
         subtitle_path=prepared_input.subtitle_path,
+        input_mode=prepared_input.mode.value,
     )
 
 
 def ejecutar_studio(
     subtitle_style,
-    light_leaks_enabled=False,
+    input_mode,
     music_path=None,
     intro_outro_selection=None,
     preparation_service=None,
     render_service=None,
     output_path_resolver=None,
+    external_subtitle_preparation_service=None,
+    project=None,
 ):
+    if project is None:
+        project = ProjectManager()
+        project.setup()
     preparation = (
         preparation_service
         or preparar_studio
-    )(subtitle_style=subtitle_style)
-    output_options = {
+    )(
+        subtitle_style=subtitle_style,
+        input_mode=input_mode,
+    )
+    render_options = {
         "video_path": preparation.video_path,
         "profile_key": preparation.profile_key,
         "subtitle_profile": preparation.subtitle_profile,
-        "light_leaks_enabled": light_leaks_enabled,
         "music_path": music_path,
-    }
-    render_options = {
-        **output_options,
         "profile": preparation.profile,
     }
     if intro_outro_selection is not None:
-        output_options["intro_outro_selection"] = intro_outro_selection
         render_options["intro_outro_selection"] = intro_outro_selection
     output_path = (
         output_path_resolver
         or StudioOutputPathResolver()
     ).resolve(
-        **output_options
+        profile_key=preparation.profile_key,
+        project=project,
     )
-    render_options["subtitle_path"] = preparation.subtitle_path
     render_options["output_path"] = output_path
-    return (render_service or StudioRenderService()).render(**render_options)
+    renderer = render_service or StudioRenderService()
+    if preparation.input_mode == StudioInputMode.SRT_VIDEO.value:
+        render_options["subtitle_path"] = preparation.subtitle_path
+        return renderer.render(**render_options)
+
+    with TemporaryDirectory(
+        prefix="ai_visual_composer_studio_whisper_"
+    ) as directory:
+        subtitles = (
+            external_subtitle_preparation_service
+            or ExternalMediaSubtitlePreparationService()
+        ).prepare(
+            video_path=preparation.video_path,
+            working_directory=directory,
+        )
+        render_options["subtitle_path"] = subtitles.subtitle_path
+        render_options["subtitle_timing"] = subtitles.timing
+        return renderer.render(**render_options)
 
 
 def cargar_o_generar_guion(

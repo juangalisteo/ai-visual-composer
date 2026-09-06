@@ -13,7 +13,6 @@ import main
 from app.controllers.run_controller import RunController
 from app.core.start import ejecutar_studio, iniciar
 from app.modules.studio import (
-    StudioLightLeakSelector,
     StudioOutputPathResolver,
     StudioProfileLoader,
     StudioRenderService,
@@ -74,14 +73,20 @@ class StudioPhase5Test(unittest.TestCase):
             return_value={"profile_key": self.profile_key},
         ), patch.object(
             controller,
+            "select_studio_input_mode",
+            return_value="srt_video",
+        ), patch.object(
+            controller,
             "select_studio_subtitle_config",
             return_value="single_line",
-        ), patch.object(
-            controller, "select_studio_light_leaks", return_value=False
         ), patch.object(
             controller, "select_studio_music", return_value=None
         ), patch.object(
             controller, "select_studio_intro_outro", return_value=None
+        ), patch.object(
+            controller, "ask_project_name", return_value="studio project"
+        ), patch.object(
+            controller, "ask_clear_output", return_value=False
         ):
             options = controller.run()
 
@@ -89,36 +94,49 @@ class StudioPhase5Test(unittest.TestCase):
 
     def test_studio_menu_selects_intro_outro_and_allows_same_asset(self):
         with tempfile.TemporaryDirectory() as directory:
-            asset = Path(directory) / "brand.mp4"
-            asset.touch()
+            root = Path(directory)
+            intro = root / "intro"
+            outro = root / "outro"
+            intro.mkdir()
+            outro.mkdir()
+            intro_asset = intro / "brand.mp4"
+            outro_asset = outro / "brand.mp4"
+            intro_asset.touch()
+            outro_asset.touch()
             controller = RunController(
-                intro_outro_catalog=IntroOutroCatalog(directory)
+                intro_outro_catalog=IntroOutroCatalog(root)
             )
             with patch("builtins.input", side_effect=("4", "1", "1")):
                 plan = controller.select_studio_intro_outro()
 
-        self.assertEqual(asset, plan.intro.asset_path)
-        self.assertEqual(asset, plan.outro.asset_path)
+        self.assertEqual(intro_asset, plan.intro.asset_path)
+        self.assertEqual(outro_asset, plan.outro.asset_path)
 
     def test_studio_menu_selects_single_positions_dynamically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            first = root / "a.mp4"
-            second = root / "b.MP4"
+            intro_directory = root / "intro"
+            outro_directory = root / "outro"
+            intro_directory.mkdir()
+            outro_directory.mkdir()
+            first = intro_directory / "a.mp4"
+            second = intro_directory / "b.MP4"
+            outro_asset = outro_directory / "c.mp4"
             first.touch()
             second.touch()
+            outro_asset.touch()
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
             with patch("builtins.input", side_effect=("2", "2")):
                 intro = controller.select_studio_intro_outro()
             with patch("builtins.input", side_effect=("3", "1")):
-                outro = controller.select_studio_intro_outro()
+                outro_plan = controller.select_studio_intro_outro()
 
         self.assertEqual(second, intro.intro.asset_path)
         self.assertIsNone(intro.outro)
-        self.assertEqual(first, outro.outro.asset_path)
-        self.assertIsNone(outro.intro)
+        self.assertEqual(outro_asset, outro_plan.outro.asset_path)
+        self.assertIsNone(outro_plan.intro)
 
     def test_requested_selection_without_assets_fails_fast(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -131,7 +149,10 @@ class StudioPhase5Test(unittest.TestCase):
                 controller.select_studio_intro_outro()
 
     def test_main_and_start_transport_structured_plan(self):
-        intro = self._selection("assets/videos/intro_outro/a.mp4", "intro")
+        intro = self._selection(
+            "assets/videos/intro_outro/intro/a.mp4",
+            "intro",
+        )
         plan = IntroOutroPlan(intro=intro)
         options = {
             "profile_component": "studio",
@@ -140,14 +161,13 @@ class StudioPhase5Test(unittest.TestCase):
             "subtitle_config": "single_line",
             "voice_config": "",
             "music_category": None,
-            "overlays_mode": "off",
             "project_name": "",
             "visual_pipeline": "studio",
             "script_source": "external",
             "design_target": "",
             "pipeline_mode": "studio",
-            "studio_light_leaks_enabled": False,
             "studio_music_path": None,
+            "studio_input_mode": "srt_video",
             "intro_outro_selection": plan,
             "clear_output": False,
         }
@@ -159,29 +179,37 @@ class StudioPhase5Test(unittest.TestCase):
         start.assert_called_once_with(
             subtitle_style="single_line",
             intro_outro_selection=plan,
-            studio_light_leaks_enabled=False,
             studio_music_path=None,
+            studio_input_mode="srt_video",
         )
 
         with patch.dict(
             "os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True
-        ), patch("app.core.start.ejecutar_studio") as studio:
-            iniciar(subtitle_style="single_line", intro_outro_selection=plan)
+        ), patch("app.core.start.ejecutar_studio") as studio, patch(
+            "app.core.start.ProjectManager"
+        ) as projects:
+            iniciar(
+                subtitle_style="single_line",
+                intro_outro_selection=plan,
+                studio_input_mode="srt_video",
+            )
         studio.assert_called_once_with(
             subtitle_style="single_line",
-            light_leaks_enabled=False,
             music_path=None,
+            input_mode="srt_video",
             intro_outro_selection=plan,
+            project=projects.return_value,
         )
 
-    def test_phase_two_transports_plan_to_naming_and_renderer(self):
+    def test_phase_two_transports_plan_to_project_output_and_renderer(self):
         plan = IntroOutroPlan(
             intro=self._selection("intro.mp4", "intro"),
             outro=self._selection("outro.mp4", "outro"),
         )
         preparation = SimpleNamespace(
-            video_path=Path("input/studio/source.mp4"),
-            subtitle_path=Path("input/studio/source.srt"),
+            video_path=Path("input/studio/srt_video/source.mp4"),
+            subtitle_path=Path("input/studio/srt_video/source.srt"),
+            input_mode="srt_video",
             profile_key=self.profile_key,
             profile=self.profile,
             subtitle_profile=self.subtitle_profile,
@@ -190,39 +218,34 @@ class StudioPhase5Test(unittest.TestCase):
         renderer.render.return_value = "rendered"
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
+        project = Mock()
         result = ejecutar_studio(
             subtitle_style="single_line",
+            input_mode="srt_video",
             intro_outro_selection=plan,
             preparation_service=Mock(return_value=preparation),
             render_service=renderer,
             output_path_resolver=resolver,
+            project=project,
         )
         self.assertEqual("rendered", result)
-        self.assertIs(
-            plan, resolver.resolve.call_args.kwargs["intro_outro_selection"]
+        self.assertEqual(
+            {
+                "profile_key": preparation.profile_key,
+                "project": project,
+            },
+            resolver.resolve.call_args.kwargs,
         )
         self.assertIs(
             plan, renderer.render.call_args.kwargs["intro_outro_selection"]
         )
 
-    def test_output_naming_preserves_layers_and_identifies_assets(self):
-        plan = IntroOutroPlan(
-            intro=self._selection("Opening Brand.mp4", "intro"),
-            outro=self._selection("Closing Brand.mp4", "outro"),
-        )
-        output = StudioOutputPathResolver().resolve(
-            "source.mp4",
-            self.profile_key,
-            self.subtitle_profile,
-            light_leaks_enabled=True,
-            music_path="Music Track.mp3",
-            intro_outro_selection=plan,
-        )
-        self.assertTrue(
-            output.name.endswith(
-                "_light_leaks_music_Music_Track"
-                "_intro_Opening_Brand_outro_Closing_Brand.mp4"
-            )
+    def test_output_path_is_not_derived_from_intro_outro_assets(self):
+        project = Mock()
+        project.video_path.return_value = Path("output/studio/video/studio.mp4")
+        self.assertEqual(
+            Path("output/studio/video/studio.mp4"),
+            StudioOutputPathResolver(project).resolve(self.profile_key),
         )
 
     def test_composer_uses_one_three_source_concat_and_normalizes_only_asset(self):
@@ -501,29 +524,18 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def _render_principal(self, root, leaks=False, music=None):
+    def _render_principal(self, root, music=None):
         source = root / "source.mp4"
         subtitle = root / "source.srt"
         self._video(source, 1.5, "black")
         self._srt(subtitle)
-        selector = None
-        if leaks:
-            leak_root = root / "Light Leaks"
-            leak_root.mkdir()
-            self._video(leak_root / "leak.mp4", 0.4, "white")
-            selector = StudioLightLeakSelector(
-                leak_root, self._FirstAssetRng()
-            )
-        result = StudioRenderService(
-            light_leaks_selector=selector
-        ).render(
+        result = StudioRenderService().render(
             source,
             subtitle,
             self.profile_key,
             self.profile,
             self.subtitle_profile,
             root / "principal.mp4",
-            light_leaks_enabled=leaks,
             music_path=music,
         )
         return source, subtitle, result.output_path
@@ -657,23 +669,15 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             subtitle = root / "source.srt"
             self._video(source, 1.5, "black")
             self._srt(subtitle)
-            leak_root = root / "Light Leaks"
-            leak_root.mkdir()
-            leak = leak_root / "leak.mp4"
-            self._video(leak, 0.4, "white")
             intro = root / "intro.mp4"
             outro = root / "outro.mp4"
             self._video(intro, 0.5, "red")
             self._video(outro, 0.5, "blue")
             protected = {
                 path: hashlib.sha256(path.read_bytes()).digest()
-                for path in (source, subtitle, music, leak, intro, outro)
+                for path in (source, subtitle, music, intro, outro)
             }
-            service = StudioRenderService(
-                light_leaks_selector=StudioLightLeakSelector(
-                    leak_root, self._FirstAssetRng()
-                )
-            )
+            service = StudioRenderService()
             result = service.render(
                 source,
                 subtitle,
@@ -681,7 +685,6 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
                 self.profile,
                 self.subtitle_profile,
                 root / "case_e.mp4",
-                light_leaks_enabled=True,
                 music_path=music,
                 intro_outro_selection=IntroOutroPlan(
                     intro=IntroOutroSelection(intro, "intro"),

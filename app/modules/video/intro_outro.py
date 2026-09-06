@@ -11,6 +11,7 @@ from app.modules.video.video_validator import VideoValidator
 INTRO_OUTRO_DIRECTORY = Path(
     "assets/videos/intro_outro"
 )
+INTRO_OUTRO_POSITIONS = ("intro", "outro")
 
 
 @dataclass(frozen=True)
@@ -80,14 +81,21 @@ class IntroOutroCatalog:
     ):
         self.directory = Path(directory)
 
-    def discover(self):
-        if not self.directory.is_dir():
+    def discover(self, position):
+        position = str(position).strip().lower()
+        if position not in INTRO_OUTRO_POSITIONS:
+            raise ValueError(
+                "La posicion del catalogo INTRO / OUTRO debe ser intro u outro."
+            )
+
+        directory = self.directory / position
+        if not directory.is_dir():
             return ()
 
         return tuple(sorted(
             (
                 path
-                for path in self.directory.iterdir()
+                for path in directory.iterdir()
                 if path.is_file()
                 and path.suffix.lower() == ".mp4"
             ),

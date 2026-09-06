@@ -379,6 +379,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 )
 
                 FakeVoiceBuilder.received_scripts = []
+                intro_outro_selection = object()
 
                 with patch(
                     "main.RunController"
@@ -435,6 +436,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "voice_config": "masculina",
                         "music_category": None,
                         "overlays_mode": "smart",
+                        "intro_outro_selection": intro_outro_selection,
                         "project_name": "guion component",
                         "clear_output": True
                     }
@@ -482,6 +484,10 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     FakeVoiceBuilder.received_scripts
                 )
                 video_builder.return_value.build.assert_called_once()
+                video_builder.assert_called_once_with(
+                    subtitle_profile=FakeConfigManager.subtitle_profile,
+                    intro_outro_selection=intro_outro_selection,
+                )
                 image_builder.return_value.build.assert_called_once()
                 storyboard_builder.return_value.build.assert_called_once()
                 subtitle_builder.return_value.build.assert_called_once()

@@ -30,14 +30,6 @@
                 "max_duration_difference": 0.2
             }
         },
-        "light_leaks": {
-            "pattern": "AB",
-            "active_duration_seconds": 1.0,
-            "clean_duration_seconds": 4.0,
-            "avoid_immediate_repeat": true,
-            "opacity": 0.15,
-            "blend_mode": "screen"
-        },
         "music": {
             "volume": 0.25,
             "loop_shorter": true,

@@ -1,20 +1,14 @@
 from app.modules.studio.input_preparation import (
     PreparedStudioInput,
     StudioInputPreparationService,
+    StudioInputMode,
+    coerce_studio_input_mode,
 )
 from app.modules.studio.profile import (
     StudioProfile,
-    StudioLightLeaksConfig,
     StudioMusicConfig,
     StudioProfileLoader,
     StudioPreparation,
-)
-from app.modules.studio.light_leaks import (
-    StudioLightLeakOperation,
-    StudioLightLeakSegment,
-    StudioLightLeakSelector,
-    StudioLightLeaksPlanBuilder,
-    StudioLightLeaksPlanner,
 )
 from app.modules.studio.render_service import (
     StudioOutputPathResolver,
@@ -26,8 +20,9 @@ from app.modules.studio.render_service import (
 __all__ = [
     "PreparedStudioInput",
     "StudioInputPreparationService",
+    "StudioInputMode",
+    "coerce_studio_input_mode",
     "StudioProfile",
-    "StudioLightLeaksConfig",
     "StudioMusicConfig",
     "StudioProfileLoader",
     "StudioPreparation",
@@ -35,9 +30,4 @@ __all__ = [
     "StudioOutputValidator",
     "StudioRenderResult",
     "StudioRenderService",
-    "StudioLightLeakOperation",
-    "StudioLightLeakSegment",
-    "StudioLightLeakSelector",
-    "StudioLightLeaksPlanBuilder",
-    "StudioLightLeaksPlanner",
 ]

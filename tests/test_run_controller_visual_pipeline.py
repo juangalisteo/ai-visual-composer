@@ -446,6 +446,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             return_value="smart"
         ) as overlays_mock, patch.object(
             controller,
+            "select_intro_outro",
+            return_value=None
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="script image project"
         ) as project_mock, patch.object(
@@ -481,6 +485,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
+        intro_outro_mock.assert_called_once()
 
     def test_run_includes_visual_pipeline_without_changing_existing_options(self):
         controller = RunController()
@@ -520,6 +525,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             return_value="smart"
         ), patch.object(
             controller,
+            "select_intro_outro",
+            return_value=None
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="project"
         ), patch.object(
@@ -553,6 +562,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "",
             options["design_target"]
         )
+        intro_outro_mock.assert_called_once()
 
     def test_script_entry_selects_video_destination_and_reuses_video_flow(self):
         controller = RunController()
@@ -773,6 +783,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_overlays_mode"
         ) as overlays_mock, patch.object(
             controller,
+            "select_intro_outro"
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="design image"
         ) as project_mock, patch.object(
@@ -791,6 +804,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         voice_mock.assert_not_called()
         music_mock.assert_not_called()
         overlays_mock.assert_not_called()
+        intro_outro_mock.assert_not_called()
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
         self.assertEqual(
@@ -882,6 +896,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_overlays_mode"
         ) as overlays_mock, patch.object(
             controller,
+            "select_intro_outro"
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="design video"
         ) as project_mock, patch.object(
@@ -900,6 +917,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         voice_mock.assert_not_called()
         music_mock.assert_not_called()
         overlays_mock.assert_not_called()
+        intro_outro_mock.assert_not_called()
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
         self.assertEqual(
@@ -982,6 +1000,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_overlays_mode"
         ) as overlays_mock, patch.object(
             controller,
+            "select_intro_outro"
+        ) as intro_outro_mock, patch.object(
+            controller,
             "ask_project_name",
             return_value="audio project"
         ), patch.object(
@@ -995,6 +1016,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_not_called()
+        intro_outro_mock.assert_not_called()
         self.assertEqual(
             "",
             options["subtitle_config"]
@@ -1112,6 +1134,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     return_value="smart"
                 ) as overlays_mock, patch.object(
                     controller,
+                    "select_intro_outro",
+                    return_value=None
+                ) as intro_outro_mock, patch.object(
+                    controller,
                     "ask_project_name",
                     return_value="project"
                 ), patch.object(
@@ -1125,12 +1151,14 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 music_mock.assert_called_once()
                 if pipeline_mode == "full":
                     overlays_mock.assert_called_once()
+                    intro_outro_mock.assert_called_once()
                     self.assertEqual(
                         "smart",
                         options["overlays_mode"]
                     )
                 else:
                     overlays_mock.assert_not_called()
+                    intro_outro_mock.assert_not_called()
                     self.assertEqual(
                         "off",
                         options["overlays_mode"]
@@ -1238,6 +1266,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_overlays_mode"
                 ) as overlays_mock, patch.object(
                     controller,
+                    "select_intro_outro"
+                ) as intro_outro_mock, patch.object(
+                    controller,
                     "ask_project_name",
                     return_value="project"
                 ), patch.object(
@@ -1248,6 +1279,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     options = controller.run()
 
                 overlays_mock.assert_not_called()
+                intro_outro_mock.assert_not_called()
                 self.assertEqual(
                     "off",
                     options["overlays_mode"]

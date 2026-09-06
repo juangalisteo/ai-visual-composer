@@ -25,7 +25,10 @@ def main():
     )
     os.environ["MC_VOICE_CONFIG"] = options["voice_config"]
     os.environ["MC_MUSIC_CATEGORY"] = options["music_category"] or ""
-    os.environ["MC_OVERLAYS_MODE"] = options["overlays_mode"]
+    if "overlays_mode" in options:
+        os.environ["MC_OVERLAYS_MODE"] = options["overlays_mode"]
+    else:
+        os.environ.pop("MC_OVERLAYS_MODE", None)
     os.environ["MC_PROJECT_NAME"] = options["project_name"]
     os.environ["MC_VISUAL_PIPELINE"] = options["visual_pipeline"]
     os.environ["MC_SCRIPT_SOURCE"] = options["script_source"]
@@ -49,20 +52,26 @@ def main():
             intro_outro_selection
         )
     if options.get("pipeline_mode") == "studio":
-        start_options["studio_light_leaks_enabled"] = bool(
-            options.get("studio_light_leaks_enabled", False)
-        )
         start_options["studio_music_path"] = options.get(
             "studio_music_path"
         )
+        start_options["studio_input_mode"] = options.get(
+            "studio_input_mode"
+        )
 
     try:
-        iniciar(**start_options)
+        result = iniciar(**start_options)
     except VisualDesignInterpretationError as error:
         print(
             f"ERROR: {error}"
         )
         return 1
+
+    if options.get("pipeline_mode") == "studio":
+        print("\nSTUDIO COMPLETADO\n")
+        print("Output:")
+        print(result.output_path)
+
     return 0
 
 

@@ -66,6 +66,8 @@ class RunController:
         else:
             pipeline_mode = self.select_pipeline_mode()
 
+        produces_final_video = pipeline_mode == "full"
+
         profile = self.select_profile(
             self._profile_scope(
                 script_source=script_source,
@@ -94,13 +96,10 @@ class RunController:
             voice_config = self.select_voice_config()
             music_category = self.select_music_category()
 
-        if pipeline_mode == "full":
+        if produces_final_video:
             overlays_mode = self.select_overlays_mode()
 
-        if (
-            pipeline_mode == "full"
-            and visual_pipeline == "video"
-        ):
+        if produces_final_video:
             intro_outro_selection = (
                 self.select_intro_outro()
             )
@@ -464,33 +463,27 @@ class RunController:
 
         return self._select_from_list(configs)
 
-    def select_studio_light_leaks(self):
-        self._print("\n¿UTILIZAR LIGHT LEAKS?\n")
-        self._print("1. NO")
-        self._print("2. SÍ")
-        return self._select_from_list((False, True))
+    def select_studio_input_mode(self):
+        modes = ("srt_video", "video")
+        self._print("\nENTRADA\n")
+        self._print("1. SRT + VIDEO")
+        self._print("2. VIDEO")
+        return self._select_from_list(modes)
 
     def select_studio_music(self):
-        self._print("\n¿UTILIZAR MÚSICA?\n")
-        self._print("1. NO")
-        self._print("2. SÍ")
-        enabled = self._select_from_list((False, True))
+        self._print("\nMÚSICA\n")
+        self._print("1. Sí")
+        self._print("2. No")
+        enabled = self._select_from_list((True, False))
         if not enabled:
             return None
 
-        tracks = self.studio_music_selector.discover_tracks()
-        self._print("\nMÚSICA\n")
-        for index, track in enumerate(tracks, start=1):
-            try:
-                label = track.relative_to(
-                    self.studio_music_selector.music_path
-                )
-            except ValueError:
-                label = track.name
-            self._print(f"{index}. {label}")
-        return self._select_from_list(tracks)
+        return self.studio_music_selector.select("random")
 
     def select_studio_intro_outro(self):
+        return self.select_intro_outro()
+
+    def select_intro_outro(self):
         modes = ("none", "intro", "outro", "both")
         self._print("\nINTRO / OUTRO\n")
         self._print("1. NINGUNO")
@@ -501,28 +494,32 @@ class RunController:
         if mode == "none":
             return None
 
-        assets = self.intro_outro_catalog.discover()
-        if not assets:
-            raise FileNotFoundError(
-                "No hay archivos MP4 disponibles en "
-                "assets/videos/intro_outro/."
-            )
-
         intro = None
         outro = None
         if mode in {"intro", "both"}:
+            assets = self._require_intro_outro_assets("intro")
             intro = IntroOutroSelection(
-                self._select_studio_intro_outro_asset(assets, "INTRO"),
+                self._select_intro_outro_asset(assets, "INTRO"),
                 "intro",
             )
         if mode in {"outro", "both"}:
+            assets = self._require_intro_outro_assets("outro")
             outro = IntroOutroSelection(
-                self._select_studio_intro_outro_asset(assets, "OUTRO"),
+                self._select_intro_outro_asset(assets, "OUTRO"),
                 "outro",
             )
         return IntroOutroPlan(intro=intro, outro=outro)
 
-    def _select_studio_intro_outro_asset(self, assets, position):
+    def _require_intro_outro_assets(self, position):
+        assets = self.intro_outro_catalog.discover(position)
+        if not assets:
+            raise FileNotFoundError(
+                "No hay archivos MP4 disponibles para "
+                f"{position.upper()} en assets/videos/intro_outro/{position}/."
+            )
+        return assets
+
+    def _select_intro_outro_asset(self, assets, position):
         self._print(f"\nSELECCIONAR {position}\n")
         for index, asset_path in enumerate(assets, start=1):
             self._print(f"{index}. {asset_path.name}")
@@ -593,51 +590,6 @@ class RunController:
         )
 
         return selected
-
-    def select_intro_outro(self):
-        self._print("\nINTRO / OUTRO\n")
-        self._print("\u00bfUTILIZAR INTRO / OUTRO?")
-        self._print("1. No")
-        self._print("2. S\u00ed")
-
-        enabled = self._select_from_list(
-            (False, True)
-        )
-        if not enabled:
-            return None
-
-        assets = self.intro_outro_catalog.discover()
-        if not assets:
-            self._print(
-                "\nNo hay archivos MP4 disponibles en "
-                "assets/videos/intro_outro/."
-            )
-            return None
-
-        self._print("\nSELECCIONAR ARCHIVO\n")
-        for index, asset_path in enumerate(
-            assets,
-            start=1,
-        ):
-            self._print(
-                f"{index}. {asset_path.name}"
-            )
-        asset_path = self._select_from_list(
-            assets
-        )
-
-        positions = ("intro", "outro")
-        self._print("\nPOSICI\u00d3N\n")
-        self._print("1. INTRO")
-        self._print("2. OUTRO")
-        position = self._select_from_list(
-            positions
-        )
-
-        return IntroOutroSelection(
-            asset_path=asset_path,
-            position=position,
-        )
 
     def ask_project_name(self):
         self._print(
@@ -775,12 +727,14 @@ class RunController:
     def _run_studio(self):
         profile = self.select_profile("studio")
         profile_key = profile["profile_key"]
+        input_mode = self.select_studio_input_mode()
         subtitle_config = self.select_studio_subtitle_config(
             profile_key
         )
-        light_leaks_enabled = self.select_studio_light_leaks()
         music_path = self.select_studio_music()
         intro_outro_selection = self.select_studio_intro_outro()
+        project_name = self.ask_project_name()
+        clear_output = self.ask_clear_output()
 
         return {
             "visual_pipeline": "studio",
@@ -791,14 +745,13 @@ class RunController:
             "profile_platform": profile_key.platform.value,
             "profile_id": profile_key.profile_id,
             "subtitle_config": subtitle_config,
-            "studio_light_leaks_enabled": light_leaks_enabled,
+            "studio_input_mode": input_mode,
             "studio_music_path": str(music_path) if music_path else None,
             "voice_config": "",
             "music_category": None,
-            "overlays_mode": "off",
             "intro_outro_selection": intro_outro_selection,
-            "project_name": "",
-            "clear_output": False,
+            "project_name": project_name,
+            "clear_output": clear_output,
         }
 
     def _exit_application(self):

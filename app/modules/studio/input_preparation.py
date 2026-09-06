@@ -1,11 +1,31 @@
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 import re
+
+
+class StudioInputMode(str, Enum):
+    SRT_VIDEO = "srt_video"
+    VIDEO = "video"
+
+
+def coerce_studio_input_mode(value):
+    if isinstance(value, StudioInputMode):
+        return value
+    try:
+        return StudioInputMode(str(value).strip().lower())
+    except ValueError as error:
+        raise ValueError(
+            "Modo de entrada STUDIO no soportado: "
+            f"{value}."
+        ) from error
+
 
 @dataclass(frozen=True)
 class PreparedStudioInput:
     video_path: Path
-    subtitle_path: Path
+    subtitle_path: Path | None
+    mode: StudioInputMode
 
 
 class StudioInputPreparationService:
@@ -16,36 +36,47 @@ class StudioInputPreparationService:
     ):
         self.input_directory = Path(input_directory)
 
-    def prepare(self, profile):
-        directory = self._require_directory()
+    def prepare(self, profile, input_mode):
+        input_mode = coerce_studio_input_mode(input_mode)
+        directory = self._require_directory(input_mode)
         video_path = self._single_candidate(
             directory=directory,
             extensions=profile.video_extensions,
-            label="MP4"
+            label="MP4",
         )
+
+        if input_mode is StudioInputMode.VIDEO:
+            return PreparedStudioInput(
+                video_path=video_path,
+                subtitle_path=None,
+                mode=input_mode,
+            )
+
         subtitle_path = self._single_candidate(
             directory=directory,
             extensions=profile.subtitle_extensions,
-            label="SRT"
+            label="SRT",
         )
         self._validate_subtitle(subtitle_path)
         return PreparedStudioInput(
             video_path=video_path,
-            subtitle_path=subtitle_path
+            subtitle_path=subtitle_path,
+            mode=input_mode,
         )
 
-    def _require_directory(self):
-        if not self.input_directory.exists():
+    def _require_directory(self, input_mode):
+        directory = self.input_directory / input_mode.value
+        if not directory.exists():
             raise FileNotFoundError(
                 "No existe la carpeta de entrada STUDIO: "
-                f"{self.input_directory}"
+                f"{directory}"
             )
-        if not self.input_directory.is_dir():
+        if not directory.is_dir():
             raise NotADirectoryError(
                 "La entrada STUDIO debe ser una carpeta: "
-                f"{self.input_directory}"
+                f"{directory}"
             )
-        return self.input_directory
+        return directory
 
     def _single_candidate(
         self,
@@ -69,7 +100,7 @@ class StudioInputPreparationService:
         if not candidates:
             raise FileNotFoundError(
                 f"No se encontro ningun archivo {label} "
-                "en input/studio/."
+                f"en {directory}."
             )
         if len(candidates) > 1:
             names = ", ".join(path.name for path in candidates)

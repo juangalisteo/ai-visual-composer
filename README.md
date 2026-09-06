@@ -109,14 +109,14 @@ The video architecture supports both generated I2V material and still-image base
 
 **Studio** is the finishing component for externally supplied media.
 
-It accepts exactly one MP4 and one authoritative SRT from `input/studio/`, applies the selected Instagram or YouTube profile, and renders the subtitles without rewriting their text or timing. Light Leaks, music, and INTRO/OUTRO assets can be selected independently.
+It accepts either an external MP4 with an authoritative SRT or an MP4 for canonical subtitle preparation, applies the selected Instagram or YouTube profile, and renders the subtitles. Music and INTRO/OUTRO assets can be selected independently.
 
 ```text
-MP4 + SRT
+MP4 + SRT OR MP4
    ↓
 PLATFORM + SUBTITLE STYLE
    ↓
-OPTIONAL LIGHT LEAKS + MUSIC
+OPTIONAL MUSIC
    ↓
 OPTIONAL INTRO / OUTRO
    ↓
@@ -124,6 +124,10 @@ VALIDATED STUDIO OUTPUT
 ```
 
 Studio uses FFmpeg locally and does not invoke script generation, Whisper, Flux, Wan, or ComfyUI.
+
+INTRO and OUTRO assets use the shared position-specific catalog:
+`assets/videos/intro_outro/intro/` and `assets/videos/intro_outro/outro/`.
+Their directory, not their filename, defines their position for every final-video flow.
 
 ---
 
@@ -420,7 +424,7 @@ AI Visual Composer V2.0 includes:
 - fades;
 - FFmpeg final composition;
 - Studio rendering from an external MP4 and authoritative SRT;
-- optional Studio Light Leaks, music, and INTRO/OUTRO composition;
+- optional Studio music and INTRO/OUTRO composition;
 - Instagram profiles;
 - YouTube profiles;
 - generation manifests;

@@ -1,14 +1,13 @@
 from dataclasses import dataclass
 from pathlib import Path
-import re
+from tempfile import TemporaryDirectory
+
+from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
 
 from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
 )
 from app.modules.video.ffmpeg.runner import Runner
-from app.modules.video.ffmpeg.graphs.layer_compositor import (
-    LayerCompositor,
-)
 from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
@@ -21,11 +20,7 @@ from app.modules.video.intro_outro import (
 from app.shared.media_probe import MediaProbe
 from app.shared.profile_identity import ProfileComponent, ProfileKey
 from app.shared.subtitle_profile_identity import ResolvedSubtitleProfile
-from app.modules.studio.light_leaks import (
-    StudioLightLeakSelector,
-    StudioLightLeaksPlanBuilder,
-    StudioLightLeaksPlanner,
-)
+from app.managers.project_manager import ProjectManager
 
 
 @dataclass(frozen=True)
@@ -38,8 +33,6 @@ class StudioRenderResult:
     generated_duration: float
     source_had_audio: bool
     silence_added: bool
-    light_leaks_enabled: bool
-    light_leaks_operations: tuple
     music_path: Path | None
     intro_outro_selection: IntroOutroPlan | None = None
     intro_outro_command: tuple[str, ...] = ()
@@ -49,64 +42,27 @@ class StudioRenderResult:
 @dataclass(frozen=True)
 class StudioInputLayout:
     source_video: int
-    light_leaks: tuple[int, ...]
     source_audio: int
     music: int | None
 
 
 class StudioOutputPathResolver:
 
-    def __init__(self, output_root=Path("output/studio")):
-        self.output_root = Path(output_root)
+    def __init__(self, project=None):
+        self.project = project
 
     def resolve(
         self,
-        video_path,
         profile_key,
-        subtitle_profile,
-        light_leaks_enabled=False,
-        music_path=None,
-        intro_outro_selection=None,
+        project=None,
     ):
         if not isinstance(profile_key, ProfileKey):
             raise TypeError("STUDIO requiere un ProfileKey explicito.")
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("El output STUDIO requiere component=studio.")
 
-        source_stem = re.sub(
-            r"[^A-Za-z0-9._-]+",
-            "_",
-            Path(video_path).stem,
-        ).strip("._") or "studio"
-        style = subtitle_profile.key.style
-        style = style.value if hasattr(style, "value") else str(style)
-        suffix = "_light_leaks" if light_leaks_enabled else ""
-        if music_path is not None:
-            music_stem = re.sub(
-                r"[^A-Za-z0-9._-]+",
-                "_",
-                Path(music_path).stem,
-            ).strip("._") or "music"
-            suffix += f"_music_{music_stem}"
-        if intro_outro_selection is not None:
-            plan = self._intro_outro_plan(intro_outro_selection)
-            if plan.intro is not None:
-                suffix += f"_intro_{self._safe_stem(plan.intro.asset_path)}"
-            if plan.outro is not None:
-                suffix += f"_outro_{self._safe_stem(plan.outro.asset_path)}"
-        filename = (
-            f"{source_stem}_studio_{profile_key.platform.value}_{style}"
-            f"{suffix}.mp4"
-        )
-        return self.output_root / profile_key.platform.value / filename
-
-    @staticmethod
-    def _safe_stem(path):
-        return re.sub(
-            r"[^A-Za-z0-9._-]+",
-            "_",
-            Path(path).stem,
-        ).strip("._") or "asset"
+        project = project or self.project or ProjectManager()
+        return project.video_path()
 
     @staticmethod
     def _intro_outro_plan(selection):
@@ -193,16 +149,12 @@ class StudioRenderService:
         probe=None,
         output_validator=None,
         style_builder=None,
-        light_leaks_selector=None,
-        layer_compositor=None,
         intro_outro_composer=None,
     ):
         self.runner = runner or Runner()
         self.probe = probe or MediaProbe()
         self.output_validator = output_validator or StudioOutputValidator()
         self.style_builder = style_builder or SubtitleStyleBuilder()
-        self.light_leaks_selector = light_leaks_selector
-        self.layer_compositor = layer_compositor or LayerCompositor()
         self.intro_outro_composer = (
             intro_outro_composer or IntroOutroComposer()
         )
@@ -215,9 +167,9 @@ class StudioRenderService:
         profile,
         subtitle_profile,
         output_path,
-        light_leaks_enabled=False,
         music_path=None,
         intro_outro_selection=None,
+        subtitle_timing=None,
     ):
         self._require_contract(
             video_path,
@@ -255,35 +207,34 @@ class StudioRenderService:
             raise ValueError(
                 "STUDIO requiere offset=0 para preservar los timings SRT."
             )
-        if bool(subtitle_profile.cue_policy.get("uppercase", False)):
-            raise ValueError(
-                "STUDIO no altera el texto SRT para aplicar uppercase."
-            )
         subtitle_style = self.style_builder.build(
             subtitle_profile.render_style
-        )
-        light_leaks_operations = self._light_leaks_operations(
-            source_info.duration,
-            profile,
-            light_leaks_enabled,
         )
         temporary_path = principal_path.with_name(
             f"{principal_path.stem}.rendering{principal_path.suffix}"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         self._remove_temporary(temporary_path)
-        command = self.build_command(
-            video_path=video_path,
-            subtitle_path=subtitle_path,
-            output_path=temporary_path,
-            source_info=source_info,
-            profile=profile,
-            subtitle_style=subtitle_style,
-            light_leaks_operations=light_leaks_operations,
-            music_path=music_path,
+        subtitle_directory = TemporaryDirectory(
+            prefix="ai_visual_composer_studio_subtitles_"
         )
-
         try:
+            render_subtitle_path = self._write_render_subtitle(
+                source_path=subtitle_path,
+                target_directory=subtitle_directory.name,
+                subtitle_profile=subtitle_profile,
+                render_fps=profile.fps,
+                timing=subtitle_timing,
+            )
+            command = self.build_command(
+                video_path=video_path,
+                subtitle_path=render_subtitle_path,
+                output_path=temporary_path,
+                source_info=source_info,
+                profile=profile,
+                subtitle_style=subtitle_style,
+                music_path=music_path,
+            )
             self.runner.run(command)
             generated_duration = self.output_validator.validate(
                 output_path=temporary_path,
@@ -294,6 +245,8 @@ class StudioRenderService:
         except Exception:
             self._remove_temporary(temporary_path)
             raise
+        finally:
+            subtitle_directory.cleanup()
 
         final_output_path = principal_path
         final_expected_duration = source_info.duration
@@ -337,8 +290,6 @@ class StudioRenderService:
             generated_duration=final_generated_duration,
             source_had_audio=source_info.has_audio,
             silence_added=not source_info.has_audio,
-            light_leaks_enabled=light_leaks_enabled,
-            light_leaks_operations=light_leaks_operations,
             music_path=music_path,
             intro_outro_selection=normalized_selection,
             intro_outro_command=intro_outro_command,
@@ -353,14 +304,12 @@ class StudioRenderService:
         source_info,
         profile,
         subtitle_style,
-        light_leaks_operations=(),
         music_path=None,
     ):
         command, inputs = self._build_inputs(
             video_path=video_path,
             source_info=source_info,
             profile=profile,
-            light_leaks_operations=light_leaks_operations,
             music_path=music_path,
         )
         audio_source = f"[{inputs.source_audio}:a:0]"
@@ -386,27 +335,8 @@ class StudioRenderService:
             + ",".join(video_filters)
             + "[studio_base]"
         ]
-        current_stream = "[studio_base]"
-        for operation_index, operation in enumerate(light_leaks_operations):
-            current_stream, _ = self.layer_compositor.apply_operation(
-                filter_parts=filter_parts,
-                current_stream=current_stream,
-                operation={
-                    "start_time": operation.start_time,
-                    "end_time": operation.end_time,
-                    "blend_mode": operation.blend_mode,
-                    "opacity": operation.opacity,
-                },
-                input_index=inputs.light_leaks[operation_index],
-                operation_index=operation_index,
-                source_prefix="studio_leak_source",
-                output_prefix="studio_leak",
-                width=profile.width,
-                height=profile.height,
-                fps=profile.fps,
-            )
         filter_parts.append(
-            f"{current_stream}subtitles='{escaped_subtitle}':"
+            f"[studio_base]subtitles='{escaped_subtitle}':"
             f"fontsdir='{escaped_fonts}':"
             f"force_style='{self._escape_style(subtitle_style)}'[vout]"
         )
@@ -477,22 +407,10 @@ class StudioRenderService:
         video_path,
         source_info,
         profile,
-        light_leaks_operations,
         music_path,
     ):
         command = ["ffmpeg", "-y", "-i", str(Path(video_path))]
         next_index = 1
-        light_leak_indices = []
-        for operation in light_leaks_operations:
-            command.extend([
-                "-stream_loop",
-                "-1",
-                "-i",
-                str(operation.asset_path),
-            ])
-            light_leak_indices.append(next_index)
-            next_index += 1
-
         if source_info.has_audio:
             source_audio_index = 0
         else:
@@ -521,22 +439,37 @@ class StudioRenderService:
 
         return command, StudioInputLayout(
             source_video=0,
-            light_leaks=tuple(light_leak_indices),
             source_audio=source_audio_index,
             music=music_index,
         )
 
-    def _light_leaks_operations(self, duration, profile, enabled):
-        if not enabled:
-            return ()
-        selector = self.light_leaks_selector or StudioLightLeakSelector()
-        return StudioLightLeaksPlanBuilder(
-            planner=StudioLightLeaksPlanner(profile.light_leaks),
-            selector=selector,
-        ).build(duration)
-
     def promote(self, temporary_path, output_path):
         Path(temporary_path).replace(output_path)
+
+    @staticmethod
+    def _write_render_subtitle(
+        source_path,
+        target_directory,
+        subtitle_profile,
+        render_fps,
+        timing=None,
+    ):
+        source_path = Path(source_path)
+        transformed = SubtitleCueTransformer(
+            subtitle_profile=subtitle_profile,
+            render_fps=render_fps,
+        ).transform(
+            source_path.read_text(encoding="utf-8"),
+            timing=timing,
+        )
+        if not transformed.strip():
+            raise ValueError(
+                "El SRT de STUDIO no produjo cues renderizables."
+            )
+
+        target_path = Path(target_directory) / "studio_render.srt"
+        target_path.write_text(transformed, encoding="utf-8")
+        return target_path
 
     def _require_contract(
         self,

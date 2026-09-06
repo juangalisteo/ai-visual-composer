@@ -264,7 +264,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     "min_duration",
                     "max_duration",
                     "uppercase",
-                    "remove_extra_commas",
+                    "remove_render_punctuation",
                     "significant_gap_threshold",
                     "render_fps",
                     "micro_cues",

@@ -11,6 +11,7 @@ from app.controllers.run_controller import RunController
 from app.core.start import preparar_studio, iniciar
 from app.modules.studio import (
     StudioInputPreparationService,
+    StudioInputMode,
     StudioProfileLoader,
 )
 from app.shared.config_manager import ConfigManager
@@ -111,7 +112,9 @@ class StudioPhase1Test(unittest.TestCase):
 
     def test_input_accepts_one_dynamic_mp4_and_one_valid_srt_unchanged(self):
         with tempfile.TemporaryDirectory() as directory:
-            input_dir = Path(directory)
+            input_root = Path(directory)
+            input_dir = input_root / "srt_video"
+            input_dir.mkdir()
             video_path = input_dir / "source-export.MP4"
             subtitle_path = input_dir / "captions-final.SRT"
             video_bytes = b"external video bytes"
@@ -122,8 +125,9 @@ class StudioPhase1Test(unittest.TestCase):
             subtitle_path.write_bytes(subtitle_bytes)
             (input_dir / "notes.txt").write_text("ignored", encoding="utf-8")
 
-            prepared = StudioInputPreparationService(input_dir).prepare(
-                self.profile
+            prepared = StudioInputPreparationService(input_root).prepare(
+                self.profile,
+                StudioInputMode.SRT_VIDEO,
             )
 
             self.assertEqual(video_path, prepared.video_path)
@@ -140,7 +144,9 @@ class StudioPhase1Test(unittest.TestCase):
         )
         for videos, subtitles, error in cases:
             with self.subTest(videos=videos, subtitles=subtitles), tempfile.TemporaryDirectory() as directory:
-                input_dir = Path(directory)
+                input_root = Path(directory)
+                input_dir = input_root / "srt_video"
+                input_dir.mkdir()
                 for name in videos:
                     (input_dir / name).write_bytes(b"video")
                 for name in subtitles:
@@ -149,16 +155,24 @@ class StudioPhase1Test(unittest.TestCase):
                         encoding="utf-8",
                     )
                 with self.assertRaisesRegex((FileNotFoundError, ValueError), error):
-                    StudioInputPreparationService(input_dir).prepare(self.profile)
+                    StudioInputPreparationService(input_root).prepare(
+                        self.profile,
+                        StudioInputMode.SRT_VIDEO,
+                    )
 
     def test_input_rejects_empty_or_unusable_srt(self):
         for content in ("", "not a cue"):
             with self.subTest(content=content), tempfile.TemporaryDirectory() as directory:
-                input_dir = Path(directory)
+                input_root = Path(directory)
+                input_dir = input_root / "srt_video"
+                input_dir.mkdir()
                 (input_dir / "source.mp4").write_bytes(b"video")
                 (input_dir / "captions.srt").write_text(content, encoding="utf-8")
                 with self.assertRaises(ValueError):
-                    StudioInputPreparationService(input_dir).prepare(self.profile)
+                    StudioInputPreparationService(input_root).prepare(
+                        self.profile,
+                        StudioInputMode.SRT_VIDEO,
+                    )
 
     def test_profile_contract_fails_fast_for_missing_critical_field(self):
         raw = ProfileResolver().load(self.profile_key)
@@ -179,12 +193,12 @@ class StudioPhase1Test(unittest.TestCase):
             return_value={"profile_key": self.profile_key},
         ), patch.object(
             controller,
-            "select_studio_subtitle_config",
-            return_value="single_line",
+            "select_studio_input_mode",
+            return_value="srt_video",
         ), patch.object(
             controller,
-            "select_studio_light_leaks",
-            return_value=False,
+            "select_studio_subtitle_config",
+            return_value="single_line",
         ), patch.object(
             controller,
             "select_studio_music",
@@ -193,16 +207,26 @@ class StudioPhase1Test(unittest.TestCase):
             controller,
             "select_studio_intro_outro",
             return_value=None,
+        ), patch.object(
+            controller,
+            "ask_project_name",
+            return_value="studio project",
+        ), patch.object(
+            controller,
+            "ask_clear_output",
+            return_value=True,
         ):
             options = controller.run()
 
         self.assertEqual("studio", options["pipeline_mode"])
         self.assertEqual("studio", options["profile_component"])
         self.assertEqual("single_line", options["subtitle_config"])
-        self.assertFalse(options["studio_light_leaks_enabled"])
+        self.assertEqual("srt_video", options["studio_input_mode"])
+        self.assertNotIn("studio_light_leaks_enabled", options)
         self.assertIsNone(options["studio_music_path"])
-        self.assertFalse(options["clear_output"])
-        self.assertEqual("off", options["overlays_mode"])
+        self.assertEqual("studio project", options["project_name"])
+        self.assertTrue(options["clear_output"])
+        self.assertNotIn("overlays_mode", options)
         self.assertIsNone(options["intro_outro_selection"])
 
     def test_studio_profile_menu_lists_platforms_without_video_profile_label(self):
@@ -229,14 +253,13 @@ class StudioPhase1Test(unittest.TestCase):
             "subtitle_config": "single_line",
             "voice_config": "",
             "music_category": None,
-            "overlays_mode": "off",
             "project_name": "",
             "visual_pipeline": "studio",
             "script_source": "external",
             "design_target": "",
             "pipeline_mode": "studio",
-            "studio_light_leaks_enabled": False,
             "studio_music_path": None,
+            "studio_input_mode": "srt_video",
             "clear_output": False,
         }
         with patch.dict(os.environ, {}, clear=True), patch(
@@ -251,12 +274,39 @@ class StudioPhase1Test(unittest.TestCase):
 
         start.assert_called_once_with(
             subtitle_style="single_line",
-            studio_light_leaks_enabled=False,
             studio_music_path=None,
+            studio_input_mode="srt_video",
         )
         output_manager.assert_not_called()
 
-    def test_start_routes_studio_to_phase_two_without_project_manager(self):
+    def test_main_resets_output_for_studio_when_selected(self):
+        options = {
+            "profile_component": "studio",
+            "profile_platform": "instagram",
+            "profile_id": "studio_instagram",
+            "subtitle_config": "single_line",
+            "voice_config": "",
+            "music_category": None,
+            "project_name": "studio project",
+            "visual_pipeline": "studio",
+            "script_source": "external",
+            "design_target": "",
+            "pipeline_mode": "studio",
+            "studio_music_path": None,
+            "studio_input_mode": "srt_video",
+            "clear_output": True,
+        }
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "main.RunController"
+        ) as controller, patch("main.iniciar"), patch(
+            "main.OutputManager"
+        ) as output_manager:
+            controller.return_value.run.return_value = options
+            self.assertEqual(0, main.main())
+            self.assertEqual("studio project", os.environ["MC_PROJECT_NAME"])
+        output_manager.return_value.reset.assert_called_once_with()
+
+    def test_start_routes_studio_through_project_manager_without_builders(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
             {
@@ -269,14 +319,19 @@ class StudioPhase1Test(unittest.TestCase):
         ), patch("app.core.start.ProjectManager") as project_manager, patch(
             "app.core.start.ejecutar_studio"
         ) as render:
-            iniciar(subtitle_style="single_line")
+            iniciar(
+                subtitle_style="single_line",
+                studio_input_mode="srt_video",
+            )
 
         render.assert_called_once_with(
             subtitle_style="single_line",
-            light_leaks_enabled=False,
             music_path=None,
+            input_mode="srt_video",
+            project=project_manager.return_value,
         )
-        project_manager.assert_not_called()
+        project_manager.assert_called_once_with()
+        project_manager.return_value.setup.assert_called_once_with()
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
@@ -288,7 +343,9 @@ class StudioPhase1Test(unittest.TestCase):
             },
             clear=True,
         ):
-            input_dir = Path(directory)
+            input_root = Path(directory)
+            input_dir = input_root / "srt_video"
+            input_dir.mkdir()
             video_path = input_dir / "clip.mp4"
             subtitle_path = input_dir / "source.srt"
             video_path.write_bytes(b"external")
@@ -298,7 +355,8 @@ class StudioPhase1Test(unittest.TestCase):
             )
             result = preparar_studio(
                 subtitle_style="single_line",
-                input_preparation_service=StudioInputPreparationService(input_dir),
+                input_mode="srt_video",
+                input_preparation_service=StudioInputPreparationService(input_root),
             )
 
         self.assertEqual(video_path, result.video_path)

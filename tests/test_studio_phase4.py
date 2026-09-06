@@ -17,8 +17,6 @@ from app.controllers.run_controller import RunController
 from app.core.start import ejecutar_studio, iniciar
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.studio import (
-    StudioLightLeakOperation,
-    StudioLightLeakSelector,
     StudioOutputPathResolver,
     StudioProfileLoader,
     StudioRenderService,
@@ -78,11 +76,12 @@ class StudioPhase4Test(unittest.TestCase):
     def test_controller_skips_catalog_when_music_is_disabled(self):
         selector = Mock()
         controller = RunController(studio_music_selector=selector)
-        with patch("builtins.input", return_value="1"):
+        with patch("builtins.input", return_value="2"):
             self.assertIsNone(controller.select_studio_music())
+        selector.select.assert_not_called()
         selector.discover_tracks.assert_not_called()
 
-    def test_controller_discovers_and_selects_track_explicitly(self):
+    def test_controller_selects_random_track_without_listing_catalog(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             category = root / "ambient"
@@ -94,11 +93,26 @@ class StudioPhase4Test(unittest.TestCase):
             controller = RunController(
                 studio_music_selector=MusicSelector(root)
             )
-            with patch("builtins.input", side_effect=("2", "2")):
+            with patch("builtins.input", return_value="1"), patch(
+                "app.modules.audio.music_selector.random.choice",
+                side_effect=lambda candidates: candidates[-1],
+            ), patch.object(controller, "_print") as print_mock:
                 self.assertEqual(second, controller.select_studio_music())
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("MÚSICA", printed)
+        self.assertIn("1. Sí", printed)
+        self.assertIn("2. No", printed)
+        self.assertNotIn("first.mp3", printed)
+        self.assertNotIn("second.wav", printed)
 
     def test_main_and_start_transport_selected_music(self):
         selected = Path("assets/music/ambient/ambient_001.mp3")
+        final_output = Path("output/studio/video/studio.mp4")
         options = {
             "profile_component": "studio",
             "profile_platform": "instagram",
@@ -106,14 +120,13 @@ class StudioPhase4Test(unittest.TestCase):
             "subtitle_config": "single_line",
             "voice_config": "",
             "music_category": None,
-            "overlays_mode": "off",
             "project_name": "",
             "visual_pipeline": "studio",
             "script_source": "external",
             "design_target": "",
             "pipeline_mode": "studio",
-            "studio_light_leaks_enabled": True,
             "studio_music_path": str(selected),
+            "studio_input_mode": "srt_video",
             "intro_outro_selection": None,
             "clear_output": False,
         }
@@ -121,31 +134,48 @@ class StudioPhase4Test(unittest.TestCase):
             "main.RunController"
         ) as controller, patch(
             "main.iniciar"
-        ) as start, patch("main.OutputManager"):
+        ) as start, patch("main.OutputManager"), patch(
+            "builtins.print"
+        ) as print_mock:
             controller.return_value.run.return_value = options
+            start.return_value = SimpleNamespace(output_path=final_output)
             self.assertEqual(0, main.main())
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("STUDIO COMPLETADO", printed)
+        self.assertIn("Output:", printed)
+        self.assertIn(str(final_output), printed)
         start.assert_called_once_with(
             subtitle_style="single_line",
-            studio_light_leaks_enabled=True,
             studio_music_path=str(selected),
+            studio_input_mode="srt_video",
         )
 
         with patch.dict("os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True), patch(
             "app.core.start.ejecutar_studio"
         ) as studio, patch("app.core.start.ProjectManager") as project_manager:
-            iniciar(subtitle_style="single_line", studio_music_path=selected)
+            iniciar(
+                subtitle_style="single_line",
+                studio_music_path=selected,
+                studio_input_mode="srt_video",
+            )
         studio.assert_called_once_with(
             subtitle_style="single_line",
-            light_leaks_enabled=False,
             music_path=selected,
+            input_mode="srt_video",
+            project=project_manager.return_value,
         )
-        project_manager.assert_not_called()
+        project_manager.return_value.setup.assert_called_once_with()
 
     def test_phase_two_transports_track_to_naming_and_renderer(self):
         track = Path("assets/music/ambient/ambient_001.mp3")
         preparation = SimpleNamespace(
-            video_path=Path("input/studio/source.mp4"),
-            subtitle_path=Path("input/studio/source.srt"),
+            video_path=Path("input/studio/srt_video/source.mp4"),
+            subtitle_path=Path("input/studio/srt_video/source.srt"),
+            input_mode="srt_video",
             profile_key=self.profile_key,
             profile=self.profile,
             subtitle_profile=self.subtitle_profile,
@@ -154,48 +184,33 @@ class StudioPhase4Test(unittest.TestCase):
         renderer.render.return_value = "rendered"
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
+        project = Mock()
         result = ejecutar_studio(
             subtitle_style="single_line",
-            light_leaks_enabled=True,
+            input_mode="srt_video",
             music_path=track,
             preparation_service=Mock(return_value=preparation),
             render_service=renderer,
             output_path_resolver=resolver,
+            project=project,
         )
         self.assertEqual("rendered", result)
-        self.assertEqual(track, resolver.resolve.call_args.kwargs["music_path"])
+        resolver.resolve.assert_called_once_with(
+            profile_key=preparation.profile_key,
+            project=project,
+        )
         self.assertEqual(track, renderer.render.call_args.kwargs["music_path"])
 
-    def test_output_name_identifies_music_after_light_leaks(self):
-        resolver = StudioOutputPathResolver(Path("output/studio"))
-        music = Path("assets/music/My Track (Final).mp3")
-        music_only = resolver.resolve(
-            "source.mp4",
-            self.profile_key,
-            self.subtitle_profile,
-            music_path=music,
-        )
-        combined = resolver.resolve(
-            "source.mp4",
-            self.profile_key,
-            self.subtitle_profile,
-            light_leaks_enabled=True,
-            music_path=music,
-        )
-        self.assertTrue(music_only.name.endswith("_music_My_Track_Final.mp4"))
-        self.assertTrue(
-            combined.name.endswith("_light_leaks_music_My_Track_Final.mp4")
+    def test_output_path_is_stable_when_music_changes(self):
+        project = Mock()
+        project.video_path.return_value = Path("output/studio/video/studio.mp4")
+        resolver = StudioOutputPathResolver(project)
+        self.assertEqual(
+            Path("output/studio/video/studio.mp4"),
+            resolver.resolve(self.profile_key),
         )
 
-    def test_four_input_combinations_use_explicit_indices(self):
-        operation = StudioLightLeakOperation(
-            start_time=0.0,
-            end_time=1.0,
-            asset_path=Path("leak.mp4"),
-            input_position=0,
-            opacity=0.15,
-            blend_mode="screen",
-        )
+    def test_audio_inputs_use_explicit_indices(self):
         silent_info = replace(
             self.source_info,
             audio_codec=None,
@@ -203,14 +218,12 @@ class StudioPhase4Test(unittest.TestCase):
             audio_channels=None,
         )
         cases = (
-            (self.source_info, (), None, "[0:a:0]", None),
-            (self.source_info, (operation,), None, "[0:a:0]", "[1:v]"),
-            (self.source_info, (), "music.mp3", "[0:a:0]", "[1:a:0]"),
-            (self.source_info, (operation,), "music.mp3", "[0:a:0]", "[2:a:0]"),
-            (silent_info, (operation,), "music.mp3", "[2:a:0]", "[3:a:0]"),
+            (self.source_info, None, "[0:a:0]", None),
+            (self.source_info, "music.mp3", "[0:a:0]", "[1:a:0]"),
+            (silent_info, "music.mp3", "[1:a:0]", "[2:a:0]"),
         )
-        for info, operations, music, audio_label, added_label in cases:
-            with self.subTest(operations=len(operations), music=music, audio=info.has_audio):
+        for info, music, audio_label, added_label in cases:
+            with self.subTest(music=music, audio=info.has_audio):
                 command = StudioRenderService().build_command(
                     "source.mp4",
                     "source.srt",
@@ -218,7 +231,6 @@ class StudioPhase4Test(unittest.TestCase):
                     info,
                     self.profile,
                     "FontName=Arial",
-                    operations,
                     music,
                 )
                 graph = command[command.index("-filter_complex") + 1]
@@ -414,21 +426,14 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
         ]
         return values[-1]
 
-    def _render(self, root, name, source, subtitle, music=None, leaks=False):
-        selector = None
-        if leaks:
-            selector = StudioLightLeakSelector(
-                root / "Light Leaks",
-                self._FirstAssetRng(),
-            )
-        return StudioRenderService(light_leaks_selector=selector).render(
+    def _render(self, root, name, source, subtitle, music=None):
+        return StudioRenderService().render(
             source,
             subtitle,
             self.profile_key,
             self.profile,
             self.subtitle_profile,
             root / name,
-            light_leaks_enabled=leaks,
             music_path=music,
         )
 
@@ -481,41 +486,6 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
                 0.01,
             )
             self.assertLessEqual(abs(result.generated_duration - 3.2), 0.2)
-
-    def test_real_light_leaks_music_subtitles_and_audio_are_isolated(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            leaks = root / "Light Leaks"
-            leaks.mkdir()
-            source = root / "source.mp4"
-            subtitle = root / "source.srt"
-            music = root / "music.wav"
-            leak = leaks / "leak.mp4"
-            self._source(source)
-            self._srt(subtitle)
-            self._music(music)
-            self._leak(leak)
-            hashes = {path: hashlib.sha256(path.read_bytes()).digest() for path in (source, subtitle, music, leak)}
-            result = self._render(
-                root, "case_d.mp4", source, subtitle, music, leaks=True
-            )
-            info = MediaProbe.inspect(result.output_path)
-            self.assertEqual(2, len(result.light_leaks_operations))
-            self.assertEqual((320, 568, 12.0), (info.width, info.height, info.fps))
-            self.assertEqual(("h264", "yuv420p", "aac"), (
-                info.video_codec, info.pixel_format, info.audio_codec
-            ))
-            self.assertGreater(self._tone_amplitude(result.output_path, 440), 0.04)
-            self.assertGreater(self._tone_amplitude(result.output_path, 880), 0.01)
-            self.assertLess(self._tone_amplitude(result.output_path, 1760), 0.005)
-            self.assertGreater(self._frame_mean(result.output_path, 0.1), 10)
-            self.assertLess(self._frame_mean(result.output_path, 2.5), 5)
-            self.assertGreater(self._frame_mean(result.output_path, 5.2), 10)
-            self.assertGreater(self._subtitle_peak(result.output_path, 0.5), 32)
-            self.assertLessEqual(abs(result.generated_duration - 6.2), 0.2)
-            for path, digest in hashes.items():
-                self.assertEqual(digest, hashlib.sha256(path.read_bytes()).digest())
-
 
 if __name__ == "__main__":
     unittest.main()

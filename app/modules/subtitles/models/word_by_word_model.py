@@ -28,10 +28,10 @@ class WordByWordModel(BaseSubtitleModel):
             "uppercase",
             "cue_policy.uppercase"
         )
-        self.remove_extra_commas = require_bool(
+        self.remove_render_punctuation = require_bool(
             config,
-            "remove_extra_commas",
-            "cue_policy.remove_extra_commas"
+            "remove_render_punctuation",
+            "cue_policy.remove_render_punctuation"
         )
         self.significant_gap_threshold = require_float(
             config,
@@ -172,8 +172,8 @@ class WordByWordModel(BaseSubtitleModel):
     def _split_words(self, text):
         text = self._clean_text(text)
 
-        if self.remove_extra_commas:
-            text = text.replace(",", "")
+        if self.remove_render_punctuation:
+            text = self._remove_render_punctuation(text)
 
         words = text.split()
 
@@ -187,16 +187,17 @@ class WordByWordModel(BaseSubtitleModel):
             text
         )
 
-        if self.remove_extra_commas:
-            text = text.replace(
-                ",",
-                ""
-            )
+        if self.remove_render_punctuation:
+            text = self._remove_render_punctuation(text)
 
         if self.uppercase:
             text = text.upper()
 
         return text
+
+    @staticmethod
+    def _remove_render_punctuation(text):
+        return text.replace(",", "").replace(".", "")
 
     def _distribute_time(self, start_ms, end_ms, words):
         duration_ms = end_ms - start_ms

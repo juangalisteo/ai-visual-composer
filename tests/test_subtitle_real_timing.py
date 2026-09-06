@@ -264,7 +264,24 @@ class SubtitleRealTimingTest(unittest.TestCase):
         self.assertIn("00:00:00,000 --> 00:00:00,200", blocks[0])
         self.assertIn("Hola", blocks[0])
         self.assertNotIn("Hola,", blocks[0])
+        self.assertNotIn(".", blocks[0])
         self.assertIn("00:00:00,700 --> 00:00:01,000", blocks[1])
+
+    def test_word_by_word_removes_render_dots_with_extra_commas_policy(self):
+        model = self._word_by_word_model(fps=30)
+
+        blocks = model.optimize(
+            [
+                "1\n"
+                "00:00:00,000 --> 00:00:01,000\n"
+                "Hola, mundo."
+            ]
+        )
+
+        self.assertEqual(["Hola", "mundo"], [
+            self._block_text(block)
+            for block in blocks
+        ])
 
     def test_word_by_word_preserves_legacy_distribution_without_timing(self):
         model = self._word_by_word_model(
@@ -555,7 +572,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
     def test_micro_cue_policy_preserves_punctuation_order(self):
         model = self._word_by_word_model(
             fps=30,
-            remove_extra_commas=False,
+            remove_render_punctuation=False,
         )
 
         blocks = model.optimize(
@@ -720,7 +737,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
         self,
         fps,
         min_display_seconds=0.05,
-        remove_extra_commas=True,
+        remove_render_punctuation=True,
         micro_cues_enabled=True
     ):
         return WordByWordModel(
@@ -728,7 +745,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 "min_duration": 0.3,
                 "max_duration": 1.2,
                 "uppercase": False,
-                "remove_extra_commas": remove_extra_commas,
+                "remove_render_punctuation": remove_render_punctuation,
                 "render_fps": fps,
                 "significant_gap_threshold": 0.35,
                 "micro_cues": {

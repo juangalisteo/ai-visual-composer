@@ -15,7 +15,7 @@
             "merge_preference": "next"
         },
         "uppercase": false,
-        "remove_extra_commas": true
+        "remove_render_punctuation": true
     },
     "render_style": {
         "font": "gotham",

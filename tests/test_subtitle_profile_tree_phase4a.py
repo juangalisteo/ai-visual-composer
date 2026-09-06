@@ -65,7 +65,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 "merge_preference": "next",
             },
             "uppercase": False,
-            "remove_extra_commas": True,
+            "remove_render_punctuation": True,
         },
     }
     EXPECTED_RENDER_STYLES = {

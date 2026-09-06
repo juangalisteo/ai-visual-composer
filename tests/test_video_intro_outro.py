@@ -70,19 +70,50 @@ class IntroOutroTest(unittest.TestCase):
     def test_catalog_lists_only_real_mp4_files_dynamically(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            (root / "Zulu.MP4").write_bytes(b"z")
-            (root / "alpha.mp4").write_bytes(b"a")
+            intro_directory = root / "intro"
+            outro_directory = root / "outro"
+            intro_directory.mkdir()
+            outro_directory.mkdir()
+            (intro_directory / "Zulu.MP4").write_bytes(b"z")
+            (intro_directory / "alpha.mp4").write_bytes(b"a")
+            (outro_directory / "outro.mp4").write_bytes(b"o")
             (root / "ignored.mov").write_bytes(b"m")
-            (root / "folder.mp4").mkdir()
+            (root / "flat_legacy.mp4").write_bytes(b"legacy")
+            (intro_directory / "folder.mp4").mkdir()
 
-            assets = IntroOutroCatalog(root).discover()
+            assets = IntroOutroCatalog(root).discover("intro")
 
         self.assertEqual(
             ["alpha.mp4", "Zulu.MP4"],
             [path.name for path in assets],
         )
 
-    def test_catalog_and_menu_return_safely_when_directory_is_empty(self):
+    def test_catalog_discovers_only_the_requested_position(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            intro = root / "intro"
+            outro = root / "outro"
+            intro.mkdir()
+            outro.mkdir()
+            (intro / "canal_01.mp4").write_bytes(b"intro")
+            (outro / "canal_01.mp4").write_bytes(b"outro")
+
+            catalog = IntroOutroCatalog(root)
+
+            self.assertEqual(
+                [intro / "canal_01.mp4"],
+                list(catalog.discover("intro")),
+            )
+            self.assertEqual(
+                [outro / "canal_01.mp4"],
+                list(catalog.discover("outro")),
+            )
+
+    def test_catalog_rejects_an_invalid_position(self):
+        with self.assertRaisesRegex(ValueError, "intro u outro"):
+            IntroOutroCatalog().discover("apertura")
+
+    def test_menu_fails_fast_when_selected_position_is_empty(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             catalog = IntroOutroCatalog(temporary_directory)
             controller = RunController(
@@ -92,17 +123,27 @@ class IntroOutroTest(unittest.TestCase):
             with patch(
                 "builtins.input",
                 side_effect=["2"],
-            ), patch.object(
-                controller,
-                "_print",
-            ) as print_mock:
-                selection = controller.select_intro_outro()
+            ), self.assertRaisesRegex(
+                FileNotFoundError,
+                "intro/",
+            ):
+                controller.select_intro_outro()
 
-        self.assertIsNone(selection)
-        self.assertTrue(any(
-            "No hay archivos MP4" in call.args[0]
-            for call in print_mock.call_args_list
-        ))
+    def test_menu_fails_fast_for_an_empty_outro_without_using_intro_assets(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            intro_directory = root / "intro"
+            intro_directory.mkdir()
+            (intro_directory / "intro.mp4").write_bytes(b"intro")
+            controller = RunController(
+                intro_outro_catalog=IntroOutroCatalog(root)
+            )
+
+            with patch("builtins.input", side_effect=["3"]), self.assertRaisesRegex(
+                FileNotFoundError,
+                "outro/",
+            ):
+                controller.select_intro_outro()
 
     def test_menu_no_keeps_intro_outro_disabled(self):
         catalog = Mock()
@@ -119,29 +160,37 @@ class IntroOutroTest(unittest.TestCase):
         self.assertIsNone(selection)
         catalog.discover.assert_not_called()
 
-    def test_menu_selects_a_real_dynamic_file_and_position(self):
+    def test_menu_selects_position_specific_assets_for_both_sides(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            first = root / "brand opening.mp4"
-            second = root / "closing reel.mp4"
+            intro_directory = root / "intro"
+            outro_directory = root / "outro"
+            intro_directory.mkdir()
+            outro_directory.mkdir()
+            first = intro_directory / "brand opening.mp4"
+            second = intro_directory / "second intro.mp4"
+            outro = outro_directory / "closing reel.mp4"
             first.write_bytes(b"first")
             second.write_bytes(b"second")
+            outro.write_bytes(b"outro")
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
 
             with patch(
                 "builtins.input",
-                side_effect=["2", "2", "2"],
+                side_effect=["4", "2", "1"],
             ), patch.object(controller, "_print"):
-                selection = controller.select_intro_outro()
+                plan = controller.select_intro_outro()
 
-        self.assertEqual(second, selection.asset_path)
-        self.assertEqual("outro", selection.position)
+        self.assertEqual(second, plan.intro.asset_path)
+        self.assertEqual("intro", plan.intro.position)
+        self.assertEqual(outro, plan.outro.asset_path)
+        self.assertEqual("outro", plan.outro.position)
 
     def test_main_transports_selection_without_environment_fallback(self):
         selection = IntroOutroSelection(
-            Path("assets/videos/intro_outro/custom.mp4"),
+            Path("assets/videos/intro_outro/intro/custom.mp4"),
             "intro",
         )
         options = {

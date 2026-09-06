@@ -1,4 +1,5 @@
 import hashlib
+import os
 import shutil
 import subprocess
 import tempfile
@@ -65,8 +66,9 @@ class StudioPhase2Test(unittest.TestCase):
 
     def test_phase_two_passes_phase_one_contract_to_renderer(self):
         preparation = SimpleNamespace(
-            video_path=Path("input/studio/source.mp4"),
-            subtitle_path=Path("input/studio/source.srt"),
+            video_path=Path("input/studio/srt_video/source.mp4"),
+            subtitle_path=Path("input/studio/srt_video/source.srt"),
+            input_mode="srt_video",
             profile_key=self.profile_key,
             profile=self.profile,
             subtitle_profile=self.subtitle_profile,
@@ -76,16 +78,26 @@ class StudioPhase2Test(unittest.TestCase):
         renderer.render.return_value = "rendered"
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
+        project = Mock()
 
         result = ejecutar_studio(
             subtitle_style="single_line",
+            input_mode="srt_video",
             preparation_service=prepare,
             render_service=renderer,
             output_path_resolver=resolver,
+            project=project,
         )
 
         self.assertEqual("rendered", result)
-        prepare.assert_called_once_with(subtitle_style="single_line")
+        prepare.assert_called_once_with(
+            subtitle_style="single_line",
+            input_mode="srt_video",
+        )
+        resolver.resolve.assert_called_once_with(
+            profile_key=preparation.profile_key,
+            project=project,
+        )
         renderer.render.assert_called_once_with(
             video_path=preparation.video_path,
             subtitle_path=preparation.subtitle_path,
@@ -93,7 +105,6 @@ class StudioPhase2Test(unittest.TestCase):
             profile=preparation.profile,
             subtitle_profile=preparation.subtitle_profile,
             output_path=Path("output/studio/result.mp4"),
-            light_leaks_enabled=False,
             music_path=None,
         )
 
@@ -107,34 +118,38 @@ class StudioPhase2Test(unittest.TestCase):
         ) as projects, patch("app.core.start.VideoBuilder") as video, patch(
             "app.core.start.SrtOptimizer"
         ) as optimizer:
-            iniciar(subtitle_style="single_line")
+            iniciar(
+                subtitle_style="single_line",
+                studio_input_mode="srt_video",
+            )
 
         studio.assert_called_once_with(
             subtitle_style="single_line",
-            light_leaks_enabled=False,
             music_path=None,
+            input_mode="srt_video",
+            project=projects.return_value,
         )
-        projects.assert_not_called()
+        projects.assert_called_once_with()
+        projects.return_value.setup.assert_called_once_with()
         video.assert_not_called()
         optimizer.assert_not_called()
 
-    def test_output_naming_is_deterministic_isolated_and_collision_visible(self):
-        resolver = StudioOutputPathResolver(Path("custom-output/studio"))
+    def test_output_uses_standard_project_path_and_collision_is_visible(self):
+        project = Mock()
+        project.video_path.return_value = Path(
+            "output/Proyecto Studio/video/Proyecto Studio.mp4"
+        )
+        resolver = StudioOutputPathResolver(project)
         first = resolver.resolve(
-            "input/studio/My Clip.mp4",
             self.profile_key,
-            self.subtitle_profile,
         )
         second = resolver.resolve(
-            "input/studio/My Clip.mp4",
             self.profile_key,
-            self.subtitle_profile,
         )
         self.assertEqual(first, second)
         self.assertEqual(
             Path(
-                "custom-output/studio/instagram/"
-                "My_Clip_studio_instagram_single_line.mp4"
+                "output/Proyecto Studio/video/Proyecto Studio.mp4"
             ),
             first,
         )
@@ -154,6 +169,21 @@ class StudioPhase2Test(unittest.TestCase):
                     output_path,
                 )
             self.assertEqual(b"valid-existing", output_path.read_bytes())
+
+    def test_default_output_resolver_uses_project_manager_contract(self):
+        with patch.dict(
+            "os.environ",
+            {"MC_PROJECT_NAME": "Proyecto Studio"},
+            clear=True,
+        ):
+            output_path = StudioOutputPathResolver().resolve(
+                self.profile_key,
+            )
+
+        self.assertEqual(
+            Path("output/Proyecto Studio/video/Proyecto Studio.mp4"),
+            output_path,
+        )
 
     def test_command_uses_one_scale_pad_subtitle_render_without_crop(self):
         service = StudioRenderService()
@@ -230,7 +260,7 @@ class StudioPhase2Test(unittest.TestCase):
         self.assertEqual(16, youtube_profile.crf)
         self.assertEqual(30, youtube_profile.fps)
 
-    def test_external_srt_uses_render_style_without_cue_rewriting(self):
+    def test_command_uses_render_style_with_supplied_render_srt(self):
         command = StudioRenderService().build_command(
             "source.mp4",
             "authoritative.srt",
@@ -249,7 +279,7 @@ class StudioPhase2Test(unittest.TestCase):
         video_graph = graph.split("[vout]", 1)[0]
         self.assertEqual(1, video_graph.count("setpts=PTS-STARTPTS"))
         self.assertNotIn("0.060000/TB", graph)
-        self.assertNotIn("SrtOptimizer", graph)
+        self.assertIn("authoritative.srt", graph)
 
     def test_nonzero_offset_is_rejected_to_preserve_authoritative_timings(self):
         shifted_profile = replace(
@@ -272,23 +302,56 @@ class StudioPhase2Test(unittest.TestCase):
                     root / "result.mp4",
                 )
 
-    def test_uppercase_is_not_faked_by_rewriting_authoritative_srt(self):
+    def test_cue_policy_is_applied_only_to_derived_render_srt(self):
         uppercase_profile = replace(
             self.subtitle_profile,
-            cue_policy={"uppercase": True},
+            cue_policy={
+                "mode": "word_by_word",
+                "min_duration": 0.3,
+                "max_duration": 1.2,
+                "significant_gap_threshold": 0.35,
+                "micro_cues": {
+                    "enabled": True,
+                    "min_frames": 1,
+                    "min_display_seconds": 0.05,
+                    "merge_preference": "next",
+                },
+                "uppercase": True,
+                "remove_render_punctuation": False,
+            },
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             video_path, subtitle_path = self._sources(root)
-            with self.assertRaisesRegex(ValueError, "no altera el texto SRT"):
-                self._service().render(
-                    video_path,
-                    subtitle_path,
-                    self.profile_key,
-                    self.profile,
-                    uppercase_profile,
-                    root / "result.mp4",
-                )
+            original = subtitle_path.read_bytes()
+            captured = {}
+            runner = Mock()
+            runner.run.side_effect = lambda command: Path(
+                command[-1]
+            ).write_bytes(b"rendered")
+            validator = Mock()
+            validator.validate.return_value = 0.9
+            service = self._service(runner=runner, validator=validator)
+            write_render_subtitle = service._write_render_subtitle
+
+            def capture_subtitle(**kwargs):
+                path = write_render_subtitle(**kwargs)
+                captured["content"] = path.read_text(encoding="utf-8")
+                return path
+
+            service._write_render_subtitle = capture_subtitle
+            service.render(
+                video_path,
+                subtitle_path,
+                self.profile_key,
+                self.profile,
+                uppercase_profile,
+                root / "result.mp4",
+            )
+
+            self.assertIn("TEXTO", captured["content"])
+            self.assertIn("INTACTO", captured["content"])
+            self.assertEqual(original, subtitle_path.read_bytes())
 
     def test_render_preserves_sources_and_promotes_only_after_validation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -433,14 +496,21 @@ class StudioPhase2Test(unittest.TestCase):
         runner.run.assert_not_called()
 
     def test_studio_media_files_are_ignored_but_gitkeep_is_not(self):
-        for path in ("input/studio/source.mp4", "input/studio/source.srt"):
+        for path in (
+            "input/studio/srt_video/source.mp4",
+            "input/studio/srt_video/source.srt",
+            "input/studio/video/source.mp4",
+        ):
             result = subprocess.run(
                 ["git", "check-ignore", "-q", path],
                 check=False,
             )
             self.assertEqual(0, result.returncode)
         result = subprocess.run(
-            ["git", "check-ignore", "-q", "input/studio/.gitkeep"],
+            [
+                "git", "check-ignore", "-q",
+                "input/studio/srt_video/.gitkeep",
+            ],
             check=False,
         )
         self.assertNotEqual(0, result.returncode)

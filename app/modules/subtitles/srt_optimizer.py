@@ -1,23 +1,15 @@
 from pathlib import Path
-from copy import deepcopy
-import re
 import time
 
 from app.managers.project_manager import ProjectManager
 from app.shared.config_contract import (
     require_float,
     require_mapping,
-    require_text,
 )
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 
-from app.modules.subtitles.models.single_line_model import (
-    SingleLineModel
-)
-from app.modules.subtitles.models.word_by_word_model import (
-    WordByWordModel
-)
+from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
 from app.modules.subtitles.timing import (
     SubtitleTimingResolver,
     count_gaps
@@ -33,10 +25,6 @@ class SrtOptimizer:
     ):
         config = ConfigManager()
 
-        subtitle_config = deepcopy(
-            subtitle_profile.cue_policy
-        )
-
         if render_fps is None:
             profile = config.get_profile_config()
             video_style = require_mapping(
@@ -50,39 +38,11 @@ class SrtOptimizer:
                 "video_style.fps"
             )
 
-        render_fps = float(render_fps)
-        if render_fps <= 0:
-            raise ValueError(
-                "La configuracion video_style.fps debe ser "
-                "superior a cero."
-            )
-
-        subtitle_config.setdefault(
-            "render_fps",
-            render_fps
+        self.transformer = SubtitleCueTransformer(
+            subtitle_profile=subtitle_profile,
+            render_fps=render_fps,
         )
-
-        mode = require_text(
-            subtitle_config,
-            "mode",
-            "cue_policy.mode"
-        )
-
-        if mode == "single_line":
-            self.model = SingleLineModel(
-                subtitle_config
-            )
-
-        elif mode == "word_by_word":
-            self.model = WordByWordModel(
-                subtitle_config
-            )
-
-        else:
-            raise ValueError(
-                "Modelo de subtítulos no soportado: "
-                f"{mode}"
-            )
+        self.model = self.transformer.model
 
     def optimize(
         self,
@@ -135,21 +95,14 @@ class SrtOptimizer:
                 "El archivo SRT está vacío."
             )
 
-        blocks = re.split(
-            r"\n\s*\n",
-            content.strip()
-        )
-
         timing = SubtitleTimingResolver().resolve(
             subtitle_path=input_path,
             audio_path=project.audio_path()
         )
 
-        optimized_blocks = (
-            self.model.optimize(
-                blocks,
-                timing=timing
-            )
+        optimized_content = self.transformer.transform(
+            content,
+            timing=timing,
         )
 
         if timing is not None:
@@ -193,9 +146,7 @@ class SrtOptimizer:
             )
 
         output_path.write_text(
-            "\n\n".join(
-                optimized_blocks
-            ),
+            optimized_content,
             encoding="utf-8"
         )
 
