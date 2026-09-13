@@ -161,10 +161,11 @@ class ScriptOutputContractTest(unittest.TestCase):
             "model_comment_not_allowed",
         )
 
-    def test_builder_does_not_retry_only_because_response_is_long(self):
+    def test_builder_retries_when_response_exceeds_duration_budget(self):
         provider = FakeProvider(
             (
                 _words(80),
+                _words(26),
             )
         )
 
@@ -180,21 +181,22 @@ class ScriptOutputContractTest(unittest.TestCase):
 
         self.assertEqual(
             len(provider.prompts),
-            1,
+            2,
         )
         self.assertEqual(
             result.word_count,
-            80,
+            26,
         )
         self.assertEqual(
             result.script,
-            _words(80),
+            _words(26),
         )
 
-    def test_builder_does_not_retry_only_because_response_is_short(self):
+    def test_builder_retries_when_response_is_shorter_than_duration_budget(self):
         provider = FakeProvider(
             (
                 "Silencio.",
+                _words(26),
             )
         )
 
@@ -210,18 +212,18 @@ class ScriptOutputContractTest(unittest.TestCase):
 
         self.assertEqual(
             len(provider.prompts),
-            1,
+            2,
         )
         self.assertEqual(
             result.script,
-            "Silencio.",
+            _words(26),
         )
 
     def test_builder_retries_once_for_structural_error(self):
         provider = FakeProvider(
             (
                 "**Answer:**\nLa conciencia despierta lentamente.",
-                "La conciencia despierta lentamente mientras el mundo guarda silencio.",
+                _words(26),
             )
         )
 
@@ -237,7 +239,7 @@ class ScriptOutputContractTest(unittest.TestCase):
 
         self.assertEqual(
             result.script,
-            "La conciencia despierta lentamente mientras el mundo guarda silencio.",
+            _words(26),
         )
         self.assertEqual(
             result.metadata.attempt,
@@ -247,7 +249,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             "La respuesta anterior incumple el formato requerido.",
             provider.prompts[1],
         )
-        self.assertNotIn(
+        self.assertIn(
             "debe contener entre",
             provider.prompts[1].lower(),
         )
@@ -310,6 +312,7 @@ class ScriptOutputContractTest(unittest.TestCase):
         provider = FakeProvider(
             (
                 _words(13),
+                _words(10),
             )
         )
 
@@ -340,18 +343,18 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
         self.assertEqual(
             result.metadata.actual_words,
-            13,
+            10,
         )
         self.assertEqual(
             result.word_count,
-            13,
+            10,
         )
         self.assertAlmostEqual(
             result.metadata.deviation_percentage,
-            30.0,
+            0.0,
         )
 
-    def test_prompt_engine_uses_orientative_language(self):
+    def test_prompt_engine_makes_duration_budget_explicit(self):
         prompt = PromptEngine().build_script_prompt(
             "conciencia",
             {
@@ -363,35 +366,27 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "Extensión orientativa",
+            "Extensión requerida",
             prompt,
         )
         self.assertIn(
-            "objetivo aproximado de 26 palabras",
+            "objetivo de 26 palabras",
             prompt,
         )
         self.assertIn(
-            "Puedes utilizar más o menos palabras",
+            "presupuesto temporal",
             prompt,
         )
         self.assertNotIn(
-            "No superes el máximo",
+            "Puedes utilizar",
             prompt,
         )
         self.assertNotIn(
-            "será inválida",
-            prompt,
-        )
-        self.assertNotIn(
-            "sera invalida",
-            prompt,
-        )
-        self.assertNotIn(
-            "debe contener entre",
+            "orientativa",
             prompt.lower(),
         )
 
-    def test_no_truncation_slicing_or_automatic_cut(self):
+    def test_out_of_range_script_is_rejected_without_truncation(self):
         long_script = " ".join(
             f"palabra{i}"
             for i in range(
@@ -405,25 +400,14 @@ class ScriptOutputContractTest(unittest.TestCase):
             )
         )
 
-        result = ScriptBuilder(
-            {
-                "model": "test-model"
-            },
-            provider=provider,
-        ).generate_result(
-            _prompt_with_reference()
-        )
+        with self.assertRaises(InvalidScriptOutputError):
+            ScriptBuilder(
+                {"model": "test-model"},
+                provider=provider,
+                max_attempts=1,
+            ).generate_result(_prompt_with_reference())
 
-        self.assertEqual(
-            result.script,
-            long_script,
-        )
-        self.assertEqual(
-            result.word_count,
-            120,
-        )
-
-    def test_long_script_can_be_written_to_script_file(self):
+    def test_duration_compliant_script_is_written_to_script_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
                 temp_dir
@@ -434,7 +418,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             output_script = root / "guion.txt"
-            long_script = _words(80)
+            long_script = _words(26)
 
             script = cargar_o_generar_guion(
                 builders={

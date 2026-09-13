@@ -309,43 +309,148 @@ Final Video
 
 Studio is the finishing component for externally supplied audiovisual material.
 
-Its source contract is:
+Studio has six input modes:
+
+```text
+1. SOLO VIDEO
+2. SRT + VIDEO
+3. INTRO / OUTRO
+4. MONTAJE VÍDEOS
+5. VIDEO + AUDIO SRT
+6. EXPORTAR SRT VIDEO
+```
+
+Its external input directories are:
 
 ```text
 input/studio/
-├── srt_video/  # exactly one MP4 and one UTF-8 SRT
-└── video/      # exactly one MP4
+├── video/
+├── srt_video/
+├── intro_outro/
+├── montaje_videos/
+├── video_audio_srt/
+└── exportar_srt/
+    ├── transcribir/
+    └── convertir/
 ```
 
-For `SRT + VIDEO`, the SRT is authoritative: Studio preserves its text, order, and timings. For `VIDEO`, Studio uses the canonical external-media subtitle preparation. Both modes apply the selected component-scoped subtitle profile with zero offset.
+All Studio media is discovered by extension, not by hardcoded filenames.
 
-The complete flow is:
+## SOLO VIDEO
+
+`SOLO VIDEO` accepts an MP4 from `input/studio/video/`. One valid candidate is
+used directly; multiple candidates are selected in the console. The source
+must contain audio because Whisper generates the subtitle source.
+
+The available subtitle styles are:
 
 ```text
-External MP4 + SRT or MP4
-   ↓
-Studio profile (Instagram / YouTube)
-   ↓
-Subtitle style
-   ↓
-Optional explicit music selection
-   ↓
-Single audiovisual FFmpeg render
-   ↓
-Optional INTRO / OUTRO concat with stream copy
-   ↓
-Validated project video result
+LÍNEA ÚNICA
+PALABRA POR PALABRA
 ```
 
-Studio has its own `ProfileKey`, main profiles, subtitle profiles, input preparation, output naming, and render service. It does not fall back to Guion, Imagen, or Video and does not invoke Ollama, Flux, Wan, ComfyUI, Motion, storyboard generation, or narrative audio generation.
+`ORIGINAL` is not offered in this mode. Whisper produces the persistent base
+SRT at `output/<proyecto>/subtitles/<proyecto>.srt`; the selected visual style
+produces a persistent derived SRT, which is the exact source used for render.
 
-Its base render preserves aspect ratio through `scale` plus `pad`, emits H.264/yuv420p video and AAC 48 kHz stereo audio, and uses the profile resolution and FPS. Source audio remains at nominal gain; a compatible silent stream is supplied when the source has no audio. Optional music is mixed at `0.25` with `amix normalize=0` and a `0.95` limiter.
+## SRT + VIDEO
 
-When INTRO or OUTRO is selected, only incompatible assets are normalized. The validated Studio principal is then concatenated through the concat demuxer with `-c copy`, so it is not encoded a second time.
+`SRT + VIDEO` accepts an MP4 and a UTF-8 structural SRT from
+`input/studio/srt_video/`. Exactly one pair is selected directly; otherwise
+the user selects the MP4 and SRT independently. The SRT is authoritative:
+Studio preserves its human text, cue order, and timings.
 
-The shared `IntroOutroCatalog` resolves assets only from the semantic directories
+The available subtitle styles are:
+
+```text
+ORIGINAL
+LÍNEA ÚNICA
+PALABRA POR PALABRA
+```
+
+`ORIGINAL` preserves the human SRT and uses only the selected subtitle
+profile's `render_style`; it does not transform cues or invoke subtitle timing
+generation. The other styles generate their persistent derived SRT before the
+render.
+
+## INTRO / OUTRO
+
+`INTRO / OUTRO` composes user-selected assets from the shared semantic catalog
+under `assets/videos/intro_outro/`. Only incompatible assets are normalized;
+the completed Studio principal is then concatenated without re-encoding it.
+
+## MONTAJE VÍDEOS
+
+`MONTAJE VÍDEOS` discovers clips in `input/studio/montaje_videos/`, assigns
+temporary numeric identifiers, and accepts a validated user order. It supports
+the current `SOLO MONTAJE` and `MONTAJE COMPLETO` paths. Clips are inspected
+and normalized only when required by the target Studio profile.
+
+Without transitions, composition uses the compatible concat path. With
+transitions, the montage service uses the profile's transition duration for
+video and audio transition timing: Instagram uses `0.25 s` and YouTube uses
+`0.50 s`. MONTAJE does not expose an `ORIGINAL` subtitle option.
+
+## VIDEO + AUDIO SRT
+
+`VIDEO + AUDIO SRT` discovers the required video and new audio in
+`input/studio/video_audio_srt/`; an SRT is optional. Without an SRT it renders
+the adjusted video with the new audio. With an SRT, the human SRT is the
+textual authority and uses the common Studio subtitle transformation and
+rendering path. It never invokes Whisper or retranscribes. The new audio is
+the sole audio and temporal authority: the source video is trimmed or looped
+to exactly its duration and its original audio does not return. Music is not
+part of this mode.
+
+## EXPORTAR SRT VIDEO
+
+`EXPORTAR SRT VIDEO` is isolated from audiovisual render. `TRANSCRIBIR` discovers
+an MP4 or MP3 in `input/studio/exportar_srt/transcribir/`, reuses the external
+media subtitle preparation, and persists the generated SRT. `CONVERTIR`
+discovers a structural UTF-8 SRT in `input/studio/exportar_srt/convertir/` and
+creates the selected `LÍNEA ÚNICA` or `PALABRA POR PALABRA` output without
+running Whisper.
+
+## Studio render
+
+Studio has its own `ProfileKey`, main profiles, subtitle profiles, input
+preparation, output naming, and render service. It does not fall back to
+Guion, Imagen, or Video and does not invoke Ollama, Flux, Wan, ComfyUI,
+Motion, storyboard generation, or narrative audio generation.
+
+Its base render preserves aspect ratio through `scale` plus `pad`, emits
+H.264/yuv420p video and AAC 48 kHz stereo audio, and uses the profile
+resolution and FPS. Source audio remains at nominal gain. When enabled, music
+is mixed according to `studio.music.volume = 0.1`, with `amix normalize=0`
+and a `0.95` limiter.
+
+When INTRO or OUTRO is selected, only incompatible assets are normalized. The
+validated Studio principal is then concatenated through the concat demuxer
+with `-c copy`, so it is not encoded a second time. The shared
+`IntroOutroCatalog` resolves assets only from the semantic directories
 `assets/videos/intro_outro/intro/` and `assets/videos/intro_outro/outro/`.
-The same catalog, plan, and stream-copy composer are used by every flow that produces a final audiovisual video.
+
+## Native full-video output
+
+For GUION, IMAGEN, and VIDEO when `pipeline_mode=full`, the native render
+publishes one validated subtitle-bearing MP4:
+
+```text
+output/<proyecto>/video/<proyecto>.mp4
+```
+
+The visual chain remains Motion, Transitions, Overlays, Visual Effects, Fade,
+and `SubtitleGraphBuilder`. It is encoded once. When selected, INTRO/OUTRO is
+composed only over that validated principal.
+
+GUION also offers the secondary `Proyecto completo sin subtítulos` mode only
+after its destination has been selected as Imagen or Video. It runs the same
+full audiovisual pipeline and produces the same single principal MP4, but the
+does not request a subtitle style, resolve a subtitle profile, generate or
+optimize an SRT, or invoke `SubtitleGraphBuilder`. Its media and timeline
+contexts carry no subtitle path, and the chain ends after Fade at `[vout]`.
+This is not a dual-output mode and it never produces a parallel
+subtitle-bearing MP4.
 
 ---
 
@@ -557,7 +662,7 @@ input/guion.txt
 input/tema.txt
 input/guion_imagen.txt
 input/guion_video.txt
-input/studio/ (selected `srt_video` or `video` runtime input)
+input/studio/ (mode-specific runtime input)
 ```
 
 Their responsibilities are deliberately separated.
@@ -617,7 +722,11 @@ Produces standalone I2V video clips.
 
 ## `input/studio/`
 
-Runtime source directory for Studio. `srt_video/` requires exactly one MP4 and one UTF-8 SRT; `video/` requires exactly one MP4. Candidates are discovered by extension rather than by fixed filenames. Runtime media is ignored by Git while `.gitkeep` preserves both input-mode directories.
+Runtime source directory for Studio. It contains `video/`, `srt_video/`,
+`intro_outro/`, `montaje_videos/`, `video_audio_srt/`, and
+`exportar_srt/{transcribir,convertir}/`. Candidates are discovered by extension
+rather than fixed filenames. Runtime media is ignored by Git while `.gitkeep`
+preserves the input directories.
 
 ---
 
@@ -644,6 +753,15 @@ images/evidence/
 video_clips/
 video/
 ```
+
+For native GUION, IMAGEN, and VIDEO full pipelines, `video/` contains the
+canonical subtitle-bearing MP4. Studio uses its own selected-project result
+and persists base or derived SRT artifacts under `subtitles/` when its
+selected mode produces them.
+
+For the GUION secondary no-subtitle full mode, `video/` instead contains its
+single canonical MP4 without burned-in subtitles; no paired variant is
+generated.
 
 Important runtime manifests include:
 
@@ -1242,7 +1360,11 @@ config/profiles/video/
 config/profiles/studio/
 ```
 
-Design routes use the profile family of their target component: Image or Video.
+For every component and platform, ESTÁNDAR profiles live under
+`config/profiles/<component>/<platform>/estandar/`; self-contained DISEÑO JSON
+profiles live under `config/profiles/<component>/<platform>/design/`. Families
+are discovered dynamically from the filesystem. DISEÑO is a profile family, not
+a product component; an empty YouTube `design/` directory does not expose it.
 
 Additional system configuration is maintained under:
 
@@ -1459,13 +1581,13 @@ Permanent behavioral validation evidence.
 
 # 37. VERSION STATE
 
-The current stable architecture is:
+The current implementation is:
 
 ```text
-AI VISUAL COMPOSER V2.0
+AI VISUAL COMPOSER V3 (OPEN)
 ```
 
-V2.0 includes the validated architecture for:
+V3 includes the current architecture for:
 
 ```text
 GUION
@@ -1474,9 +1596,12 @@ VIDEO
 STUDIO
 ```
 
-together with the integrated Diseño capability and the current subtitle timing architecture.
+together with the integrated Diseño capability, dynamic ESTÁNDAR/DISEÑO
+profiles, the six Studio modes, and the current subtitle timing architecture.
 
-The permanent validation baseline contains 36 historical real executions and remains the reference evidence for regression analysis and future evolution.
+The permanent V2.0 validation baseline contains 36 historical real executions
+and remains the regression reference. V3 stays open until the owner's final
+manual validation.
 
 Future architectural changes must be validated before becoming part of a new stable system state.
 
@@ -1497,9 +1622,9 @@ AI VISUAL COMPOSER
 │
 └── STUDIO
        ↓
-    EXTERNAL MP4 + AUTHORITATIVE SRT
-       ↓
-    SUBTITLE RENDER + OPTIONAL MUSIC
+    EXTERNAL MEDIA FINISHING (SIX MODES)
+    ↓
+    OPTIONAL HUMAN SRT RENDER
        ↓
     OPTIONAL INTRO / OUTRO STREAM COPY
        ↓
@@ -1514,11 +1639,11 @@ Diseño integrates into the Image and Video infrastructure through dedicated dir
 
 ```text
 AI VISUAL COMPOSER
-VERSION: V2.0
+VERSION: V3 (OPEN)
 ARCHITECTURE: MODULAR
 EXECUTION: LOCAL
 CONFIGURATION: PROFILE-DRIVEN
-VALIDATION: 36 REAL BASELINE EXECUTIONS
+VALIDATION: V2.0 BASELINE PRESERVED; V3 MANUAL FINAL VALIDATION PENDING
 MAIN COMPONENTS: GUION / IMAGEN / VIDEO / STUDIO
 INTEGRATED CAPABILITY: DISEÑO
 ```

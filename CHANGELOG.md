@@ -6,7 +6,16 @@ All notable changes to AI Visual Composer are documented in this file.
 
 ## [Unreleased]
 
-No unreleased changes.
+### V3 — Open
+
+- Added STUDIO as the fourth main product component and its six current modes:
+  SOLO VIDEO, SRT + VIDEO, INTRO / OUTRO, MONTAJE VÍDEOS, VIDEO + AUDIO SRT,
+  and EXPORTAR SRT VIDEO.
+- Consolidated dynamic ESTÁNDAR/DISEÑO profile discovery under `estandar/` and
+  `design/`, with one self-contained JSON per DISEÑO.
+- Removed the retired CORTAR VIDEO mode and artificial runtime time limits for
+  Ollama and ComfyUI/Wan operations.
+- V3 remains open pending final owner manual validation.
 
 ---
 

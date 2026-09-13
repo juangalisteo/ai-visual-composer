@@ -11,6 +11,12 @@ class FadeGraphBuilder(
     BaseGraphBuilder
 ):
 
+    def __init__(
+        self,
+        output_stream="[fadeout]",
+    ):
+        self.output_stream = output_stream
+
     def build(
         self,
         graph
@@ -101,9 +107,7 @@ class FadeGraphBuilder(
             "setpts=PTS-STARTPTS"
         )
 
-        output_stream = (
-            "[fadeout]"
-        )
+        output_stream = self.output_stream
 
         filter_parts.append(
             f"{current_stream}"

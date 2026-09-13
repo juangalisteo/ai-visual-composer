@@ -7,6 +7,7 @@ from app.modules.subtitles.models.single_line_model import (
 from app.modules.subtitles.models.word_by_word_model import (
     WordByWordModel,
 )
+from app.modules.subtitles.punctuation import reconcile_timing_text
 from app.shared.config_contract import require_text
 
 
@@ -40,7 +41,7 @@ class SubtitleCueTransformer:
                 f"{mode}"
             )
 
-    def transform(self, content, timing=None):
+    def transform(self, content, timing=None, canonical_content=None):
         if not isinstance(content, str) or not content.strip():
             raise ValueError("El contenido SRT esta vacio.")
 
@@ -49,5 +50,14 @@ class SubtitleCueTransformer:
             content.strip(),
         )
         return "\n\n".join(
-            self.model.optimize(blocks, timing=timing)
+            self.model.optimize(
+                blocks,
+                timing=reconcile_timing_text(
+                    canonical_content
+                    if canonical_content is not None
+                    else content,
+                    timing,
+                    authoritative=canonical_content is not None,
+                ),
+            )
         )

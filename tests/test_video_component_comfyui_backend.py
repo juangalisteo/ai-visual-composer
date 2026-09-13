@@ -46,7 +46,7 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
             return_value=FakeResponse(
                 b'{"prompt_id": "abc"}'
             ),
-        ):
+        ) as urlopen_mock:
             prompt_id = backend.queue_prompt(
                 {
                     "1": {
@@ -60,6 +60,10 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
         self.assertEqual(
             "abc",
             prompt_id
+        )
+        self.assertNotIn(
+            "timeout",
+            urlopen_mock.call_args.kwargs,
         )
 
     def test_queue_prompt_wraps_connection_errors(self):
@@ -118,6 +122,35 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
             info["filename"]
         )
 
+    def test_wait_for_video_keeps_polling_without_deadline(self):
+        class HistoryBackend(ComfyUIVideoBackend):
+            def __init__(self):
+                super().__init__(poll_interval_seconds=0)
+                self.calls = 0
+
+            def _history(self, prompt_id):
+                self.calls += 1
+                if self.calls == 1:
+                    return {}
+                return {
+                    prompt_id: {
+                        "outputs": {
+                            "12": {
+                                "images": [{
+                                    "filename": "clip.mp4",
+                                }],
+                            },
+                        },
+                    },
+                }
+
+        backend = HistoryBackend()
+        info = backend.wait_for_video("prompt-id")
+
+        self.assertEqual("clip.mp4", info["filename"])
+        self.assertEqual(2, backend.calls)
+        self.assertFalse(hasattr(backend, "timeout_seconds"))
+
     def test_download_video_rejects_empty_clip(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             backend = ComfyUIVideoBackend()
@@ -146,6 +179,31 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
             "EXECUTION_ERROR",
             context.exception.category
         )
+
+    def test_history_and_download_omit_request_timeout(self):
+        backend = ComfyUIVideoBackend()
+
+        with patch(
+            "urllib.request.urlopen",
+            return_value=FakeResponse(b"{}"),
+        ) as history_mock:
+            backend._history("prompt-id")
+
+        self.assertNotIn("timeout", history_mock.call_args.kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch(
+                "urllib.request.urlopen",
+                return_value=FakeResponse(b"video-bytes"),
+            ) as download_mock:
+                output = backend.download_video(
+                    {"filename": "clip.mp4"},
+                    Path(temp_dir),
+                    "clip.mp4",
+                )
+
+        self.assertEqual("clip.mp4", output.name)
+        self.assertNotIn("timeout", download_mock.call_args.kwargs)
 
     def test_generate_stages_source_and_writes_manifest(self):
         class DeterministicBackend(ComfyUIVideoBackend):

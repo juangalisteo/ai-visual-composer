@@ -82,11 +82,12 @@ class ConfigManager:
                 "MC_PROFILE_ID",
                 ""
             ).strip(),
+            os.environ.get("MC_PROFILE_FAMILY", "system").strip() or "system",
         )
 
-        if not any(values):
+        if not any(values[:3]):
             return None
-        if not all(values):
+        if not all(values[:3]):
             raise ValueError(
                 "La identidad de perfil requiere component, "
                 "platform y profile_id."
@@ -95,7 +96,8 @@ class ConfigManager:
         return ProfileKey(
             component=values[0],
             platform=values[1],
-            profile_id=values[2]
+            profile_id=values[2],
+            family=values[3],
         )
 
     def get_subtitle_profile(

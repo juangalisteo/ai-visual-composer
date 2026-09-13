@@ -84,7 +84,7 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
         self.assertIn("¿Cómo", word_by_word)
         self.assertIn("símbolos", word_by_word)
 
-    def test_render_uses_temporary_adaptation_and_preserves_sources(self):
+    def test_render_uses_the_supplied_persisted_subtitle_and_preserves_sources(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "ruta con espacios y acentos"
             root.mkdir()
@@ -110,15 +110,6 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
                 probe=self._probe(7.0),
                 output_validator=validator,
             )
-            write_render_subtitle = service._write_render_subtitle
-
-            def capture_subtitle(**kwargs):
-                path = write_render_subtitle(**kwargs)
-                captured["subtitle_path"] = path
-                captured["subtitle"] = path.read_text(encoding="utf-8")
-                return path
-
-            service._write_render_subtitle = capture_subtitle
             result = service.render(
                 video_path=video_path,
                 subtitle_path=subtitle_path,
@@ -129,15 +120,11 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
             )
 
             self.assertEqual(output_path, result.output_path)
-            self.assertEqual(self._transform("word_by_word"), captured["subtitle"])
-            self.assertNotEqual(subtitle_path, captured["subtitle_path"])
-            self.assertFalse(captured["subtitle_path"].exists())
-            self.assertFalse(captured["subtitle_path"].parent.exists())
-            self.assertIn("studio_render.srt", " ".join(captured["command"]))
+            self.assertIn(subtitle_path.name, " ".join(captured["command"]))
             self.assertEqual(source_video, video_path.read_bytes())
             self.assertEqual(source_subtitle, subtitle_path.read_bytes())
 
-    def test_temporary_subtitle_is_removed_after_render_error(self):
+    def test_render_error_preserves_the_supplied_persisted_subtitle(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             video_path = root / "source.mp4"
@@ -145,7 +132,6 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
             output_path = root / "result.mp4"
             video_path.write_bytes(b"source-video")
             subtitle_path.write_text(self.SOURCE_SRT, encoding="utf-8")
-            captured = {}
             runner = Mock()
             runner.run.side_effect = RuntimeError("render failed")
             service = StudioRenderService(
@@ -153,14 +139,6 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
                 probe=self._probe(7.0),
                 output_validator=Mock(),
             )
-            write_render_subtitle = service._write_render_subtitle
-
-            def capture_subtitle(**kwargs):
-                path = write_render_subtitle(**kwargs)
-                captured["path"] = path
-                return path
-
-            service._write_render_subtitle = capture_subtitle
             with self.assertRaisesRegex(RuntimeError, "render failed"):
                 service.render(
                     video_path=video_path,
@@ -171,8 +149,7 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
                     output_path=output_path,
                 )
 
-            self.assertFalse(captured["path"].exists())
-            self.assertFalse(captured["path"].parent.exists())
+            self.assertEqual(self.SOURCE_SRT, subtitle_path.read_text(encoding="utf-8"))
             self.assertFalse(output_path.exists())
 
     @staticmethod
@@ -283,15 +260,18 @@ class StudioSubtitleAdaptationRealFFmpegTest(unittest.TestCase):
                 subtitle_profile = resolver.load(
                     SubtitleProfileKey.for_profile(key, style)
                 )
-                transformed.append(
+                rendered_subtitle = root / f"{style}.srt"
+                rendered_subtitle.write_text(
                     SubtitleCueTransformer(
                         subtitle_profile,
                         profile.fps,
-                    ).transform(subtitle.read_text(encoding="utf-8"))
+                    ).transform(subtitle.read_text(encoding="utf-8")),
+                    encoding="utf-8",
                 )
+                transformed.append(rendered_subtitle.read_text(encoding="utf-8"))
                 result = StudioRenderService().render(
                     video_path=source,
-                    subtitle_path=subtitle,
+                    subtitle_path=rendered_subtitle,
                     profile_key=key,
                     profile=profile,
                     subtitle_profile=subtitle_profile,

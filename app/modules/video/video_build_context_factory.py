@@ -29,7 +29,8 @@ class VideoBuildContextFactory:
         subtitle_path=None,
         images_manifest_path=None,
         output_path=None,
-        video_clips_manifest_path=None
+        video_clips_manifest_path=None,
+        render_subtitles=True,
     ):
         project = ProjectManager()
 
@@ -40,9 +41,13 @@ class VideoBuildContextFactory:
             )
         )
 
-        resolved_subtitle_path = Path(
-            subtitle_path
-            or project.subtitle_path()
+        resolved_subtitle_path = (
+            Path(
+                subtitle_path
+                or project.subtitle_path()
+            )
+            if render_subtitles
+            else None
         )
 
         media_manifest_type = "images"
@@ -63,10 +68,13 @@ class VideoBuildContextFactory:
             or project.video_path()
         )
 
+        config_loader = VideoConfigLoader(
+            subtitle_profile=self.subtitle_profile
+        )
         video_config = (
-            VideoConfigLoader(
-                subtitle_profile=self.subtitle_profile
-            ).load()
+            config_loader.load()
+            if render_subtitles
+            else config_loader.load(render_subtitles=False)
         )
 
         video_config = (
@@ -75,13 +83,19 @@ class VideoBuildContextFactory:
             )
         )
 
+        media_options = {
+            "audio_path": resolved_audio_path,
+            "subtitle_path": resolved_subtitle_path,
+            "images_manifest_path": resolved_manifest_path,
+            "output_path": resolved_output_path,
+            "media_manifest_type": media_manifest_type,
+            "storyboard_path": project.storyboard_path(),
+        }
+        if not render_subtitles:
+            media_options["render_subtitles"] = False
+
         media = MediaLoader().load(
-            audio_path=resolved_audio_path,
-            subtitle_path=resolved_subtitle_path,
-            images_manifest_path=resolved_manifest_path,
-            output_path=resolved_output_path,
-            media_manifest_type=media_manifest_type,
-            storyboard_path=project.storyboard_path()
+            **media_options,
         )
 
         image_count = len(
@@ -96,13 +110,21 @@ class VideoBuildContextFactory:
             f"Imágenes: {image_count}"
         )
 
-        timeline = TimelineBuilder().build(
-            audio_path=media.audio_path,
-            subtitle_path=media.subtitle_path,
-            image_count=image_count,
-            subtitle_offset=(
+        timeline_options = {
+            "audio_path": media.audio_path,
+            "subtitle_path": media.subtitle_path,
+            "image_count": image_count,
+            "subtitle_offset": (
                 video_config.subtitle_offset
-            )
+                if render_subtitles
+                else 0.0
+            ),
+        }
+        if not render_subtitles:
+            timeline_options["render_subtitles"] = False
+
+        timeline = TimelineBuilder().build(
+            **timeline_options,
         )
 
         ProgressLogger.info(
@@ -133,7 +155,8 @@ class VideoBuildContextFactory:
         return VideoBuildContext(
             config=video_config,
             media=media,
-            timeline=timeline
+            timeline=timeline,
+            render_subtitles=bool(render_subtitles),
         )
 
     def _apply_overlay_mode(
@@ -159,6 +182,15 @@ class VideoBuildContextFactory:
                     video_config.overlays,
                     enabled=False
                 )
+            )
+
+        if overlays_mode == "on":
+            return replace(
+                video_config,
+                overlays=replace(
+                    video_config.overlays,
+                    enabled=True,
+                ),
             )
 
         if overlays_mode != "smart":

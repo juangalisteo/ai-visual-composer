@@ -4,13 +4,13 @@ Professional AI Visual Generation Platform
 
 This document describes the current development state and future direction of AI Visual Composer.
 
-The current stable system is:
+The current implementation is:
 
 ```text
-AI VISUAL COMPOSER V2.0
+AI VISUAL COMPOSER V3 (OPEN)
 ```
 
-AI Visual Composer is organized around three main product components:
+AI Visual Composer is organized around four main product components:
 
 ```text
 AI VISUAL COMPOSER
@@ -18,15 +18,16 @@ AI VISUAL COMPOSER
 1. Guion
 2. Imagen
 3. Video
+4. Studio
 ```
 
-Diseño is an integrated capability and scalability path. It is not a fourth main product component.
+Diseño is an integrated capability and scalability path. It is not a fifth main product component.
 
 ---
 
 ## 1. Current State
 
-AI Visual Composer V2.0 provides a modular local architecture for AI-assisted audiovisual generation.
+AI Visual Composer V3 provides a modular local architecture for AI-assisted audiovisual generation. It remains open pending final owner manual validation.
 
 The current system integrates:
 
@@ -546,16 +547,16 @@ VALIDATED
 
 AI Visual Composer uses profile-driven behavior for different generation targets.
 
-Current profile families include:
+The four component families are GUION, IMAGEN, VIDEO, and STUDIO. For each
+component/platform, ESTÁNDAR and DISEÑO are discovered dynamically from:
 
 ```text
-Guion
-Instagram
-YouTube
-Diseño -> Imagen
-Diseño -> Video
-Video
+config/profiles/<component>/<platform>/estandar/
+config/profiles/<component>/<platform>/design/
 ```
+
+One DISEÑO is one self-contained JSON. An empty `design/` directory, as on
+YouTube, does not expose DISEÑO.
 
 Profiles allow generation and composition behavior to evolve without requiring architectural rewrites.
 
@@ -991,23 +992,26 @@ With Diseño operating as an integrated visual generation capability across the 
 
 ```text
 VERSION
-V2.0
+V3 (OPEN)
 
 CORE PRODUCT
 GUION   -> IMPLEMENTED / VALIDATED
 IMAGEN  -> IMPLEMENTED / VALIDATED
 VIDEO   -> IMPLEMENTED / VALIDATED
+STUDIO  -> IMPLEMENTED / VALIDATION PENDING
 
 INTEGRATED CAPABILITY
-DISEÑO  -> IMPLEMENTED / VALIDATED
+DISEÑO  -> IMPLEMENTED / VALIDATION PENDING
 
 AUTOMATED TESTS
-864 PASSING
+FOCAL V3 VALIDATIONS PASSING
 
 PERMANENT BASELINE
 36 REAL EXECUTIONS
 
-PENDING BEFORE DEFINITIVE V2.0 CLOSURE
+PENDING BEFORE V3 CLOSURE
+
+OWNER MANUAL FINAL VALIDATION
 - Complete official documentation review
 - Create definitive V2.0 Git checkpoint
 - Create full V2.0 backup

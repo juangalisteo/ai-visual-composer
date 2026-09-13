@@ -17,6 +17,10 @@ class MediaInfo:
     audio_sample_rate: int | None
     audio_channels: int | None
     nominal_fps: float | None = None
+    time_base: str | None = None
+    sample_aspect_ratio: str | None = None
+    audio_channel_layout: str | None = None
+    video_duration: float | None = None
 
     @property
     def has_audio(self):
@@ -42,7 +46,9 @@ class MediaProbe:
                 (
                     "format=duration:"
                     "stream=codec_type,codec_name,width,height,"
-                    "avg_frame_rate,r_frame_rate,pix_fmt,sample_rate,channels"
+                    "avg_frame_rate,r_frame_rate,time_base,"
+                    "sample_aspect_ratio,pix_fmt,duration,sample_rate,channels,"
+                    "channel_layout"
                 ),
                 "-of",
                 "json",
@@ -114,7 +120,33 @@ class MediaProbe:
                 else None
             ),
             nominal_fps=nominal_fps,
+            time_base=MediaProbe._optional_text(video.get("time_base")),
+            sample_aspect_ratio=MediaProbe._optional_text(
+                video.get("sample_aspect_ratio")
+            ),
+            audio_channel_layout=(
+                MediaProbe._optional_text(audio.get("channel_layout"))
+                if audio is not None
+                else None
+            ),
+            video_duration=MediaProbe._optional_duration(
+                video.get("duration"),
+                fallback=duration,
+            ),
         )
+
+    @staticmethod
+    def _optional_text(value):
+        text = str(value or "").strip()
+        return text if text and text.upper() != "N/A" else None
+
+    @staticmethod
+    def _optional_duration(value, fallback):
+        try:
+            duration = float(value)
+        except (TypeError, ValueError):
+            return fallback
+        return duration if duration > 0 else fallback
 
     @staticmethod
     def get_duration(media_path):

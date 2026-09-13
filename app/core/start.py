@@ -1,7 +1,9 @@
 import json
 import os
 import secrets
+import shutil
 import time
+from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -32,14 +34,26 @@ from app.modules.video_component import (
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioInputMode,
+    StudioSubtitleExportMode,
+    StudioSubtitleExportPlan,
+    StudioSubtitleExportService,
+    StudioMontageMode,
+    StudioMontagePlan,
+    StudioMontageFullResult,
+    StudioMontageService,
     StudioOutputPathResolver,
     StudioPreparation,
     StudioProfileLoader,
+    StudioRenderResult,
     StudioRenderService,
+    StudioIntroOutroPlan,
+    StudioVideoAudioSrtPlan,
+    StudioVideoAudioSrtService,
 )
 from app.modules.subtitles.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
+from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
 
 from app.domain.adapters import StoryboardSceneAdapter
 from app.shared.config_contract import (
@@ -49,6 +63,7 @@ from app.shared.config_contract import (
 )
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
+from app.shared.progress_logger import ProgressLogger
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
@@ -61,6 +76,14 @@ def iniciar(
     intro_outro_selection=None,
     studio_music_path=None,
     studio_input_mode=None,
+    studio_video_path=None,
+    studio_subtitle_path=None,
+    studio_subtitle_export_plan=None,
+    studio_montage_plan=None,
+    studio_intro_outro_plan=None,
+    studio_video_audio_srt_plan=None,
+    studio_subtitles_enabled=None,
+    studio_subtitle_original=False,
 ):
     pipeline_start = time.perf_counter()
 
@@ -70,16 +93,50 @@ def iniciar(
     ).strip().lower()
 
     if pipeline_mode == "studio":
-        project = ProjectManager()
-        project.setup()
+        if studio_video_audio_srt_plan is not None:
+            return ejecutar_studio_video_audio_srt(
+                studio_video_audio_srt_plan,
+                subtitle_style=subtitle_style,
+                subtitle_original=studio_subtitle_original,
+            )
+        if studio_intro_outro_plan is not None:
+            return ejecutar_studio_intro_outro(studio_intro_outro_plan)
+        if studio_subtitle_export_plan is not None:
+            return ejecutar_studio_exportar_srt(
+                studio_subtitle_export_plan,
+                subtitle_style=subtitle_style,
+            )
+        if studio_montage_plan is not None:
+            montage_options = {}
+            if subtitle_style is not None:
+                montage_options["subtitle_style"] = subtitle_style
+            if studio_subtitles_enabled is not None:
+                montage_options["subtitles_enabled"] = (
+                    studio_subtitles_enabled
+                )
+            if studio_music_path is not None:
+                montage_options["music_path"] = studio_music_path
+            if intro_outro_selection is not None:
+                montage_options["intro_outro_selection"] = (
+                    intro_outro_selection
+                )
+            return ejecutar_studio_montaje(
+                studio_montage_plan,
+                **montage_options,
+            )
         studio_options = {
             "subtitle_style": subtitle_style,
             "music_path": studio_music_path,
             "input_mode": studio_input_mode,
-            "project": project,
         }
+        if studio_subtitle_original:
+            studio_options["subtitle_original"] = True
         if intro_outro_selection is not None:
             studio_options["intro_outro_selection"] = intro_outro_selection
+        if studio_video_path is not None:
+            studio_options["video_path"] = studio_video_path
+        if studio_subtitle_path is not None:
+            studio_options["subtitle_path"] = studio_subtitle_path
         return ejecutar_studio(
             **studio_options
         )
@@ -121,9 +178,12 @@ def iniciar(
     builders = _required_builders(
         profile
     )
+    render_subtitles = pipeline_mode != "full_without_subtitles"
     subtitle_profile = None
 
     if (
+        render_subtitles
+        and
         pipeline_mode in {
             "full",
             "subtitles",
@@ -157,6 +217,11 @@ def iniciar(
     summary = PipelineSummary(
         project.project_name
     )
+    if not render_subtitles:
+        summary.add_detail(
+            "Modo",
+            "Proyecto completo sin subtítulos",
+        )
 
     stage_times = {}
 
@@ -242,9 +307,12 @@ def iniciar(
 
         return final_result
 
-    if builders.get(
+    if (
+        render_subtitles
+        and builders.get(
         "subtitles",
         False
+        )
     ):
         subtitles_start = (
             time.perf_counter()
@@ -260,7 +328,9 @@ def iniciar(
                 render_fps=_required_render_fps(
                     profile
                 )
-            ).optimize()
+            ).optimize(
+                canonical_content=prepared_script.text,
+            )
         )
 
         stage_times["Subtítulos"] = (
@@ -330,6 +400,8 @@ def iniciar(
     video_builder_options = {
         "subtitle_profile": subtitle_profile
     }
+    if not render_subtitles:
+        video_builder_options["render_subtitles"] = False
     if intro_outro_selection is not None:
         video_builder_options[
             "intro_outro_selection"
@@ -337,7 +409,10 @@ def iniciar(
 
     if (
         visual_pipeline == "video"
-        and pipeline_mode == "full"
+        and pipeline_mode in {
+            "full",
+            "full_without_subtitles",
+        }
     ):
         profile_key = config.get_profile_key()
         if (
@@ -347,9 +422,22 @@ def iniciar(
             )
             and profile_key.component is ProfileComponent.GUION
         ):
+            family = profile_key.family
+            profile_id = None
+            if family.value == "design":
+                slug = profile_key.profile_id.removeprefix(
+                    f"{profile_key.component.value}_"
+                    f"{profile_key.platform.value}_design_"
+                )
+                profile_id = (
+                    f"{ProfileComponent.VIDEO.value}_"
+                    f"{profile_key.platform.value}_design_{slug}"
+                )
             profile_key = ProfileKey.for_component(
                 ProfileComponent.VIDEO,
-                profile_key.platform
+                profile_key.platform,
+                family=family,
+                profile_id=profile_id,
             )
         video_clips_manifest_path, video_i2v_elapsed = (
             _measure_stage(
@@ -429,6 +517,10 @@ def preparar_studio(
     config_manager=None,
     profile_loader=None,
     input_preparation_service=None,
+    media_probe=None,
+    video_path=None,
+    subtitle_path=None,
+    subtitle_original=False,
 ):
     """Validate and transport Studio inputs without creating a project."""
     config = config_manager or ConfigManager()
@@ -447,10 +539,30 @@ def preparar_studio(
         profile_key,
     )
     subtitle_profile = config.get_subtitle_profile(subtitle_style)
+    preparation_options = {}
+    if video_path is not None:
+        preparation_options["video_path"] = video_path
+    if subtitle_path is not None:
+        preparation_options["subtitle_path"] = subtitle_path
     prepared_input = (
         input_preparation_service
         or StudioInputPreparationService()
-    ).prepare(profile, input_mode)
+    ).prepare(
+        profile,
+        input_mode,
+        **preparation_options,
+    )
+
+    if prepared_input.mode is StudioInputMode.VIDEO:
+        media_info = (
+            media_probe
+            or MediaProbe()
+        ).inspect(prepared_input.video_path)
+        if not media_info.has_audio:
+            raise ValueError(
+                "El video seleccionado no contiene una pista de audio. "
+                "SOLO VIDEO necesita audio para generar los subtitulos."
+            )
 
     return StudioPreparation(
         profile_key=profile_key,
@@ -459,6 +571,244 @@ def preparar_studio(
         video_path=prepared_input.video_path,
         subtitle_path=prepared_input.subtitle_path,
         input_mode=prepared_input.mode.value,
+        subtitle_original=bool(subtitle_original),
+    )
+
+
+def preparar_studio_montaje(montage_plan):
+    """Validate the structured STUDIO montage boundary."""
+    if not isinstance(montage_plan, StudioMontagePlan):
+        raise TypeError(
+            "MONTAJE DE VÍDEOS requiere un plan STUDIO estructurado."
+        )
+    return montage_plan
+
+
+def ejecutar_studio_video_audio_srt(
+    plan,
+    subtitle_style=None,
+    subtitle_original=False,
+    project=None,
+    config_manager=None,
+    profile_loader=None,
+    output_path_resolver=None,
+    service=None,
+):
+    if not isinstance(plan, StudioVideoAudioSrtPlan):
+        raise TypeError("VIDEO + AUDIO SRT requiere un plan STUDIO estructurado.")
+    if plan.subtitle_path is None and subtitle_style is not None:
+        raise ValueError(
+            "VIDEO + AUDIO SRT sin SRT no admite estilo de subtitulos."
+        )
+    if plan.subtitle_path is not None and not subtitle_style:
+        raise ValueError(
+            "VIDEO + AUDIO SRT con SRT requiere un estilo de subtitulos."
+        )
+    project = project or ProjectManager()
+    project.setup()
+    config = config_manager or ConfigManager()
+    profile_key = config.get_profile_key()
+    if profile_key is None or profile_key.component is not ProfileComponent.STUDIO:
+        raise ValueError("VIDEO + AUDIO SRT requiere identidad STUDIO estructurada.")
+    profile = (profile_loader or StudioProfileLoader()).load(
+        config.get_profile_config(),
+        profile_key,
+    )
+    output_path = (output_path_resolver or StudioOutputPathResolver()).resolve(
+        profile_key=profile_key,
+        project=project,
+    )
+    subtitle_profile = None
+    base_subtitle_path = None
+    render_subtitle_path = None
+    render_plan = plan
+    if plan.subtitle_path is not None:
+        subtitle_profile = config.get_subtitle_profile(subtitle_style)
+        base_subtitle_path = _persist_studio_subtitle_base(
+            plan.subtitle_path,
+            output_path,
+        )
+        render_subtitle_path = _persist_studio_render_subtitle(
+            base_subtitle_path=base_subtitle_path,
+            output_path=output_path,
+            subtitle_profile=subtitle_profile,
+            render_fps=profile.fps,
+            original=subtitle_original,
+        )
+        render_plan = replace(plan, subtitle_path=render_subtitle_path)
+    output_path, duration, command = (
+        service or StudioVideoAudioSrtService()
+    ).render(
+        render_plan,
+        output_path,
+        profile,
+        subtitle_profile=subtitle_profile,
+    )
+    return type(
+        "StudioVideoAudioSrtResult",
+        (),
+        {
+            "output_path": output_path,
+            "generated_duration": duration,
+            "command": command,
+            "base_subtitle_path": base_subtitle_path,
+            "generated_subtitle_path": render_subtitle_path,
+        },
+    )()
+
+def ejecutar_studio_intro_outro(
+    intro_outro_plan,
+    project=None,
+    config_manager=None,
+    profile_loader=None,
+    output_path_resolver=None,
+    render_service=None,
+):
+    if not isinstance(intro_outro_plan, StudioIntroOutroPlan):
+        raise TypeError("INTRO / OUTRO requiere un plan STUDIO estructurado.")
+    project = project or ProjectManager()
+    project.setup()
+    config = config_manager or ConfigManager()
+    profile_key = config.get_profile_key()
+    if profile_key is None or profile_key.component is not ProfileComponent.STUDIO:
+        raise ValueError("INTRO / OUTRO requiere identidad STUDIO estructurada.")
+    profile = (profile_loader or StudioProfileLoader()).load(
+        config.get_profile_config(), profile_key,
+    )
+    output_path = (output_path_resolver or StudioOutputPathResolver()).resolve(
+        profile_key=profile_key, project=project,
+    )
+    return (render_service or StudioRenderService()).render(
+        video_path=intro_outro_plan.source_path,
+        subtitle_path=None,
+        profile_key=profile_key,
+        profile=profile,
+        output_path=output_path,
+        intro_outro_selection=intro_outro_plan.intro_outro_plan,
+    )
+
+def ejecutar_studio_exportar_srt(
+    export_plan,
+    subtitle_style=None,
+    project=None,
+    config_manager=None,
+    profile_loader=None,
+    export_service=None,
+):
+    if not isinstance(export_plan, StudioSubtitleExportPlan):
+        raise TypeError(
+            "EXPORTAR SRT requiere un plan STUDIO estructurado."
+        )
+    project = project or ProjectManager()
+    project.setup()
+    service = export_service or StudioSubtitleExportService()
+    if export_plan.mode is StudioSubtitleExportMode.TRANSCRIBIR:
+        if subtitle_style is not None:
+            raise ValueError("TRANSCRIBIR no admite formato de subtitulos.")
+        return service.export(
+            plan=export_plan,
+            project=project,
+        )
+    if subtitle_style is None:
+        raise ValueError("CONVERTIR requiere un formato de subtitulos.")
+    config = config_manager or ConfigManager()
+    profile_key = config.get_profile_key()
+    if profile_key is None or profile_key.component is not ProfileComponent.STUDIO:
+        raise ValueError(
+            "CONVERTIR requiere una identidad STUDIO estructurada."
+        )
+    profile = (profile_loader or StudioProfileLoader()).load(
+        config.get_profile_config(),
+        profile_key,
+    )
+    subtitle_profile = config.get_subtitle_profile(subtitle_style)
+    return service.export(
+        plan=export_plan,
+        project=project,
+        profile=profile,
+        subtitle_profile=subtitle_profile,
+    )
+
+
+def ejecutar_studio_montaje(
+    montage_plan,
+    subtitle_style=None,
+    subtitles_enabled=True,
+    music_path=None,
+    intro_outro_selection=None,
+    project=None,
+    profile_resolver=None,
+    profile_loader=None,
+    output_path_resolver=None,
+    montage_service=None,
+    config_manager=None,
+    render_service=None,
+    external_subtitle_preparation_service=None,
+):
+    montage_plan = preparar_studio_montaje(montage_plan)
+    project = project or ProjectManager()
+    project.setup()
+    profile_resolver = profile_resolver or ProfileResolver()
+    profile_loader = profile_loader or StudioProfileLoader()
+    profile = profile_loader.load(
+        profile_resolver.load(montage_plan.profile_key),
+        montage_plan.profile_key,
+    )
+    output_path = (
+        output_path_resolver
+        or StudioOutputPathResolver()
+    ).resolve(
+        profile_key=montage_plan.profile_key,
+        project=project,
+    )
+    montage_service = montage_service or StudioMontageService()
+    if montage_plan.mode is StudioMontageMode.SOLO_MONTAJE:
+        return montage_service.compose(
+            plan=montage_plan,
+            output_path=output_path,
+            profile=profile,
+        )
+    if subtitles_enabled and not subtitle_style:
+        raise ValueError(
+            "MONTAJE COMPLETO requiere un estilo de subtitulos STUDIO."
+        )
+    subtitle_profile = None
+    if subtitles_enabled:
+        subtitle_profile = (
+            config_manager or ConfigManager()
+        ).get_subtitle_profile(subtitle_style)
+    with TemporaryDirectory(
+        prefix="ai_visual_composer_studio_montage_full_"
+    ) as directory:
+        principal_path = Path(directory) / "montage-principal.mp4"
+        montage_result = montage_service.compose(
+            plan=montage_plan,
+            output_path=principal_path,
+            profile=profile,
+        )
+        preparation = StudioPreparation(
+            profile_key=montage_plan.profile_key,
+            profile=profile,
+            subtitle_profile=subtitle_profile,
+            video_path=montage_result.output_path,
+            subtitle_path=None,
+            input_mode=StudioInputMode.VIDEO.value,
+            subtitles_enabled=subtitles_enabled,
+        )
+        render_result = _render_prepared_studio(
+            preparation=preparation,
+            project=project,
+            music_path=music_path,
+            intro_outro_selection=intro_outro_selection,
+            output_path=output_path,
+            render_service=render_service,
+            external_subtitle_preparation_service=(
+                external_subtitle_preparation_service
+            ),
+        )
+    return StudioMontageFullResult(
+        montage_result=montage_result,
+        render_result=render_result,
     )
 
 
@@ -472,42 +822,108 @@ def ejecutar_studio(
     output_path_resolver=None,
     external_subtitle_preparation_service=None,
     project=None,
+    video_path=None,
+    subtitle_path=None,
+    subtitle_original=False,
 ):
-    if project is None:
-        project = ProjectManager()
-        project.setup()
+    if (
+        subtitle_original
+        and input_mode != StudioInputMode.SRT_VIDEO.value
+    ):
+        raise ValueError(
+            "ORIGINAL solo esta disponible para STUDIO SRT + VIDEO."
+        )
+    preparation_options = {
+        "subtitle_style": subtitle_style,
+        "input_mode": input_mode,
+    }
+    if subtitle_original:
+        preparation_options["subtitle_original"] = True
+    if video_path is not None:
+        preparation_options["video_path"] = video_path
+    if subtitle_path is not None:
+        preparation_options["subtitle_path"] = subtitle_path
     preparation = (
         preparation_service
         or preparar_studio
-    )(
-        subtitle_style=subtitle_style,
-        input_mode=input_mode,
+    )(**preparation_options)
+    if project is None:
+        project = ProjectManager()
+        project.setup()
+    return _render_prepared_studio(
+        preparation=preparation,
+        project=project,
+        music_path=music_path,
+        intro_outro_selection=intro_outro_selection,
+        output_path=(
+            output_path_resolver
+            or StudioOutputPathResolver()
+        ).resolve(
+            profile_key=preparation.profile_key,
+            project=project,
+        ),
+        render_service=render_service,
+        external_subtitle_preparation_service=(
+            external_subtitle_preparation_service
+        ),
+    )
+
+
+def _render_prepared_studio(
+    preparation,
+    project,
+    music_path,
+    intro_outro_selection,
+    output_path,
+    render_service=None,
+    external_subtitle_preparation_service=None,
+):
+    subtitles_enabled = getattr(
+        preparation,
+        "subtitles_enabled",
+        True,
     )
     render_options = {
         "video_path": preparation.video_path,
         "profile_key": preparation.profile_key,
-        "subtitle_profile": preparation.subtitle_profile,
         "music_path": music_path,
         "profile": preparation.profile,
     }
+    if subtitles_enabled:
+        render_options["subtitle_profile"] = preparation.subtitle_profile
     if intro_outro_selection is not None:
         render_options["intro_outro_selection"] = intro_outro_selection
-    output_path = (
-        output_path_resolver
-        or StudioOutputPathResolver()
-    ).resolve(
-        profile_key=preparation.profile_key,
-        project=project,
-    )
     render_options["output_path"] = output_path
     renderer = render_service or StudioRenderService()
-    if preparation.input_mode == StudioInputMode.SRT_VIDEO.value:
-        render_options["subtitle_path"] = preparation.subtitle_path
+    if not subtitles_enabled:
         return renderer.render(**render_options)
+    if preparation.input_mode == StudioInputMode.SRT_VIDEO.value:
+        base_subtitle_path = _persist_studio_subtitle_base(
+            preparation.subtitle_path,
+            output_path,
+        )
+        render_subtitle_path = _persist_studio_render_subtitle(
+            base_subtitle_path=base_subtitle_path,
+            output_path=output_path,
+            subtitle_profile=preparation.subtitle_profile,
+            render_fps=preparation.profile.fps,
+            original=getattr(preparation, "subtitle_original", False),
+        )
+        render_options["subtitle_path"] = render_subtitle_path
+        rendered = renderer.render(**render_options)
+        return _with_studio_subtitle_artifacts(
+            rendered,
+            base_subtitle_path=base_subtitle_path,
+            render_subtitle_path=render_subtitle_path,
+        )
 
     with TemporaryDirectory(
         prefix="ai_visual_composer_studio_whisper_"
     ) as directory:
+        ProgressLogger.start(
+            "PREPARANDO SUBTÍTULOS"
+        )
+        subtitle_preparation_start = time.perf_counter()
         subtitles = (
             external_subtitle_preparation_service
             or ExternalMediaSubtitlePreparationService()
@@ -515,9 +931,100 @@ def ejecutar_studio(
             video_path=preparation.video_path,
             working_directory=directory,
         )
-        render_options["subtitle_path"] = subtitles.subtitle_path
-        render_options["subtitle_timing"] = subtitles.timing
-        return renderer.render(**render_options)
+        subtitle_preparation_duration = (
+            time.perf_counter()
+            - subtitle_preparation_start
+        )
+        ProgressLogger.finish(
+            "SUBTÍTULOS PREPARADOS",
+            subtitle_preparation_duration,
+        )
+        base_subtitle_path = _persist_studio_subtitle_base(
+            subtitles.subtitle_path,
+            output_path,
+        )
+        render_subtitle_path = _persist_studio_render_subtitle(
+            base_subtitle_path=base_subtitle_path,
+            output_path=output_path,
+            subtitle_profile=preparation.subtitle_profile,
+            render_fps=preparation.profile.fps,
+            timing=subtitles.timing,
+            original=getattr(preparation, "subtitle_original", False),
+        )
+        render_options["subtitle_path"] = render_subtitle_path
+        rendered = renderer.render(**render_options)
+        return _with_studio_subtitle_artifacts(
+            rendered,
+            base_subtitle_path=base_subtitle_path,
+            render_subtitle_path=render_subtitle_path,
+            subtitle_preparation_duration=subtitle_preparation_duration,
+        )
+
+
+def _persist_studio_subtitle_base(subtitle_path, output_path):
+    output_path = Path(output_path)
+    target_path = (
+        output_path.parent.parent
+        / "subtitles"
+        / f"{output_path.stem}.srt"
+    )
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(subtitle_path, target_path)
+    return target_path
+
+
+def _persist_studio_render_subtitle(
+    base_subtitle_path,
+    output_path,
+    subtitle_profile,
+    render_fps,
+    timing=None,
+    original=False,
+):
+    if original:
+        return Path(base_subtitle_path)
+
+    style = (
+        subtitle_profile.key.style.value
+        if hasattr(subtitle_profile.key.style, "value")
+        else str(subtitle_profile.key.style)
+    )
+    output_path = Path(output_path)
+    target_path = (
+        output_path.parent.parent
+        / "subtitles"
+        / f"{output_path.stem}_{style}.srt"
+    )
+    transformed = SubtitleCueTransformer(
+        subtitle_profile=subtitle_profile,
+        render_fps=render_fps,
+    ).transform(
+        Path(base_subtitle_path).read_text(encoding="utf-8"),
+        timing=timing,
+    )
+    if not transformed.strip():
+        raise ValueError("El SRT de STUDIO no produjo cues renderizables.")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = target_path.with_suffix(".srt.tmp")
+    temporary_path.write_text(transformed, encoding="utf-8")
+    temporary_path.replace(target_path)
+    return target_path
+
+
+def _with_studio_subtitle_artifacts(
+    rendered,
+    base_subtitle_path,
+    render_subtitle_path,
+    subtitle_preparation_duration=None,
+):
+    if not isinstance(rendered, StudioRenderResult):
+        return rendered
+    return replace(
+        rendered,
+        generated_subtitle_path=Path(render_subtitle_path),
+        base_subtitle_path=Path(base_subtitle_path),
+        subtitle_preparation_duration=subtitle_preparation_duration,
+    )
 
 
 def cargar_o_generar_guion(

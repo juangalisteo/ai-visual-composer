@@ -6,7 +6,7 @@ import json
 @dataclass(frozen=True)
 class VideoMedia:
     audio_path: Path
-    subtitle_path: Path
+    subtitle_path: Path | None
     images_manifest_path: Path
     output_path: Path
     image_paths: tuple[Path, ...]
@@ -24,14 +24,17 @@ class MediaLoader:
         images_manifest_path,
         output_path,
         media_manifest_type="images",
-        storyboard_path=None
+        storyboard_path=None,
+        render_subtitles=True,
     ):
         audio_path = Path(
             audio_path
         )
 
-        subtitle_path = Path(
-            subtitle_path
+        subtitle_path = (
+            Path(subtitle_path)
+            if subtitle_path is not None
+            else None
         )
 
         images_manifest_path = Path(
@@ -50,7 +53,8 @@ class MediaLoader:
         self._validate_input_files(
             audio_path=audio_path,
             subtitle_path=subtitle_path,
-            images_manifest_path=images_manifest_path
+            images_manifest_path=images_manifest_path,
+            render_subtitles=render_subtitles,
         )
 
         if media_manifest_type == "video_clips":
@@ -114,7 +118,8 @@ class MediaLoader:
         self,
         audio_path,
         subtitle_path,
-        images_manifest_path
+        images_manifest_path,
+        render_subtitles,
     ):
         if not audio_path.exists():
             raise FileNotFoundError(
@@ -122,7 +127,12 @@ class MediaLoader:
                 f"{audio_path}"
             )
 
-        if not subtitle_path.exists():
+        if render_subtitles and subtitle_path is None:
+            raise ValueError(
+                "La renderizacion con subtitulos requiere subtitle_path."
+            )
+
+        if subtitle_path is not None and not subtitle_path.exists():
             raise FileNotFoundError(
                 f"No existen los subtítulos: "
                 f"{subtitle_path}"

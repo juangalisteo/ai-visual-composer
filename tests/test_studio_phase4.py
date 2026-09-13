@@ -54,8 +54,12 @@ class StudioPhase4Test(unittest.TestCase):
     def test_music_contract_is_explicit_and_isolated_by_platform(self):
         for platform in ("instagram", "youtube"):
             key = ProfileKey.for_component("studio", platform)
-            profile = StudioProfileLoader().load(ProfileResolver().load(key), key)
-            self.assertEqual(0.25, profile.music.volume)
+            raw_profile = ProfileResolver().load(key)
+            profile = StudioProfileLoader().load(raw_profile, key)
+            self.assertEqual(
+                raw_profile["studio"]["music"]["volume"],
+                profile.music.volume,
+            )
             self.assertTrue(profile.music.loop_shorter)
             self.assertEqual(0.95, profile.music.limiter_limit)
 
@@ -146,7 +150,7 @@ class StudioPhase4Test(unittest.TestCase):
             if call.args
         )
         self.assertIn("STUDIO COMPLETADO", printed)
-        self.assertIn("Output:", printed)
+        self.assertIn("Video final", printed)
         self.assertIn(str(final_output), printed)
         start.assert_called_once_with(
             subtitle_style="single_line",
@@ -166,9 +170,178 @@ class StudioPhase4Test(unittest.TestCase):
             subtitle_style="single_line",
             music_path=selected,
             input_mode="srt_video",
-            project=project_manager.return_value,
         )
-        project_manager.return_value.setup.assert_called_once_with()
+        project_manager.assert_not_called()
+
+    def test_studio_summary_reports_execution_contract_and_generated_srt(self):
+        output_path = Path("output/demo/video/demo.mp4")
+        generated_srt = Path("output/demo/subtitles/demo.srt")
+        result = SimpleNamespace(
+            output_path=output_path,
+            generated_subtitle_path=generated_srt,
+            generated_duration=12.5,
+        )
+        options = {
+            "project_name": "demo",
+            "profile_id": "studio_instagram",
+            "profile_platform": "instagram",
+            "studio_input_mode": "video",
+            "subtitle_config": "word_by_word",
+            "studio_music_path": "assets/music/track.mp3",
+            "intro_outro_selection": None,
+        }
+        with patch("builtins.print") as print_mock:
+            main._print_studio_summary(options, result, 2.5)
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("Proyecto", printed)
+        self.assertIn("studio_instagram / Instagram", printed)
+        self.assertIn("Entrada", printed)
+        self.assertIn("VIDEO", printed)
+        self.assertIn("Palabra por palabra", printed)
+        self.assertIn("Música", printed)
+        self.assertIn("SRT generado", printed)
+        self.assertIn(str(generated_srt), printed)
+        self.assertIn("Video final", printed)
+        self.assertIn(str(output_path), printed)
+        self.assertIn("STUDIO COMPLETADO", printed)
+
+    def test_studio_video_summary_separates_real_stages_from_global_total(self):
+        result = SimpleNamespace(
+            output_path=Path("output/demo/video/demo.mp4"),
+            generated_duration=12.5,
+            generated_subtitle_path=Path("output/demo/subtitles/demo.srt"),
+            subtitle_preparation_duration=1.5,
+            render_duration=2.0,
+            intro_outro_duration=1.0,
+        )
+        options = {
+            "project_name": "demo",
+            "profile_id": "studio_instagram",
+            "profile_platform": "instagram",
+            "studio_input_mode": "video",
+            "subtitle_config": "single_line",
+            "studio_music_path": None,
+            "intro_outro_selection": SimpleNamespace(
+                intro=object(),
+                outro=None,
+            ),
+        }
+
+        with patch("builtins.print") as print_mock:
+            main._print_studio_summary(options, result, 5.0)
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("Preparación subtítulos", printed)
+        self.assertIn("Render STUDIO", printed)
+        self.assertIn("Intro / Outro", printed)
+        self.assertIn("Tiempo total............... 5.00 s", printed)
+        self.assertLess(
+            printed.index("Preparación subtítulos"),
+            printed.index("Render STUDIO"),
+        )
+        self.assertLess(
+            printed.index("Render STUDIO"),
+            printed.index("Intro / Outro"),
+        )
+
+    def test_studio_srt_video_summary_omits_external_subtitle_stage(self):
+        result = SimpleNamespace(
+            output_path=Path("output/demo/video/demo.mp4"),
+            generated_duration=12.5,
+            subtitle_preparation_duration=None,
+            render_duration=2.0,
+            intro_outro_duration=None,
+        )
+        options = {
+            "project_name": "demo",
+            "profile_id": "studio_youtube",
+            "profile_platform": "youtube",
+            "studio_input_mode": "srt_video",
+            "subtitle_config": "word_by_word",
+            "studio_music_path": None,
+            "intro_outro_selection": None,
+        }
+
+        with patch("builtins.print") as print_mock:
+            main._print_studio_summary(options, result, 2.5)
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertNotIn("Preparación subtítulos", printed)
+        self.assertIn("Render STUDIO", printed)
+        self.assertNotIn("Intro / Outro", printed)
+        self.assertIn("Tiempo total............... 2.50 s", printed)
+
+    def test_studio_summary_does_not_invent_stages_without_recorded_durations(self):
+        result = SimpleNamespace(
+            output_path=Path("output/demo/video/demo.mp4"),
+            generated_duration=12.5,
+        )
+        options = {
+            "project_name": "demo",
+            "profile_id": "studio_instagram",
+            "profile_platform": "instagram",
+            "studio_input_mode": "srt_video",
+            "subtitle_config": "single_line",
+            "studio_music_path": None,
+            "intro_outro_selection": None,
+        }
+
+        with patch("builtins.print") as print_mock:
+            main._print_studio_summary(options, result, 2.5)
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertNotIn("Preparación subtítulos", printed)
+        self.assertNotIn("Render STUDIO", printed)
+        self.assertNotIn("Intro / Outro", printed)
+        self.assertIn("Tiempo total............... 2.50 s", printed)
+
+    def test_studio_summary_shows_intro_outro_only_for_executed_selection(self):
+        for intro, outro in ((object(), None), (None, object()), (object(), object())):
+            with self.subTest(intro=bool(intro), outro=bool(outro)):
+                result = SimpleNamespace(
+                    output_path=Path("output/demo/video/demo.mp4"),
+                    generated_duration=12.5,
+                    subtitle_preparation_duration=None,
+                    render_duration=2.0,
+                    intro_outro_duration=0.5,
+                )
+                options = {
+                    "project_name": "demo",
+                    "profile_id": "studio_instagram",
+                    "profile_platform": "instagram",
+                    "studio_input_mode": "srt_video",
+                    "subtitle_config": "single_line",
+                    "studio_music_path": None,
+                    "intro_outro_selection": SimpleNamespace(
+                        intro=intro,
+                        outro=outro,
+                    ),
+                }
+                with patch("builtins.print") as print_mock:
+                    main._print_studio_summary(options, result, 2.5)
+                printed = "\n".join(
+                    str(call.args[0])
+                    for call in print_mock.call_args_list
+                    if call.args
+                )
+                self.assertIn("Intro / Outro", printed)
 
     def test_phase_two_transports_track_to_naming_and_renderer(self):
         track = Path("assets/music/ambient/ambient_001.mp3")
@@ -185,15 +358,24 @@ class StudioPhase4Test(unittest.TestCase):
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
         project = Mock()
-        result = ejecutar_studio(
-            subtitle_style="single_line",
-            input_mode="srt_video",
-            music_path=track,
-            preparation_service=Mock(return_value=preparation),
-            render_service=renderer,
-            output_path_resolver=resolver,
-            project=project,
-        )
+        with patch(
+            "app.core.start._persist_studio_subtitle_base",
+            return_value=Path("output/studio/subtitles/result.srt"),
+        ), patch(
+            "app.core.start._persist_studio_render_subtitle",
+            return_value=Path(
+                "output/studio/subtitles/result_single_line.srt"
+            ),
+        ):
+            result = ejecutar_studio(
+                subtitle_style="single_line",
+                input_mode="srt_video",
+                music_path=track,
+                preparation_service=Mock(return_value=preparation),
+                render_service=renderer,
+                output_path_resolver=resolver,
+                project=project,
+            )
         self.assertEqual("rendered", result)
         resolver.resolve.assert_called_once_with(
             profile_key=preparation.profile_key,
@@ -250,10 +432,34 @@ class StudioPhase4Test(unittest.TestCase):
         )
         graph = command[command.index("-filter_complex") + 1]
         self.assertIn("[0:a:0]aresample=48000", graph)
-        self.assertIn("[1:a:0]volume=0.250000", graph)
+        self.assertIn(
+            f"[1:a:0]volume={self.profile.music.volume:.6f}",
+            graph,
+        )
         self.assertIn("amix=inputs=2:duration=first:dropout_transition=0:normalize=0", graph)
         self.assertIn("alimiter=limit=0.950000:level=false:latency=true", graph)
         self.assertEqual(1, command.count("-c:v"))
+
+    def test_subtitle_free_command_preserves_studio_audio_rendering(self):
+        command = StudioRenderService().build_command(
+            "source.mp4",
+            None,
+            "result.mp4",
+            self.source_info,
+            self.profile,
+            None,
+            music_path="music.mp3",
+        )
+
+        graph = command[command.index("-filter_complex") + 1]
+        self.assertIn("[studio_base]null[vout]", graph)
+        self.assertNotIn("subtitles=", graph)
+        self.assertNotIn("fontsdir=", graph)
+        self.assertIn(
+            f"[1:a:0]volume={self.profile.music.volume:.6f}",
+            graph,
+        )
+        self.assertIn("amix=inputs=2:duration=first", graph)
 
     def test_music_uses_loop_and_trim_without_second_render(self):
         command = StudioRenderService().build_command(

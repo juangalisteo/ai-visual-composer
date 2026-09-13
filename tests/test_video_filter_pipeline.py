@@ -267,6 +267,27 @@ class FilterPipelineTest(
             )
         )
 
+    def test_filter_builder_omits_only_subtitle_stage_when_disabled(self):
+        stages = FilterBuilder()._stages(
+            motion_builder=SimpleNamespace(),
+            transition_builder=SimpleNamespace(),
+            overlay_builder=SimpleNamespace(inputs=()),
+            visual_effect_builder=SimpleNamespace(inputs=()),
+            render_subtitles=False,
+        )
+
+        self.assertEqual(
+            tuple(stage.__class__.__name__ for stage in stages),
+            (
+                "MotionGraphBuilder",
+                "TransitionGraphBuilder",
+                "OverlayGraphBuilder",
+                "VisualEffectGraphBuilder",
+                "FadeGraphBuilder",
+            ),
+        )
+        self.assertEqual("[vout]", stages[-1].output_stream)
+
     def test_motion_graph_does_not_rebuild_pingpong_for_normalized_clips(
         self
     ):

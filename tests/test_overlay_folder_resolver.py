@@ -1,12 +1,14 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from app.modules.video.config.overlay_config import OverlayConfig
 from app.modules.video.overlays.overlay_builder import OverlayBuilder
 from app.modules.video.overlays.overlay_folder_resolver import (
     OverlayCategoryResolution,
-    OverlayFolderResolver
+    OverlayFolderResolver,
+    _OverlayOllamaProvider,
 )
 
 
@@ -33,6 +35,15 @@ class FakeProvider:
             raise self.error
 
         return self.response
+
+
+class FakeOllamaResponse:
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {"response": "Electricity"}
 
 
 def overlay_config(
@@ -69,6 +80,18 @@ def overlay_config(
 class OverlayFolderResolverTest(
     unittest.TestCase
 ):
+
+    def test_ollama_provider_omits_request_timeout(self):
+        with patch(
+            "app.modules.video.overlays.overlay_folder_resolver.requests.post",
+            return_value=FakeOllamaResponse(),
+        ) as post_mock:
+            response = _OverlayOllamaProvider("fake-model").generate(
+                "prompt"
+            )
+
+        self.assertEqual("Electricity", response)
+        self.assertNotIn("timeout", post_mock.call_args.kwargs)
 
     def test_discovers_only_real_overlay_folders_with_valid_assets(
         self

@@ -35,7 +35,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_size": 14,
             "subtitle_margin": 55,
             "subtitle_offset": -0.06,
-            "seconds_per_image": 10,
+            "seconds_per_image": 20,
         },
         ProfilePlatform.YOUTUBE: {
             "format": "horizontal",
@@ -48,7 +48,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_size": 16,
             "subtitle_margin": 25,
             "subtitle_offset": 0.0,
-            "seconds_per_image": 15,
+            "seconds_per_image": 30,
         },
     }
 

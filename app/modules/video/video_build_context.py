@@ -7,6 +7,7 @@ class VideoBuildContext:
     config: object
     media: object
     timeline: object
+    render_subtitles: bool = True
 
 
 @dataclass(frozen=True)

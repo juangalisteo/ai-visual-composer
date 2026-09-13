@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import json
 import tempfile
 import unittest
@@ -12,6 +12,7 @@ from app.modules.studio import (
     StudioInputMode,
     StudioInputPreparationService,
     StudioProfileLoader,
+    StudioRenderResult,
 )
 from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
 from app.modules.subtitles.external_media_subtitles import (
@@ -135,36 +136,221 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertIn("00:00:00,000 --> 00:00:00,200", output)
         self.assertIn("00:00:00,900 --> 00:00:01,200", output)
 
-    def test_video_runtime_passes_real_timing_and_cleans_all_derivatives(self):
-        preparation = SimpleNamespace(
-            video_path=Path("input/studio/video/source.mp4"),
-            subtitle_path=None,
-            input_mode="video",
-            profile_key=self.profile_key,
-            profile=self.profile,
-            subtitle_profile=self._subtitle_profile("word_by_word"),
+    def test_video_runtime_persists_base_and_render_derivative(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            preparation = SimpleNamespace(
+                video_path=Path("input/studio/video/source.mp4"),
+                subtitle_path=None,
+                input_mode="video",
+                profile_key=self.profile_key,
+                profile=self.profile,
+                subtitle_profile=self._subtitle_profile("word_by_word"),
+            )
+            subtitle_service = _CapturingSubtitlePreparation()
+            renderer = Mock()
+            output_path = root / "demo" / "video" / "demo.mp4"
+            renderer.render.return_value = StudioRenderResult(
+                source_video_path=preparation.video_path,
+                source_subtitle_path=Path("temporary/whisper.srt"),
+                output_path=output_path,
+                command=(),
+                expected_duration=1.2,
+                generated_duration=1.2,
+                source_had_audio=True,
+                silence_added=False,
+                music_path=None,
+            )
+            resolver = Mock(resolve=Mock(return_value=output_path))
+
+            with patch(
+                "app.core.start.time.perf_counter",
+                side_effect=(10.0, 12.5),
+            ), patch(
+                "app.core.start.ProgressLogger"
+            ) as progress_logger:
+                result = ejecutar_studio(
+                    subtitle_style="word_by_word",
+                    input_mode="video",
+                    preparation_service=Mock(return_value=preparation),
+                    external_subtitle_preparation_service=subtitle_service,
+                    render_service=renderer,
+                    output_path_resolver=resolver,
+                    project=Mock(),
+                )
+
+            base = root / "demo" / "subtitles" / "demo.srt"
+            persisted = root / "demo" / "subtitles" / "demo_word_by_word.srt"
+            self.assertEqual(
+                "1\n00:00:00,000 --> 00:00:01,200\nuno dos\n",
+                base.read_text(encoding="utf-8"),
+            )
+            self.assertNotEqual(
+                base.read_text(encoding="utf-8"),
+                persisted.read_text(encoding="utf-8"),
+            )
+            self.assertEqual(persisted, result.generated_subtitle_path)
+            self.assertEqual(base, result.base_subtitle_path)
+            self.assertEqual(2.5, result.subtitle_preparation_duration)
+            progress_logger.start.assert_called_once_with(
+                "PREPARANDO SUBTÍTULOS"
+            )
+            progress_logger.finish.assert_called_once_with(
+                "SUBTÍTULOS PREPARADOS",
+                2.5,
+            )
+            kwargs = renderer.render.call_args.kwargs
+            self.assertEqual(persisted, kwargs["subtitle_path"])
+            self.assertNotIn("subtitle_timing", kwargs)
+            self.assertFalse(subtitle_service.subtitle_path.exists())
+            self.assertFalse(subtitle_service.audio_path.exists())
+            self.assertFalse(subtitle_service.subtitle_path.parent.exists())
+
+    def test_srt_video_persists_immutable_base_and_render_derivative(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            human_srt = root / "human.srt"
+            human_srt.write_text(self.SOURCE_SRT, encoding="utf-8")
+            source_bytes = human_srt.read_bytes()
+            preparation = SimpleNamespace(
+                video_path=root / "source.mp4",
+                subtitle_path=human_srt,
+                input_mode="srt_video",
+                profile_key=self.profile_key,
+                profile=self.profile,
+                subtitle_profile=self._subtitle_profile("single_line"),
+            )
+            renderer = Mock()
+            renderer.render.return_value = "rendered"
+            output_path = root / "demo" / "video" / "demo.mp4"
+            resolver = Mock(resolve=Mock(return_value=output_path))
+
+            result = ejecutar_studio(
+                subtitle_style="single_line",
+                input_mode="srt_video",
+                preparation_service=Mock(return_value=preparation),
+                render_service=renderer,
+                output_path_resolver=resolver,
+                project=Mock(),
+            )
+
+            self.assertEqual("rendered", result)
+            base = root / "demo" / "subtitles" / "demo.srt"
+            derived = root / "demo" / "subtitles" / "demo_single_line.srt"
+            self.assertEqual(source_bytes, human_srt.read_bytes())
+            self.assertEqual(self.SOURCE_SRT, base.read_text(encoding="utf-8"))
+            self.assertNotEqual(base.read_text(encoding="utf-8"), derived.read_text(encoding="utf-8"))
+            self.assertEqual(
+                derived,
+                renderer.render.call_args.kwargs["subtitle_path"],
+            )
+
+    def test_srt_video_original_preserves_the_persisted_base_for_render(self):
+        source = (
+            "1\n"
+            "00:00:10,000 --> 00:00:11,500\n"
+            "MATEO 13\n"
+            "Con puntuacion.\n"
         )
-        subtitle_service = _CapturingSubtitlePreparation()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            human_srt = root / "human.srt"
+            human_srt.write_text(source, encoding="utf-8")
+            source_bytes = human_srt.read_bytes()
+            preparation = SimpleNamespace(
+                video_path=root / "source.mp4",
+                subtitle_path=human_srt,
+                input_mode="srt_video",
+                profile_key=self.profile_key,
+                profile=self.profile,
+                subtitle_profile=self._subtitle_profile("word_by_word"),
+                subtitle_original=True,
+            )
+            renderer = Mock()
+            renderer.render.return_value = "rendered"
+            output_path = root / "demo" / "video" / "demo.mp4"
+
+            with patch("app.core.start.SubtitleCueTransformer") as transformer:
+                ejecutar_studio(
+                    subtitle_style="word_by_word",
+                    input_mode="srt_video",
+                    preparation_service=Mock(return_value=preparation),
+                    render_service=renderer,
+                    output_path_resolver=Mock(resolve=Mock(return_value=output_path)),
+                    project=Mock(),
+                    subtitle_original=True,
+                )
+
+            base = root / "demo" / "subtitles" / "demo.srt"
+            self.assertEqual(source_bytes, human_srt.read_bytes())
+            self.assertEqual(source, base.read_text(encoding="utf-8"))
+            self.assertEqual(base, renderer.render.call_args.kwargs["subtitle_path"])
+            transformer.assert_not_called()
+
+    def test_video_rejects_original_before_whisper_or_render(self):
+        subtitle_service = Mock()
         renderer = Mock()
-        renderer.render.return_value = "rendered"
-        resolver = Mock(resolve=Mock(return_value=Path("output/demo/video/demo.mp4")))
 
-        result = ejecutar_studio(
-            subtitle_style="word_by_word",
-            input_mode="video",
-            preparation_service=Mock(return_value=preparation),
-            external_subtitle_preparation_service=subtitle_service,
-            render_service=renderer,
-            output_path_resolver=resolver,
-            project=Mock(),
-        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "ORIGINAL solo esta disponible para STUDIO SRT \\+ VIDEO",
+        ):
+            ejecutar_studio(
+                subtitle_style="single_line",
+                input_mode="video",
+                subtitle_original=True,
+                external_subtitle_preparation_service=subtitle_service,
+                render_service=renderer,
+            )
 
-        self.assertEqual("rendered", result)
-        kwargs = renderer.render.call_args.kwargs
-        self.assertEqual("whisper", kwargs["subtitle_timing"].source)
-        self.assertFalse(subtitle_service.subtitle_path.exists())
-        self.assertFalse(subtitle_service.audio_path.exists())
-        self.assertFalse(subtitle_service.subtitle_path.parent.exists())
+        subtitle_service.prepare.assert_not_called()
+        renderer.render.assert_not_called()
+
+    def test_original_preserves_srt_base_for_both_studio_platforms(self):
+        source = "1\n00:00:00,000 --> 00:00:01,000\nMATEO 13\n"
+        for platform in ("instagram", "youtube"):
+            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                profile_key = ProfileKey.for_component("studio", platform)
+                profile = StudioProfileLoader().load(
+                    ProfileResolver().load(profile_key),
+                    profile_key,
+                )
+                subtitle_profile = SubtitleProfileResolver().load(
+                    SubtitleProfileKey.for_profile(profile_key, "word_by_word")
+                )
+                human_srt = root / "human.srt"
+                human_srt.write_text(source, encoding="utf-8")
+                preparation = SimpleNamespace(
+                    video_path=root / "source.mp4",
+                    subtitle_path=human_srt,
+                    input_mode="srt_video",
+                    profile_key=profile_key,
+                    profile=profile,
+                    subtitle_profile=subtitle_profile,
+                    subtitle_original=True,
+                )
+                renderer = Mock()
+                renderer.render.return_value = "rendered"
+                output_path = root / "demo" / "video" / "demo.mp4"
+
+                with patch("app.core.start.SubtitleCueTransformer") as transformer:
+                    ejecutar_studio(
+                        subtitle_style="word_by_word",
+                        input_mode="srt_video",
+                        subtitle_original=True,
+                        preparation_service=Mock(return_value=preparation),
+                        render_service=renderer,
+                        output_path_resolver=Mock(
+                            resolve=Mock(return_value=output_path)
+                        ),
+                        project=Mock(),
+                    )
+
+                base = root / "demo" / "subtitles" / "demo.srt"
+                self.assertEqual(source, base.read_text(encoding="utf-8"))
+                self.assertEqual(base, renderer.render.call_args.kwargs["subtitle_path"])
+                transformer.assert_not_called()
 
     def test_menu_selects_input_before_subtitles(self):
         controller = RunController()
@@ -178,8 +364,18 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             controller, "select_studio_input_mode",
             side_effect=lambda: order.append("input") or "video",
         ), patch.object(
-            controller, "select_studio_subtitle_config",
-            side_effect=lambda _: order.append("subtitle") or "single_line",
+            controller,
+            "select_studio_input_files",
+            side_effect=lambda *_: order.append("files") or SimpleNamespace(
+                video_path=Path("input/studio/video/source.mp4"),
+                subtitle_path=None,
+            ),
+        ), patch.object(
+            controller, "select_studio_subtitle_options",
+            side_effect=lambda *_: order.append("subtitle") or (
+                "single_line",
+                False,
+            ),
         ), patch.object(
             controller, "select_studio_music", return_value=None,
         ), patch.object(
@@ -191,8 +387,118 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         ):
             options = controller._run_studio()
 
-        self.assertEqual(["profile", "input", "subtitle"], order)
+        self.assertEqual(["input", "profile", "files", "subtitle"], order)
         self.assertEqual("video", options["studio_input_mode"])
+
+    def test_srt_video_subtitle_choice_is_the_only_style_selection(self):
+        controller = RunController()
+        messages = []
+        controller._print = messages.append
+        for selected, expected_style, expected_original in (
+            ("original", "single_line", True),
+            ("single_line", "single_line", False),
+            ("word_by_word", "word_by_word", False),
+        ):
+            with self.subTest(selected=selected):
+                controller._select_from_list = Mock(return_value=selected)
+                with patch.object(
+                    controller,
+                    "select_studio_subtitle_config",
+                ) as visual_style:
+                    style, original = controller.select_studio_subtitle_options(
+                        self.profile_key,
+                        StudioInputMode.SRT_VIDEO.value,
+                    )
+
+                self.assertEqual(expected_style, style)
+                self.assertEqual(expected_original, original)
+                visual_style.assert_not_called()
+                controller._select_from_list.assert_called_once_with(
+                    ("original", "single_line", "word_by_word")
+                )
+
+        self.assertIn("\nSUBT\u00cdTULOS\n", messages)
+        self.assertIn("1. ORIGINAL", messages)
+        self.assertIn("2. L\u00cdNEA \u00daNICA", messages)
+        self.assertIn("3. PALABRA POR PALABRA", messages)
+
+    def test_video_offers_only_transformed_subtitle_styles(self):
+        controller = RunController()
+        messages = []
+        controller._print = messages.append
+        controller._select_from_list = Mock(return_value="single_line")
+
+        style, original = controller.select_studio_subtitle_options(
+            self.profile_key,
+            StudioInputMode.VIDEO.value,
+        )
+
+        self.assertEqual("single_line", style)
+        self.assertFalse(original)
+        self.assertIn("\nSUBT\u00cdTULOS\n", messages)
+        self.assertIn("1. L\u00cdNEA \u00daNICA", messages)
+        self.assertIn("2. PALABRA POR PALABRA", messages)
+        self.assertNotIn("ORIGINAL", "\n".join(messages))
+
+    def test_design_profile_uses_declared_style_without_a_second_selector(self):
+        profile_key = ProfileKey.for_component(
+            "studio",
+            "instagram",
+            family="design",
+            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+        )
+        controller = RunController()
+        controller._print = Mock()
+        controller._select_from_list = Mock()
+
+        style, original = controller.select_studio_subtitle_options(
+            profile_key,
+            StudioInputMode.SRT_VIDEO.value,
+        )
+
+        self.assertEqual("word_by_word", style)
+        self.assertFalse(original)
+        controller._select_from_list.assert_not_called()
+        controller._print.assert_not_called()
+        self.assertEqual(
+            "word_by_word",
+            controller.select_studio_subtitle_config(profile_key),
+        )
+
+    def test_discovery_accepts_a_future_visual_model_without_menu_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subtitle_dir = root / "studio" / "instagram" / "estandar"
+            subtitle_dir.mkdir(parents=True)
+            for style in ("single_line", "word_by_word", "modo_conciencia"):
+                profile_id = (
+                    "subtitulo_studio_instagram_"
+                    + {
+                        "single_line": "linea_unica",
+                        "word_by_word": "palabra_por_palabra",
+                        "modo_conciencia": "modo_conciencia",
+                    }[style]
+                )
+                (subtitle_dir / f"{profile_id}.json").write_text(
+                    json.dumps({
+                        "component": "studio",
+                        "platform": "instagram",
+                        "profile_id": profile_id,
+                        "style": style,
+                        "cue_policy": {"mode": "single_line"},
+                        "render_style": {"offset": 0.0},
+                    }),
+                    encoding="utf-8",
+                )
+
+            styles = SubtitleProfileResolver(root).discover_styles(
+                self.profile_key,
+            )
+
+        self.assertEqual(
+            ("single_line", "modo_conciencia", "word_by_word"),
+            styles,
+        )
 
 
 class _AudioExtractionRunner:

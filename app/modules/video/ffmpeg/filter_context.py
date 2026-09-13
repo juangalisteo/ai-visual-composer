@@ -22,8 +22,9 @@ class FilterContext:
     timeline: VideoTimeline
     config: VideoConfig
 
-    subtitle_style: str
+    subtitle_style: str | None
     fonts_dir: Path
+    render_subtitles: bool = True
 
     overlay_inputs: tuple[
         Path,

@@ -406,7 +406,12 @@ Relevant profile families include:
 config/profiles/guion/
 config/profiles/imagen/
 config/profiles/video/
+config/profiles/studio/
 ```
+
+Within each component/platform, ESTÁNDAR profiles are discovered from
+`estandar/` and self-contained DISEÑO JSON profiles from `design/`. An empty
+`design/` directory does not expose DISEÑO.
 
 Configuration should remain portable.
 

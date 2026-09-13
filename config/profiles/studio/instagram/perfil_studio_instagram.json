@@ -30,8 +30,11 @@
                 "max_duration_difference": 0.2
             }
         },
+        "montage": {
+            "transition_duration": 0.25
+        },
         "music": {
-            "volume": 0.25,
+            "volume": 0.10,
             "loop_shorter": true,
             "limiter_limit": 0.95
         }

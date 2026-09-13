@@ -9,7 +9,7 @@ from app.shared.media_probe import MediaProbe
 class VideoTimeline:
     audio_duration: float
     image_duration: float
-    subtitle_path: Path
+    subtitle_path: Path | None
 
 
 class TimelineBuilder:
@@ -19,7 +19,8 @@ class TimelineBuilder:
         audio_path,
         subtitle_path,
         image_count,
-        subtitle_offset
+        subtitle_offset,
+        render_subtitles=True,
     ):
         audio_duration = (
             MediaProbe.get_duration(
@@ -32,11 +33,18 @@ class TimelineBuilder:
             / image_count
         )
 
-        subtitle_path = Path(
-            subtitle_path
+        if render_subtitles and subtitle_path is None:
+            raise ValueError(
+                "La renderizacion con subtitulos requiere subtitle_path."
+            )
+
+        subtitle_path = (
+            Path(subtitle_path)
+            if subtitle_path is not None
+            else None
         )
 
-        if subtitle_offset != 0:
+        if render_subtitles and subtitle_offset != 0:
             subtitle_path = (
                 self._shift_srt(
                     input_path=subtitle_path,

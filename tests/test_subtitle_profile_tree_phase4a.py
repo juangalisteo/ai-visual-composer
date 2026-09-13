@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import shutil
 import tempfile
@@ -52,6 +52,20 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "avoid_orphan_words": True,
             "merge_short_chunks": True,
             "balance_duration": True,
+            "punctuation": {
+                "remove_commas": False,
+                "remove_periods": False,
+                "remove_colons": False,
+                "remove_semicolons": False,
+                "remove_question_marks": False,
+                "remove_exclamation_marks": False,
+                "remove_ellipsis": False,
+                "remove_hyphens": False,
+                "remove_em_dashes": False,
+                "remove_double_quotes": False,
+                "remove_single_quotes": False,
+                "remove_parentheses": False,
+            },
         },
         "word_by_word": {
             "mode": "word_by_word",
@@ -65,7 +79,20 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 "merge_preference": "next",
             },
             "uppercase": False,
-            "remove_render_punctuation": True,
+            "punctuation": {
+                "remove_commas": True,
+                "remove_periods": True,
+                "remove_colons": False,
+                "remove_semicolons": False,
+                "remove_question_marks": False,
+                "remove_exclamation_marks": False,
+                "remove_ellipsis": False,
+                "remove_hyphens": False,
+                "remove_em_dashes": False,
+                "remove_double_quotes": False,
+                "remove_single_quotes": False,
+                "remove_parentheses": False,
+            },
         },
     }
     EXPECTED_RENDER_STYLES = {
@@ -105,7 +132,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             for component in self.COMPONENTS
             for path in Path(
                 "config/profiles"
-            ).glob(f"{component}/*/subtitulos/*.json")
+            ).glob(f"{component}/*/estandar/*.json")
         }
 
         self.assertEqual(self._expected_paths(), actual)
@@ -232,7 +259,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                         Path("config/profiles")
                         / component
                         / platform
-                        / "subtitulos"
+                        / "estandar"
                         / f"subtitulo_{component}_{platform}_{suffix}.json",
                     )
 

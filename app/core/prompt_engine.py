@@ -98,10 +98,9 @@ TEMA:
 
 DURACIÓN:
 - Duración objetivo: {duration} segundos.
-- Extensión orientativa: aproximadamente entre {min_words} y {max_words} palabras, con un objetivo aproximado de {target_words} palabras.
-- Usa esta referencia para acercarte a la duración solicitada.
-- Prioriza claridad, coherencia, desarrollo natural y completitud del contenido.
-- Puedes utilizar más o menos palabras si el guion lo necesita.
+- Extensión requerida: entre {min_words} y {max_words} palabras, con objetivo de {target_words} palabras.
+- Respeta ese rango: es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
+- Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
 
 IDENTIDAD Y TONO:
 {tone_text}

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+import re
 
 
 class ProfileComponent(str, Enum):
@@ -12,6 +13,17 @@ class ProfileComponent(str, Enum):
 class ProfilePlatform(str, Enum):
     INSTAGRAM = "instagram"
     YOUTUBE = "youtube"
+
+
+class ProfileFamily(str, Enum):
+    SYSTEM = "system"
+    DESIGN = "design"
+
+
+_DESIGN_PROFILE_ID = re.compile(
+    r"^(guion|imagen|video|studio)_(instagram|youtube)_design_"
+    r"[a-z0-9]+(?:_[a-z0-9]+)*$"
+)
 
 
 def coerce_profile_component(value):
@@ -28,6 +40,10 @@ def coerce_profile_platform(value):
         value,
         "Plataforma"
     )
+
+
+def coerce_profile_family(value):
+    return _coerce_enum(ProfileFamily, value, "Familia")
 
 
 def _coerce_enum(
@@ -52,6 +68,7 @@ class ProfileKey:
     component: ProfileComponent
     platform: ProfilePlatform
     profile_id: str
+    family: ProfileFamily = ProfileFamily.SYSTEM
 
     def __post_init__(self):
         component = coerce_profile_component(
@@ -60,17 +77,24 @@ class ProfileKey:
         platform = coerce_profile_platform(
             self.platform
         )
+        family = coerce_profile_family(self.family)
         profile_id = str(
             self.profile_id
         ).strip().lower()
-        expected_id = (
-            f"{component.value}_{platform.value}"
-        )
-
-        if profile_id != expected_id:
+        expected_id = f"{component.value}_{platform.value}"
+        if family is ProfileFamily.SYSTEM:
+            valid = profile_id == expected_id
+        else:
+            valid = bool(_DESIGN_PROFILE_ID.fullmatch(profile_id)) and (
+                profile_id.startswith(
+                    f"{component.value}_{platform.value}_design_"
+                )
+            )
+        if not valid:
             raise ValueError(
                 "profile_id incompatible con componente y "
-                f"plataforma: se esperaba {expected_id}, "
+                f"plataforma/familia: se esperaba {expected_id} "
+                "para SYSTEM o un ID DESIGN canónico, "
                 f"se recibió {self.profile_id}"
             )
 
@@ -89,12 +113,15 @@ class ProfileKey:
             "profile_id",
             profile_id
         )
+        object.__setattr__(self, "family", family)
 
     @classmethod
     def for_component(
         cls,
         component,
-        platform
+        platform,
+        family=ProfileFamily.SYSTEM,
+        profile_id=None,
     ):
         component = coerce_profile_component(
             component
@@ -102,10 +129,14 @@ class ProfileKey:
         platform = coerce_profile_platform(
             platform
         )
+        family = coerce_profile_family(family)
+        if family is ProfileFamily.DESIGN and not profile_id:
+            raise ValueError(
+                "Un perfil DESIGN requiere un profile_id concreto."
+            )
         return cls(
             component=component,
             platform=platform,
-            profile_id=(
-                f"{component.value}_{platform.value}"
-            )
+            profile_id=(profile_id or f"{component.value}_{platform.value}"),
+            family=family,
         )

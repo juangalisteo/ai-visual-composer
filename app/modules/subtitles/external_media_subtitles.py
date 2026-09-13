@@ -26,37 +26,56 @@ class ExternalMediaSubtitlePreparationService:
         self.subtitle_builder = subtitle_builder or SubtitleBuilder()
         self.timing_resolver = timing_resolver or SubtitleTimingResolver()
 
-    def prepare(self, video_path, working_directory):
-        video_path = Path(video_path)
+    def prepare(
+        self,
+        video_path=None,
+        working_directory=None,
+        media_path=None,
+    ):
+        if media_path is not None and video_path is not None:
+            raise ValueError(
+                "La preparacion externa recibe un unico medio fuente."
+            )
+        source_path = Path(media_path or video_path)
         working_directory = Path(working_directory)
-        if not video_path.is_file():
+        if not source_path.is_file():
             raise FileNotFoundError(
-                f"No existe el MP4 de subtitulos: {video_path}"
+                f"No existe el medio de subtitulos: {source_path}"
+            )
+
+        extension = source_path.suffix.lower()
+        if extension not in {".mp4", ".mp3"}:
+            raise ValueError(
+                "El medio de subtitulos debe ser MP4 o MP3: "
+                f"{source_path}"
             )
 
         working_directory.mkdir(parents=True, exist_ok=True)
-        audio_path = working_directory / "source_audio.wav"
         subtitle_path = working_directory / "whisper.srt"
-        self.runner.run([
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(video_path),
-            "-map",
-            "0:a:0",
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-c:a",
-            "pcm_s16le",
-            str(audio_path),
-        ])
-        if not audio_path.is_file() or audio_path.stat().st_size <= 0:
-            raise RuntimeError(
-                "No se genero el audio de trabajo para Whisper."
-            )
+        if extension == ".mp4":
+            audio_path = working_directory / "source_audio.wav"
+            self.runner.run([
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(source_path),
+                "-map",
+                "0:a:0",
+                "-vn",
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-c:a",
+                "pcm_s16le",
+                str(audio_path),
+            ])
+            if not audio_path.is_file() or audio_path.stat().st_size <= 0:
+                raise RuntimeError(
+                    "No se genero el audio de trabajo para Whisper."
+                )
+        else:
+            audio_path = source_path
 
         self.subtitle_builder.build(
             audio_path=audio_path,

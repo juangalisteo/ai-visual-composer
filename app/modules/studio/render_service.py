@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import TemporaryDirectory
+import time
 
-from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
 
 from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
@@ -21,12 +20,13 @@ from app.shared.media_probe import MediaProbe
 from app.shared.profile_identity import ProfileComponent, ProfileKey
 from app.shared.subtitle_profile_identity import ResolvedSubtitleProfile
 from app.managers.project_manager import ProjectManager
+from app.shared.progress_logger import ProgressLogger
 
 
 @dataclass(frozen=True)
 class StudioRenderResult:
     source_video_path: Path
-    source_subtitle_path: Path
+    source_subtitle_path: Path | None
     output_path: Path
     command: tuple[str, ...]
     expected_duration: float
@@ -37,6 +37,11 @@ class StudioRenderResult:
     intro_outro_selection: IntroOutroPlan | None = None
     intro_outro_command: tuple[str, ...] = ()
     normalized_intro_outro_positions: tuple[str, ...] = ()
+    generated_subtitle_path: Path | None = None
+    base_subtitle_path: Path | None = None
+    subtitle_preparation_duration: float | None = None
+    render_duration: float | None = None
+    intro_outro_duration: float | None = None
 
 
 @dataclass(frozen=True)
@@ -162,14 +167,13 @@ class StudioRenderService:
     def render(
         self,
         video_path,
-        subtitle_path,
-        profile_key,
-        profile,
-        subtitle_profile,
-        output_path,
+        subtitle_path=None,
+        profile_key=None,
+        profile=None,
+        subtitle_profile=None,
+        output_path=None,
         music_path=None,
         intro_outro_selection=None,
-        subtitle_timing=None,
     ):
         self._require_contract(
             video_path,
@@ -178,7 +182,11 @@ class StudioRenderService:
             subtitle_profile,
         )
         video_path = Path(video_path)
-        subtitle_path = Path(subtitle_path)
+        subtitle_path = (
+            Path(subtitle_path)
+            if subtitle_path is not None
+            else None
+        )
         output_path = Path(output_path)
         music_path = Path(music_path) if music_path is not None else None
         if music_path is not None and not music_path.is_file():
@@ -200,35 +208,32 @@ class StudioRenderService:
             )
 
         source_info = self.probe.inspect(video_path)
-        render_style = SubtitleConfigLoader().load_render_style(
-            subtitle_profile.render_style
-        )
-        if abs(render_style.offset) > 0.000001:
-            raise ValueError(
-                "STUDIO requiere offset=0 para preservar los timings SRT."
+        subtitles_enabled = subtitle_path is not None
+        subtitle_style = None
+        if subtitles_enabled:
+            render_style = SubtitleConfigLoader().load_render_style(
+                subtitle_profile.render_style
             )
-        subtitle_style = self.style_builder.build(
-            subtitle_profile.render_style
-        )
+            if abs(render_style.offset) > 0.000001:
+                raise ValueError(
+                    "STUDIO requiere offset=0 para preservar los timings SRT."
+                )
+            subtitle_style = self.style_builder.build(
+                subtitle_profile.render_style
+            )
         temporary_path = principal_path.with_name(
             f"{principal_path.stem}.rendering{principal_path.suffix}"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         self._remove_temporary(temporary_path)
-        subtitle_directory = TemporaryDirectory(
-            prefix="ai_visual_composer_studio_subtitles_"
+        ProgressLogger.start(
+            "RENDERIZANDO STUDIO"
         )
+        render_start = time.perf_counter()
         try:
-            render_subtitle_path = self._write_render_subtitle(
-                source_path=subtitle_path,
-                target_directory=subtitle_directory.name,
-                subtitle_profile=subtitle_profile,
-                render_fps=profile.fps,
-                timing=subtitle_timing,
-            )
             command = self.build_command(
                 video_path=video_path,
-                subtitle_path=render_subtitle_path,
+                subtitle_path=subtitle_path,
                 output_path=temporary_path,
                 source_info=source_info,
                 profile=profile,
@@ -245,8 +250,11 @@ class StudioRenderService:
         except Exception:
             self._remove_temporary(temporary_path)
             raise
-        finally:
-            subtitle_directory.cleanup()
+        render_duration = time.perf_counter() - render_start
+        ProgressLogger.finish(
+            "RENDER STUDIO COMPLETADO",
+            render_duration,
+        )
 
         final_output_path = principal_path
         final_expected_duration = source_info.duration
@@ -254,10 +262,15 @@ class StudioRenderService:
         intro_outro_command = ()
         normalized_positions = ()
         normalized_selection = None
+        intro_outro_duration = None
         if intro_outro_selection is not None:
             normalized_selection = StudioOutputPathResolver._intro_outro_plan(
                 intro_outro_selection
             )
+            ProgressLogger.start(
+                "COMPONIENDO INTRO / OUTRO"
+            )
+            intro_outro_start = time.perf_counter()
             composition = self.intro_outro_composer.compose(
                 main_path=principal_path,
                 final_path=output_path,
@@ -280,6 +293,14 @@ class StudioRenderService:
             final_expected_duration = composition.expected_duration
             intro_outro_command = composition.command
             normalized_positions = composition.normalized_positions
+            intro_outro_duration = (
+                time.perf_counter()
+                - intro_outro_start
+            )
+            ProgressLogger.finish(
+                "INTRO / OUTRO COMPLETADO",
+                intro_outro_duration,
+            )
 
         return StudioRenderResult(
             source_video_path=video_path,
@@ -294,16 +315,18 @@ class StudioRenderService:
             intro_outro_selection=normalized_selection,
             intro_outro_command=intro_outro_command,
             normalized_intro_outro_positions=normalized_positions,
+            render_duration=render_duration,
+            intro_outro_duration=intro_outro_duration,
         )
 
     def build_command(
         self,
         video_path,
-        subtitle_path,
-        output_path,
-        source_info,
-        profile,
-        subtitle_style,
+        subtitle_path=None,
+        output_path=None,
+        source_info=None,
+        profile=None,
+        subtitle_style=None,
         music_path=None,
     ):
         command, inputs = self._build_inputs(
@@ -314,8 +337,6 @@ class StudioRenderService:
         )
         audio_source = f"[{inputs.source_audio}:a:0]"
 
-        escaped_subtitle = self._escape_filter_path(subtitle_path)
-        escaped_fonts = self._escape_filter_path(self.FONTS_DIRECTORY)
         video_filters = [
             (
                 f"scale={profile.width}:{profile.height}:"
@@ -335,11 +356,16 @@ class StudioRenderService:
             + ",".join(video_filters)
             + "[studio_base]"
         ]
-        filter_parts.append(
-            f"[studio_base]subtitles='{escaped_subtitle}':"
-            f"fontsdir='{escaped_fonts}':"
-            f"force_style='{self._escape_style(subtitle_style)}'[vout]"
-        )
+        if subtitle_path is None:
+            filter_parts.append("[studio_base]null[vout]")
+        else:
+            escaped_subtitle = self._escape_filter_path(subtitle_path)
+            escaped_fonts = self._escape_filter_path(self.FONTS_DIRECTORY)
+            filter_parts.append(
+                f"[studio_base]subtitles='{escaped_subtitle}':"
+                f"fontsdir='{escaped_fonts}':"
+                f"force_style='{self._escape_style(subtitle_style)}'[vout]"
+            )
 
         duration = f"{source_info.duration:.6f}"
         audio_format = (
@@ -446,31 +472,6 @@ class StudioRenderService:
     def promote(self, temporary_path, output_path):
         Path(temporary_path).replace(output_path)
 
-    @staticmethod
-    def _write_render_subtitle(
-        source_path,
-        target_directory,
-        subtitle_profile,
-        render_fps,
-        timing=None,
-    ):
-        source_path = Path(source_path)
-        transformed = SubtitleCueTransformer(
-            subtitle_profile=subtitle_profile,
-            render_fps=render_fps,
-        ).transform(
-            source_path.read_text(encoding="utf-8"),
-            timing=timing,
-        )
-        if not transformed.strip():
-            raise ValueError(
-                "El SRT de STUDIO no produjo cues renderizables."
-            )
-
-        target_path = Path(target_directory) / "studio_render.srt"
-        target_path.write_text(transformed, encoding="utf-8")
-        return target_path
-
     def _require_contract(
         self,
         video_path,
@@ -482,6 +483,14 @@ class StudioRenderService:
             raise TypeError("StudioRenderService requiere ProfileKey.")
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("StudioRenderService requiere component=studio.")
+        if not Path(video_path).is_file():
+            raise FileNotFoundError(f"No existe el MP4 STUDIO: {video_path}")
+        if subtitle_path is None:
+            if subtitle_profile is not None:
+                raise ValueError(
+                    "STUDIO sin subtitulos no admite un perfil de subtitulos."
+                )
+            return
         if not isinstance(subtitle_profile, ResolvedSubtitleProfile):
             raise TypeError(
                 "StudioRenderService requiere ResolvedSubtitleProfile."
@@ -496,8 +505,6 @@ class StudioRenderService:
             raise ValueError(
                 "El perfil principal y el de subtitulos deben compartir plataforma."
             )
-        if not Path(video_path).is_file():
-            raise FileNotFoundError(f"No existe el MP4 STUDIO: {video_path}")
         if not Path(subtitle_path).is_file():
             raise FileNotFoundError(f"No existe el SRT STUDIO: {subtitle_path}")
         if not self.FONTS_DIRECTORY.is_dir():

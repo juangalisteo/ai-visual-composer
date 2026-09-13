@@ -11,16 +11,21 @@ class PipelineSummary:
 
     def __init__(
         self,
-        project_name
+        project_name,
+        include_visual_metrics=True,
     ):
         self.project_name = str(
             project_name
+        )
+        self.include_visual_metrics = bool(
+            include_visual_metrics
         )
 
         self.scene_count = 0
         self.image_count = 0
         self.media_duration = None
 
+        self.details = OrderedDict()
         self.stage_times = OrderedDict()
         self._total_time = None
 
@@ -63,6 +68,13 @@ class PipelineSummary:
             float(elapsed_seconds)
         )
 
+    def add_detail(
+        self,
+        name,
+        value
+    ):
+        self.details[str(name)] = str(value)
+
     def set_total_time(
         self,
         elapsed_seconds
@@ -92,22 +104,37 @@ class PipelineSummary:
                 "Proyecto",
                 self.project_name
             ),
-            self._metric_line(
-                "Escenas",
-                self.scene_count
-            ),
-            self._metric_line(
-                "Imágenes",
-                self.image_count
-            ),
-            self._metric_line(
-                "Duración",
-                self._format_media_duration()
-            ),
+        ]
+
+        if self.include_visual_metrics:
+            lines.extend([
+                self._metric_line(
+                    "Escenas",
+                    self.scene_count
+                ),
+                self._metric_line(
+                    "Imágenes",
+                    self.image_count
+                ),
+                self._metric_line(
+                    "Duración",
+                    self._format_media_duration()
+                ),
+            ])
+
+        for detail_name, detail_value in self.details.items():
+            lines.append(
+                self._metric_line(
+                    detail_name,
+                    detail_value
+                )
+            )
+
+        lines.extend([
             "",
             "-" * self.LINE_WIDTH,
             ""
-        ]
+        ])
 
         for stage_name, elapsed in self.stage_times.items():
             lines.append(

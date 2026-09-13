@@ -47,7 +47,8 @@ class SrtOptimizer:
     def optimize(
         self,
         input_path=None,
-        output_path=None
+        output_path=None,
+        canonical_content=None,
     ):
         ProgressLogger.start(
             "OPTIMIZANDO SRT"
@@ -103,6 +104,7 @@ class SrtOptimizer:
         optimized_content = self.transformer.transform(
             content,
             timing=timing,
+            canonical_content=canonical_content,
         )
 
         if timing is not None:
@@ -167,7 +169,7 @@ class SrtOptimizer:
         )
 
         ProgressLogger.finish(
-            "Finalizado",
+            "SUBT\u00cdTULOS FINALES GENERADOS",
             elapsed
         )
 

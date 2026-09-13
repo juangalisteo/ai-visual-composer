@@ -13,11 +13,13 @@ class VideoFilterContextFactory:
         build_context,
         components
     ):
-        subtitle_style = (
-            SubtitleStyleBuilder().build(
-                build_context.config.subtitle_style
+        subtitle_style = None
+        if build_context.render_subtitles:
+            subtitle_style = (
+                SubtitleStyleBuilder().build(
+                    build_context.config.subtitle_style
+                )
             )
-        )
 
         first_overlay_input = (
             len(build_context.media.image_paths) + 1
@@ -38,6 +40,7 @@ class VideoFilterContextFactory:
             fonts_dir=Path(
                 "assets/fonts"
             ),
+            render_subtitles=build_context.render_subtitles,
             overlay_inputs=(
                 components.overlay_builder.inputs
             ),

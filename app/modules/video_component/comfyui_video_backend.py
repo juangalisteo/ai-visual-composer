@@ -20,7 +20,6 @@ class ComfyUIVideoBackend:
         self,
         comfyui_url="http://127.0.0.1:8188",
         comfyui_input_dir="ComfyUI/ComfyUI/input",
-        timeout_seconds=1800,
         poll_interval_seconds=2,
     ):
         self.comfyui_url = comfyui_url.rstrip(
@@ -29,7 +28,6 @@ class ComfyUIVideoBackend:
         self.comfyui_input_dir = Path(
             comfyui_input_dir
         )
-        self.timeout_seconds = timeout_seconds
         self.poll_interval_seconds = poll_interval_seconds
 
     def generate(
@@ -138,7 +136,6 @@ class ComfyUIVideoBackend:
         try:
             with urllib.request.urlopen(
                 request,
-                timeout=30,
             ) as response:
                 result = json.loads(
                     response.read()
@@ -167,8 +164,7 @@ class ComfyUIVideoBackend:
         self,
         prompt_id
     ):
-        deadline = time.time() + self.timeout_seconds
-        while time.time() < deadline:
+        while True:
             history = self._history(
                 prompt_id
             )
@@ -222,12 +218,6 @@ class ComfyUIVideoBackend:
                 self.poll_interval_seconds
             )
 
-        raise ComfyUIVideoBackendError(
-            "Timeout esperando el clip de vídeo de ComfyUI.",
-            category="TIMEOUT",
-            prompt_id=prompt_id,
-        )
-
     def download_video(
         self,
         video_info,
@@ -256,7 +246,6 @@ class ComfyUIVideoBackend:
         try:
             with urllib.request.urlopen(
                 url,
-                timeout=120,
             ) as response:
                 output_path.write_bytes(
                     response.read()
@@ -374,7 +363,6 @@ class ComfyUIVideoBackend:
         try:
             with urllib.request.urlopen(
                 f"{self.comfyui_url}/history/{prompt_id}",
-                timeout=30,
             ) as response:
                 return json.loads(
                     response.read()

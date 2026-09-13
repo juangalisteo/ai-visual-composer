@@ -30,23 +30,17 @@ class StoryboardResponseParser:
             cleaned_response
         )
 
-        json_match = re.search(
-            r"\[[\s\S]*\]",
-            cleaned_response
-        )
+        json_start = cleaned_response.find("[")
 
-        if not json_match:
+        if json_start < 0:
             raise ValueError(
                 "Ollama no devolvió una lista JSON válida."
             )
 
-        json_text = (
-            json_match.group(0)
-        )
-
         try:
-            parsed_response = json.loads(
-                json_text
+            decoder = json.JSONDecoder()
+            parsed_response, consumed = decoder.raw_decode(
+                cleaned_response[json_start:]
             )
 
         except json.JSONDecodeError as error:
@@ -54,6 +48,12 @@ class StoryboardResponseParser:
                 "No se pudo interpretar el JSON "
                 "devuelto por Ollama."
             ) from error
+
+        trailing = cleaned_response[json_start + consumed:].strip()
+        if trailing:
+            raise ValueError(
+                "Ollama devolvió datos adicionales después del JSON del storyboard."
+            )
 
         if not isinstance(
             parsed_response,

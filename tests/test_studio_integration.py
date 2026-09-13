@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from array import array
+from copy import deepcopy
 from pathlib import Path
 
 from app.core import start
@@ -22,13 +23,42 @@ from app.modules.video.intro_outro import (
     IntroOutroSelection,
 )
 from app.shared.media_probe import MediaProbe
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import ProfileFamily, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 class StudioFinalContractTest(unittest.TestCase):
+
+    def test_design_profile_and_subtitles_are_loaded_for_studio_only_from_its_own_tree(self):
+        key = ProfileKey.for_component(
+            "studio",
+            "instagram",
+            family=ProfileFamily.DESIGN,
+            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+        )
+        profile = StudioProfileLoader().load(
+            ProfileResolver().load(key), key
+        )
+        styles = SubtitleProfileResolver().discover_styles(key)
+
+        self.assertEqual(1080, profile.width)
+        self.assertEqual(
+            {"word_by_word"},
+            {style.value for style in styles},
+        )
+        for style in styles:
+            subtitle = SubtitleProfileResolver().load(
+                SubtitleProfileKey.for_profile(key, style)
+            )
+            self.assertEqual(key.profile_id, subtitle.key.parent_profile_id)
+            self.assertIn("design", subtitle.path.parts)
+
+        invalid = deepcopy(ProfileResolver().load(key))
+        del invalid["display_name"]
+        with self.assertRaisesRegex(ValueError, "display_name"):
+            StudioProfileLoader().load(invalid, key)
 
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()

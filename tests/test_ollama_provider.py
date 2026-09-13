@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import patch
 
-from app.providers.ollama_provider import OllamaProvider
+import requests
+
+from app.providers.ollama_provider import (
+    OllamaProvider,
+    OllamaRequestError,
+)
 
 
 class FakeResponse:
@@ -21,7 +26,7 @@ class FakeResponse:
 
 class OllamaProviderTest(unittest.TestCase):
 
-    def test_generate_preserves_original_request_without_timeout(self):
+    def test_generate_omits_request_timeout(self):
         with patch(
             "app.providers.ollama_provider.requests.post",
             return_value=FakeResponse()
@@ -36,8 +41,36 @@ class OllamaProviderTest(unittest.TestCase):
         )
         self.assertNotIn(
             "timeout",
-            post_mock.call_args.kwargs
+            post_mock.call_args.kwargs,
         )
+
+    def test_timeout_raises_a_clear_error(self):
+        with patch(
+            "app.providers.ollama_provider.requests.post",
+            side_effect=requests.Timeout(),
+        ):
+            with self.assertRaisesRegex(
+                OllamaRequestError,
+                "espera de red",
+            ):
+                OllamaProvider("fake-model").generate("prompt")
+
+    def test_http_error_remains_an_error(self):
+        with patch(
+            "app.providers.ollama_provider.requests.post",
+            return_value=_HttpErrorResponse(),
+        ):
+            with self.assertRaisesRegex(
+                OllamaRequestError,
+                "No se pudo conectar",
+            ):
+                OllamaProvider("fake-model").generate("prompt")
+
+
+class _HttpErrorResponse(FakeResponse):
+
+    def raise_for_status(self):
+        raise requests.HTTPError("500 Server Error")
 
 
 if __name__ == "__main__":

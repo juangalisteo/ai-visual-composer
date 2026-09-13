@@ -3,6 +3,7 @@ import re
 from functools import lru_cache
 
 from app.modules.subtitles.models.base_subtitle_model import BaseSubtitleModel
+from app.modules.subtitles.punctuation import PunctuationPolicy
 from app.shared.config_contract import require_float, require_int
 
 
@@ -38,6 +39,7 @@ class SingleLineModel(BaseSubtitleModel):
     }
 
     def __init__(self, config):
+        self.punctuation = PunctuationPolicy(config)
         self.max_chars_per_line = require_int(
             config,
             "max_chars_per_line",
@@ -124,7 +126,7 @@ class SingleLineModel(BaseSubtitleModel):
                     f"{new_index}\n"
                     f"{self._ms_to_time(chunk_start)} --> "
                     f"{self._ms_to_time(chunk_end)}\n"
-                    f"{chunk}"
+                    f"{self.punctuation.apply(chunk)}"
                 )
 
                 new_index += 1
@@ -144,10 +146,12 @@ class SingleLineModel(BaseSubtitleModel):
                 )
 
                 for chunk_words in chunks:
-                    text = self._clean_text(
-                        " ".join(
-                            word.text
-                            for word in chunk_words
+                    text = self.punctuation.apply(
+                        self._clean_text(
+                            " ".join(
+                                word.text
+                                for word in chunk_words
+                            )
                         )
                     )
 

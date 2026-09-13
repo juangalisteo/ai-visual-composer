@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +45,7 @@ class StudioProfile:
     audio_sample_rate: int
     audio_channels: int
     max_duration_difference: float
+    transition_duration: float
     music: StudioMusicConfig
 
 
@@ -51,10 +53,12 @@ class StudioProfile:
 class StudioPreparation:
     profile_key: ProfileKey
     profile: StudioProfile
-    subtitle_profile: ResolvedSubtitleProfile
+    subtitle_profile: ResolvedSubtitleProfile | None
     video_path: Path
     subtitle_path: Path | None
     input_mode: str
+    subtitles_enabled: bool = True
+    subtitle_original: bool = False
 
 
 class StudioProfileLoader:
@@ -78,6 +82,7 @@ class StudioProfileLoader:
             "validation",
             "studio.output.validation"
         )
+        montage = require_mapping(studio, "montage", "studio.montage")
         music = require_mapping(studio, "music", "studio.music")
 
         width = require_int(output, "width", "studio.output.width")
@@ -104,6 +109,19 @@ class StudioProfileLoader:
             raise ValueError(
                 "El audio STUDIO requiere sample_rate positivo y "
                 "uno o dos canales."
+            )
+        transition_duration = require_float(
+            montage,
+            "transition_duration",
+            "studio.montage.transition_duration"
+        )
+        if (
+            not math.isfinite(transition_duration)
+            or transition_duration <= 0
+        ):
+            raise ValueError(
+                "studio.montage.transition_duration debe ser finita "
+                "y mayor que cero."
             )
 
         resolution = require_text(profile, "resolution", "resolution")
@@ -167,6 +185,7 @@ class StudioProfileLoader:
                 "max_duration_difference",
                 "studio.output.validation.max_duration_difference"
             ),
+            transition_duration=transition_duration,
             music=music_config,
         )
 
@@ -176,11 +195,23 @@ class StudioProfileLoader:
             "platform": profile_key.platform.value,
             "profile_id": profile_key.profile_id,
         }
+        if profile_key.family.value == "design":
+            expected["family"] = "design"
         actual = {key: profile.get(key) for key in expected}
         if actual != expected:
             raise ValueError(
                 "La identidad interna del perfil STUDIO no coincide "
                 "con el ProfileKey."
+            )
+        if (
+            profile_key.family.value == "design"
+            and (
+                not isinstance(profile.get("display_name"), str)
+                or not profile["display_name"].strip()
+            )
+        ):
+            raise ValueError(
+                "El perfil STUDIO DESIGN requiere un display_name."
             )
 
     def _extensions(self, data, key, path):

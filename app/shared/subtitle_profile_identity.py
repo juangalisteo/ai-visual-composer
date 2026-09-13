@@ -5,10 +5,12 @@ import re
 
 from app.shared.profile_identity import (
     ProfileComponent,
+    ProfileFamily,
     ProfileKey,
     ProfilePlatform,
     coerce_profile_component,
     coerce_profile_platform,
+    coerce_profile_family,
 )
 
 
@@ -39,6 +41,8 @@ class SubtitleProfileKey:
     platform: ProfilePlatform
     style: SubtitleStyle | str
     profile_id: str
+    family: ProfileFamily = ProfileFamily.SYSTEM
+    parent_profile_id: str | None = None
 
     _STYLE_PROFILE_SUFFIXES = {
         "single_line": "linea_unica",
@@ -52,6 +56,7 @@ class SubtitleProfileKey:
         platform = coerce_profile_platform(
             self.platform
         )
+        family = coerce_profile_family(self.family)
         style = coerce_subtitle_style(
             self.style
         )
@@ -61,7 +66,9 @@ class SubtitleProfileKey:
         expected_id = self.expected_profile_id(
             component=component,
             platform=platform,
-            style=style
+            style=style,
+            family=family,
+            parent_profile_id=self.parent_profile_id,
         )
 
         if profile_id != expected_id:
@@ -75,6 +82,8 @@ class SubtitleProfileKey:
         object.__setattr__(self, "platform", platform)
         object.__setattr__(self, "style", style)
         object.__setattr__(self, "profile_id", profile_id)
+        object.__setattr__(self, "family", family)
+        object.__setattr__(self, "parent_profile_id", self.parent_profile_id)
 
     @classmethod
     def for_profile(
@@ -94,8 +103,12 @@ class SubtitleProfileKey:
             profile_id=cls.expected_profile_id(
                 component=profile_key.component,
                 platform=profile_key.platform,
-                style=style
-            )
+                style=style,
+                family=profile_key.family,
+                parent_profile_id=profile_key.profile_id,
+            ),
+            family=profile_key.family,
+            parent_profile_id=profile_key.profile_id,
         )
 
     @classmethod
@@ -103,11 +116,26 @@ class SubtitleProfileKey:
         cls,
         component,
         platform,
-        style
+        style,
+        family=ProfileFamily.SYSTEM,
+        parent_profile_id=None,
     ):
         component = coerce_profile_component(component)
         platform = coerce_profile_platform(platform)
         style = coerce_subtitle_style(style)
+        family = coerce_profile_family(family)
+        if family is ProfileFamily.DESIGN:
+            parent_key = ProfileKey(
+                component=component,
+                platform=platform,
+                profile_id=parent_profile_id,
+                family=family,
+            )
+            return (
+                f"subtitulo_{component.value}_{platform.value}_design_"
+                f"{parent_key.profile_id.removeprefix(component.value + '_' + platform.value + '_design_')}_"
+                f"{cls._profile_suffix(style)}"
+            )
         return (
             f"subtitulo_{component.value}_{platform.value}_"
             f"{cls._profile_suffix(style)}"
@@ -127,9 +155,17 @@ class SubtitleProfileKey:
 
     @property
     def relative_path(self):
+        if self.family is ProfileFamily.DESIGN:
+            slug = self.parent_profile_id.removeprefix(
+                f"{self.component.value}_{self.platform.value}_design_"
+            )
+            # A design is a single, self-contained JSON document.  It owns
+            # its subtitle settings instead of creating a second hierarchy
+            # below ``design/<slug>/``.
+            return Path(self.component.value) / self.platform.value / "design" / f"{slug}.json"
         return Path(
             self.component.value
-        ) / self.platform.value / "subtitulos" / (
+        ) / self.platform.value / "estandar" / (
             f"{self.profile_id}.json"
         )
 

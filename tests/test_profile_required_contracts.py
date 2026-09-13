@@ -38,7 +38,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "width": 1080,
             "height": 1920,
             "fps": 30,
-            "seconds_per_image": 10.0,
+            "seconds_per_image": 20.0,
             "codec": "libx264",
             "preset": "slow",
             "crf": 16,
@@ -52,7 +52,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "width": 1920,
             "height": 1080,
             "fps": 30,
-            "seconds_per_image": 15.0,
+            "seconds_per_image": 30.0,
             "codec": "libx264",
             "preset": "slow",
             "crf": 16,
@@ -264,7 +264,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     "min_duration",
                     "max_duration",
                     "uppercase",
-                    "remove_render_punctuation",
+                    "punctuation",
                     "significant_gap_threshold",
                     "render_fps",
                     "micro_cues",
@@ -277,6 +277,19 @@ class RequiredProfileContractsTest(unittest.TestCase):
                         with self.assertRaisesRegex(
                             ValueError,
                             f"cue_policy.{key}",
+                        ):
+                            model_type(incomplete)
+
+                for key in tuple(cue_policy["punctuation"]):
+                    with self.subTest(
+                        style=style,
+                        path=f"cue_policy.punctuation.{key}",
+                    ):
+                        incomplete = deepcopy(cue_policy)
+                        del incomplete["punctuation"][key]
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            f"cue_policy.punctuation.{key}",
                         ):
                             model_type(incomplete)
 

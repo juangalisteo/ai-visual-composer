@@ -2,6 +2,7 @@ import re
 
 from app.modules.subtitles.micro_cue_policy import MicroCuePolicy
 from app.modules.subtitles.models.base_subtitle_model import BaseSubtitleModel
+from app.modules.subtitles.punctuation import PunctuationPolicy
 from app.shared.config_contract import (
     require_bool,
     require_float,
@@ -28,11 +29,7 @@ class WordByWordModel(BaseSubtitleModel):
             "uppercase",
             "cue_policy.uppercase"
         )
-        self.remove_render_punctuation = require_bool(
-            config,
-            "remove_render_punctuation",
-            "cue_policy.remove_render_punctuation"
-        )
+        self.punctuation = PunctuationPolicy(config)
         self.significant_gap_threshold = require_float(
             config,
             "significant_gap_threshold",
@@ -172,8 +169,7 @@ class WordByWordModel(BaseSubtitleModel):
     def _split_words(self, text):
         text = self._clean_text(text)
 
-        if self.remove_render_punctuation:
-            text = self._remove_render_punctuation(text)
+        text = self.punctuation.apply(text)
 
         words = text.split()
 
@@ -187,17 +183,13 @@ class WordByWordModel(BaseSubtitleModel):
             text
         )
 
-        if self.remove_render_punctuation:
-            text = self._remove_render_punctuation(text)
+        text = self.punctuation.apply(text)
 
         if self.uppercase:
             text = text.upper()
 
         return text
 
-    @staticmethod
-    def _remove_render_punctuation(text):
-        return text.replace(",", "").replace(".", "")
 
     def _distribute_time(self, start_ms, end_ms, words):
         duration_ms = end_ms - start_ms

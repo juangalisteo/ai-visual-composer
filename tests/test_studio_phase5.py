@@ -77,8 +77,15 @@ class StudioPhase5Test(unittest.TestCase):
             return_value="srt_video",
         ), patch.object(
             controller,
-            "select_studio_subtitle_config",
-            return_value="single_line",
+            "select_studio_input_files",
+            return_value=SimpleNamespace(
+                video_path=Path("input/studio/srt_video/source.mp4"),
+                subtitle_path=Path("input/studio/srt_video/source.srt"),
+            ),
+        ), patch.object(
+            controller,
+            "select_studio_subtitle_options",
+            return_value=("single_line", False),
         ), patch.object(
             controller, "select_studio_music", return_value=None
         ), patch.object(
@@ -198,8 +205,8 @@ class StudioPhase5Test(unittest.TestCase):
             music_path=None,
             input_mode="srt_video",
             intro_outro_selection=plan,
-            project=projects.return_value,
         )
+        projects.assert_not_called()
 
     def test_phase_two_transports_plan_to_project_output_and_renderer(self):
         plan = IntroOutroPlan(
@@ -219,15 +226,24 @@ class StudioPhase5Test(unittest.TestCase):
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
         project = Mock()
-        result = ejecutar_studio(
-            subtitle_style="single_line",
-            input_mode="srt_video",
-            intro_outro_selection=plan,
-            preparation_service=Mock(return_value=preparation),
-            render_service=renderer,
-            output_path_resolver=resolver,
-            project=project,
-        )
+        with patch(
+            "app.core.start._persist_studio_subtitle_base",
+            return_value=Path("output/studio/subtitles/result.srt"),
+        ), patch(
+            "app.core.start._persist_studio_render_subtitle",
+            return_value=Path(
+                "output/studio/subtitles/result_single_line.srt"
+            ),
+        ):
+            result = ejecutar_studio(
+                subtitle_style="single_line",
+                input_mode="srt_video",
+                intro_outro_selection=plan,
+                preparation_service=Mock(return_value=preparation),
+                render_service=renderer,
+                output_path_resolver=resolver,
+                project=project,
+            )
         self.assertEqual("rendered", result)
         self.assertEqual(
             {
@@ -356,7 +372,12 @@ class StudioPhase5Test(unittest.TestCase):
                 service.style_builder, "build", return_value="style"
             ), patch(
                 "app.modules.studio.render_service.SubtitleConfigLoader"
-            ) as subtitle_loader:
+            ) as subtitle_loader, patch(
+                "app.modules.studio.render_service.time.perf_counter",
+                side_effect=(10.0, 13.0, 20.0, 22.0),
+            ), patch(
+                "app.modules.studio.render_service.ProgressLogger"
+            ) as progress_logger:
                 subtitle_loader.return_value.load_render_style.return_value = (
                     SimpleNamespace(offset=0.0)
                 )
@@ -373,6 +394,22 @@ class StudioPhase5Test(unittest.TestCase):
             self.assertEqual(2, validator.validate.call_count)
             self.assertEqual(output, result.output_path)
             self.assertFalse(service._principal_path(output).exists())
+            self.assertEqual(3.0, result.render_duration)
+            self.assertEqual(2.0, result.intro_outro_duration)
+            self.assertEqual(
+                [
+                    "RENDERIZANDO STUDIO",
+                    "COMPONIENDO INTRO / OUTRO",
+                ],
+                [call.args[0] for call in progress_logger.start.call_args_list],
+            )
+            self.assertEqual(
+                [
+                    "RENDER STUDIO COMPLETADO",
+                    "INTRO / OUTRO COMPLETADO",
+                ],
+                [call.args[0] for call in progress_logger.finish.call_args_list],
+            )
 
     def test_final_collision_fails_before_render(self):
         with tempfile.TemporaryDirectory() as directory:

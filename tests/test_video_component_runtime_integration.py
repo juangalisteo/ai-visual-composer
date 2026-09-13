@@ -722,6 +722,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             subtitle_profile=resolved_subtitle_profile,
             render_fps=30
         )
+        srt_optimizer.return_value.optimize.assert_called_once_with(
+            canonical_content="Guion de prueba.",
+        )
         video_builder.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
             intro_outro_selection=intro_outro_selection,
@@ -729,6 +732,122 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=video_clips_manifest
         )
+
+    def test_iniciar_video_product_without_subtitles_keeps_design_i2v_identity(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project = FakeProject(Path(temp_dir) / "output" / "video-product")
+            final_video = project.video_path()
+            clips_manifest = (
+                project.base_path
+                / "video_clips"
+                / "video_clips_manifest.json"
+            )
+            subtitle_profile = object()
+
+            class FakeConfig:
+                def get_ai_config(self):
+                    return {}
+
+                def get_profile_key(self):
+                    return ProfileKey.for_component(
+                        ProfileComponent.GUION,
+                        ProfilePlatform.INSTAGRAM,
+                        family="design",
+                        profile_id=(
+                            "guion_instagram_design_"
+                            "modo_conciencia_studio_1"
+                        ),
+                    )
+
+                def get_profile_config(self):
+                    return {
+                        "builders": {
+                            "script": True,
+                            "voice": True,
+                            "subtitles": True,
+                            "storyboard": True,
+                            "images": True,
+                            "video": True,
+                        },
+                        "video_style": {"fps": 30},
+                    }
+
+                def get_subtitle_profile(self, style):
+                    raise AssertionError(
+                        "Subtitle profile must not be resolved"
+                    )
+
+            config = FakeConfig()
+            with patch.dict(
+                "os.environ",
+                {
+                    "MC_VISUAL_PIPELINE": "video",
+                    "MC_PIPELINE_MODE": "full_without_subtitles",
+                    "MC_MUSIC_CATEGORY": "",
+                },
+                clear=False,
+            ), patch(
+                "app.core.start.ProjectManager",
+                return_value=project,
+            ), patch(
+                "app.core.start.ConfigManager",
+                return_value=config,
+            ), patch(
+                "app.core.start.ejecutar_guion",
+                return_value=type("Prepared", (), {"text": "Guion."})(),
+            ), patch(
+                "app.core.start.VoiceBuilder"
+            ) as voice_builder, patch(
+                "app.core.start.AudioMixer"
+            ) as audio_mixer, patch(
+                "app.core.start.SubtitleBuilder"
+            ) as subtitle_builder, patch(
+                "app.core.start.SrtOptimizer"
+            ) as srt_optimizer, patch(
+                "app.core.start.StoryboardBuilder"
+            ) as storyboard_builder, patch(
+                "app.core.start.ImageBuilder"
+            ) as image_builder, patch(
+                "app.core.start.generar_video_clips_i2v",
+                return_value=clips_manifest,
+            ) as clips_builder, patch(
+                "app.core.start.VideoBuilder"
+            ) as video_builder, patch(
+                "app.core.start.MediaProbe.get_duration",
+                return_value=4.0,
+            ):
+                voice_builder.return_value.build.return_value = project.audio_path()
+                audio_mixer.return_value.build.return_value = project.final_audio_path()
+                storyboard_builder.return_value.build.return_value = project.storyboard_path()
+                image_builder.return_value.build.return_value = project.images_manifest_path()
+                video_builder.return_value.build.return_value = final_video
+
+                result = start.iniciar()
+
+        self.assertEqual(final_video, result)
+        subtitle_builder.assert_not_called()
+        srt_optimizer.assert_not_called()
+        clips_builder.assert_called_once()
+        self.assertEqual(
+            ProfileKey.for_component(
+                ProfileComponent.VIDEO,
+                ProfilePlatform.INSTAGRAM,
+                family="design",
+                profile_id=(
+                    "video_instagram_design_"
+                    "modo_conciencia_studio_1"
+                ),
+            ),
+            clips_builder.call_args.kwargs["profile_key"],
+        )
+        video_builder.assert_called_once_with(
+            subtitle_profile=None,
+            render_subtitles=False,
+        )
+        video_builder.return_value.build.assert_called_once_with(
+            video_clips_manifest_path=clips_manifest,
+        )
+        self.assertNotIn("_sin_subtitulos", str(result))
 
     def test_generates_video_product_clips_from_storyboard_and_images(
         self

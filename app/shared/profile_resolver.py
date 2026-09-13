@@ -3,8 +3,12 @@ from pathlib import Path
 
 from app.shared.profile_identity import (
     ProfileComponent,
+    ProfileFamily,
     ProfileKey,
     ProfilePlatform,
+)
+from app.shared.subtitle_profile_identity import (
+    coerce_subtitle_style,
 )
 
 
@@ -85,6 +89,10 @@ class ProfileResolver:
         profile_key = self._require_profile_key(
             profile_key
         )
+        if profile_key.family is ProfileFamily.DESIGN:
+            path = self._design_path(profile_key)
+            self._validate_design_identity(self._load_json(path), profile_key, path)
+            return path
         relative_path = self._PROFILE_PATHS.get(
             (
                 profile_key.component,
@@ -99,6 +107,78 @@ class ProfileResolver:
         return self._existing_path(
             relative_path
         )
+
+    def discover(self, component, platform, family=ProfileFamily.SYSTEM):
+        component = ProfileComponent(component)
+        platform = ProfilePlatform(platform)
+        family = ProfileFamily(family)
+        if family is ProfileFamily.SYSTEM:
+            key = ProfileKey.for_component(component, platform)
+            return ((key, self.load(key).get("display_name", key.profile_id)),)
+        directory = self.profiles_root / component.value / platform.value / "design"
+        if not directory.is_dir():
+            return ()
+        discovered = []
+        for path in sorted(directory.glob("*.json"), key=lambda item: item.name.casefold()):
+            try:
+                data = self._load_json(path)
+                key = ProfileKey(component, platform, data.get("profile_id", ""), family)
+                self._validate_design_identity(data, key, path)
+                self.declared_subtitle_style(key)
+                if path.resolve() != self._design_path(key).resolve():
+                    raise ValueError(
+                        "La ruta del perfil DESIGN no coincide con su identidad."
+                    )
+            except (
+                FileNotFoundError,
+                TypeError,
+                ValueError,
+                json.JSONDecodeError,
+            ):
+                continue
+            discovered.append((key, data["display_name"]))
+        return tuple(sorted(discovered, key=lambda item: item[1].casefold()))
+
+    def declared_subtitle_style(self, profile_key):
+        """Return a concrete DESIGN profile's declared subtitle style."""
+        profile_key = self._require_profile_key(profile_key)
+        if profile_key.family is ProfileFamily.SYSTEM:
+            return None
+
+        style = self.load(profile_key).get("subtitle_config")
+        if not isinstance(style, str) or not style.strip():
+            raise ValueError(
+                "El perfil DESIGN requiere subtitle_config declarado: "
+                f"{profile_key.profile_id}"
+            )
+        style = coerce_subtitle_style(style)
+        embedded = self.load(profile_key).get("subtitle_profile")
+        if not isinstance(embedded, dict):
+            raise ValueError(
+                "El perfil DESIGN requiere subtitle_profile embebido: "
+                f"{profile_key.profile_id}"
+            )
+        if embedded.get("style") not in (None, style.value if hasattr(style, "value") else style):
+            raise ValueError(
+                "subtitle_profile.style no coincide con subtitle_config: "
+                f"{profile_key.profile_id}"
+            )
+        return style
+
+    def _design_path(self, profile_key):
+        slug = profile_key.profile_id.removeprefix(
+            f"{profile_key.component.value}_{profile_key.platform.value}_design_"
+        )
+        path = self.profiles_root / profile_key.component.value / profile_key.platform.value / "design" / f"{slug}.json"
+        if not path.is_file():
+            raise FileNotFoundError(f"No existe el perfil DESIGN esperado: {path}")
+        return path
+
+    @staticmethod
+    def _validate_design_identity(data, key, path):
+        expected = {"component": key.component.value, "platform": key.platform.value, "family": "design", "profile_id": key.profile_id}
+        if not isinstance(data, dict) or any(data.get(field) != value for field, value in expected.items()) or not isinstance(data.get("display_name"), str) or not data["display_name"].strip():
+            raise ValueError(f"Identidad DESIGN inválida: {path}")
 
     def load(
         self,

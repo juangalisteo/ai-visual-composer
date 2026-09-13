@@ -49,7 +49,7 @@ class VideoConfig:
 
     pixel_format: str
 
-    subtitles: SubtitleConfig
+    subtitles: SubtitleConfig | None
     motion: MotionConfig
     transitions: TransitionConfig
     overlays: OverlayConfig
@@ -70,12 +70,16 @@ class VideoConfig:
     def subtitle_offset(
         self
     ):
+        if self.subtitles is None:
+            return 0.0
         return self.subtitles.offset
 
     @property
     def subtitle_style(
         self
     ):
+        if self.subtitles is None:
+            return None
         return {
             "font": self.subtitles.font,
             "font_size": self.subtitles.font_size,
@@ -106,7 +110,8 @@ class VideoConfigLoader:
         )
 
     def load(
-        self
+        self,
+        render_subtitles=True,
     ):
         profile = (
             self.config_manager
@@ -197,11 +202,18 @@ class VideoConfigLoader:
             )
         )
 
-        subtitle_config = (
-            SubtitleConfigLoader().load_render_style(
-                self.subtitle_profile.render_style
+        subtitle_config = None
+        if render_subtitles:
+            if self.subtitle_profile is None:
+                raise ValueError(
+                    "La renderizacion con subtitulos requiere "
+                    "subtitle_profile."
+                )
+            subtitle_config = (
+                SubtitleConfigLoader().load_render_style(
+                    self.subtitle_profile.render_style
+                )
             )
-        )
 
         validation_config = (
             ValidationConfigLoader().load(

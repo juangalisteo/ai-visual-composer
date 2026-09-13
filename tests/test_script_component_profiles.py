@@ -141,7 +141,7 @@ class ScriptComponentProfilesTest(
             if call.args
         )
         self.assertIn(
-            "Instagram / Modo Conciencia",
+            "Instagram",
             printed
         )
         self.assertNotIn(

@@ -212,6 +212,29 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
                     media_manifest_type="video_clips"
                 )
 
+    def test_allows_missing_subtitle_path_only_when_subtitles_are_disabled(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            audio_path = root / "audio.mp3"
+            audio_path.write_bytes(b"audio")
+            image_path = root / "image.png"
+            image_path.write_bytes(b"image")
+            manifest_path = root / "images_manifest.json"
+            manifest_path.write_text(
+                json.dumps([{"scene": 1, "image": str(image_path)}]),
+                encoding="utf-8",
+            )
+
+            media = MediaLoader().load(
+                audio_path=audio_path,
+                subtitle_path=None,
+                images_manifest_path=manifest_path,
+                output_path=root / "video" / "final.mp4",
+                render_subtitles=False,
+            )
+
+        self.assertIsNone(media.subtitle_path)
+
 
 if __name__ == "__main__":
     unittest.main()

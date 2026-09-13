@@ -5,6 +5,8 @@ from app.modules.script.models import (
     InvalidScriptOutputError,
     ScriptGenerationMetadata,
     ScriptGenerationResult,
+    ScriptValidationIssue,
+    ScriptValidationReport,
 )
 from app.modules.script.validator import (
     ScriptOutputValidator,
@@ -97,6 +99,7 @@ class ScriptBuilder:
                     prompt,
                     attempt,
                     last_report,
+                    length_reference,
                 )
             )
             last_response = str(
@@ -106,6 +109,12 @@ class ScriptBuilder:
             candidate = last_response.strip()
             report = validator.validate(
                 candidate
+            )
+            report = _validate_length(
+                report=report,
+                script=candidate,
+                minimum=length_reference["recommended_min_words"],
+                maximum=length_reference["recommended_max_words"],
             )
             last_report = report
 
@@ -177,6 +186,7 @@ def _attempt_prompt(
     prompt: str,
     attempt: int,
     previous_report=None,
+    length_reference=None,
 ) -> str:
     if attempt <= 1:
         return prompt
@@ -186,12 +196,22 @@ def _attempt_prompt(
     topic = _topic_from_prompt(
         prompt
     )
+    length_reference = length_reference or {}
+    minimum = int(length_reference.get("recommended_min_words", 0) or 0)
+    maximum = int(length_reference.get("recommended_max_words", 0) or 0)
+    length_instruction = ""
+    if minimum > 0 and maximum >= minimum:
+        length_instruction = (
+            f" Debe contener entre {minimum} y {maximum} palabras "
+            "para respetar la duración solicitada."
+        )
     return (
         "La respuesta anterior incumple el formato requerido. "
         f"Motivo: {previous_reason}. "
         f"Tema: {topic}. "
         "Devuelve únicamente el guion final válido, sin encabezados, "
         "sin comentarios, sin markdown, sin JSON y sin metadatos."
+        + length_instruction
     )
 
 
@@ -204,6 +224,32 @@ def _previous_reason(
     ):
         return "formato invalido"
     return previous_report.issues[0].reason
+
+
+def _validate_length(*, report, script, minimum, maximum):
+    """Enforce the duration-derived word range without truncating content."""
+    if not report.valid or minimum <= 0 or maximum <= 0:
+        return report
+
+    word_count = count_script_words(script)
+    if minimum <= word_count <= maximum:
+        return report
+
+    reason = (
+        "script_too_short_for_duration"
+        if word_count < minimum
+        else "script_too_long_for_duration"
+    )
+    return ScriptValidationReport(
+        valid=False,
+        issues=(
+            ScriptValidationIssue(
+                reason=reason,
+                field="script",
+                value=str(word_count),
+            ),
+        ),
+    )
 
 
 def _topic_from_prompt(

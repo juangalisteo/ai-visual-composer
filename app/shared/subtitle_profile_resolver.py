@@ -7,6 +7,7 @@ from app.shared.subtitle_profile_identity import (
     SubtitleProfileKey,
 )
 from app.shared.profile_identity import ProfileKey
+from app.shared.profile_resolver import ProfileResolver
 
 
 class SubtitleProfileResolver:
@@ -51,6 +52,13 @@ class SubtitleProfileResolver:
         with path.open("r", encoding="utf-8") as file:
             data = json.load(file)
 
+        if profile_key.family.value == "design":
+            data = self._design_subtitle_data(
+                data=data,
+                profile_key=profile_key,
+                path=path,
+            )
+
         self._validate_identity(
             data=data,
             profile_key=profile_key,
@@ -84,12 +92,14 @@ class SubtitleProfileResolver:
                 "La identidad principal debe ser un ProfileKey."
             )
 
-        directory = (
-            self.profiles_root
-            / profile_key.component.value
-            / profile_key.platform.value
-            / "subtitulos"
-        )
+        if profile_key.family.value == "design":
+            data = ProfileResolver(self.profiles_root).load(profile_key)
+            style = data.get("subtitle_config")
+            key = SubtitleProfileKey.for_profile(profile_key, style)
+            self.load(key)
+            return (key.style,)
+
+        directory = self.profiles_root / profile_key.component.value / profile_key.platform.value / "estandar"
         if not directory.is_dir():
             raise FileNotFoundError(
                 "No existe la carpeta de perfiles de subtitulos: "
@@ -112,7 +122,9 @@ class SubtitleProfileResolver:
                 component=profile_key.component,
                 platform=profile_key.platform,
                 style=style,
-                profile_id=data.get("profile_id", "")
+                profile_id=data.get("profile_id", ""),
+                family=profile_key.family,
+                parent_profile_id=profile_key.profile_id,
             )
             self._validate_identity(
                 data=data,
@@ -132,6 +144,45 @@ class SubtitleProfileResolver:
                 f"{profile_key.profile_id}."
             )
         return tuple(styles)
+
+    def _design_subtitle_data(self, *, data, profile_key, path):
+        """Extract the embedded subtitle configuration from one design JSON."""
+        expected_parent = ProfileKey(
+            component=profile_key.component,
+            platform=profile_key.platform,
+            profile_id=profile_key.parent_profile_id,
+            family=profile_key.family,
+        )
+        ProfileResolver._validate_design_identity(data, expected_parent, path)
+
+        declared_style = data.get("subtitle_config")
+        expected_style = (
+            profile_key.style.value
+            if hasattr(profile_key.style, "value")
+            else profile_key.style
+        )
+        if declared_style != expected_style:
+            raise ValueError(
+                "El perfil DESIGN declara un estilo de subtitulos distinto: "
+                f"{path}."
+            )
+
+        embedded = data.get("subtitle_profile")
+        if not isinstance(embedded, dict):
+            raise TypeError(
+                "El perfil DESIGN requiere subtitle_profile embebido: "
+                f"{path}."
+            )
+
+        return {
+            "component": profile_key.component.value,
+            "platform": profile_key.platform.value,
+            "profile_id": profile_key.profile_id,
+            "style": expected_style,
+            "family": "design",
+            "parent_profile_id": profile_key.parent_profile_id,
+            **embedded,
+        }
 
     def _validate_identity(
         self,
@@ -154,6 +205,9 @@ class SubtitleProfileResolver:
                 else profile_key.style
             ),
         }
+        if profile_key.family.value == "design":
+            expected["family"] = "design"
+            expected["parent_profile_id"] = profile_key.parent_profile_id
         actual = {
             field: data.get(field)
             for field in expected

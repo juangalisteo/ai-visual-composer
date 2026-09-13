@@ -28,11 +28,13 @@ class VideoBuilder:
         self,
         subtitle_profile=None,
         intro_outro_selection=None,
+        render_subtitles=True,
     ):
         self.subtitle_profile = subtitle_profile
         self.intro_outro_selection = (
             intro_outro_selection
         )
+        self.render_subtitles = bool(render_subtitles)
 
     def build(
         self,
@@ -48,20 +50,20 @@ class VideoBuilder:
             "GENERANDO VÍDEO FINAL"
         )
 
+        context_options = {
+            "audio_path": audio_path,
+            "subtitle_path": subtitle_path,
+            "images_manifest_path": images_manifest_path,
+            "video_clips_manifest_path": video_clips_manifest_path,
+            "output_path": output_path,
+        }
+        if not self.render_subtitles:
+            context_options["render_subtitles"] = False
+
         build_context = (
             VideoBuildContextFactory(
                 subtitle_profile=self.subtitle_profile
-            ).build(
-                audio_path=audio_path,
-                subtitle_path=subtitle_path,
-                images_manifest_path=(
-                    images_manifest_path
-                ),
-                video_clips_manifest_path=(
-                    video_clips_manifest_path
-                ),
-                output_path=output_path
-            )
+            ).build(**context_options)
         )
 
         if self.intro_outro_selection is None:

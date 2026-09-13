@@ -9,7 +9,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from app.core.start import ejecutar_studio, iniciar
+from app.core.start import (
+    _persist_studio_render_subtitle,
+    ejecutar_studio,
+    iniciar,
+)
 from app.modules.studio import (
     StudioOutputPathResolver,
     StudioOutputValidator,
@@ -80,14 +84,23 @@ class StudioPhase2Test(unittest.TestCase):
         resolver.resolve.return_value = Path("output/studio/result.mp4")
         project = Mock()
 
-        result = ejecutar_studio(
-            subtitle_style="single_line",
-            input_mode="srt_video",
-            preparation_service=prepare,
-            render_service=renderer,
-            output_path_resolver=resolver,
-            project=project,
-        )
+        base_path = Path("output/studio/subtitles/result.srt")
+        derived_path = Path("output/studio/subtitles/result_single_line.srt")
+        with patch(
+            "app.core.start._persist_studio_subtitle_base",
+            return_value=base_path,
+        ), patch(
+            "app.core.start._persist_studio_render_subtitle",
+            return_value=derived_path,
+        ):
+            result = ejecutar_studio(
+                subtitle_style="single_line",
+                input_mode="srt_video",
+                preparation_service=prepare,
+                render_service=renderer,
+                output_path_resolver=resolver,
+                project=project,
+            )
 
         self.assertEqual("rendered", result)
         prepare.assert_called_once_with(
@@ -100,7 +113,7 @@ class StudioPhase2Test(unittest.TestCase):
         )
         renderer.render.assert_called_once_with(
             video_path=preparation.video_path,
-            subtitle_path=preparation.subtitle_path,
+            subtitle_path=derived_path,
             profile_key=preparation.profile_key,
             profile=preparation.profile,
             subtitle_profile=preparation.subtitle_profile,
@@ -127,10 +140,8 @@ class StudioPhase2Test(unittest.TestCase):
             subtitle_style="single_line",
             music_path=None,
             input_mode="srt_video",
-            project=projects.return_value,
         )
-        projects.assert_called_once_with()
-        projects.return_value.setup.assert_called_once_with()
+        projects.assert_not_called()
         video.assert_not_called()
         optimizer.assert_not_called()
 
@@ -317,40 +328,35 @@ class StudioPhase2Test(unittest.TestCase):
                     "merge_preference": "next",
                 },
                 "uppercase": True,
-                "remove_render_punctuation": False,
+                "punctuation": {
+                    "remove_commas": False,
+                    "remove_periods": False,
+                    "remove_colons": False,
+                    "remove_semicolons": False,
+                    "remove_question_marks": False,
+                    "remove_exclamation_marks": False,
+                    "remove_ellipsis": False,
+                    "remove_hyphens": False,
+                    "remove_em_dashes": False,
+                    "remove_double_quotes": False,
+                    "remove_single_quotes": False,
+                    "remove_parentheses": False,
+                },
             },
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             video_path, subtitle_path = self._sources(root)
             original = subtitle_path.read_bytes()
-            captured = {}
-            runner = Mock()
-            runner.run.side_effect = lambda command: Path(
-                command[-1]
-            ).write_bytes(b"rendered")
-            validator = Mock()
-            validator.validate.return_value = 0.9
-            service = self._service(runner=runner, validator=validator)
-            write_render_subtitle = service._write_render_subtitle
-
-            def capture_subtitle(**kwargs):
-                path = write_render_subtitle(**kwargs)
-                captured["content"] = path.read_text(encoding="utf-8")
-                return path
-
-            service._write_render_subtitle = capture_subtitle
-            service.render(
-                video_path,
-                subtitle_path,
-                self.profile_key,
-                self.profile,
-                uppercase_profile,
-                root / "result.mp4",
+            rendered_path = _persist_studio_render_subtitle(
+                base_subtitle_path=subtitle_path,
+                output_path=root / "demo" / "video" / "demo.mp4",
+                subtitle_profile=uppercase_profile,
+                render_fps=self.profile.fps,
             )
 
-            self.assertIn("TEXTO", captured["content"])
-            self.assertIn("INTACTO", captured["content"])
+            self.assertIn("TEXTO", rendered_path.read_text(encoding="utf-8"))
+            self.assertIn("INTACTO", rendered_path.read_text(encoding="utf-8"))
             self.assertEqual(original, subtitle_path.read_bytes())
 
     def test_render_preserves_sources_and_promotes_only_after_validation(self):

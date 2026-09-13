@@ -662,6 +662,97 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     previous_cwd
                 )
 
+    def test_full_without_subtitles_skips_srt_and_renders_once(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            previous_cwd = Path.cwd()
+
+            try:
+                os.chdir(root)
+                input_dir = root / "input"
+                input_dir.mkdir()
+                (input_dir / "tema.txt").write_text(
+                    "conciencia",
+                    encoding="utf-8",
+                )
+
+                with patch.dict(
+                    os.environ,
+                    {
+                        "MC_PIPELINE_MODE": "full_without_subtitles",
+                        "MC_PROJECT_NAME": "full without subtitles",
+                        "MC_MUSIC_CATEGORY": "",
+                    },
+                    clear=False,
+                ), patch(
+                    "app.core.start.ConfigManager",
+                    FakeConfigManager,
+                ), patch.object(
+                    FakeConfigManager,
+                    "get_subtitle_profile",
+                    side_effect=AssertionError(
+                        "Subtitle profile must not be resolved"
+                    ),
+                ), patch(
+                    "app.core.start.ejecutar_guion",
+                    side_effect=fake_ejecutar_guion,
+                ), patch(
+                    "app.core.start.VoiceBuilder",
+                    FakeVoiceBuilder,
+                ), patch(
+                    "app.core.start.MusicSelector",
+                    side_effect=AssertionError(
+                        "MusicSelector must not run without music"
+                    ),
+                ), patch(
+                    "app.core.start.AudioMixer"
+                ) as audio_mixer, patch(
+                    "app.core.start.SubtitleBuilder"
+                ) as subtitle_builder, patch(
+                    "app.core.start.SrtOptimizer"
+                ) as srt_optimizer, patch(
+                    "app.core.start.StoryboardBuilder"
+                ) as storyboard_builder, patch(
+                    "app.core.start.ImageBuilder"
+                ) as image_builder, patch(
+                    "app.core.start.VideoBuilder"
+                ) as video_builder, patch(
+                    "app.core.start.MediaProbe.get_duration",
+                    return_value=None,
+                ):
+                    final_video = Path(
+                        "output/full without subtitles/video/"
+                        "full without subtitles.mp4"
+                    )
+                    audio_mixer.return_value.build.return_value = Path(
+                        "output/full without subtitles/audio/audio_final.mp3"
+                    )
+                    storyboard_builder.return_value.build.return_value = Path(
+                        "output/full without subtitles/storyboard/storyboard.json"
+                    )
+                    image_builder.return_value.build.return_value = Path(
+                        "output/full without subtitles/images/images_manifest.json"
+                    )
+                    video_builder.return_value.build.return_value = final_video
+
+                    result = start.iniciar()
+
+                self.assertEqual(final_video, result)
+                subtitle_builder.assert_not_called()
+                srt_optimizer.assert_not_called()
+                video_builder.assert_called_once_with(
+                    subtitle_profile=None,
+                    render_subtitles=False,
+                )
+                video_builder.return_value.build.assert_called_once_with()
+                self.assertFalse(
+                    (root / "output/full without subtitles/subtitles/subtitulos.srt")
+                    .exists()
+                )
+                self.assertNotIn("_sin_subtitulos", str(result))
+            finally:
+                os.chdir(previous_cwd)
+
     def test_full_mode_reuses_script_operation_and_continues_with_prepared_text(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(

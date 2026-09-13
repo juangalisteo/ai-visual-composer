@@ -381,8 +381,7 @@ class _OverlayOllamaProvider:
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False
-            },
-            timeout=30
+            }
         )
 
         response.raise_for_status()

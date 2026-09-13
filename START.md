@@ -20,7 +20,9 @@ For Guion, Imagen, and Video generation, start the required services in this ord
 3. AI Visual Composer
 ```
 
-Studio processes an existing MP4 and SRT with FFmpeg. It does not require Ollama or ComfyUI unless another component will also be used in the same session.
+Studio processes external media with FFmpeg and, only when transcription is
+selected, Whisper. It does not require Ollama or ComfyUI unless another
+component will also be used in the same session.
 
 ---
 
@@ -123,16 +125,60 @@ according to the selected product route and project name.
 
 ### Studio Runtime
 
-Choose one Studio input mode and place its source files in the matching directory:
+Studio presents these input modes:
 
 ```text
-input/studio/srt_video/  # exactly one .mp4 and one UTF-8 .srt
-input/studio/video/      # exactly one .mp4
+1. SOLO VIDEO
+2. SRT + VIDEO
+3. INTRO / OUTRO
+4. MONTAJE VÍDEOS
+5. VIDEO + AUDIO SRT
+6. EXPORTAR SRT VIDEO
 ```
 
-Then select `Studio`, the platform, input mode, subtitle style, optional music, and INTRO/OUTRO. Studio preserves source files and writes its validated result under the selected project output.
+Place source files only in the matching directory:
 
-Place optional INTRO assets in `assets/videos/intro_outro/intro/` and optional OUTRO assets in `assets/videos/intro_outro/outro/`. The selected position determines which directory is queried.
+```text
+input/studio/video/                       # MP4 for SOLO VIDEO
+input/studio/srt_video/                   # MP4 + UTF-8 SRT
+input/studio/intro_outro/                 # source video for INTRO / OUTRO
+input/studio/montaje_videos/              # clips for MONTAJE VÍDEOS
+input/studio/video_audio_srt/             # MP4 + new audio; optional UTF-8 SRT
+input/studio/exportar_srt/transcribir/    # MP4 or MP3
+input/studio/exportar_srt/convertir/      # UTF-8 SRT
+```
+
+`SOLO VIDEO` creates subtitles from its MP4 audio and offers `LÍNEA ÚNICA` or
+`PALABRA POR PALABRA`. `SRT + VIDEO` preserves the supplied SRT and also
+offers `ORIGINAL`. With one valid candidate, Studio selects it directly;
+otherwise it shows a file-selection menu. MONTAJE VÍDEOS lists discovered
+clips and requests the desired numeric order. INTRO / OUTRO uses the shared
+asset catalog. VIDEO + AUDIO SRT uses the new audio as final authority, keeps a
+supplied human SRT authoritative, and does not include music. EXPORTAR SRT
+VIDEO offers `TRANSCRIBIR` or `CONVERTIR` without rendering an audiovisual
+video.
+
+Studio preserves source files and writes its validated result under the
+selected project output. Optional INTRO assets belong in
+`assets/videos/intro_outro/intro/`; optional OUTRO assets belong in
+`assets/videos/intro_outro/outro/`.
+
+For native GUION, IMAGEN, and VIDEO runs that produce a full video, the output
+contains one canonical subtitle-bearing MP4:
+
+```text
+output/<proyecto>/video/<proyecto>.mp4
+```
+
+After choosing `Guion` and an audiovisual destination, `MODO` also offers
+`Proyecto completo sin subtítulos`. It is a separate full execution that
+produces one MP4 without burned-in subtitles; it does not create a second
+variant or use the retired dual-output workflow. It does not ask for a
+subtitle style or create an internal SRT: subtitle profile resolution,
+subtitle generation, optimization, and burn-in are omitted for that run.
+
+If ELIMINAR OUTPUT reports that a file is in use, close the program using that
+file and run the command again.
 
 ---
 

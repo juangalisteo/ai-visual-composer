@@ -248,6 +248,43 @@ class VideoBuilderOrchestrationTest(
             output_path="final.mp4"
         )
 
+    def test_build_transports_explicit_disabled_subtitle_rendering(self):
+        context = self.make_context("final.mp4")
+        components = self.make_components()
+
+        with patch(
+            "app.modules.video.video_builder.VideoBuildContextFactory"
+        ) as context_factory_class, patch(
+            "app.modules.video.video_builder.VideoComponentFactory"
+        ) as component_factory_class, patch(
+            "app.modules.video.video_builder.VideoFilterContextFactory"
+        ), patch(
+            "app.modules.video.video_builder.VideoRenderService"
+        ) as render_service_class, patch(
+            "app.modules.video.video_builder.FFmpegDiagnostics"
+        ):
+            context_factory_class.return_value.build.return_value = context
+            component_factory_class.return_value.create.return_value = components
+            render_service_class.return_value.build_artifacts.return_value = (
+                VideoBuildArtifacts(filter_complex="[vout]", command=["ffmpeg"])
+            )
+
+            VideoBuilder(render_subtitles=False).build(
+                audio_path="audio.mp3",
+                subtitle_path="subtitles.srt",
+                images_manifest_path="images.json",
+                output_path="final.mp4",
+            )
+
+        context_factory_class.return_value.build.assert_called_once_with(
+            audio_path="audio.mp3",
+            subtitle_path="subtitles.srt",
+            images_manifest_path="images.json",
+            video_clips_manifest_path=None,
+            output_path="final.mp4",
+            render_subtitles=False,
+        )
+
     def test_build_passes_intro_outro_only_to_render_service(self):
         context = self.make_context("final.mp4")
         selection = object()

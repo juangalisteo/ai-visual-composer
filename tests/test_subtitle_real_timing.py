@@ -306,6 +306,20 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 "min_duration": 1.0,
                 "max_duration": 3.0,
                 "significant_gap_threshold": 0.35,
+                "punctuation": {
+                    "remove_commas": False,
+                    "remove_periods": False,
+                    "remove_colons": False,
+                    "remove_semicolons": False,
+                    "remove_question_marks": False,
+                    "remove_exclamation_marks": False,
+                    "remove_ellipsis": False,
+                    "remove_hyphens": False,
+                    "remove_em_dashes": False,
+                    "remove_double_quotes": False,
+                    "remove_single_quotes": False,
+                    "remove_parentheses": False,
+                },
             }
         )
         timing = SubtitleTiming(
@@ -338,6 +352,20 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 "min_duration": 1.0,
                 "max_duration": 3.0,
                 "significant_gap_threshold": 0.35,
+                "punctuation": {
+                    "remove_commas": False,
+                    "remove_periods": False,
+                    "remove_colons": False,
+                    "remove_semicolons": False,
+                    "remove_question_marks": False,
+                    "remove_exclamation_marks": False,
+                    "remove_ellipsis": False,
+                    "remove_hyphens": False,
+                    "remove_em_dashes": False,
+                    "remove_double_quotes": False,
+                    "remove_single_quotes": False,
+                    "remove_parentheses": False,
+                },
             }
         )
         blocks = model.optimize(
@@ -572,7 +600,8 @@ class SubtitleRealTimingTest(unittest.TestCase):
     def test_micro_cue_policy_preserves_punctuation_order(self):
         model = self._word_by_word_model(
             fps=30,
-            remove_render_punctuation=False,
+            remove_commas=False,
+            remove_periods=False,
         )
 
         blocks = model.optimize(
@@ -737,7 +766,8 @@ class SubtitleRealTimingTest(unittest.TestCase):
         self,
         fps,
         min_display_seconds=0.05,
-        remove_render_punctuation=True,
+        remove_commas=True,
+        remove_periods=True,
         micro_cues_enabled=True
     ):
         return WordByWordModel(
@@ -745,7 +775,20 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 "min_duration": 0.3,
                 "max_duration": 1.2,
                 "uppercase": False,
-                "remove_render_punctuation": remove_render_punctuation,
+                "punctuation": {
+                    "remove_commas": remove_commas,
+                    "remove_periods": remove_periods,
+                    "remove_colons": False,
+                    "remove_semicolons": False,
+                    "remove_question_marks": False,
+                    "remove_exclamation_marks": False,
+                    "remove_ellipsis": False,
+                    "remove_hyphens": False,
+                    "remove_em_dashes": False,
+                    "remove_double_quotes": False,
+                    "remove_single_quotes": False,
+                    "remove_parentheses": False,
+                },
                 "render_fps": fps,
                 "significant_gap_threshold": 0.35,
                 "micro_cues": {

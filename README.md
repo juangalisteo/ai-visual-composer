@@ -107,27 +107,18 @@ The video architecture supports both generated I2V material and still-image base
 
 ## Studio
 
-**Studio** is the finishing component for externally supplied media.
+**Studio** is the finishing component for externally supplied media. Its current
+modes are `SOLO VIDEO`, `SRT + VIDEO`, `INTRO / OUTRO`, `MONTAJE VÍDEOS`,
+`VIDEO + AUDIO SRT`, and `EXPORTAR SRT VIDEO`.
 
-It accepts either an external MP4 with an authoritative SRT or an MP4 for canonical subtitle preparation, applies the selected Instagram or YouTube profile, and renders the subtitles. Music and INTRO/OUTRO assets can be selected independently.
+`SRT + VIDEO` preserves the supplied human SRT as textual authority. `SOLO
+VIDEO` and `EXPORTAR SRT VIDEO` may use Whisper where their mode requires a
+transcription. `VIDEO + AUDIO SRT` never retranscribes a supplied SRT and uses
+the new audio as the final temporal and audio authority; it does not mix music.
 
-```text
-MP4 + SRT OR MP4
-   ↓
-PLATFORM + SUBTITLE STYLE
-   ↓
-OPTIONAL MUSIC
-   ↓
-OPTIONAL INTRO / OUTRO
-   ↓
-VALIDATED STUDIO OUTPUT
-```
-
-Studio uses FFmpeg locally and does not invoke script generation, Whisper, Flux, Wan, or ComfyUI.
-
-INTRO and OUTRO assets use the shared position-specific catalog:
-`assets/videos/intro_outro/intro/` and `assets/videos/intro_outro/outro/`.
-Their directory, not their filename, defines their position for every final-video flow.
+Studio uses FFmpeg locally. INTRO and OUTRO assets use the shared
+position-specific catalog `assets/videos/intro_outro/intro/` and
+`assets/videos/intro_outro/outro/`.
 
 ---
 
@@ -326,6 +317,18 @@ Validated output targets currently include:
 
 Profiles allow generation and composition behavior to be adapted according to the target platform, orientation, resolution, subtitle configuration, motion behavior, and audiovisual requirements.
 
+Each component/platform discovers `ESTÁNDAR` and `DISEÑO` dynamically when
+their filesystem paths exist:
+
+```text
+config/profiles/<component>/<platform>/estandar/
+config/profiles/<component>/<platform>/design/
+```
+
+DISEÑO is not a fifth component: one design is one self-contained JSON in its
+component's `design/` directory. An empty `design/` directory, as on YouTube,
+does not expose DISEÑO.
+
 ---
 
 ## Local Architecture
@@ -349,7 +352,8 @@ Large AI models, external runtimes, generated content, temporary files, and priv
 
 ## Validation
 
-AI Visual Composer V2.0 maintains a permanent validation baseline created from real executions of the system.
+AI Visual Composer preserves the V2.0 real-execution baseline while V3 remains
+open pending the owner's final manual validation.
 
 The baseline contains:
 

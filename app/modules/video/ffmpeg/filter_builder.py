@@ -48,7 +48,8 @@ class FilterBuilder:
                 motion_builder=motion_builder,
                 transition_builder=transition_builder,
                 overlay_builder=overlay_builder,
-                visual_effect_builder=visual_effect_builder
+                visual_effect_builder=visual_effect_builder,
+                render_subtitles=context.render_subtitles,
             ),
             overlay_builder=overlay_builder,
             visual_effect_builder=visual_effect_builder
@@ -73,7 +74,8 @@ class FilterBuilder:
         motion_builder,
         transition_builder,
         overlay_builder,
-        visual_effect_builder
+        visual_effect_builder,
+        render_subtitles=True,
     ):
         overlay_stage = OverlayGraphBuilder(
             overlay_builder
@@ -86,7 +88,7 @@ class FilterBuilder:
         overlay_stage.refresh_layer_inputs = True
         visual_effect_stage.refresh_layer_inputs = True
 
-        return (
+        stages = (
             MotionGraphBuilder(
                 motion_builder
             ),
@@ -95,6 +97,16 @@ class FilterBuilder:
             ),
             overlay_stage,
             visual_effect_stage,
-            FadeGraphBuilder(),
-            SubtitleGraphBuilder()
+            FadeGraphBuilder(
+                output_stream=(
+                    "[fadeout]"
+                    if render_subtitles
+                    else "[vout]"
+                )
+            ),
         )
+
+        if render_subtitles:
+            return (*stages, SubtitleGraphBuilder())
+
+        return stages

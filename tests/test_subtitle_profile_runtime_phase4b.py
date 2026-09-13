@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import tempfile
 import unittest
@@ -23,6 +23,7 @@ from app.modules.video.video_config import VideoConfigLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     ProfileComponent,
+    ProfileFamily,
     ProfileKey,
     ProfilePlatform,
 )
@@ -77,6 +78,108 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
         self.assertEqual(12, len(resolved_paths))
         self.assertEqual(12, len(profile_ids))
+
+    def test_design_subtitle_profile_is_embedded_in_one_design_json(self):
+        for component in ProfileComponent:
+            main_key = ProfileKey.for_component(
+                component,
+                ProfilePlatform.INSTAGRAM,
+                family=ProfileFamily.DESIGN,
+                profile_id=(
+                    f"{component.value}_instagram_design_"
+                    "modo_conciencia_studio_1"
+                ),
+            )
+            for style in (SubtitleStyle.WORD_BY_WORD,):
+                with self.subTest(component=component.value, style=style.value):
+                    key = SubtitleProfileKey.for_profile(main_key, style)
+                    resolved = self.subtitle_resolver.load(key)
+                    self.assertEqual(ProfileFamily.DESIGN, resolved.key.family)
+                    self.assertEqual(main_key.profile_id, resolved.key.parent_profile_id)
+                    self.assertEqual(
+                        Path("config/profiles")
+                        / component.value
+                        / "instagram"
+                        / "design"
+                        / "modo_conciencia_studio_1.json",
+                        resolved.path,
+                    )
+
+                    environment = {
+                        "MC_PROFILE_COMPONENT": component.value,
+                        "MC_PROFILE_PLATFORM": "instagram",
+                        "MC_PROFILE_ID": main_key.profile_id,
+                        "MC_PROFILE_FAMILY": "design",
+                    }
+                    with patch.dict(os.environ, environment, clear=True):
+                        self.assertEqual(
+                            resolved.path,
+                            ConfigManager().get_subtitle_profile(style).path,
+                        )
+
+    def test_design_subtitles_do_not_fallback_to_system(self):
+        main_key = ProfileKey.for_component(
+            "studio",
+            "instagram",
+            family="design",
+            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+        )
+        design_key = SubtitleProfileKey.for_profile(main_key, "single_line")
+        system_source = self._expected_path(
+            ProfileComponent.VIDEO,
+            ProfilePlatform.INSTAGRAM,
+            SubtitleStyle.SINGLE_LINE,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "profiles"
+            system_path = root / "studio/instagram/estandar/subtitulo_studio_instagram_linea_unica.json"
+            system_path.parent.mkdir(parents=True)
+            system_path.write_text(system_source.read_text(encoding="utf-8"), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                "No existe el perfil de subtitulos esperado",
+            ):
+                SubtitleProfileResolver(root).load(design_key)
+
+    def test_each_design_profile_declares_and_automatically_resolves_word_by_word(self):
+        controller = RunController()
+        for component in ProfileComponent:
+            main_key = ProfileKey.for_component(
+                component,
+                "instagram",
+                family="design",
+                profile_id=(
+                    f"{component.value}_instagram_design_"
+                    "modo_conciencia_studio_1"
+                ),
+            )
+            with self.subTest(component=component.value):
+                self.assertEqual(
+                    "word_by_word",
+                    self.profile_resolver.declared_subtitle_style(main_key),
+                )
+                self.assertEqual(
+                    "word_by_word",
+                    controller._select_profile_subtitle_config(main_key),
+                )
+                subtitle = self.subtitle_resolver.load(
+                    SubtitleProfileKey.for_profile(main_key, "word_by_word")
+                )
+                self.assertEqual(main_key.profile_id, subtitle.key.parent_profile_id)
+
+    def test_system_keeps_the_generic_subtitle_style_selector(self):
+        controller = RunController()
+        messages = []
+        controller._print = messages.append
+        controller._select_from_list = lambda items: "single_line"
+
+        style = controller._select_profile_subtitle_config(
+            ProfileKey.for_component("video", "instagram")
+        )
+
+        self.assertEqual("single_line", style)
+        self.assertTrue(any("SUBT" in message for message in messages))
 
     def test_rejects_invalid_component_platform_and_style(self):
         with self.assertRaisesRegex(ValueError, "Componente"):

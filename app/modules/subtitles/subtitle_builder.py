@@ -24,7 +24,7 @@ class SubtitleBuilder:
         output_path=None
     ):
         ProgressLogger.start(
-            "GENERANDO SUBTÍTULOS"
+            "GENERANDO TRANSCRIPCI\u00d3N TEMPORAL"
         )
 
         start = time.perf_counter()
@@ -137,7 +137,7 @@ class SubtitleBuilder:
         )
 
         ProgressLogger.finish(
-            "Finalizado",
+            "TRANSCRIPCI\u00d3N TEMPORAL GENERADA",
             elapsed
         )
 
