@@ -84,12 +84,12 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "video",
             "instagram",
             family=ProfileFamily.DESIGN,
-            profile_id="video_instagram_design_modo_conciencia_studio_1",
+            profile_id="video_instagram_design_modo_conciencia_reels",
         )
 
         self.assertEqual(ProfileFamily.DESIGN, key.family)
         self.assertEqual(
-            "video_instagram_design_modo_conciencia_studio_1",
+            "video_instagram_design_modo_conciencia_reels",
             key.profile_id,
         )
         with self.assertRaisesRegex(ValueError, "profile_id concreto"):
@@ -246,16 +246,16 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 self.assertEqual(component, key.component)
                 self.assertEqual(ProfileFamily.DESIGN, key.family)
                 self.assertEqual(
-                    f"{component.value}_instagram_design_modo_conciencia_studio_1",
+                    f"{component.value}_instagram_design_modo_conciencia_reels",
                     key.profile_id,
                 )
-                self.assertEqual("Modo Conciencia - Studio #1", display_name)
+                self.assertEqual("Modo Conciencia | Reels", display_name)
                 self.assertEqual(
                     Path("config/profiles")
                     / component.value
                     / "instagram"
                     / "design"
-                    / "modo_conciencia_studio_1.json",
+                    / "modo_conciencia_reels.json",
                     self.resolver.resolve(key),
                 )
                 self.assertEqual(
@@ -270,7 +270,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_design_discovery_ignores_a_file_whose_name_disagrees_with_its_identity(self):
         source = Path(
             "config/profiles/video/instagram/design/"
-            "modo_conciencia_studio_1.json"
+            "modo_conciencia_reels.json"
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -288,11 +288,11 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_design_without_declared_subtitle_style_is_not_a_menu_option(self):
         source = Path(
             "config/profiles/video/instagram/design/"
-            "modo_conciencia_studio_1.json"
+            "modo_conciencia_reels.json"
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            target = root / "video/instagram/design/modo_conciencia_studio_1.json"
+            target = root / "video/instagram/design/modo_conciencia_reels.json"
             target.parent.mkdir(parents=True)
             data = json.loads(source.read_text(encoding="utf-8"))
             del data["subtitle_config"]
@@ -328,7 +328,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertIn("ESTILO DE SUBT", printed)
             self.assertIn("1. EST", printed)
             self.assertIn("2. DISE", printed)
-            self.assertIn("Modo Conciencia - Studio #1", printed)
+            self.assertIn("Modo Conciencia | Reels", printed)
             self.assertNotIn("FAMILIA", printed)
             self.assertNotIn("SYSTEM", printed)
             self.assertNotIn("DESIGN", printed)
@@ -492,7 +492,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "video",
             "instagram",
             family="design",
-            profile_id="video_instagram_design_modo_conciencia_studio_1",
+            profile_id="video_instagram_design_modo_conciencia_reels",
         )
         with patch.dict(
             os.environ,
@@ -657,7 +657,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
         self.assertEqual(ProfileFamily.DESIGN, selected["profile_key"].family)
         self.assertEqual(
-            "video_instagram_design_modo_conciencia_studio_1",
+            "video_instagram_design_modo_conciencia_reels",
             selected["profile_key"].profile_id,
         )
         printed = "\n".join(
@@ -668,7 +668,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         self.assertIn("ESTILO DE SUBT", printed)
         self.assertIn("1. EST", printed)
         self.assertIn("2. DISE", printed)
-        self.assertIn("Modo Conciencia - Studio #1", printed)
+        self.assertIn("Modo Conciencia | Reels", printed)
 
     def test_run_controller_keeps_youtube_system_automatic_when_design_is_absent(self):
         controller = RunController()
@@ -805,7 +805,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         options = {
             "profile_component": "imagen",
             "profile_platform": "instagram",
-            "profile_id": "imagen_instagram_design_modo_conciencia_studio_1",
+            "profile_id": "imagen_instagram_design_modo_conciencia_reels",
             "profile_family": "design",
             "subtitle_config": None,
             "voice_config": "",
@@ -826,7 +826,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertEqual(0, main.main())
             self.assertEqual("design", os.environ["MC_PROFILE_FAMILY"])
             self.assertEqual(
-                "imagen_instagram_design_modo_conciencia_studio_1",
+                "imagen_instagram_design_modo_conciencia_reels",
                 os.environ["MC_PROFILE_ID"],
             )
             self.assertNotIn("MC_PROFILE_PATH", os.environ)

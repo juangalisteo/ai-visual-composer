@@ -182,7 +182,7 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
                 "video",
                 "instagram",
                 family="design",
-                profile_id="video_instagram_design_modo_conciencia_studio_1",
+                profile_id="video_instagram_design_modo_conciencia_reels",
             )
             key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
             path = root / key.relative_path
@@ -190,7 +190,7 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
             data = json.loads(
                 Path(
                     "config/profiles/video/instagram/design/"
-                    "modo_conciencia_studio_1.json"
+                    "modo_conciencia_reels.json"
                 ).read_text(encoding="utf-8")
             )
             data["subtitle_profile"]["render_style"][field] = value

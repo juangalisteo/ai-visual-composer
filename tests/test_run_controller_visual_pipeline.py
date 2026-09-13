@@ -277,7 +277,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     family=family,
                     profile_id=(
                         f"{component.value}_{platform.value}_"
-                        "design_modo_conciencia_studio_1"
+                        "design_modo_conciencia_reels"
                         if family is ProfileFamily.DESIGN else None
                     ),
                 )
@@ -298,7 +298,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 )
                 if family is ProfileFamily.DESIGN:
                     self.assertIn("design", selected["path"].parts)
-                    self.assertIn("Modo Conciencia - Studio #1", printed)
+                    self.assertIn("Modo Conciencia | Reels", printed)
                 else:
                     self.assertIn("ESTILO DE SUBT", printed)
 

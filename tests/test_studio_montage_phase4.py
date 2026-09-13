@@ -564,7 +564,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
             "studio",
             "instagram",
             family="design",
-            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+            profile_id="studio_instagram_design_modo_conciencia_reels",
         )
         controller = RunController()
         controller._print = Mock()

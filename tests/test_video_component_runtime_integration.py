@@ -755,7 +755,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         family="design",
                         profile_id=(
                             "guion_instagram_design_"
-                            "modo_conciencia_studio_1"
+                            "modo_conciencia_reels"
                         ),
                     )
 
@@ -835,7 +835,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 family="design",
                 profile_id=(
                     "video_instagram_design_"
-                    "modo_conciencia_studio_1"
+                    "modo_conciencia_reels"
                 ),
             ),
             clips_builder.call_args.kwargs["profile_key"],

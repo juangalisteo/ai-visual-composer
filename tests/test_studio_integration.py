@@ -36,7 +36,7 @@ class StudioFinalContractTest(unittest.TestCase):
             "studio",
             "instagram",
             family=ProfileFamily.DESIGN,
-            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+            profile_id="studio_instagram_design_modo_conciencia_reels",
         )
         profile = StudioProfileLoader().load(
             ProfileResolver().load(key), key

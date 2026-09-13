@@ -87,7 +87,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 family=ProfileFamily.DESIGN,
                 profile_id=(
                     f"{component.value}_instagram_design_"
-                    "modo_conciencia_studio_1"
+                    "modo_conciencia_reels"
                 ),
             )
             for style in (SubtitleStyle.WORD_BY_WORD,):
@@ -101,7 +101,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                         / component.value
                         / "instagram"
                         / "design"
-                        / "modo_conciencia_studio_1.json",
+                        / "modo_conciencia_reels.json",
                         resolved.path,
                     )
 
@@ -122,7 +122,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             "studio",
             "instagram",
             family="design",
-            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+            profile_id="studio_instagram_design_modo_conciencia_reels",
         )
         design_key = SubtitleProfileKey.for_profile(main_key, "single_line")
         system_source = self._expected_path(
@@ -151,7 +151,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 family="design",
                 profile_id=(
                     f"{component.value}_instagram_design_"
-                    "modo_conciencia_studio_1"
+                    "modo_conciencia_reels"
                 ),
             )
             with self.subTest(component=component.value):

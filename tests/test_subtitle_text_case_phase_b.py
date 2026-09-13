@@ -60,7 +60,7 @@ def test_legacy_and_explicit_contract_validation():
 def test_design_and_standard_profiles_use_the_common_policy_without_original_path():
     resolver = SubtitleProfileResolver()
     standard = resolver.load_selection(ProfileKey.for_component("guion", "instagram"), "subtitulo_guion_instagram_linea_unica")
-    design_key = ProfileKey.for_component("studio", "instagram", family="design", profile_id="studio_instagram_design_modo_conciencia_studio_1")
+    design_key = ProfileKey.for_component("studio", "instagram", family="design", profile_id="studio_instagram_design_modo_conciencia_reels")
     design = resolver.load_selection(design_key, "word_by_word")
     standard.cue_policy["text_case"] = "lowercase"
     design.cue_policy["text_case"] = "uppercase"

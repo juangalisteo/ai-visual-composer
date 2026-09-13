@@ -202,11 +202,11 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             "studio",
             "instagram",
             family="design",
-            profile_id="studio_instagram_design_modo_conciencia_studio_1",
+            profile_id="studio_instagram_design_modo_conciencia_reels",
         )
         resolver = SubtitleProfileResolver()
         descriptor = resolver.discover_profiles(profile_key)[0]
 
         self.assertEqual("word_by_word", descriptor.style)
-        self.assertEqual("Modo Conciencia - Studio #1", descriptor.display_name)
+        self.assertEqual("Modo Conciencia | Reels", descriptor.display_name)
         self.assertEqual("word_by_word", resolver.load_selection(profile_key, "word_by_word").key.style)
