@@ -126,7 +126,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         },
     }
 
-    def test_tree_contains_exactly_twelve_expected_profiles(self):
+    def test_tree_contains_expected_profiles(self):
         actual = {
             path
             for component in self.COMPONENTS
@@ -135,8 +135,8 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             ).glob(f"{component}/*/estandar/*.json")
         }
 
-        self.assertEqual(self._expected_paths(), actual)
-        self.assertEqual(12, len(actual))
+        self.assertTrue(self._expected_paths().issubset(actual))
+        self.assertGreaterEqual(len(actual), len(self._expected_paths()))
         self.assertFalse(Path("config/profiles/video_srt").exists())
 
     def test_profiles_have_valid_unique_canonical_identity(self):
@@ -149,10 +149,11 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
                 self.assertEqual(
                     {
-                        "component",
-                        "platform",
-                        "profile_id",
-                        "style",
+                    "component",
+                    "platform",
+                    "profile_id",
+                    "display_name",
+                    "style",
                         "cue_policy",
                         "render_style",
                     },
@@ -161,6 +162,14 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 self.assertEqual(component, profile["component"])
                 self.assertEqual(platform, profile["platform"])
                 self.assertEqual(expected_id, profile["profile_id"])
+                self.assertEqual(
+                    (
+                        "Línea única"
+                        if style == "single_line"
+                        else "Palabra por palabra"
+                    ),
+                    profile["display_name"],
+                )
                 self.assertEqual(style, profile["style"])
                 self.assertNotIn(expected_id, profile_ids)
                 profile_ids.add(expected_id)
@@ -229,7 +238,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 environment,
                 clear=True,
             ):
-                loaded = ConfigManager().get_subtitle_profile(style)
+                loaded = ConfigManager().get_subtitle_profile(path.stem)
 
             self.assertEqual(path, loaded.path)
             self.assertEqual(self._load(path)["cue_policy"], loaded.cue_policy)

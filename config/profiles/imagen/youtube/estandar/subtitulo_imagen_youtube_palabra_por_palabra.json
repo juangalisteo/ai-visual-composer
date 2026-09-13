@@ -2,6 +2,7 @@
     "component": "imagen",
     "platform": "youtube",
     "profile_id": "subtitulo_imagen_youtube_palabra_por_palabra",
+    "display_name": "Palabra por palabra",
     "style": "word_by_word",
     "cue_policy": {
         "mode": "word_by_word",

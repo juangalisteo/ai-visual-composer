@@ -109,6 +109,35 @@ class SubtitleStyleBuilder:
             )
         )
 
+        optional_ass = []
+        if "italic" in subtitle_style:
+            optional_ass.append(
+                f"Italic={1 if subtitle_style['italic'] else 0}"
+            )
+        if "underline" in subtitle_style:
+            optional_ass.append(
+                f"Underline={1 if subtitle_style['underline'] else 0}"
+            )
+        if "strikeout" in subtitle_style:
+            optional_ass.append(
+                f"StrikeOut={1 if subtitle_style['strikeout'] else 0}"
+            )
+        if "secondary_colour" in subtitle_style:
+            optional_ass.append(
+                "SecondaryColour="
+                f"{subtitle_style['secondary_colour']}"
+            )
+        if "margin_l" in subtitle_style:
+            optional_ass.append(f"MarginL={subtitle_style['margin_l']}")
+        if "margin_r" in subtitle_style:
+            optional_ass.append(f"MarginR={subtitle_style['margin_r']}")
+        if "scale_x" in subtitle_style:
+            optional_ass.append(f"ScaleX={subtitle_style['scale_x']}")
+        if "scale_y" in subtitle_style:
+            optional_ass.append(f"ScaleY={subtitle_style['scale_y']}")
+        if "spacing" in subtitle_style:
+            optional_ass.append(f"Spacing={subtitle_style['spacing']}")
+
         if font_size <= 0:
             raise ValueError(
                 "El tamaño de fuente debe ser "
@@ -121,7 +150,7 @@ class SubtitleStyleBuilder:
                 "estar entre 1 y 9."
             )
 
-        return (
+        style = (
             f"FontName={font},"
             f"FontSize={font_size},"
             f"Bold={bold},"
@@ -134,3 +163,6 @@ class SubtitleStyleBuilder:
             f"Alignment={alignment},"
             f"MarginV={margin_v}"
         )
+        if optional_ass:
+            style += "," + ",".join(optional_ass)
+        return style

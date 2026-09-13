@@ -19,6 +19,8 @@ from app.modules.studio import (
     StudioVideoAudioSrtInputError,
 )
 from app.modules.visual_design import VisualDesignInterpretationError
+from app.shared.profile_identity import ProfileKey
+from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 def main():
@@ -177,6 +179,33 @@ def main():
     return 0
 
 
+def _subtitle_display_name(options):
+    selection = options.get("subtitle_config")
+    if not selection:
+        return ""
+
+    labels = {
+        "single_line": "Línea única",
+        "word_by_word": "Palabra por palabra",
+    }
+    if options.get("profile_family") == "design":
+        return labels.get(selection, selection)
+
+    try:
+        profile_key = ProfileKey(
+            component=options["profile_component"],
+            platform=options["profile_platform"],
+            profile_id=options["profile_id"],
+            family=options.get("profile_family", "system"),
+        )
+        return SubtitleProfileResolver().load_selection(
+            profile_key,
+            selection,
+        ).display_name
+    except (KeyError, FileNotFoundError, TypeError, ValueError):
+        return labels.get(selection, selection)
+
+
 def _print_studio_summary(options, result, elapsed_seconds):
     summary = PipelineSummary(
         options["project_name"],
@@ -186,10 +215,6 @@ def _print_studio_summary(options, result, elapsed_seconds):
         "srt_video": "SRT + VIDEO",
         "video": "VIDEO",
         "video_audio_srt": "VIDEO + AUDIO SRT",
-    }
-    subtitle_labels = {
-        "single_line": "Línea única",
-        "word_by_word": "Palabra por palabra",
     }
     plan = options.get("intro_outro_selection")
     generated_subtitle_path = getattr(
@@ -223,7 +248,7 @@ def _print_studio_summary(options, result, elapsed_seconds):
                 (
                     "ORIGINAL"
                     if options.get("studio_subtitle_original")
-                    else subtitle_labels[options["subtitle_config"]]
+                    else _subtitle_display_name(options)
                 ),
             )
     else:
@@ -232,10 +257,7 @@ def _print_studio_summary(options, result, elapsed_seconds):
             (
                 "ORIGINAL"
                 if options.get("studio_subtitle_original")
-                else subtitle_labels.get(
-                    options["subtitle_config"],
-                    options["subtitle_config"],
-                )
+                else _subtitle_display_name(options)
             ),
         )
         summary.add_detail(
@@ -330,13 +352,9 @@ def _print_studio_subtitle_export_summary(
     summary.add_detail("Modo", mode_labels[plan.mode])
     summary.add_detail("Fuente", plan.source_path)
     if plan.mode is StudioSubtitleExportMode.CONVERTIR:
-        subtitle_labels = {
-            "single_line": "Linea unica",
-            "word_by_word": "Palabra por palabra",
-        }
         summary.add_detail(
             "Formato",
-            subtitle_labels[options["subtitle_config"]],
+            _subtitle_display_name(options),
         )
     summary.add_detail("SRT generado", result.output_path)
     summary.add_detail("Estado final", "EXPORTAR SRT COMPLETADO")
@@ -383,10 +401,6 @@ def _print_studio_montage_summary(options, result, elapsed_seconds):
     )
     if render_result is not None:
         subtitles_enabled = options.get("studio_subtitles_enabled", True)
-        subtitle_labels = {
-            "single_line": "Línea única",
-            "word_by_word": "Palabra por palabra",
-        }
         summary.add_detail(
             "Subtítulos",
             "Sí" if subtitles_enabled else "No",
@@ -394,7 +408,7 @@ def _print_studio_montage_summary(options, result, elapsed_seconds):
         if subtitles_enabled:
             summary.add_detail(
                 "Estilo",
-                subtitle_labels[options["subtitle_config"]],
+                _subtitle_display_name(options),
             )
         summary.add_detail(
             "Música",

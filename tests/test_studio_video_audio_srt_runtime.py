@@ -118,6 +118,7 @@ def test_menu_option_seven_never_asks_for_or_returns_music(subtitles):
     controller.select_studio_video_audio_srt_plan.assert_called_once_with(
         subtitles
     )
+    controller._select_from_list.assert_called_once_with((True, False))
     controller.select_studio_music.assert_not_called()
     assert "studio_music_path" not in options
     assert options["subtitle_config"] == (
@@ -271,7 +272,11 @@ def test_video_audio_subtitle_options_offer_original_without_second_selector():
     assert original is True
     visual.assert_not_called()
     controller._select_from_list.assert_called_once_with(
-        ("original", "single_line", "word_by_word")
+        (
+            "original",
+            "subtitulo_studio_youtube_linea_unica",
+            "subtitulo_studio_youtube_palabra_por_palabra",
+        )
     )
 
 

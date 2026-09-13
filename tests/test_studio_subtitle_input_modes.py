@@ -396,8 +396,16 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         controller._print = messages.append
         for selected, expected_style, expected_original in (
             ("original", "single_line", True),
-            ("single_line", "single_line", False),
-            ("word_by_word", "word_by_word", False),
+            (
+                "subtitulo_studio_instagram_linea_unica",
+                "subtitulo_studio_instagram_linea_unica",
+                False,
+            ),
+            (
+                "subtitulo_studio_instagram_palabra_por_palabra",
+                "subtitulo_studio_instagram_palabra_por_palabra",
+                False,
+            ),
         ):
             with self.subTest(selected=selected):
                 controller._select_from_list = Mock(return_value=selected)
@@ -414,30 +422,36 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 self.assertEqual(expected_original, original)
                 visual_style.assert_not_called()
                 controller._select_from_list.assert_called_once_with(
-                    ("original", "single_line", "word_by_word")
+                    (
+                        "original",
+                        "subtitulo_studio_instagram_linea_unica",
+                        "subtitulo_studio_instagram_palabra_por_palabra",
+                    )
                 )
 
         self.assertIn("\nSUBT\u00cdTULOS\n", messages)
         self.assertIn("1. ORIGINAL", messages)
-        self.assertIn("2. L\u00cdNEA \u00daNICA", messages)
-        self.assertIn("3. PALABRA POR PALABRA", messages)
+        self.assertIn("2. Línea única", messages)
+        self.assertIn("3. Palabra por palabra", messages)
 
     def test_video_offers_only_transformed_subtitle_styles(self):
         controller = RunController()
         messages = []
         controller._print = messages.append
-        controller._select_from_list = Mock(return_value="single_line")
+        controller._select_from_list = Mock(
+            return_value="subtitulo_studio_instagram_linea_unica"
+        )
 
         style, original = controller.select_studio_subtitle_options(
             self.profile_key,
             StudioInputMode.VIDEO.value,
         )
 
-        self.assertEqual("single_line", style)
+        self.assertEqual("subtitulo_studio_instagram_linea_unica", style)
         self.assertFalse(original)
         self.assertIn("\nSUBT\u00cdTULOS\n", messages)
-        self.assertIn("1. L\u00cdNEA \u00daNICA", messages)
-        self.assertIn("2. PALABRA POR PALABRA", messages)
+        self.assertIn("1. Línea única", messages)
+        self.assertIn("2. Palabra por palabra", messages)
         self.assertNotIn("ORIGINAL", "\n".join(messages))
 
     def test_design_profile_uses_declared_style_without_a_second_selector(self):
@@ -484,9 +498,23 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                         "component": "studio",
                         "platform": "instagram",
                         "profile_id": profile_id,
+                        "display_name": profile_id,
                         "style": style,
                         "cue_policy": {"mode": "single_line"},
-                        "render_style": {"offset": 0.0},
+                        "render_style": {
+                            "font": "unisans",
+                            "font_size": 14,
+                            "bold": False,
+                            "primary_colour": "&H00FFFFFF",
+                            "outline_colour": "&H80000000",
+                            "back_colour": "&H00000000",
+                            "border_style": 1,
+                            "outline": 0,
+                            "shadow": 1,
+                            "alignment": 2,
+                            "margin_v": 55,
+                            "offset": 0.0,
+                        },
                     }),
                     encoding="utf-8",
                 )

@@ -80,7 +80,7 @@ class VideoConfig:
     ):
         if self.subtitles is None:
             return None
-        return {
+        style = {
             "font": self.subtitles.font,
             "font_size": self.subtitles.font_size,
             "bold": self.subtitles.bold,
@@ -94,6 +94,21 @@ class VideoConfig:
             "margin_v": self.subtitles.margin_v,
             "offset": self.subtitles.offset
         }
+        for field in (
+            "italic",
+            "underline",
+            "strikeout",
+            "secondary_colour",
+            "margin_l",
+            "margin_r",
+            "scale_x",
+            "scale_y",
+            "spacing",
+        ):
+            value = getattr(self.subtitles, field)
+            if value is not None:
+                style[field] = value
+        return style
 
 
 class VideoConfigLoader:

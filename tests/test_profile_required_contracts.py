@@ -263,7 +263,6 @@ class RequiredProfileContractsTest(unittest.TestCase):
                 ) if style == "single_line" else (
                     "min_duration",
                     "max_duration",
-                    "uppercase",
                     "punctuation",
                     "significant_gap_threshold",
                     "render_fps",

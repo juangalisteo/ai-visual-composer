@@ -8,6 +8,7 @@ from app.modules.subtitles.models.word_by_word_model import (
     WordByWordModel,
 )
 from app.modules.subtitles.punctuation import reconcile_timing_text
+from app.modules.subtitles.text_case import TextCasePolicy
 from app.shared.config_contract import require_text
 
 
@@ -25,6 +26,7 @@ class SubtitleCueTransformer:
             )
 
         subtitle_config.setdefault("render_fps", render_fps)
+        self.text_case = TextCasePolicy.from_cue_policy(subtitle_config)
         mode = require_text(
             subtitle_config,
             "mode",
@@ -49,7 +51,7 @@ class SubtitleCueTransformer:
             r"\n\s*\n",
             content.strip(),
         )
-        return "\n\n".join(
+        transformed = "\n\n".join(
             self.model.optimize(
                 blocks,
                 timing=reconcile_timing_text(
@@ -61,3 +63,4 @@ class SubtitleCueTransformer:
                 ),
             )
         )
+        return self.text_case.apply_srt_cues(transformed)

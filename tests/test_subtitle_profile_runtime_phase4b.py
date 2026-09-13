@@ -114,7 +114,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     with patch.dict(os.environ, environment, clear=True):
                         self.assertEqual(
                             resolved.path,
-                            ConfigManager().get_subtitle_profile(style).path,
+                            ConfigManager().get_subtitle_profile(key.profile_id).path,
                         )
 
     def test_design_subtitles_do_not_fallback_to_system(self):
@@ -364,7 +364,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     )
                 ):
                     resolved = manager.get_subtitle_profile(
-                        style
+                        self._expected_path(component, platform, style).stem
                     )
 
             self.assertEqual(
@@ -398,7 +398,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 style=style.value
             ), patch.dict(os.environ, environment, clear=True):
                 resolved = ConfigManager().get_subtitle_profile(
-                    style
+                    self._expected_path(component, platform, style).stem
                 )
                 optimizer = SrtOptimizer(
                     subtitle_profile=resolved,

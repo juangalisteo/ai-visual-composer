@@ -63,20 +63,37 @@ class SubtitleProfileKey:
         profile_id = str(
             self.profile_id
         ).strip().lower()
-        expected_id = self.expected_profile_id(
-            component=component,
-            platform=platform,
-            style=style,
-            family=family,
-            parent_profile_id=self.parent_profile_id,
-        )
-
-        if profile_id != expected_id:
+        if not re.fullmatch(
+            r"[a-z0-9]+(?:_[a-z0-9]+)*",
+            profile_id,
+        ):
             raise ValueError(
-                "profile_id de subtitulos incompatible: "
-                f"se esperaba {expected_id}, "
-                f"se recibio {self.profile_id}"
+                "profile_id de subtitulos invalido: "
+                f"{self.profile_id}"
             )
+
+        if family is ProfileFamily.DESIGN:
+            expected_id = self.expected_profile_id(
+                component=component,
+                platform=platform,
+                style=style,
+                family=family,
+                parent_profile_id=self.parent_profile_id,
+            )
+            if profile_id != expected_id:
+                raise ValueError(
+                    "profile_id de subtitulos incompatible: "
+                    f"se esperaba {expected_id}, "
+                    f"se recibio {self.profile_id}"
+                )
+        else:
+            prefix = f"subtitulo_{component.value}_{platform.value}_"
+            if not profile_id.startswith(prefix):
+                raise ValueError(
+                    "profile_id de subtitulos incompatible con "
+                    "component/platform: "
+                    f"{self.profile_id}"
+                )
 
         object.__setattr__(self, "component", component)
         object.__setattr__(self, "platform", platform)
@@ -142,6 +159,20 @@ class SubtitleProfileKey:
         )
 
     @classmethod
+    def is_legacy_standard_profile_id(
+        cls,
+        component,
+        platform,
+        style,
+        profile_id,
+    ):
+        return str(profile_id).strip().lower() == cls.expected_profile_id(
+            component=component,
+            platform=platform,
+            style=style,
+        )
+
+    @classmethod
     def _profile_suffix(cls, style):
         style = (
             style.value
@@ -174,5 +205,28 @@ class SubtitleProfileKey:
 class ResolvedSubtitleProfile:
     key: SubtitleProfileKey
     path: Path
+    display_name: str
     cue_policy: dict
     render_style: dict
+
+
+@dataclass(frozen=True)
+class SubtitleProfileDescriptor:
+    key: SubtitleProfileKey
+    display_name: str
+
+    @property
+    def profile_id(self):
+        return self.key.profile_id
+
+    @property
+    def style(self):
+        return self.key.style
+
+    @property
+    def component(self):
+        return self.key.component
+
+    @property
+    def platform(self):
+        return self.key.platform

@@ -1071,7 +1071,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
         with patch(
             "builtins.input",
-            return_value="2"
+            return_value="1"
         ), patch(
             "builtins.print"
         ) as print_mock:
@@ -1087,11 +1087,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             selected
         )
         self.assertIn(
-            "1. Sin música",
+            "1. Aleatoria",
             printed
         )
         self.assertIn(
-            "2. Aleatoria",
+            "2. Sin música",
             printed
         )
         self.assertNotIn(
@@ -1112,7 +1112,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
         with patch(
             "builtins.input",
-            return_value="1"
+            return_value="2"
         ):
             self.assertIsNone(
                 controller.select_music_category()

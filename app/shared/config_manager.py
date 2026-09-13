@@ -4,9 +4,6 @@ from pathlib import Path
 
 from app.shared.profile_identity import ProfileKey
 from app.shared.profile_resolver import ProfileResolver
-from app.shared.subtitle_profile_identity import (
-    SubtitleProfileKey,
-)
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
 )
@@ -102,7 +99,7 @@ class ConfigManager:
 
     def get_subtitle_profile(
         self,
-        style
+        selection
     ):
         profile_key = self.get_profile_key()
         if profile_key is None:
@@ -111,10 +108,7 @@ class ConfigManager:
                 "resolver subtitulos."
             )
 
-        subtitle_key = SubtitleProfileKey.for_profile(
+        return self.subtitle_profile_resolver.load_selection(
             profile_key=profile_key,
-            style=style
-        )
-        return self.subtitle_profile_resolver.load(
-            subtitle_key
+            selection=selection,
         )

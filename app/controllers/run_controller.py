@@ -554,7 +554,13 @@ class RunController:
             break
         return tuple(families)
 
-    def select_subtitle_config(self):
+    def select_subtitle_config(self, profile_key=None):
+        if profile_key is not None:
+            return self._select_subtitle_profile(
+                profile_key,
+                "\nSUBTÍTULOS\n",
+            )
+
         configs = (
             "single_line",
             "word_by_word",
@@ -583,7 +589,7 @@ class RunController:
         automatic_style = self._automatic_subtitle_style(profile_key)
         if automatic_style is not None:
             return automatic_style
-        return self.select_subtitle_config()
+        return self.select_subtitle_config(profile_key)
 
     def _automatic_subtitle_style(self, profile_key):
         style = self.profile_resolver.declared_subtitle_style(profile_key)
@@ -603,39 +609,40 @@ class RunController:
         automatic_style = self._automatic_subtitle_style(profile_key)
         if automatic_style is not None:
             return automatic_style
-        configs = self.subtitle_profile_resolver.discover_styles(
-            profile_key
+        return self._select_subtitle_profile(
+            profile_key,
+            "\nSUBTITULOS\n",
         )
-
-        self._print("\nSUBTITULOS\n")
-        for index, config in enumerate(configs, start=1):
-            self._print(
-                f"{index}. {self._subtitle_label(config)}"
-            )
-
-        return self._select_from_list(configs)
 
     def select_studio_subtitle_options(self, profile_key, input_mode):
         automatic_style = self._automatic_subtitle_style(profile_key)
         if automatic_style is not None:
             return automatic_style, False
-        modes = ("single_line", "word_by_word")
+        descriptors = self.subtitle_profile_resolver.discover_profiles(
+            profile_key
+        )
+        selections = tuple(
+            descriptor.profile_id
+            for descriptor in descriptors
+        )
         if input_mode in {
             StudioInputMode.SRT_VIDEO.value,
             StudioInputMode.VIDEO_AUDIO_SRT.value,
         }:
-            modes = ("original", *modes)
-        labels = {
-            "original": "ORIGINAL",
-            "single_line": "L\u00cdNEA \u00daNICA",
-            "word_by_word": "PALABRA POR PALABRA",
-        }
+            selections = ("original", *selections)
         self._print("\nSUBT\u00cdTULOS\n")
-        for index, mode in enumerate(modes, start=1):
-            self._print(f"{index}. {labels[mode]}")
-        mode = self._select_from_list(modes)
-        if mode != "original":
-            return mode, False
+        for index, selection in enumerate(selections, start=1):
+            label = "ORIGINAL"
+            if selection != "original":
+                label = next(
+                    descriptor.display_name
+                    for descriptor in descriptors
+                    if descriptor.profile_id == selection
+                )
+            self._print(f"{index}. {label}")
+        selection = self._select_from_list(selections)
+        if selection != "original":
+            return selection, False
         return "single_line", True
 
     def select_studio_montage_subtitle_options(self, profile_key):
@@ -650,15 +657,23 @@ class RunController:
         if automatic_style is not None:
             return True, automatic_style
 
-        configs = self.subtitle_profile_resolver.discover_styles(
+        return True, self._select_subtitle_profile(
+            profile_key,
+            "\nESTILO DE SUBTÍTULOS\n",
+        )
+
+    def _select_subtitle_profile(self, profile_key, heading):
+        descriptors = self.subtitle_profile_resolver.discover_profiles(
             profile_key
         )
-        self._print("\nESTILO DE SUBTÍTULOS\n")
-        for index, config in enumerate(configs, start=1):
-            self._print(
-                f"{index}. {self._subtitle_label(config)}"
-            )
-        return True, self._select_from_list(configs)
+        selections = tuple(
+            descriptor.profile_id
+            for descriptor in descriptors
+        )
+        self._print(heading)
+        for index, descriptor in enumerate(descriptors, start=1):
+            self._print(f"{index}. {descriptor.display_name}")
+        return self._select_from_list(selections)
 
     def select_studio_input_mode(self):
         modes = (
@@ -943,13 +958,13 @@ class RunController:
 
     def select_music_category(self):
         options = [
+            "random",
             None,
-            "random"
         ]
 
         self._print("\nMÚSICA\n")
-        self._print("1. Sin música")
-        self._print("2. Aleatoria")
+        self._print("1. Aleatoria")
+        self._print("2. Sin música")
 
         selected = self._select_from_list(
             options
@@ -1111,9 +1126,9 @@ class RunController:
         if input_mode == StudioInputMode.VIDEO_AUDIO_SRT.value:
             profile_key, _ = self._select_studio_profile()
             self._print("\nSUBTÍTULOS\n")
-            self._print("1. NO")
-            self._print("2. SÍ")
-            enabled = self._select_from_list((False, True))
+            self._print("1. Sí")
+            self._print("2. No")
+            enabled = self._select_from_list((True, False))
             plan = self.select_studio_video_audio_srt_plan(enabled)
             subtitle_config = None
             subtitle_original = False

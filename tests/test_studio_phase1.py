@@ -91,9 +91,23 @@ class StudioPhase1Test(unittest.TestCase):
                 "component": "studio",
                 "platform": "instagram",
                 "profile_id": "subtitulo_studio_instagram_cinematografico",
+                "display_name": "Cinematografico",
                 "style": "cinematografico",
                 "cue_policy": {},
-                "render_style": {},
+                "render_style": {
+                    "font": "unisans",
+                    "font_size": 14,
+                    "bold": False,
+                    "primary_colour": "&H00FFFFFF",
+                    "outline_colour": "&H80000000",
+                    "back_colour": "&H00000000",
+                    "border_style": 1,
+                    "outline": 0,
+                    "shadow": 1,
+                    "alignment": 2,
+                    "margin_v": 55,
+                    "offset": 0.0,
+                },
             }
             path = subtitle_dir / "subtitulo_studio_instagram_cinematografico.json"
             path.write_text(json.dumps(data), encoding="utf-8")

@@ -24,11 +24,6 @@ class WordByWordModel(BaseSubtitleModel):
             "max_duration",
             "cue_policy.max_duration"
         )
-        self.uppercase = require_bool(
-            config,
-            "uppercase",
-            "cue_policy.uppercase"
-        )
         self.punctuation = PunctuationPolicy(config)
         self.significant_gap_threshold = require_float(
             config,
@@ -173,9 +168,6 @@ class WordByWordModel(BaseSubtitleModel):
 
         words = text.split()
 
-        if self.uppercase:
-            words = [word.upper() for word in words]
-
         return words
 
     def _format_word(self, text):
@@ -184,9 +176,6 @@ class WordByWordModel(BaseSubtitleModel):
         )
 
         text = self.punctuation.apply(text)
-
-        if self.uppercase:
-            text = text.upper()
 
         return text
 

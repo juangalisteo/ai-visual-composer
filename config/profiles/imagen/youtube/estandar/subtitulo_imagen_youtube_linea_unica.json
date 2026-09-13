@@ -2,6 +2,7 @@
     "component": "imagen",
     "platform": "youtube",
     "profile_id": "subtitulo_imagen_youtube_linea_unica",
+    "display_name": "Línea única",
     "style": "single_line",
     "cue_policy": {
         "mode": "single_line",

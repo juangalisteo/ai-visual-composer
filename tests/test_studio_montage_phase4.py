@@ -535,15 +535,13 @@ class StudioMontagePhase4Test(unittest.TestCase):
         )
 
     def test_montage_subtitle_prompt_yes_shows_styles(self):
-        resolver = Mock()
-        resolver.discover_styles.return_value = (
-            "single_line",
-            "word_by_word",
-        )
-        controller = RunController(subtitle_profile_resolver=resolver)
+        controller = RunController()
         controller._print = Mock()
         controller._select_from_list = Mock(
-            side_effect=(True, "word_by_word")
+            side_effect=(
+                True,
+                "subtitulo_studio_instagram_palabra_por_palabra",
+            )
         )
 
         enabled, style = controller.select_studio_montage_subtitle_options(
@@ -551,7 +549,10 @@ class StudioMontagePhase4Test(unittest.TestCase):
         )
 
         self.assertTrue(enabled)
-        self.assertEqual("word_by_word", style)
+        self.assertEqual(
+            "subtitulo_studio_instagram_palabra_por_palabra",
+            style,
+        )
         self.assertIn(
             "\nESTILO DE SUBTÍTULOS\n",
             [call.args[0] for call in controller._print.call_args_list],

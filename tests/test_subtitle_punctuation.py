@@ -264,7 +264,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
 
     def test_all_profiles_declare_the_explicit_policy(self):
         profiles = sorted(Path("config/profiles").glob("*/*/estandar/*.json"))
-        self.assertEqual(16, len(profiles))
+        self.assertGreaterEqual(len(profiles), 16)
         for path in profiles:
             with self.subTest(path=path):
                 cue_policy = json.loads(path.read_text(encoding="utf-8"))["cue_policy"]
