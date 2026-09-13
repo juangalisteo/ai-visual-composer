@@ -54,6 +54,7 @@ from app.modules.subtitles.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
 from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
+from app.modules.subtitles.text_case import TextCasePolicy
 
 from app.domain.adapters import StoryboardSceneAdapter
 from app.shared.config_contract import (
@@ -66,6 +67,7 @@ from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
 from app.shared.profile_identity import (
     ProfileComponent,
+    ProfileFamily,
     ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
@@ -538,7 +540,13 @@ def preparar_studio(
         config.get_profile_config(),
         profile_key,
     )
-    subtitle_profile = config.get_subtitle_profile(subtitle_style)
+    if subtitle_original and profile_key.family is ProfileFamily.DESIGN:
+        subtitle_profile = config.get_subtitle_profile(
+            subtitle_style,
+            original=True,
+        )
+    else:
+        subtitle_profile = config.get_subtitle_profile(subtitle_style)
     preparation_options = {}
     if video_path is not None:
         preparation_options["video_path"] = video_path
@@ -982,7 +990,23 @@ def _persist_studio_render_subtitle(
     original=False,
 ):
     if original:
-        return Path(base_subtitle_path)
+        content = Path(base_subtitle_path).read_text(encoding="utf-8")
+        text_case = TextCasePolicy.from_cue_policy(
+            subtitle_profile.cue_policy
+        )
+        rendered = text_case.apply_srt_cues(content)
+        if rendered == content:
+            return Path(base_subtitle_path)
+        target_path = (
+            Path(output_path).parent.parent
+            / "subtitles"
+            / f"{Path(output_path).stem}_original.srt"
+        )
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = target_path.with_suffix(".srt.tmp")
+        temporary_path.write_text(rendered, encoding="utf-8")
+        temporary_path.replace(target_path)
+        return target_path
 
     style = (
         subtitle_profile.key.style.value

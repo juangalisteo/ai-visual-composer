@@ -615,6 +615,9 @@ class RunController:
         )
 
     def select_studio_subtitle_options(self, profile_key, input_mode):
+        if input_mode == StudioInputMode.SRT_VIDEO.value:
+            return self._select_studio_srt_video_subtitle_options(profile_key)
+
         automatic_style = self._automatic_subtitle_style(profile_key)
         if automatic_style is not None:
             return automatic_style, False
@@ -640,6 +643,30 @@ class RunController:
                     if descriptor.profile_id == selection
                 )
             self._print(f"{index}. {label}")
+        selection = self._select_from_list(selections)
+        if selection != "original":
+            return selection, False
+        return "single_line", True
+
+    def _select_studio_srt_video_subtitle_options(self, profile_key):
+        functional_profile_key = ProfileKey.for_component(
+            profile_key.component,
+            profile_key.platform,
+        )
+        descriptors = self.subtitle_profile_resolver.discover_profiles(
+            functional_profile_key
+        )
+        selections = (
+            "original",
+            *(
+                descriptor.profile_id
+                for descriptor in descriptors
+            ),
+        )
+        self._print("\nSUBTÍTULOS\n")
+        self._print("1. ORIGINAL")
+        for index, descriptor in enumerate(descriptors, start=2):
+            self._print(f"{index}. {descriptor.display_name}")
         selection = self._select_from_list(selections)
         if selection != "original":
             return selection, False

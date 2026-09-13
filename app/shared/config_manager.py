@@ -1,8 +1,9 @@
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import ProfileComponent, ProfileFamily, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
@@ -99,7 +100,8 @@ class ConfigManager:
 
     def get_subtitle_profile(
         self,
-        selection
+        selection,
+        original=False,
     ):
         profile_key = self.get_profile_key()
         if profile_key is None:
@@ -108,7 +110,36 @@ class ConfigManager:
                 "resolver subtitulos."
             )
 
-        return self.subtitle_profile_resolver.load_selection(
-            profile_key=profile_key,
+        try:
+            return self.subtitle_profile_resolver.load_selection(
+                profile_key=profile_key,
+                selection=selection,
+            )
+        except ValueError:
+            if not (
+                profile_key.component is ProfileComponent.STUDIO
+                and profile_key.family is ProfileFamily.DESIGN
+            ):
+                raise
+
+        functional_profile = self.subtitle_profile_resolver.load_selection(
+            profile_key=ProfileKey.for_component(
+                profile_key.component,
+                profile_key.platform,
+            ),
             selection=selection,
+        )
+        design_style = self.profile_resolver.declared_subtitle_style(profile_key)
+        design_profile = self.subtitle_profile_resolver.load_selection(
+            profile_key=profile_key,
+            selection=design_style,
+        )
+        return replace(
+            functional_profile,
+            cue_policy=(
+                design_profile.cue_policy
+                if original
+                else functional_profile.cue_policy
+            ),
+            render_style=design_profile.render_style,
         )

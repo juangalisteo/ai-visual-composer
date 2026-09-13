@@ -44,11 +44,20 @@ class TextCasePolicy:
         return text
 
     def apply_srt_cues(self, content):
-        parts = content.split("\n\n")
         transformed = []
-        for part in parts:
-            lines = part.splitlines()
-            if len(lines) >= 3:
-                lines[2:] = [self.apply(line) for line in lines[2:]]
-            transformed.append("\n".join(lines))
-        return "\n\n".join(transformed)
+        cue_line = 0
+        for line in content.splitlines(keepends=True):
+            if not line.strip():
+                cue_line = 0
+                transformed.append(line)
+                continue
+
+            cue_line += 1
+            if cue_line < 3:
+                transformed.append(line)
+                continue
+
+            text = line.rstrip("\r\n")
+            ending = line[len(text):]
+            transformed.append(self.apply(text) + ending)
+        return "".join(transformed)
