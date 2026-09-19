@@ -2,6 +2,20 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class CueEffectConfig:
+
+    name: str
+    parameters: dict[str, object]
+
+
+@dataclass(frozen=True)
+class WordEffectConfig:
+
+    name: str
+    parameters: dict[str, object]
+
+
+@dataclass(frozen=True)
 class SubtitleConfig:
 
     font: str
@@ -45,3 +59,9 @@ class SubtitleConfig:
     scale_y: float | None = None
 
     spacing: float | None = None
+
+    dynamic: bool = False
+
+    cue_effect: CueEffectConfig | None = None
+
+    word_effect: WordEffectConfig | None = None

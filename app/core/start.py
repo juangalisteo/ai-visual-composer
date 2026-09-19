@@ -75,6 +75,7 @@ from app.shared.profile_resolver import ProfileResolver
 
 def iniciar(
     subtitle_style=None,
+    subtitle_design_profile_key=None,
     intro_outro_selection=None,
     studio_music_path=None,
     studio_input_mode=None,
@@ -96,22 +97,38 @@ def iniciar(
 
     if pipeline_mode == "studio":
         if studio_video_audio_srt_plan is not None:
+            video_audio_options = {
+                "subtitle_style": subtitle_style,
+                "subtitle_original": studio_subtitle_original,
+            }
+            if subtitle_design_profile_key is not None:
+                video_audio_options["subtitle_design_profile_key"] = (
+                    subtitle_design_profile_key
+                )
             return ejecutar_studio_video_audio_srt(
                 studio_video_audio_srt_plan,
-                subtitle_style=subtitle_style,
-                subtitle_original=studio_subtitle_original,
+                **video_audio_options,
             )
         if studio_intro_outro_plan is not None:
             return ejecutar_studio_intro_outro(studio_intro_outro_plan)
         if studio_subtitle_export_plan is not None:
+            export_options = {"subtitle_style": subtitle_style}
+            if subtitle_design_profile_key is not None:
+                export_options["subtitle_design_profile_key"] = (
+                    subtitle_design_profile_key
+                )
             return ejecutar_studio_exportar_srt(
                 studio_subtitle_export_plan,
-                subtitle_style=subtitle_style,
+                **export_options,
             )
         if studio_montage_plan is not None:
             montage_options = {}
             if subtitle_style is not None:
                 montage_options["subtitle_style"] = subtitle_style
+            if subtitle_design_profile_key is not None:
+                montage_options["subtitle_design_profile_key"] = (
+                    subtitle_design_profile_key
+                )
             if studio_subtitles_enabled is not None:
                 montage_options["subtitles_enabled"] = (
                     studio_subtitles_enabled
@@ -131,6 +148,10 @@ def iniciar(
             "music_path": studio_music_path,
             "input_mode": studio_input_mode,
         }
+        if subtitle_design_profile_key is not None:
+            studio_options["subtitle_design_profile_key"] = (
+                subtitle_design_profile_key
+            )
         if studio_subtitle_original:
             studio_options["subtitle_original"] = True
         if intro_outro_selection is not None:
@@ -198,7 +219,8 @@ def iniciar(
     ):
         subtitle_profile = (
             config.get_subtitle_profile(
-                subtitle_style
+                subtitle_style,
+                design_selection=subtitle_design_profile_key,
             )
         )
 
@@ -516,6 +538,7 @@ def iniciar(
 def preparar_studio(
     subtitle_style,
     input_mode,
+    subtitle_design_profile_key=None,
     config_manager=None,
     profile_loader=None,
     input_preparation_service=None,
@@ -540,13 +563,17 @@ def preparar_studio(
         config.get_profile_config(),
         profile_key,
     )
-    if subtitle_original and profile_key.family is ProfileFamily.DESIGN:
+    if subtitle_original:
         subtitle_profile = config.get_subtitle_profile(
             subtitle_style,
             original=True,
+            design_selection=subtitle_design_profile_key,
         )
     else:
-        subtitle_profile = config.get_subtitle_profile(subtitle_style)
+        subtitle_profile = config.get_subtitle_profile(
+            subtitle_style,
+            design_selection=subtitle_design_profile_key,
+        )
     preparation_options = {}
     if video_path is not None:
         preparation_options["video_path"] = video_path
@@ -595,6 +622,7 @@ def preparar_studio_montaje(montage_plan):
 def ejecutar_studio_video_audio_srt(
     plan,
     subtitle_style=None,
+    subtitle_design_profile_key=None,
     subtitle_original=False,
     project=None,
     config_manager=None,
@@ -631,7 +659,11 @@ def ejecutar_studio_video_audio_srt(
     render_subtitle_path = None
     render_plan = plan
     if plan.subtitle_path is not None:
-        subtitle_profile = config.get_subtitle_profile(subtitle_style)
+        subtitle_profile = config.get_subtitle_profile(
+            subtitle_style,
+            original=subtitle_original,
+            design_selection=subtitle_design_profile_key,
+        )
         base_subtitle_path = _persist_studio_subtitle_base(
             plan.subtitle_path,
             output_path,
@@ -698,6 +730,7 @@ def ejecutar_studio_intro_outro(
 def ejecutar_studio_exportar_srt(
     export_plan,
     subtitle_style=None,
+    subtitle_design_profile_key=None,
     project=None,
     config_manager=None,
     profile_loader=None,
@@ -729,7 +762,10 @@ def ejecutar_studio_exportar_srt(
         config.get_profile_config(),
         profile_key,
     )
-    subtitle_profile = config.get_subtitle_profile(subtitle_style)
+    subtitle_profile = config.get_subtitle_profile(
+        subtitle_style,
+        design_selection=subtitle_design_profile_key,
+    )
     return service.export(
         plan=export_plan,
         project=project,
@@ -741,6 +777,7 @@ def ejecutar_studio_exportar_srt(
 def ejecutar_studio_montaje(
     montage_plan,
     subtitle_style=None,
+    subtitle_design_profile_key=None,
     subtitles_enabled=True,
     music_path=None,
     intro_outro_selection=None,
@@ -784,7 +821,10 @@ def ejecutar_studio_montaje(
     if subtitles_enabled:
         subtitle_profile = (
             config_manager or ConfigManager()
-        ).get_subtitle_profile(subtitle_style)
+        ).get_subtitle_profile(
+            subtitle_style,
+            design_selection=subtitle_design_profile_key,
+        )
     with TemporaryDirectory(
         prefix="ai_visual_composer_studio_montage_full_"
     ) as directory:
@@ -823,6 +863,7 @@ def ejecutar_studio_montaje(
 def ejecutar_studio(
     subtitle_style,
     input_mode,
+    subtitle_design_profile_key=None,
     music_path=None,
     intro_outro_selection=None,
     preparation_service=None,
@@ -845,6 +886,10 @@ def ejecutar_studio(
         "subtitle_style": subtitle_style,
         "input_mode": input_mode,
     }
+    if subtitle_design_profile_key is not None:
+        preparation_options["subtitle_design_profile_key"] = (
+            subtitle_design_profile_key
+        )
     if subtitle_original:
         preparation_options["subtitle_original"] = True
     if video_path is not None:

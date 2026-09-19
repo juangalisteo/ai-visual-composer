@@ -12,6 +12,7 @@ from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
 )
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.modules.video.intro_outro import (
     IntroOutroCatalog,
     IntroOutroPlan,
@@ -137,7 +138,10 @@ class RunController:
         }:
             profile_key = profile.get("profile_key")
             subtitle_config = (
-                self._select_profile_subtitle_config(profile_key)
+                self._select_profile_subtitle_config(
+                    profile_key,
+                    profile.get("subtitle_profile_key"),
+                )
                 if profile_key is not None
                 else self.select_subtitle_config()
             )
@@ -190,6 +194,9 @@ class RunController:
                 else "system"
             ),
             "subtitle_config": subtitle_config,
+            "subtitle_design_profile_key": profile.get(
+                "subtitle_profile_key"
+            ),
             "voice_config": voice_config,
             "music_category": music_category,
             "overlays_mode": overlays_mode,
@@ -529,8 +536,21 @@ class RunController:
         self._print("\nDISEÑO\n")
         for index, (_, display_name) in enumerate(designs, start=1):
             self._print(f"{index}. {display_name}")
-        profile_key, _ = self._select_from_list(designs)
-        return {"path": self.profile_resolver.resolve(profile_key), "profile_key": profile_key}
+        design_key, _ = self._select_from_list(designs)
+        style = self.profile_resolver.declared_subtitle_style(design_key)
+        subtitle_key = SubtitleProfileKey.for_design(
+            component,
+            platform,
+            design_key.profile_id,
+            style,
+        )
+        self.subtitle_profile_resolver.load(subtitle_key)
+        system = ProfileKey.for_component(component, platform)
+        return {
+            "path": self.profile_resolver.resolve(system),
+            "profile_key": system,
+            "subtitle_profile_key": subtitle_key,
+        }
 
     def _available_profile_families(self, component, platform):
         """Return families only when their on-disk subtitle profiles validate."""
@@ -585,7 +605,9 @@ class RunController:
 
         return selected
 
-    def _select_profile_subtitle_config(self, profile_key):
+    def _select_profile_subtitle_config(self, profile_key, subtitle_profile_key=None):
+        if subtitle_profile_key is not None:
+            return subtitle_profile_key
         automatic_style = self._automatic_subtitle_style(profile_key)
         if automatic_style is not None:
             return automatic_style
@@ -606,9 +628,6 @@ class RunController:
         return style
 
     def select_studio_subtitle_config(self, profile_key):
-        automatic_style = self._automatic_subtitle_style(profile_key)
-        if automatic_style is not None:
-            return automatic_style
         return self._select_subtitle_profile(
             profile_key,
             "\nSUBTITULOS\n",
@@ -618,9 +637,6 @@ class RunController:
         if input_mode == StudioInputMode.SRT_VIDEO.value:
             return self._select_studio_srt_video_subtitle_options(profile_key)
 
-        automatic_style = self._automatic_subtitle_style(profile_key)
-        if automatic_style is not None:
-            return automatic_style, False
         descriptors = self.subtitle_profile_resolver.discover_profiles(
             profile_key
         )
@@ -680,10 +696,6 @@ class RunController:
         if not subtitles_enabled:
             return False, ""
 
-        automatic_style = self._automatic_subtitle_style(profile_key)
-        if automatic_style is not None:
-            return True, automatic_style
-
         return True, self._select_subtitle_profile(
             profile_key,
             "\nESTILO DE SUBTÍTULOS\n",
@@ -701,6 +713,16 @@ class RunController:
         for index, descriptor in enumerate(descriptors, start=1):
             self._print(f"{index}. {descriptor.display_name}")
         return self._select_from_list(selections)
+
+    def _studio_design_subtitle_key(self, profile_key):
+        key = getattr(self, "_active_studio_design_subtitle_key", None)
+        if (
+            key is not None
+            and key.component is profile_key.component
+            and key.platform is profile_key.platform
+        ):
+            return key
+        return None
 
     def select_studio_input_mode(self):
         modes = (
@@ -1303,6 +1325,9 @@ class RunController:
     def _select_studio_profile(self):
         profile = self.select_profile("studio")
         profile_key = profile["profile_key"]
+        self._active_studio_design_subtitle_key = profile.get(
+            "subtitle_profile_key"
+        )
         return (
             profile_key,
             self.studio_profile_loader.load(
@@ -1311,16 +1336,19 @@ class RunController:
             ),
         )
 
-    @staticmethod
-    def _studio_profile_options(profile_key):
+    def _studio_profile_options(self, profile_key):
         if profile_key is None:
             return {}
-        return {
+        options = {
             "profile_component": profile_key.component.value,
             "profile_platform": profile_key.platform.value,
             "profile_id": profile_key.profile_id,
             "profile_family": profile_key.family.value,
         }
+        design_key = self._studio_design_subtitle_key(profile_key)
+        if design_key is not None:
+            options["subtitle_design_profile_key"] = design_key
+        return options
 
     def _exit_application(self):
         self._print(

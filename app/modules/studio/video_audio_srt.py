@@ -5,6 +5,12 @@ import subprocess
 from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.subtitles.subtitle_style_builder import SubtitleStyleBuilder
+from app.modules.video.subtitles.subtitle_render_preparation import (
+    SubtitleRenderPreparation,
+)
+from app.modules.video.subtitles.ass_subtitle_builder import (
+    SubtitleRenderBackend,
+)
 from app.modules.studio.input_preparation import StudioInputPreparationService
 from app.modules.studio.render_service import StudioOutputValidator
 from app.shared.media_probe import MediaProbe
@@ -167,7 +173,11 @@ class StudioVideoAudioSrtService:
             )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = output_path.with_name(f"{output_path.stem}.rendering.mp4")
-        subtitle_style = self._subtitle_style(plan.subtitle_path, subtitle_profile)
+        prepared_subtitle = self._prepare_subtitles(
+            plan.subtitle_path,
+            subtitle_profile,
+            profile,
+        )
         filters = [
             f"[0:v:0]scale={profile.width}:{profile.height}:"
             f"force_original_aspect_ratio=decrease,pad={profile.width}:"
@@ -175,14 +185,20 @@ class StudioVideoAudioSrtService:
             f"format={profile.pixel_format},trim=duration={audio_duration:.6f},"
             "setpts=PTS-STARTPTS[studio_base]"
         ]
-        if plan.subtitle_path is None:
+        if prepared_subtitle is None:
             filters.append("[studio_base]null[vout]")
+        elif prepared_subtitle.backend is SubtitleRenderBackend.DYNAMIC:
+            filters.append(
+                "[studio_base]ass="
+                f"'{self._escape_filter_path(prepared_subtitle.path)}':"
+                f"fontsdir='{self._escape_filter_path(self.FONTS_DIRECTORY)}'[vout]"
+            )
         else:
             filters.append(
                 "[studio_base]subtitles="
-                f"'{self._escape_filter_path(plan.subtitle_path)}':"
+                f"'{self._escape_filter_path(prepared_subtitle.path)}':"
                 f"fontsdir='{self._escape_filter_path(self.FONTS_DIRECTORY)}':"
-                f"force_style='{self._escape_style(subtitle_style)}'[vout]"
+                f"force_style='{self._escape_style(prepared_subtitle.force_style)}'[vout]"
             )
         command = ["ffmpeg", "-y"]
         if audio_duration > video.duration:
@@ -209,9 +225,12 @@ class StudioVideoAudioSrtService:
                     "FFmpeg no pudo generar VIDEO + AUDIO SRT."
                 ) from error
             raise
+        finally:
+            if prepared_subtitle is not None:
+                prepared_subtitle.cleanup()
         return output_path, duration, tuple(command)
 
-    def _subtitle_style(self, subtitle_path, subtitle_profile):
+    def _prepare_subtitles(self, subtitle_path, subtitle_profile, profile):
         if subtitle_path is None:
             if subtitle_profile is not None:
                 raise ValueError(
@@ -237,7 +256,15 @@ class StudioVideoAudioSrtService:
             raise ValueError(
                 "STUDIO requiere offset=0 para preservar los timings SRT."
             )
-        return self.style_builder.build(subtitle_profile.render_style)
+        return SubtitleRenderPreparation(
+            style_builder=self.style_builder
+        ).prepare(
+            subtitle_path=subtitle_path,
+            render_style=render_style,
+            width=profile.width,
+            height=profile.height,
+            style_source=subtitle_profile.render_style,
+        )
 
     @staticmethod
     def _escape_filter_path(path):

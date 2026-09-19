@@ -213,7 +213,6 @@ class SubtitleProfileResolver:
             if (
                 selection.component is not profile_key.component
                 or selection.platform is not profile_key.platform
-                or selection.family is not profile_key.family
             ):
                 raise ValueError(
                     "La seleccion de subtitulos no coincide con el perfil."

@@ -129,6 +129,37 @@ class SubtitleProfileKey:
         )
 
     @classmethod
+    def for_design(
+        cls,
+        component,
+        platform,
+        design_profile_id,
+        style,
+    ):
+        """Create a subtitle-only DESIGN identity.
+
+        DESIGN is not an operational profile selection.  This constructor
+        deliberately receives only the identity needed by the subtitle
+        resolver, so callers do not need to promote it to a global
+        ``ProfileKey``.
+        """
+        style = coerce_subtitle_style(style)
+        return cls(
+            component=component,
+            platform=platform,
+            style=style,
+            profile_id=cls.expected_profile_id(
+                component=component,
+                platform=platform,
+                style=style,
+                family=ProfileFamily.DESIGN,
+                parent_profile_id=design_profile_id,
+            ),
+            family=ProfileFamily.DESIGN,
+            parent_profile_id=design_profile_id,
+        )
+
+    @classmethod
     def expected_profile_id(
         cls,
         component,

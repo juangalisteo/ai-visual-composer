@@ -90,6 +90,10 @@ def main():
             or None
         )
     }
+    if options.get("subtitle_design_profile_key") is not None:
+        start_options["subtitle_design_profile_key"] = options[
+            "subtitle_design_profile_key"
+        ]
     intro_outro_selection = options.get(
         "intro_outro_selection"
     )

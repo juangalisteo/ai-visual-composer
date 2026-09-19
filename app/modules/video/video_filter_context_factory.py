@@ -4,6 +4,9 @@ from app.modules.video.ffmpeg.filter_context import FilterContext
 from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder
 )
+from app.modules.video.subtitles.subtitle_render_preparation import (
+    SubtitleRenderPreparation,
+)
 
 
 class VideoFilterContextFactory:
@@ -13,12 +16,16 @@ class VideoFilterContextFactory:
         build_context,
         components
     ):
-        subtitle_style = None
+        prepared_subtitle = None
         if build_context.render_subtitles:
-            subtitle_style = (
-                SubtitleStyleBuilder().build(
-                    build_context.config.subtitle_style
-                )
+            prepared_subtitle = SubtitleRenderPreparation(
+                style_builder=SubtitleStyleBuilder()
+            ).prepare(
+                subtitle_path=build_context.timeline.subtitle_path,
+                render_style=build_context.config.subtitles,
+                width=build_context.config.width,
+                height=build_context.config.height,
+                style_source=build_context.config.subtitle_style,
             )
 
         first_overlay_input = (
@@ -36,9 +43,28 @@ class VideoFilterContextFactory:
             media=build_context.media,
             timeline=build_context.timeline,
             config=build_context.config,
-            subtitle_style=subtitle_style,
+            subtitle_style=(
+                prepared_subtitle.force_style
+                if prepared_subtitle is not None
+                else None
+            ),
             fonts_dir=Path(
                 "assets/fonts"
+            ),
+            subtitle_path=(
+                prepared_subtitle.path
+                if prepared_subtitle is not None
+                else None
+            ),
+            subtitle_backend=(
+                prepared_subtitle.backend
+                if prepared_subtitle is not None
+                else None
+            ),
+            temporary_subtitle_path=(
+                prepared_subtitle.temporary_path
+                if prepared_subtitle is not None
+                else None
             ),
             render_subtitles=build_context.render_subtitles,
             overlay_inputs=(

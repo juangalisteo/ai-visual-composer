@@ -108,6 +108,8 @@ class VideoConfig:
             value = getattr(self.subtitles, field)
             if value is not None:
                 style[field] = value
+        if self.subtitles.dynamic:
+            style["dynamic"] = True
         return style
 
 

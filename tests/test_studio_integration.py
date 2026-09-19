@@ -31,17 +31,18 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 class StudioFinalContractTest(unittest.TestCase):
 
-    def test_design_profile_and_subtitles_are_loaded_for_studio_only_from_its_own_tree(self):
-        key = ProfileKey.for_component(
+    def test_design_subtitles_do_not_replace_the_studio_system_profile(self):
+        system_key = ProfileKey.for_component("studio", "instagram")
+        design_key = ProfileKey.for_component(
             "studio",
             "instagram",
             family=ProfileFamily.DESIGN,
             profile_id="studio_instagram_design_modo_conciencia_reels",
         )
         profile = StudioProfileLoader().load(
-            ProfileResolver().load(key), key
+            ProfileResolver().load(system_key), system_key
         )
-        styles = SubtitleProfileResolver().discover_styles(key)
+        styles = SubtitleProfileResolver().discover_styles(design_key)
 
         self.assertEqual(1080, profile.width)
         self.assertEqual(
@@ -50,15 +51,19 @@ class StudioFinalContractTest(unittest.TestCase):
         )
         for style in styles:
             subtitle = SubtitleProfileResolver().load(
-                SubtitleProfileKey.for_profile(key, style)
+                SubtitleProfileKey.for_profile(design_key, style)
             )
-            self.assertEqual(key.profile_id, subtitle.key.parent_profile_id)
+            self.assertEqual(design_key.profile_id, subtitle.key.parent_profile_id)
             self.assertIn("design", subtitle.path.parts)
 
-        invalid = deepcopy(ProfileResolver().load(key))
+        invalid = deepcopy(ProfileResolver().load(design_key))
         del invalid["display_name"]
-        with self.assertRaisesRegex(ValueError, "display_name"):
-            StudioProfileLoader().load(invalid, key)
+        with self.assertRaisesRegex(ValueError, "Identidad DESIGN"):
+            ProfileResolver._validate_design_identity(
+                invalid,
+                design_key,
+                Path("design.json"),
+            )
 
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()

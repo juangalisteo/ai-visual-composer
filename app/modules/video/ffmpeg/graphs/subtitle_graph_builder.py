@@ -6,6 +6,9 @@ from app.modules.video.ffmpeg.graphs.base_graph_builder import (
 )
 from app.modules.video.ffmpeg.graphs.graph_result import GraphResult
 from app.shared.progress_logger import ProgressLogger
+from app.modules.video.subtitles.ass_subtitle_builder import (
+    SubtitleRenderBackend,
+)
 
 
 class SubtitleGraphBuilder(
@@ -35,7 +38,8 @@ class SubtitleGraphBuilder(
             )
 
         subtitle_path = Path(
-            context.timeline.subtitle_path
+            getattr(context, "subtitle_path", None)
+            or context.timeline.subtitle_path
         )
 
         fonts_dir = Path(
@@ -70,13 +74,24 @@ class SubtitleGraphBuilder(
             "[vout]"
         )
 
-        filter_parts.append(
-            f"{current_stream}"
-            f"subtitles='{escaped_subtitle_path}':"
-            f"fontsdir='{escaped_fonts_dir}':"
-            f"force_style='{context.subtitle_style}'"
-            f"{output_stream}"
-        )
+        if (
+            getattr(context, "subtitle_backend", None)
+            is SubtitleRenderBackend.DYNAMIC
+        ):
+            filter_parts.append(
+                f"{current_stream}"
+                f"ass='{escaped_subtitle_path}':"
+                f"fontsdir='{escaped_fonts_dir}'"
+                f"{output_stream}"
+            )
+        else:
+            filter_parts.append(
+                f"{current_stream}"
+                f"subtitles='{escaped_subtitle_path}':"
+                f"fontsdir='{escaped_fonts_dir}':"
+                f"force_style='{context.subtitle_style}'"
+                f"{output_stream}"
+            )
 
         ProgressLogger.info(
             f"Subtítulos preparados "

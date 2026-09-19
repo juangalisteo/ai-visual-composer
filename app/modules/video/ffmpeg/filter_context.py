@@ -24,6 +24,9 @@ class FilterContext:
 
     subtitle_style: str | None
     fonts_dir: Path
+    subtitle_path: Path | None = None
+    subtitle_backend: object | None = None
+    temporary_subtitle_path: Path | None = None
     render_subtitles: bool = True
 
     overlay_inputs: tuple[
@@ -39,3 +42,10 @@ class FilterContext:
     first_overlay_input: int = 0
 
     first_visual_effect_input: int = 0
+
+    def cleanup_temporary_subtitle(self):
+        if (
+            self.temporary_subtitle_path is not None
+            and self.temporary_subtitle_path.exists()
+        ):
+            self.temporary_subtitle_path.unlink()

@@ -81,6 +81,7 @@ class VideoBuilder:
             ),
         )
 
+        filter_context = None
         try:
             build_context = I2VClipNormalizer().normalize(
                 build_context=build_context,
@@ -141,6 +142,9 @@ class VideoBuilder:
                 error=str(error),
             )
             raise
+        finally:
+            if filter_context is not None:
+                filter_context.cleanup_temporary_subtitle()
 
         total_elapsed = (
             time.perf_counter()

@@ -10,6 +10,12 @@ from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
+from app.modules.video.subtitles.subtitle_render_preparation import (
+    SubtitleRenderPreparation,
+)
+from app.modules.video.subtitles.ass_subtitle_builder import (
+    SubtitleRenderBackend,
+)
 from app.modules.video.video_validator import VideoValidator
 from app.modules.video.intro_outro import (
     IntroOutroComposer,
@@ -210,6 +216,8 @@ class StudioRenderService:
         source_info = self.probe.inspect(video_path)
         subtitles_enabled = subtitle_path is not None
         subtitle_style = None
+        subtitle_backend = None
+        temporary_subtitle_path = None
         if subtitles_enabled:
             render_style = SubtitleConfigLoader().load_render_style(
                 subtitle_profile.render_style
@@ -218,9 +226,19 @@ class StudioRenderService:
                 raise ValueError(
                     "STUDIO requiere offset=0 para preservar los timings SRT."
                 )
-            subtitle_style = self.style_builder.build(
-                subtitle_profile.render_style
+            prepared_subtitle = SubtitleRenderPreparation(
+                style_builder=self.style_builder
+            ).prepare(
+                subtitle_path=subtitle_path,
+                render_style=render_style,
+                width=profile.width,
+                height=profile.height,
+                style_source=subtitle_profile.render_style,
             )
+            subtitle_path = prepared_subtitle.path
+            subtitle_style = prepared_subtitle.force_style
+            subtitle_backend = prepared_subtitle.backend
+            temporary_subtitle_path = prepared_subtitle.temporary_path
         temporary_path = principal_path.with_name(
             f"{principal_path.stem}.rendering{principal_path.suffix}"
         )
@@ -238,6 +256,7 @@ class StudioRenderService:
                 source_info=source_info,
                 profile=profile,
                 subtitle_style=subtitle_style,
+                subtitle_backend=subtitle_backend,
                 music_path=music_path,
             )
             self.runner.run(command)
@@ -250,6 +269,9 @@ class StudioRenderService:
         except Exception:
             self._remove_temporary(temporary_path)
             raise
+        finally:
+            if temporary_subtitle_path is not None:
+                self._remove_temporary(temporary_subtitle_path)
         render_duration = time.perf_counter() - render_start
         ProgressLogger.finish(
             "RENDER STUDIO COMPLETADO",
@@ -327,6 +349,7 @@ class StudioRenderService:
         source_info=None,
         profile=None,
         subtitle_style=None,
+        subtitle_backend=None,
         music_path=None,
     ):
         command, inputs = self._build_inputs(
@@ -358,6 +381,13 @@ class StudioRenderService:
         ]
         if subtitle_path is None:
             filter_parts.append("[studio_base]null[vout]")
+        elif subtitle_backend is SubtitleRenderBackend.DYNAMIC:
+            escaped_subtitle = self._escape_filter_path(subtitle_path)
+            escaped_fonts = self._escape_filter_path(self.FONTS_DIRECTORY)
+            filter_parts.append(
+                f"[studio_base]ass='{escaped_subtitle}':"
+                f"fontsdir='{escaped_fonts}'[vout]"
+            )
         else:
             escaped_subtitle = self._escape_filter_path(subtitle_path)
             escaped_fonts = self._escape_filter_path(self.FONTS_DIRECTORY)

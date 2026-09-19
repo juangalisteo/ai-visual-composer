@@ -102,6 +102,7 @@ class ConfigManager:
         self,
         selection,
         original=False,
+        design_selection=None,
     ):
         profile_key = self.get_profile_key()
         if profile_key is None:
@@ -110,30 +111,54 @@ class ConfigManager:
                 "resolver subtitulos."
             )
 
-        try:
-            return self.subtitle_profile_resolver.load_selection(
-                profile_key=profile_key,
-                selection=selection,
+        if (
+            design_selection is None
+            and profile_key.component is ProfileComponent.STUDIO
+            and profile_key.family is ProfileFamily.DESIGN
+        ):
+            try:
+                functional_profile = self.subtitle_profile_resolver.load_selection(
+                    profile_key=ProfileKey.for_component(
+                        profile_key.component,
+                        profile_key.platform,
+                    ),
+                    selection=selection,
+                )
+            except ValueError:
+                return self.subtitle_profile_resolver.load_selection(
+                    profile_key=profile_key,
+                    selection=selection,
+                )
+            design_style = self.profile_resolver.declared_subtitle_style(
+                profile_key
             )
-        except ValueError:
-            if not (
-                profile_key.component is ProfileComponent.STUDIO
-                and profile_key.family is ProfileFamily.DESIGN
-            ):
-                raise
+            design_profile = self.subtitle_profile_resolver.load_selection(
+                profile_key=profile_key,
+                selection=design_style,
+            )
+            return replace(
+                functional_profile,
+                cue_policy=(
+                    design_profile.cue_policy
+                    if original
+                    else functional_profile.cue_policy
+                ),
+                render_style=design_profile.render_style,
+            )
 
         functional_profile = self.subtitle_profile_resolver.load_selection(
-            profile_key=ProfileKey.for_component(
-                profile_key.component,
-                profile_key.platform,
-            ),
+            profile_key=profile_key,
             selection=selection,
         )
-        design_style = self.profile_resolver.declared_subtitle_style(profile_key)
+        if design_selection is None:
+            return functional_profile
+
         design_profile = self.subtitle_profile_resolver.load_selection(
             profile_key=profile_key,
-            selection=design_style,
+            selection=design_selection,
         )
+        if profile_key.component is not ProfileComponent.STUDIO:
+            return design_profile
         return replace(
             functional_profile,
             cue_policy=(

@@ -189,9 +189,7 @@ SALIDA OBLIGATORIA:
             for scene in normalized_scenes
         )
 
-        json_example = self._build_json_example(
-            scene_count
-        )
+        json_example = self._build_json_example()
 
         prompt = f"""
 OBJETIVO:
@@ -266,8 +264,9 @@ SALIDA OBLIGATORIA:
 - La respuesta debe comenzar con [ y terminar con ].
 - No uses bloques de código Markdown.
 - No escribas texto antes ni después del JSON.
+- La respuesta completa debe ser una única lista JSON.
 - Devuelve exactamente {scene_count} objetos.
-- Respeta exactamente la numeración de las escenas.
+- Numera los objetos consecutivamente con "scene" desde 1 hasta {scene_count}.
 - No omitas escenas.
 - No añadas escenas nuevas.
 - Cada objeto debe contener exactamente:
@@ -365,52 +364,39 @@ FORMATO EXACTO:
         return normalized
 
     def _build_json_example(
-        self,
-        scene_count: int
+        self
     ) -> str:
-        example_objects = []
-
-        for scene_number in range(
-            1,
-            scene_count + 1
-        ):
-            example_objects.append(
-                (
-                    "    {\n"
-                    f'        "scene": {scene_number},\n'
-                    '        "visible_subject": '
-                    '"Sujeto o elemento visible principal",\n'
-                    '        "visible_action": '
-                    '"Accion, estado o cambio visible",\n'
-                    '        "visible_environment": '
-                    '"Entorno fisico observable",\n'
-                    '        "time_context": '
-                    '"Momento temporal observable",\n'
-                    '        "key_objects": [\n'
-                    '            "Objeto visual clave"\n'
-                    "        ],\n"
-                    '        "spatial_relationships": [\n'
-                    '            "Relacion espacial observable"\n'
-                    "        ],\n"
-                    '        "continuity_links": [\n'
-                    '            "Elemento de continuidad con otras escenas"\n'
-                    "        ],\n"
-                    '        "abstract_source": '
-                    '"Idea abstracta de origen si existe",\n'
-                    '        "filmable_interpretation": '
-                    '"Descripcion filmable concreta de la escena",\n'
-                    '        "visual_constraints": [\n'
-                    '            "Sin texto legible"\n'
-                    "        ],\n"
-                    '        "visual_truth_status": "structured"\n'
-                    "    }"
-                )
-            )
-
         return (
             "[\n"
-            + ",\n".join(example_objects)
-            + "\n]"
+            "    {\n"
+            '        "scene": 1,\n'
+            '        "visible_subject": '
+            '"Sujeto o elemento visible principal",\n'
+            '        "visible_action": '
+            '"Accion, estado o cambio visible",\n'
+            '        "visible_environment": '
+            '"Entorno fisico observable",\n'
+            '        "time_context": '
+            '"Momento temporal observable",\n'
+            '        "key_objects": [\n'
+            '            "Objeto visual clave"\n'
+            "        ],\n"
+            '        "spatial_relationships": [\n'
+            '            "Relacion espacial observable"\n'
+            "        ],\n"
+            '        "continuity_links": [\n'
+            '            "Elemento de continuidad con otras escenas"\n'
+            "        ],\n"
+            '        "abstract_source": '
+            '"Idea abstracta de origen si existe",\n'
+            '        "filmable_interpretation": '
+            '"Descripcion filmable concreta de la escena",\n'
+            '        "visual_constraints": [\n'
+            '            "Sin texto legible"\n'
+            "        ],\n"
+            '        "visual_truth_status": "structured"\n'
+            "    }\n"
+            "]"
         )
 
     def calculate_word_range(

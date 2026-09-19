@@ -305,8 +305,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         environment = {
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "studio_instagram_design_modo_conciencia_reels",
-            "MC_PROFILE_FAMILY": "design",
+            "MC_PROFILE_ID": "studio_instagram",
+            "MC_PROFILE_FAMILY": "system",
         }
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
@@ -320,6 +320,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             subtitle_profile = ConfigManager().get_subtitle_profile(
                 "single_line",
                 original=True,
+                design_selection=SubtitleProfileKey.for_design(
+                    "studio",
+                    "instagram",
+                    "studio_instagram_design_modo_conciencia_reels",
+                    "word_by_word",
+                ),
             )
 
             with patch("app.core.start.SubtitleCueTransformer") as transformer:
@@ -362,8 +368,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         environment = {
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "studio_instagram_design_modo_conciencia_reels",
-            "MC_PROFILE_FAMILY": "design",
+            "MC_PROFILE_ID": "studio_instagram",
+            "MC_PROFILE_FAMILY": "system",
         }
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
@@ -377,6 +383,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             design_profile = ConfigManager().get_subtitle_profile(
                 "single_line",
                 original=True,
+                design_selection=SubtitleProfileKey.for_design(
+                    "studio",
+                    "instagram",
+                    "studio_instagram_design_modo_conciencia_reels",
+                    "word_by_word",
+                ),
             )
             subtitle_profile = replace(
                 design_profile,
@@ -611,12 +623,39 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertIn("2. Línea única", messages)
         self.assertIn("3. Palabra por palabra", messages)
 
+    def test_design_video_audio_srt_reuses_the_common_functional_selector(self):
+        controller = RunController()
+        controller._active_studio_design_subtitle_key = (
+            SubtitleProfileKey.for_design(
+                "studio",
+                "instagram",
+                "studio_instagram_design_modo_conciencia_reels",
+                "word_by_word",
+            )
+        )
+        controller._select_from_list = Mock(return_value="original")
+
+        style, original = controller.select_studio_subtitle_options(
+            self.profile_key,
+            StudioInputMode.VIDEO_AUDIO_SRT.value,
+        )
+
+        self.assertEqual("single_line", style)
+        self.assertTrue(original)
+        controller._select_from_list.assert_called_once_with(
+            (
+                "original",
+                "subtitulo_studio_instagram_linea_unica",
+                "subtitulo_studio_instagram_palabra_por_palabra",
+            )
+        )
+
     def test_design_srt_video_uses_standard_treatment_and_design_render_style(self):
         environment = {
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "studio_instagram_design_modo_conciencia_reels",
-            "MC_PROFILE_FAMILY": "design",
+            "MC_PROFILE_ID": "studio_instagram",
+            "MC_PROFILE_FAMILY": "system",
         }
         with patch.dict(os.environ, environment, clear=False):
             for selection, expected_style in (
@@ -632,7 +671,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             ):
                 with self.subTest(selection=selection):
                     subtitle_profile = ConfigManager().get_subtitle_profile(
-                        selection
+                        selection,
+                        design_selection=SubtitleProfileKey.for_design(
+                            "studio",
+                            "instagram",
+                            "studio_instagram_design_modo_conciencia_reels",
+                            "word_by_word",
+                        ),
                     )
 
                     self.assertEqual(expected_style, subtitle_profile.key.style.value)

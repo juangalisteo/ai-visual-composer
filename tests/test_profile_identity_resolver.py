@@ -16,6 +16,7 @@ from app.shared.profile_identity import (
     ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class ProfileIdentityResolverTest(unittest.TestCase):
@@ -323,8 +324,12 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 for call in print_mock.call_args_list
                 if call.args
             )
-            self.assertEqual(ProfileFamily.DESIGN, selected["profile_key"].family)
+            self.assertEqual(ProfileFamily.SYSTEM, selected["profile_key"].family)
             self.assertEqual(component, selected["profile_key"].component)
+            self.assertEqual(
+                ProfileFamily.DESIGN,
+                selected["subtitle_profile_key"].family,
+            )
             self.assertIn("ESTILO DE SUBT", printed)
             self.assertIn("1. EST", printed)
             self.assertIn("2. DISE", printed)
@@ -655,10 +660,14 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         ) as print_mock:
             selected = controller.select_profile("video")
 
-        self.assertEqual(ProfileFamily.DESIGN, selected["profile_key"].family)
+        self.assertEqual(ProfileFamily.SYSTEM, selected["profile_key"].family)
         self.assertEqual(
-            "video_instagram_design_modo_conciencia_reels",
+            "video_instagram",
             selected["profile_key"].profile_id,
+        )
+        self.assertEqual(
+            "subtitulo_video_instagram_design_modo_conciencia_reels_palabra_por_palabra",
+            selected["subtitle_profile_key"].profile_id,
         )
         printed = "\n".join(
             str(call.args[0])
@@ -801,13 +810,20 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 subtitle_style="word_by_word"
             )
 
-    def test_main_transports_design_family_without_a_profile_path(self):
+    def test_main_transports_design_subtitle_identity_without_a_profile_path(self):
+        subtitle_profile_key = SubtitleProfileKey.for_design(
+            "imagen",
+            "instagram",
+            "imagen_instagram_design_modo_conciencia_reels",
+            "word_by_word",
+        )
         options = {
             "profile_component": "imagen",
             "profile_platform": "instagram",
-            "profile_id": "imagen_instagram_design_modo_conciencia_reels",
-            "profile_family": "design",
+            "profile_id": "imagen_instagram",
+            "profile_family": "system",
             "subtitle_config": None,
+            "subtitle_design_profile_key": subtitle_profile_key,
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",
@@ -824,13 +840,16 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             controller_mock.return_value.run.return_value = options
 
             self.assertEqual(0, main.main())
-            self.assertEqual("design", os.environ["MC_PROFILE_FAMILY"])
+            self.assertEqual("system", os.environ["MC_PROFILE_FAMILY"])
             self.assertEqual(
-                "imagen_instagram_design_modo_conciencia_reels",
+                "imagen_instagram",
                 os.environ["MC_PROFILE_ID"],
             )
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
-        iniciar_mock.assert_called_once_with(subtitle_style=None)
+        iniciar_mock.assert_called_once_with(
+            subtitle_style=None,
+            subtitle_design_profile_key=subtitle_profile_key,
+        )
 
     def test_productive_runtime_has_no_profile_path_environment_contract(self):
         paths = (
