@@ -16,6 +16,7 @@ from app.visual_quality.models import (
     ValidationFailure,
     ValidationReport,
 )
+from app.visual_quality.nudity_safety import NuditySafetyCheck
 
 
 @dataclass(frozen=True)
@@ -270,6 +271,7 @@ def default_product_quality_checks(
         HandsCheck(),
         FaceCheck(),
         WardrobeCheck(),
+        NuditySafetyCheck(),
         IdentityCheck(),
         ObjectPresenceCheck(),
         UnexpectedObjectCheck(),

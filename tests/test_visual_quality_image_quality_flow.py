@@ -47,9 +47,9 @@ class ImageQualityFlowCoordinatorTest(unittest.TestCase):
             image_path = Path(
                 temp_dir
             ) / "scene_001.png"
-            image_path.write_bytes(
-                b"image"
-            )
+            from PIL import Image
+
+            Image.new("RGB", (1024, 576)).save(image_path)
             result = ImageQualityFlowCoordinator().evaluate(
                 image_path=image_path,
                 scene_number=1,

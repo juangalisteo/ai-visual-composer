@@ -51,6 +51,7 @@ VALID_FAILURE_TYPES = (
     "background_artifact",
     "style_drift",
     "lighting_mismatch",
+    "nudity_detected",
 )
 VALID_SEVERITIES = (
     "low",
@@ -649,6 +650,7 @@ def create_regeneration_decision(
     failure_types: tuple[str, ...] = (),
     next_seed: int | None = None,
     manual_review_required: bool = False,
+    forced_accept: bool = False,
     validation_report: ValidationReport | None = None,
 ) -> RegenerationDecision:
     _require(
@@ -682,10 +684,18 @@ def create_regeneration_decision(
             raise ValueError(
                 "decision report_id must match validation_report"
             )
-        if action == "accept" and validation_report.status != "accepted":
+        if (
+            action == "accept"
+            and validation_report.status != "accepted"
+            and not forced_accept
+        ):
             raise ValueError(
                 "accept decision requires an accepted report"
             )
+    if forced_accept and action != "accept":
+        raise ValueError(
+            "forced_accept requires an accept decision"
+        )
     if action == "accept" and manual_review_required:
         raise ValueError(
             "accept decision cannot require manual review"
@@ -705,6 +715,7 @@ def create_regeneration_decision(
         ),
         next_seed=next_seed,
         manual_review_required=manual_review_required,
+        forced_accept=forced_accept,
     )
     return RegenerationDecision(
         **{
@@ -741,7 +752,10 @@ def create_approved_asset(
         raise ValueError(
             "final_validation_report must belong to generated_asset"
         )
-    if final_validation_report.status != "accepted":
+    if (
+        final_validation_report.status != "accepted"
+        and not acceptance_decision.forced_accept
+    ):
         raise ValueError(
             "ApprovedAsset requires an accepted validation report"
         )

@@ -2,17 +2,23 @@ from dataclasses import dataclass
 
 from app.visual_quality.factory import create_regeneration_decision
 from app.visual_quality.models import RegenerationDecision, ValidationReport
+from app.visual_quality.nudity_safety import NUDITY_FAILURE_TYPE
 
 
 @dataclass(frozen=True)
 class RegenerationPolicyConfig:
     max_attempts: int = 3
+    max_nudity_candidates: int = 3
     version: str = "1.0.0"
 
     def __post_init__(self) -> None:
         if self.max_attempts < 1:
             raise ValueError(
                 "max_attempts must be at least 1"
+            )
+        if self.max_nudity_candidates < 1:
+            raise ValueError(
+                "max_nudity_candidates must be at least 1"
             )
         if not self.version:
             raise ValueError(
@@ -40,6 +46,38 @@ class RegenerationPolicy:
             failure.failure_type
             for failure in report.failures
         )
+        if NUDITY_FAILURE_TYPE in failure_types:
+            if attempt_number >= self.config.max_nudity_candidates:
+                return create_regeneration_decision(
+                    decision_id=self._decision_id(
+                        report,
+                        "accept",
+                        attempt_number,
+                    ),
+                    report_id=report.report_id,
+                    action="accept",
+                    attempt_number=attempt_number,
+                    reason=(
+                        "nudity detected; forced acceptance at "
+                        "final candidate"
+                    ),
+                    failure_types=failure_types,
+                    forced_accept=True,
+                    validation_report=report,
+                )
+            return create_regeneration_decision(
+                decision_id=self._decision_id(
+                    report,
+                    "retry",
+                    attempt_number,
+                ),
+                report_id=report.report_id,
+                action="retry",
+                attempt_number=attempt_number,
+                reason="nudity detection requires regeneration",
+                failure_types=failure_types,
+                validation_report=report,
+            )
         if report.status == "accepted":
             return create_regeneration_decision(
                 decision_id=self._decision_id(

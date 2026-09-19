@@ -97,7 +97,8 @@ class RetryCoordinator:
         height: int,
         generate_attempt: AttemptGenerator,
         evaluate_attempt: AttemptEvaluator,
-        base_seed: int = 0
+        base_seed: int = 0,
+        max_attempts: int | None = None,
     ) -> RetryResult:
         history = initial_history
         latest_asset = history.generated_assets[-1]
@@ -105,9 +106,14 @@ class RetryCoordinator:
         latest_seed = None
         retry_executed = False
 
+        effective_max_attempts = (
+            self.max_attempts
+            if max_attempts is None
+            else max_attempts
+        )
         while (
             latest_decision.action == "retry"
-            and latest_asset.attempt_number < self.max_attempts
+            and latest_asset.attempt_number < effective_max_attempts
         ):
             next_attempt = latest_asset.attempt_number + 1
             latest_seed = self.seed_policy.next_seed(
@@ -155,7 +161,7 @@ class RetryCoordinator:
                 history=history,
                 asset=next_asset,
                 gate_result=gate_result,
-                max_attempts=self.max_attempts,
+                max_attempts=effective_max_attempts,
             )
             latest_asset = next_asset
             latest_decision = gate_result.regeneration_decision

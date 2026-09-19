@@ -65,6 +65,11 @@ from app.visual_quality.models import (
     ValidationReport,
     ValidationThresholds,
 )
+from app.visual_quality.nudity_safety import (
+    NUDITY_FAILURE_TYPE,
+    NuditySafetyCheck,
+    NuditySafetyConfig,
+)
 from app.visual_quality.policy import (
     RegenerationPolicy,
     RegenerationPolicyConfig,
@@ -91,6 +96,9 @@ __all__ = [
     "AnatomyCheck",
     "HandsCheck",
     "ManualReviewMarker",
+    "NUDITY_FAILURE_TYPE",
+    "NuditySafetyCheck",
+    "NuditySafetyConfig",
     "IdentityCheck",
     "ImageValidator",
     "ImageQualityFlowCoordinator",

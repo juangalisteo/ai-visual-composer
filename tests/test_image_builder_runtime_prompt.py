@@ -378,9 +378,9 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             exist_ok=True
         )
         image_path = output_dir / f"scene_{scene_number:03d}.png"
-        image_path.write_bytes(
-            b"fake image"
-        )
+        from PIL import Image
+
+        Image.new("RGB", (width, height)).save(image_path)
         return image_path
 
     def _wide_encoder_prompt_translator(

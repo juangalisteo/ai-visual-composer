@@ -201,7 +201,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                     cinematic_orchestrator=orchestrator,
                     prompt_translator=translator,
                     backend_adapter=backend_adapter,
-                    image_quality_flow=FailingImageQualityFlow()
+                    image_quality_flow=RecordingImageQualityFlow()
                 )
 
                 with patch.object(
@@ -253,7 +253,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 len(backend_adapter.backend_prompts)
             )
 
-    def test_image_validation_disabled_by_default_does_not_invoke_quality_flow(self):
+    def test_nudity_safety_invokes_quality_flow_when_quality_validation_is_disabled(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
                 temp_dir
@@ -273,7 +273,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     prompt_translator=self._wide_encoder_prompt_translator(),
-                    image_quality_flow=FailingImageQualityFlow()
+                    image_quality_flow=RecordingImageQualityFlow()
                 )
 
                 with patch.object(
@@ -310,7 +310,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     prompt_translator=self._wide_encoder_prompt_translator(),
-                    image_quality_flow=FailingImageQualityFlow()
+                    image_quality_flow=RecordingImageQualityFlow()
                 )
 
                 with patch.object(
@@ -508,7 +508,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                             output_dir=output_dir
                         )
 
-    def test_image_validation_retry_uses_approved_retry_path_in_manifest(self):
+    def test_image_validation_retry_preserves_attempt_and_promotes_final_image(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
                 temp_dir
@@ -555,15 +555,104 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
+            retry_one_exists = (
+                output_dir
+                / "_quality_attempts"
+                / "scene_001"
+                / "attempt_001"
+                / "scene_001.png"
+            ).exists()
 
-        self.assertIn(
-            "_quality_attempts",
-            manifest[0]["image"]
+        self.assertEqual(
+            str(output_dir / "scene_001.png"),
+            manifest[0]["image"],
         )
-        self.assertIn(
-            "attempt_002",
-            manifest[0]["image"]
-        )
+        self.assertTrue(retry_one_exists)
+
+    def test_retry_attempt_directories_exist_before_filesystem_write(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            storyboard_path = self._write_storyboard(root)
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(root)
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                image_validation_enabled=True,
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
+                    image_quality_flow=ImageQualityFlowCoordinator(
+                        validator=ImageValidator(
+                            checks=(FailUntilAttemptCheck(accepted_attempt=3),)
+                        )
+                    ),
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._write_image_without_creating_directory,
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir,
+                    )
+
+            retry_one = (
+                output_dir / "_quality_attempts" / "scene_001"
+                / "attempt_001" / "scene_001.png"
+            )
+            retry_two = (
+                output_dir / "_quality_attempts" / "scene_001"
+                / "attempt_002" / "scene_001.png"
+            )
+            final_image = output_dir / "scene_001.png"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            retry_one_exists = retry_one.exists()
+            retry_two_exists = retry_two.exists()
+            retry_two_bytes = retry_two.read_bytes()
+            final_image_bytes = final_image.read_bytes()
+
+        self.assertTrue(retry_one_exists)
+        self.assertTrue(retry_two_exists)
+        self.assertEqual(b"attempt_002", retry_two_bytes)
+        self.assertEqual(b"attempt_002", final_image_bytes)
+        self.assertEqual(str(final_image), manifest[0]["image"])
+
+    def test_safe_image_does_not_create_quality_attempt_directories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            storyboard_path = self._write_storyboard(root)
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(root)
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                image_validation_enabled=True,
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
+                    image_quality_flow=ImageQualityFlowCoordinator(
+                        validator=ImageValidator(checks=())
+                    ),
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._write_image_without_creating_directory,
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir,
+                    )
+
+            self.assertFalse((output_dir / "_quality_attempts").exists())
 
     def test_runtime_invokes_orchestrator_and_prompt_translator(self):
         orchestrator = RecordingCinematicOrchestrator()
@@ -944,10 +1033,21 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             exist_ok=True
         )
         image_path = output_dir / f"scene_{scene_number:03d}.png"
-        image_path.write_text(
-            f"{width}x{height}\n{prompt}",
-            encoding="utf-8"
-        )
+        from PIL import Image
+
+        Image.new("RGB", (width, height)).save(image_path)
+        return image_path
+
+    def _write_image_without_creating_directory(
+        self,
+        prompt,
+        scene_number,
+        output_dir,
+        width,
+        height,
+    ):
+        image_path = output_dir / f"scene_{scene_number:03d}.png"
+        image_path.write_bytes(f"attempt_{output_dir.name[-3:]}".encode("ascii"))
         return image_path
 
     def _wide_encoder_prompt_translator(

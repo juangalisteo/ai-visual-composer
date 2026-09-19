@@ -1,6 +1,7 @@
 from pathlib import Path
 from dataclasses import asdict, replace
 import json
+import shutil
 import time
 
 from app.backend_adapters import ComfyUIAdapter
@@ -260,8 +261,11 @@ class ImageBuilder:
                 )
             )
 
-            if self._is_image_validation_enabled(
-                profile
+            if (
+                self._is_image_validation_enabled(
+                    profile
+                )
+                or self._is_nudity_safety_enabled()
             ):
                 retry_paths = {}
 
@@ -269,11 +273,16 @@ class ImageBuilder:
                     attempt_number,
                     seed
                 ):
+                    retry_number = attempt_number - 1
                     attempt_dir = (
                         output_dir
                         / "_quality_attempts"
                         / f"scene_{scene_number:03d}"
-                        / f"attempt_{attempt_number:03d}"
+                        / f"attempt_{retry_number:03d}"
+                    )
+                    attempt_dir.mkdir(
+                        parents=True,
+                        exist_ok=True,
                     )
                     attempt_path = (
                         self._generate_validated_image(
@@ -311,16 +320,24 @@ class ImageBuilder:
                         scene_number=scene_number,
                         visual_quality_result=quality_result,
                     )
+                if hasattr(quality_result, "history"):
+                    prompt_metadata["visual_quality"] = (
+                        self._visual_quality_trace(quality_result)
+                )
                 if quality_result.status != "approved":
                     raise RuntimeError(
                         "La validación de imagen requiere "
                         "intervencion antes de continuar: "
                         f"{quality_result.status}"
                     )
-                image_path = retry_paths.get(
+                accepted_retry_path = retry_paths.get(
                     quality_result.generated_asset.attempt_number,
-                    image_path
                 )
+                if accepted_retry_path is not None:
+                    shutil.copy2(
+                        accepted_retry_path,
+                        image_path,
+                    )
 
             generation_result = (
                 GenerationResultAdapter.from_image_result(
@@ -843,6 +860,41 @@ class ImageBuilder:
             "enabled",
             "image_validation.enabled"
         )
+
+    def _is_nudity_safety_enabled(
+        self
+    ):
+        return True
+
+    def _visual_quality_trace(
+        self,
+        quality_result,
+    ):
+        latest_report = (
+            quality_result.history.validation_reports[-1]
+        )
+        return {
+            "status": quality_result.status,
+            "attempts": len(
+                quality_result.history.generated_assets
+            ),
+            "checks": latest_report.checks,
+            "failure_types": tuple(
+                failure.failure_type
+                for failure in latest_report.failures
+            ),
+            "decision": (
+                quality_result.history.regeneration_decisions[-1].reason
+            ),
+            "nudity_detected": any(
+                failure.failure_type == "nudity_detected"
+                for failure in latest_report.failures
+            ),
+            "forced_accept": (
+                quality_result.history.regeneration_decisions[-1]
+                .forced_accept
+            ),
+        }
 
     def _dedupe_prompt_parts(
         self,

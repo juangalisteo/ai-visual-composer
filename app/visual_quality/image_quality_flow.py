@@ -27,6 +27,7 @@ from app.visual_quality.models import (
 )
 from app.visual_quality.policy import RegenerationPolicy
 from app.visual_quality.retry import RetryCoordinator, RetryResult
+from app.visual_quality.nudity_safety import NUDITY_FAILURE_TYPE
 
 
 @dataclass(frozen=True)
@@ -188,6 +189,9 @@ class ImageQualityFlowCoordinator:
                     context
                 ),
                 base_seed=base_seed,
+                max_attempts=self._retry_max_attempts(
+                    gate_result.validation_report,
+                ),
             )
             status = retry_result.status
             history = retry_result.history
@@ -221,6 +225,17 @@ class ImageQualityFlowCoordinator:
             check.name
             for check in self.validator.checks
         )
+
+    def _retry_max_attempts(
+        self,
+        report,
+    ) -> int:
+        if any(
+            failure.failure_type == NUDITY_FAILURE_TYPE
+            for failure in report.failures
+        ):
+            return self.policy.config.max_nudity_candidates
+        return self.retry_coordinator.max_attempts
 
 
 def _flow_status(

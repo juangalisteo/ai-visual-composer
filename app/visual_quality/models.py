@@ -124,6 +124,7 @@ class RegenerationDecision:
     failure_types: tuple[str, ...] = field(default_factory=tuple)
     next_seed: int | None = None
     manual_review_required: bool = False
+    forced_accept: bool = False
     decision_fingerprint: str = ""
 
 
