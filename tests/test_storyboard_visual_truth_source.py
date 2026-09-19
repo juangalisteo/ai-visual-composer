@@ -9,6 +9,7 @@ from app.core.prompt_engine import PromptEngine
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.storyboard.storyboard_composer import StoryboardComposer
 from app.modules.storyboard.storyboard_validator import StoryboardValidator
+from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
 
 
 class StoryboardVisualTruthSourceTest(unittest.TestCase):
@@ -231,7 +232,12 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                 },
             ):
                 builder = ImageBuilder(
-                    workflow_path=workflow_path
+                    workflow_path=workflow_path,
+                    prompt_translator=PromptTranslator(
+                        budget_policy=PromptBudgetPolicy(
+                            encoder_token_limit=10_000,
+                        )
+                    ),
                 )
 
                 with patch.object(

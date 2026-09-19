@@ -69,6 +69,7 @@ class ImageEvidencePathPolicyTest(unittest.TestCase):
                 "effective_visual_brief",
                 "effective_workflow",
                 "final_prompt_segments",
+                "operational_prompt_observation",
                 "prompt_translation_observation",
                 "source_scene",
                 "visual_analysis_result",

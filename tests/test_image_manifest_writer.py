@@ -9,6 +9,7 @@ from app.domain import GenerationResult
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.video.media.media_loader import MediaLoader
+from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
 
 
 class RecordingBackend:
@@ -363,7 +364,12 @@ class ImageManifestWriterTest(unittest.TestCase):
                     backend=RecordingBackend(
                         image_path=image_path
                     ),
-                    manifest_writer=manifest_writer
+                    manifest_writer=manifest_writer,
+                    prompt_translator=PromptTranslator(
+                        budget_policy=PromptBudgetPolicy(
+                            encoder_token_limit=10_000,
+                        )
+                    ),
                 ).build(
                     storyboard_path=storyboard_path,
                     output_dir=output_dir

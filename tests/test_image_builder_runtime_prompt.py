@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.modules.images.image_builder import ImageBuilder
+from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
 
 
 class ImageBuilderRuntimePromptTest(unittest.TestCase):
@@ -38,7 +39,8 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 }
             ):
                 builder = ImageBuilder(
-                    workflow_path=workflow_path
+                    workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                 )
 
                 with patch.object(
@@ -95,11 +97,11 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["prompt"]
             )
             self.assertIn(
-                "professional cinematic realism",
+                "professional photorealism",
                 manifest[0]["prompt"]
             )
             self.assertIn(
-                "natural anatomy",
+                "No people or faces unless explicitly described",
                 manifest[0]["prompt"]
             )
             self.assertFalse(
@@ -138,7 +140,8 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 }
             ):
                 builder = ImageBuilder(
-                    workflow_path=workflow_path
+                    workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                 )
 
                 with patch.object(
@@ -198,7 +201,8 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
-                    profile=profile
+                    profile=profile,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                 )
 
                 with patch.object(
@@ -378,6 +382,15 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             b"fake image"
         )
         return image_path
+
+    def _wide_encoder_prompt_translator(
+        self,
+    ):
+        return PromptTranslator(
+            budget_policy=PromptBudgetPolicy(
+                encoder_token_limit=10_000,
+            )
+        )
 
     @contextmanager
     def _patched_environment(

@@ -19,7 +19,10 @@ from app.evidence.image_evidence_index import (
     deterministic_fingerprint,
 )
 from app.evidence.image_evidence_policy import ImageEvidencePathPolicy
-from app.prompt_translation import PromptTranslationObservation
+from app.prompt_translation import (
+    OperationalPromptObservation,
+    PromptTranslationObservation,
+)
 
 
 @dataclass(frozen=True)
@@ -179,6 +182,31 @@ class ImageEvidenceWriter:
                 prompt_translation_observation
             ),
             fingerprint_label="prompt_translation_observation_artifact",
+        )
+
+    def write_operational_prompt_observation(
+        self,
+        output_dir: Path | str,
+        scene_number: int,
+        operational_prompt_observation: OperationalPromptObservation,
+    ) -> EvidenceWriteResult:
+        if not isinstance(
+            operational_prompt_observation,
+            OperationalPromptObservation,
+        ):
+            raise TypeError(
+                "ImageEvidenceWriter expects an "
+                "OperationalPromptObservation."
+            )
+
+        return self._write_runtime_artifact(
+            output_dir=output_dir,
+            scene_number=scene_number,
+            artifact_id="operational_prompt_observation",
+            artifact_payload=_canonical_mapping(
+                operational_prompt_observation
+            ),
+            fingerprint_label="operational_prompt_observation_artifact",
         )
 
     def write_visual_quality_result(

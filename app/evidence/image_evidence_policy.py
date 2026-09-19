@@ -18,6 +18,7 @@ ARTIFACT_FILENAMES = {
     "visual_quality_result": "visual_quality_result.json",
     "cinematic_direction_set": "cinematic_direction_set.json",
     "prompt_translation_observation": "prompt_translation_observation.json",
+    "operational_prompt_observation": "operational_prompt_observation.json",
     "backend_prompt": "backend_prompt.json",
     "comfyui_payload": "comfyui_payload.json",
     "final_prompt_segments": "final_prompt_segments.json",

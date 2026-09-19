@@ -1,12 +1,15 @@
 import inspect
 import unittest
 
-from app.modules.images.prompt_system import ImagePromptSystem
+from app.modules.images.prompt_system import (
+    ImagePromptSystem,
+    OperationalPromptRule,
+)
 
 
 class ImagePromptSystemTest(unittest.TestCase):
 
-    def test_cinematic_backend_prompt_preserves_payload_and_adds_operational_constraints(self):
+    def test_human_prompt_preserves_protected_invariants(self):
         prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
             "A person reading an open book"
         )
@@ -15,131 +18,131 @@ class ImagePromptSystemTest(unittest.TestCase):
             "A person reading an open book",
             prompt,
         )
-        self.assertIn(
-            "professional cinematic realism",
-            prompt,
-        )
-        self.assertIn(
-            "Do not add people, faces, or human figures unless the supplied visual scene explicitly requires them",
-            prompt,
-        )
-        self.assertIn(
-            "preserve only those people",
-            prompt,
-        )
-        self.assertIn(
-            "Treat explicit geographic, cultural, historical, and narrative cues as primary casting direction",
-            prompt,
-        )
-        self.assertIn(
-            "clearly European, Mediterranean, or Western",
-            prompt,
-        )
-        self.assertIn(
-            "Honor explicit Asian, African, Latin American, or other cultural context naturally",
-            prompt,
-        )
-        self.assertIn(
-            "natural human variation and cinematic coherence within the narrative block",
-            prompt,
-        )
-        self.assertIn(
-            "repeated East Asian facial archetypes when unsupported by the scene context",
-            prompt,
-        )
-        self.assertIn(
-            "realistic skin texture, subtle imperfections, expressive eyes",
-            prompt,
-        )
-        self.assertIn(
-            "no crop top",
-            prompt,
-        )
-        self.assertIn(
-            "no text on books",
-            prompt,
-        )
+        for invariant in (
+            "professional photorealism",
+            "Use only described people",
+            "declared age, appearance, cultural, historical, narrative, and continuity cues",
+            "Natural anatomy, accurate hands, distinctive non-generic faces",
+            "Fully clothed, non-revealing, appropriate wardrobe; no sexualization",
+            "No text, logos, watermarks, or readable writing",
+        ):
+            self.assertIn(
+                invariant,
+                prompt,
+            )
 
-    def test_object_scene_explicitly_rejects_unrequested_human_presence(self):
-        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+    def test_object_scene_uses_nonhuman_guard_instead_of_human_rules(self):
+        prompt_system = ImagePromptSystem()
+        composition = prompt_system.compose_cinematic_backend_prompt_with_parts(
             "A cracked porcelain cup sits alone on a dusty kitchen table"
         )
+        rule_ids = {
+            rule.id
+            for rule in composition.rules
+        }
 
         self.assertTrue(
-            prompt.startswith(
+            composition.prompt.startswith(
                 "A cracked porcelain cup sits alone on a dusty kitchen table"
             )
         )
         self.assertIn(
-            "Do not add people, faces, or human figures unless the supplied visual scene explicitly requires them",
-            prompt,
+            "casting.non_human.no_extra_people",
+            rule_ids,
+        )
+        self.assertNotIn(
+            "casting.human.subject",
+            rule_ids,
+        )
+        self.assertNotIn(
+            "safety.human.wardrobe",
+            rule_ids,
         )
 
-    def test_human_scene_does_not_receive_non_human_direction(self):
-        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+    def test_human_scene_does_not_receive_nonhuman_direction(self):
+        composition = ImagePromptSystem().compose_cinematic_backend_prompt_with_parts(
             "A person reading an open book"
         )
+        rule_ids = {
+            rule.id
+            for rule in composition.rules
+        }
 
-        self.assertIn(ImagePromptSystem.human_casting_policy, prompt)
-        self.assertNotIn(
-            "Non-human architectural direction",
-            prompt,
+        self.assertIn(
+            "casting.human.subject",
+            rule_ids,
         )
-        self.assertNotIn(
-            "Non-human symbolic object direction",
-            prompt,
+        self.assertFalse(
+            any(
+                rule_id.startswith(
+                    "direction.non_human."
+                )
+                for rule_id in rule_ids
+            )
         )
 
-    def test_non_human_scene_families_receive_specific_visual_direction(self):
+    def test_nonhuman_scene_families_receive_specific_protected_direction(self):
         cases = (
             (
                 "An ancient temple rises above a misty valley",
-                "Non-human architectural direction",
-                "credible spatial scale, layered depth",
-                "flat backdrops, generic buildings",
+                "direction.non_human.architecture",
+                "Credible architectural scale, layered depth",
+                "avoid flat generic backdrops",
             ),
             (
                 "A weathered bronze amulet rests on dark velvet",
-                "Non-human symbolic object direction",
-                "clear visual protagonist",
-                "lost object, flat lighting",
+                "direction.non_human.symbolic_object",
+                "clear focal point",
+                "avoid competing focal points",
             ),
             (
                 "A detailed human brain with visible neural pathways",
-                "Non-human scientific and anatomical direction",
-                "clean convincing structure, readable volume",
-                "soft deformed forms, generic illustration",
+                "direction.non_human.anatomical_scientific",
+                "convincing structure, readable volume",
+                "avoid deformed, generic, or chaotic forms",
             ),
             (
                 "A controlled field of blue electric energy fills the frame",
-                "Non-human energy and abstraction direction",
+                "direction.non_human.energy_abstract",
                 "controlled layered composition",
-                "gratuitous chaos, oversaturation",
+                "avoid chaos, oversaturation",
             ),
             (
                 "A luminous geometric symbol is suspended in darkness",
-                "Non-human symbolic geometry direction",
-                "clear and legible through refined balance",
-                "floating symbols without design",
+                "direction.non_human.symbolic_geometry",
+                "geometry clear and legible through refined balance",
+                "avoid floating symbols, visual noise",
             ),
         )
 
-        for source, title, quality, avoidance in cases:
-            with self.subTest(source=source):
-                prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
-                    source
+        for source, rule_id, quality, avoidance in cases:
+            with self.subTest(
+                source=source,
+            ):
+                composition = (
+                    ImagePromptSystem().compose_cinematic_backend_prompt_with_parts(
+                        source
+                    )
                 )
 
-                self.assertTrue(prompt.startswith(source))
-                self.assertIn(title, prompt)
-                self.assertIn(quality, prompt)
-                self.assertIn(avoidance, prompt)
+                self.assertTrue(
+                    composition.prompt.startswith(source)
+                )
                 self.assertIn(
-                    "professional cinematic realism",
-                    prompt,
+                    rule_id,
+                    {
+                        rule.id
+                        for rule in composition.rules
+                    },
+                )
+                self.assertIn(quality, composition.prompt)
+                self.assertIn(avoidance, composition.prompt)
+                self.assertIn(
+                    "professional photorealism",
+                    composition.prompt,
                 )
 
-    def test_non_human_direction_keeps_prompt_parts_in_existing_order(self):
+    def test_nonhuman_direction_precedes_final_text_safety_rule(self):
         source = "A precise scientific structure of a glowing neuron"
         prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
             source
@@ -147,66 +150,37 @@ class ImagePromptSystemTest(unittest.TestCase):
 
         self.assertLess(
             prompt.index(source),
-            prompt.index("professional cinematic realism"),
+            prompt.index("professional photorealism"),
         )
         self.assertLess(
-            prompt.index("professional cinematic realism"),
-            prompt.index("Non-human scientific and anatomical direction"),
+            prompt.index("professional photorealism"),
+            prompt.index("Present the declared subject with convincing structure"),
         )
         self.assertLess(
-            prompt.index("Non-human scientific and anatomical direction"),
-            prompt.index("fully clothed"),
+            prompt.index("Present the declared subject with convincing structure"),
+            prompt.index("No text, logos, watermarks, or readable writing"),
         )
 
-    def test_explicit_context_is_primary_casting_direction(self):
-        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
-            "A Mediterranean historian studies a manuscript in a coastal archive"
-        )
-
-        for expected in (
-            "Treat explicit geographic, cultural, historical, and narrative cues as primary casting direction",
-            "adapt appearance, facial variation, and clothing to those cues rather than replacing them with generic casting",
-            "clearly European, Mediterranean, or Western",
-            "favor naturally coherent casting for that context",
-            "Honor explicit Asian, African, Latin American, or other cultural context naturally",
-            "do not impose an unrelated default ethnicity",
-            "distinctive facial structure",
-            "generic stock-looking faces",
+    def test_context_and_continuity_remain_human_casting_invariants(self):
+        for source in (
+            "A Mediterranean historian studies a manuscript in a coastal archive",
+            "The same research team returns to the laboratory at dawn",
+            "A scientist studies a luminous instrument in a quiet laboratory",
         ):
-            self.assertIn(
-                expected,
-                prompt,
-            )
-
-    def test_neutral_context_avoids_arbitrary_casting_switches(self):
-        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
-            "A scientist studies a luminous instrument in a quiet laboratory"
-        )
-
-        for expected in (
-            "natural human variation and cinematic coherence within the narrative block",
-            "do not switch phenotypes arbitrarily scene by scene",
-            "make a single archetype dominant",
-            "create unjustified heterogeneous mixing",
-        ):
-            self.assertIn(
-                expected,
-                prompt,
-            )
-
-    def test_continuity_cues_keep_related_scene_casting_coherent(self):
-        prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
-            "The same research team returns to the laboratory at dawn"
-        )
-
-        self.assertIn(
-            "Use available continuity cues to preserve coherent casting across related scenes, repeated characters, shared groups, eras, and environments",
-            prompt,
-        )
-        self.assertIn(
-            "arbitrary phenotype switching between related scenes",
-            prompt,
-        )
+            with self.subTest(
+                source=source,
+            ):
+                prompt = ImagePromptSystem().compose_cinematic_backend_prompt(
+                    source
+                )
+                self.assertIn(
+                    "declared age, appearance, cultural, historical, narrative, and continuity cues",
+                    prompt,
+                )
+                self.assertIn(
+                    "distinctive non-generic faces",
+                    prompt,
+                )
 
     def test_prompt_parts_are_deduplicated_without_reordering(self):
         prompt_system = ImagePromptSystem()
@@ -228,6 +202,36 @@ class ImagePromptSystemTest(unittest.TestCase):
                 )
             ),
         )
+
+    def test_atomic_rules_are_protected_and_carry_their_operational_contract(self):
+        rules = ImagePromptSystem().operational_rules_for_prompt(
+            "A scientist studies an artifact in a laboratory"
+        )
+
+        self.assertEqual(
+            len(rules),
+            len(
+                {
+                    rule.id
+                    for rule in rules
+                }
+            ),
+        )
+        for rule in rules:
+            self.assertIsInstance(
+                rule,
+                OperationalPromptRule,
+            )
+            self.assertTrue(rule.protected)
+            self.assertTrue(rule.conditions)
+            self.assertEqual(
+                "ImagePromptSystem",
+                rule.source,
+            )
+            self.assertGreater(
+                rule.estimated_token_cost,
+                0,
+            )
 
     def test_prompt_system_has_no_backend_dependencies(self):
         source = inspect.getsource(

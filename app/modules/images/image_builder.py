@@ -1,7 +1,6 @@
 from pathlib import Path
-from dataclasses import replace
+from dataclasses import asdict, replace
 import json
-import hashlib
 import time
 
 from app.backend_adapters import ComfyUIAdapter
@@ -22,7 +21,12 @@ from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
-from app.prompt_translation import PromptTranslator
+from app.prompt_translation import (
+    PromptTranslator,
+    build_operational_prompt_observation,
+    prompt_fingerprint,
+    validate_operational_prompt,
+)
 from app.visual_intelligence import (
     VisualAnalysisOrchestrator,
     VisualReasoningOrchestrator,
@@ -242,12 +246,17 @@ class ImageBuilder:
                 ] = index
 
             image_path = (
-                self._generate_image(
+                self._generate_validated_image(
                     prompt=prompt,
                     scene_number=scene_number,
                     output_dir=output_dir,
                     width=width,
-                    height=height
+                    height=height,
+                    operational_prompt_observation=(
+                        runtime_metadata[
+                            "_operational_prompt_observation"
+                        ]
+                    ),
                 )
             )
 
@@ -267,12 +276,17 @@ class ImageBuilder:
                         / f"attempt_{attempt_number:03d}"
                     )
                     attempt_path = (
-                        self._generate_image(
+                        self._generate_validated_image(
                             prompt=prompt,
                             scene_number=scene_number,
                             output_dir=attempt_dir,
                             width=width,
-                            height=height
+                            height=height,
+                            operational_prompt_observation=(
+                                runtime_metadata[
+                                    "_operational_prompt_observation"
+                                ]
+                            ),
                         )
                     )
                     retry_paths[
@@ -453,11 +467,31 @@ class ImageBuilder:
                 backend_prompt
             )
         )
-        operational_prompt = (
-            self.prompt_system.compose_cinematic_backend_prompt(
+        operational_prompt_composition = (
+            self.prompt_system.compose_cinematic_backend_prompt_with_parts(
                 payload.prompt
             )
         )
+        operational_prompt_observation = (
+            build_operational_prompt_observation(
+                compiled_prompt=payload.prompt,
+                operational_prompt=(
+                    operational_prompt_composition.prompt
+                ),
+                budget_policy=backend_prompt.budget_policy,
+                composition_parts=(
+                    operational_prompt_composition.parts
+                ),
+            )
+        )
+        if evidence_output_dir is not None:
+            self._evidence_writer().write_operational_prompt_observation(
+                output_dir=evidence_output_dir,
+                scene_number=storyboard_scene.scene_number,
+                operational_prompt_observation=(
+                    operational_prompt_observation
+                ),
+            )
 
         return {
             "enabled": True,
@@ -530,12 +564,18 @@ class ImageBuilder:
                 payload.fingerprint
             ),
             "operational_prompt_fingerprint": (
-                self._text_fingerprint(
-                    operational_prompt
-                )
+                operational_prompt_observation.operational_prompt.fingerprint
+            ),
+            "operational_prompt_observation": asdict(
+                operational_prompt_observation
             ),
             "backend_payload_prompt": payload.prompt,
-            "operational_prompt": operational_prompt
+            "operational_prompt": (
+                operational_prompt_composition.prompt
+            ),
+            "_operational_prompt_observation": (
+                operational_prompt_observation
+            ),
         }
 
     def _build_runtime_visual_synthesis_result(
@@ -759,18 +799,35 @@ class ImageBuilder:
             )
         )
 
-    def _text_fingerprint(
+    def _generate_validated_image(
         self,
-        value
+        prompt,
+        scene_number,
+        output_dir,
+        width,
+        height,
+        operational_prompt_observation,
     ):
-        return hashlib.sha256(
-            str(
-                value
-                or ""
-            ).encode(
-                "utf-8"
+        if (
+            operational_prompt_observation.operational_prompt.fingerprint
+            != prompt_fingerprint(
+                prompt
             )
-        ).hexdigest()
+        ):
+            raise RuntimeError(
+                "El prompt operativo cambió después de su observación "
+                "y antes de enviarlo a ComfyUI."
+            )
+        validate_operational_prompt(
+            operational_prompt_observation
+        )
+        return self._generate_image(
+            prompt=prompt,
+            scene_number=scene_number,
+            output_dir=output_dir,
+            width=width,
+            height=height,
+        )
 
     def _is_image_validation_enabled(
         self,

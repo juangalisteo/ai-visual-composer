@@ -22,6 +22,9 @@ from app.prompt_translation.observability import (
     PromptSemanticSurvivalObservation,
     PromptTranslationObservation,
 )
+from app.shared.prompt_metrics import (
+    estimate_conservative_tokens,
+)
 from app.domain import EffectiveVisualBrief, VisualSynthesisResult
 
 
@@ -1809,17 +1812,8 @@ def _word_limit(
 def _estimate_tokens(
     value: str
 ) -> int:
-    if not value:
-        return 0
-    words = len(
-        value.split()
-    )
-    character_estimate = len(
+    return estimate_conservative_tokens(
         value
-    ) // 4
-    return max(
-        words,
-        character_estimate,
     )
 
 

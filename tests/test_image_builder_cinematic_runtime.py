@@ -10,7 +10,12 @@ from app.cinematic_direction import create_cinematic_direction_set
 from app.domain import StoryboardScene, VisualSynthesisResult
 from app.modules.images.image_builder import ImageBuilder
 from app.photography_direction import PhotographyDirection
-from app.prompt_translation import BackendPrompt, BackendPromptTrace
+from app.prompt_translation import (
+    BackendPrompt,
+    BackendPromptTrace,
+    PromptBudgetPolicy,
+    PromptTranslator,
+)
 from app.visual_quality import (
     ImageQualityFlowCoordinator,
     ImageValidator,
@@ -141,6 +146,9 @@ class RecordingPromptTranslator:
                     visual_synthesis_result.brief.fingerprint
                 )
             ),
+            budget_policy=PromptBudgetPolicy(
+                encoder_token_limit=10_000,
+            ),
             fingerprint="backend-prompt-fingerprint"
         )
 
@@ -264,6 +272,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                     image_quality_flow=FailingImageQualityFlow()
                 )
 
@@ -300,6 +309,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                     image_quality_flow=FailingImageQualityFlow()
                 )
 
@@ -349,6 +359,12 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 / "scene_001"
                 / "prompt_translation_observation.json"
             )
+            operational_prompt_observation_path = (
+                output_dir
+                / "evidence"
+                / "scene_001"
+                / "operational_prompt_observation.json"
+            )
             index_path = (
                 output_dir
                 / "evidence"
@@ -378,6 +394,9 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
             self.assertTrue(
                 prompt_observation_path.exists()
+            )
+            self.assertTrue(
+                operational_prompt_observation_path.exists()
             )
             self.assertTrue(
                 index_path.exists()
@@ -420,6 +439,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                     image_quality_flow=quality_flow
                 )
 
@@ -471,6 +491,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                     image_quality_flow=quality_flow
                 )
 
@@ -507,6 +528,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
                     image_quality_flow=ImageQualityFlowCoordinator(
                         validator=ImageValidator(
                             checks=(
@@ -642,11 +664,11 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             manifest[0]["prompt"]
         )
         self.assertIn(
-            "professional cinematic realism",
+            "professional photorealism",
             manifest[0]["prompt"]
         )
         self.assertIn(
-            "no text",
+            "No text, logos, watermarks, or readable writing",
             manifest[0]["prompt"]
         )
         self.assertEqual(
@@ -701,11 +723,11 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             metadata["operational_prompt"]
         )
         self.assertIn(
-            "natural anatomy",
+            "No people or faces unless explicitly described",
             metadata["operational_prompt"]
         )
         self.assertIn(
-            "no text on books",
+            "No text, logos, watermarks, or readable writing",
             metadata["operational_prompt"]
         )
         self.assertEqual(
@@ -927,6 +949,15 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             encoding="utf-8"
         )
         return image_path
+
+    def _wide_encoder_prompt_translator(
+        self,
+    ):
+        return PromptTranslator(
+            budget_policy=PromptBudgetPolicy(
+                encoder_token_limit=10_000,
+            )
+        )
 
 
 if __name__ == "__main__":

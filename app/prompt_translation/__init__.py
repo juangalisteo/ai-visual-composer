@@ -14,6 +14,18 @@ from app.prompt_translation.observability import (
     PromptSemanticSurvivalObservation,
     PromptTranslationObservation,
 )
+from app.prompt_translation.operational_prompt import (
+    OperationalPromptBudgetExceededError,
+    OperationalPromptContribution,
+    OperationalPromptObservation,
+    PromptMetricDifference,
+    PromptTextMetrics,
+    build_operational_prompt_observation,
+    estimate_conservative_tokens,
+    measure_prompt_text,
+    prompt_fingerprint,
+    validate_operational_prompt,
+)
 from app.prompt_translation.translator import (
     PromptBudgetExceededError,
     PromptTranslator,
@@ -32,6 +44,16 @@ __all__ = [
     "PromptBudgetExceededError",
     "PromptBudgetPolicy",
     "PromptCompilationMetrics",
+    "PromptMetricDifference",
+    "PromptTextMetrics",
     "PromptTranslationObservation",
     "PromptTranslator",
+    "OperationalPromptBudgetExceededError",
+    "OperationalPromptContribution",
+    "OperationalPromptObservation",
+    "build_operational_prompt_observation",
+    "estimate_conservative_tokens",
+    "measure_prompt_text",
+    "prompt_fingerprint",
+    "validate_operational_prompt",
 ]
