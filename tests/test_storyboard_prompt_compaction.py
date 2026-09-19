@@ -8,6 +8,11 @@ from unittest.mock import patch
 from app.core.prompt_engine import PromptEngine
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.storyboard.storyboard_validator import StoryboardValidator
+from app.providers.ollama_provider import (
+    OllamaProviderResult,
+    OllamaRequestPolicy,
+    OllamaResponseMetadata,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.prompt_metrics import estimate_conservative_tokens
 
@@ -117,7 +122,31 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
             ), patch(
                 "app.modules.storyboard.storyboard_ai_builder.OllamaProvider",
             ) as provider:
-                provider.return_value.generate.return_value = response
+                provider.return_value.generate_result.return_value = (
+                    OllamaProviderResult(
+                        content=response,
+                        metadata=OllamaResponseMetadata(
+                            requested_model="fake-storyboard-model",
+                            response_model=None,
+                            created_at=None,
+                            policy=OllamaRequestPolicy(),
+                            done=None,
+                            done_reason=None,
+                            prompt_length=0,
+                            content_length=len(response),
+                            prompt_sha256="prompt-hash",
+                            content_sha256="content-hash",
+                            prompt_eval_count=None,
+                            eval_count=None,
+                            total_duration=None,
+                            load_duration=None,
+                            prompt_eval_duration=None,
+                            eval_duration=None,
+                            thinking_length=None,
+                            thinking_sha256=None,
+                        ),
+                    )
+                )
 
                 result = StoryboardBuilder().build(
                     script_path=script_path,
@@ -134,7 +163,7 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
 
         self.assertEqual(output_path, result)
         self.assertEqual([1, 2], generated_scene_numbers)
-        provider.return_value.generate.assert_called_once()
+        provider.return_value.generate_result.assert_called_once()
 
     def test_validator_preserves_required_count_and_consecutive_numbers(self):
         validated = StoryboardValidator().validate(

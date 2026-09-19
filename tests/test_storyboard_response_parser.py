@@ -29,6 +29,12 @@ class StoryboardResponseParserTest(unittest.TestCase):
                 "[{\"scene\": 1}] [{\"scene\": 2}]"
             )
 
+    def test_rejects_the_observed_unclosed_array_with_thinking_and_markdown(self):
+        with self.assertRaisesRegex(ValueError, "interpretar el JSON"):
+            StoryboardResponseParser().parse(
+                "[{\"scene\": 1}\n</think>\n\n### Resumen"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
