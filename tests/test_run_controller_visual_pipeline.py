@@ -3,11 +3,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
+from app.shared.error_context import ExitKind
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileFamily,
     ProfileKey,
-    ProfilePlatform,
 )
 
 
@@ -189,6 +189,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "DISE",
             printed
         )
+        self.assertNotIn("\\nDISE", printed)
         self.assertIn(
             "1. Imagen",
             printed
@@ -227,60 +228,83 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             printed
         )
 
+    def test_design_target_unavailable_returns_to_its_menu(self):
+        controller = RunController()
+
+        with patch.object(
+            controller,
+            "_select_from_list",
+            side_effect=(
+                {"name": "Imagen", "pipeline": "image", "available": False},
+                {"name": "Video", "pipeline": "video"},
+            ),
+        ), patch.object(controller, "_print") as print_mock:
+            selected = controller.select_design_target()
+
+        self.assertEqual("video", selected)
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("No disponible.", printed)
+        self.assertEqual(2, printed.count("DISE"))
+
+    def test_zero_from_menu_raises_controlled_cancellation(self):
+        controller = RunController()
+
+        with patch("builtins.input", return_value="0"):
+            with self.assertRaises(OperationalError) as caught:
+                controller.select_visual_pipeline()
+
+        self.assertEqual("CANCELLATION", caught.exception.context.family)
+        self.assertIs(ExitKind.CANCELLATION, caught.exception.context.exit_kind)
+
     def test_design_profile_selection_uses_target_component_identity(self):
         controller = RunController()
         cases = (
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
-                ProfilePlatform.INSTAGRAM,
-                ("1", "2", "1"),
-                ProfileFamily.DESIGN,
+                "instagram",
+                ("1",),
             ),
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
-                ProfilePlatform.YOUTUBE,
-                ("2", "1"),
-                ProfileFamily.SYSTEM,
+                "youtube",
+                ("2",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
-                ProfilePlatform.INSTAGRAM,
-                ("1", "2", "1"),
-                ProfileFamily.DESIGN,
+                "instagram",
+                ("1",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
-                ProfilePlatform.YOUTUBE,
-                ("2", "1"),
-                ProfileFamily.SYSTEM,
+                "youtube",
+                ("2",),
             ),
         )
 
-        for scope, component, platform, selections, family in cases:
-            with self.subTest(scope=scope, platform=platform.value):
-                with patch(
-                    "builtins.input",
-                    side_effect=selections,
-                ), patch(
+        for scope, component, platform, selections in cases:
+            with self.subTest(scope=scope, platform=platform):
+                with patch.object(
+                    controller.subtitle_profile_resolver,
+                    "discover_families",
+                    side_effect=AssertionError(
+                        "Diseño no debe descubrir subtítulos."
+                    ),
+                ), patch("builtins.input", side_effect=selections), patch(
                     "builtins.print"
                 ) as print_mock:
                     selected = controller.select_profile(
                         scope
                     )
 
-                profile_key = ProfileKey.for_component(
-                    component, platform,
-                    family=family,
-                    profile_id=(
-                        f"{component.value}_{platform.value}_"
-                        "design_modo_conciencia_reels"
-                        if family is ProfileFamily.DESIGN else None
-                    ),
-                )
+                profile_key = ProfileKey.for_component(component, platform)
                 printed = "\n".join(
                     str(call.args[0])
                     for call in print_mock.call_args_list
@@ -296,11 +320,28 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     ),
                     selected["path"]
                 )
-                if family is ProfileFamily.DESIGN:
-                    self.assertIn("design", selected["path"].parts)
-                    self.assertIn("Modo Conciencia | Reels", printed)
-                else:
-                    self.assertIn("ESTILO DE SUBT", printed)
+                self.assertNotIn("subtitle_profile_key", selected)
+                self.assertNotIn("SUBTÍTULOS", printed)
+                self.assertNotIn("FAMILIA", printed)
+                self.assertNotIn("PERFIL", printed)
+
+    def test_normal_script_selection_still_discovers_and_transports_subtitles(self):
+        controller = RunController()
+
+        with patch("builtins.input", side_effect=("1", "1", "1")), patch(
+            "builtins.print"
+        ) as print_mock:
+            selected = controller.select_profile("script")
+
+        printed = "\n".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("subtitle_profile_key", selected)
+        self.assertIn("SUBTÍTULOS", printed)
+        self.assertIn("FAMILIA", printed)
+        self.assertIn("PERFIL", printed)
 
     def test_image_modes_exclude_legacy_script_mode(self):
         controller = RunController()
@@ -367,11 +408,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertIn(
             selected["profile_key"].platform,
-            (ProfilePlatform.INSTAGRAM, ProfilePlatform.YOUTUBE),
+            ("instagram", "youtube"),
         )
         self.assertEqual(
             Path(
-                "config/profiles/video/instagram/"
+                "config/profiles/video/instagram/estandar/"
                 "perfil_video_instagram.json"
             ),
             selected["path"]
@@ -434,6 +475,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_entry_selects_image_destination_and_reuses_image_flow(self):
         controller = RunController()
+        profile_key = ProfileKey(
+            ProfileComponent.GUION,
+            "instagram",
+            "guion_instagram",
+            "estandar",
+        )
 
         with patch.object(
             controller,
@@ -452,9 +499,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/guion/instagram/"
+                    "config/profiles/guion/instagram/estandar/"
                     "perfil_guion_instagram.json"
-                )
+                ),
+                "profile_key": profile_key,
             }
         ) as profile_mock, patch.object(
             controller,
@@ -519,6 +567,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_run_includes_visual_pipeline_without_changing_existing_options(self):
         controller = RunController()
+        profile_key = ProfileKey(
+            ProfileComponent.IMAGEN,
+            "youtube",
+            "imagen_youtube",
+            "estandar",
+        )
 
         with patch.object(
             controller,
@@ -533,9 +587,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/"
+                    "config/profiles/imagen/youtube/estandar/"
                     "perfil_imagen_youtube.json"
-                )
+                ),
+                "profile_key": profile_key,
             }
         ), patch.object(
             controller,
@@ -596,6 +651,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_entry_selects_video_destination_and_reuses_video_flow(self):
         controller = RunController()
+        profile_key = ProfileKey(
+            ProfileComponent.GUION,
+            "instagram",
+            "guion_instagram",
+            "estandar",
+        )
 
         with patch.object(
             controller,
@@ -614,9 +675,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/guion/instagram/"
+                    "config/profiles/guion/instagram/estandar/"
                     "perfil_guion_instagram.json"
-                )
+                ),
+                "profile_key": profile_key,
             }
         ) as profile_mock, patch.object(
             controller,
@@ -687,6 +749,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         self
     ):
         controller = RunController()
+        profile_key = ProfileKey(
+            ProfileComponent.VIDEO,
+            "instagram",
+            "video_instagram",
+            "estandar",
+        )
 
         with patch.object(
             controller,
@@ -701,9 +769,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/video/instagram/"
+                    "config/profiles/video/instagram/estandar/"
                     "perfil_video_instagram.json"
-                )
+                ),
+                "profile_key": profile_key,
             }
         ) as profile_mock, patch.object(
             controller,
@@ -774,7 +843,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = ProfileKey.for_component(
             ProfileComponent.IMAGEN,
-            ProfilePlatform.INSTAGRAM
+            "instagram"
         )
 
         with patch.object(
@@ -859,6 +928,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "",
             options["subtitle_config"]
         )
+        self.assertIsNone(options["subtitle_profile_key"])
         self.assertEqual(
             "",
             options["voice_config"]
@@ -887,7 +957,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = ProfileKey.for_component(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM
+            "instagram"
         )
 
         with patch.object(
@@ -972,6 +1042,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "",
             options["subtitle_config"]
         )
+        self.assertIsNone(options["subtitle_profile_key"])
         self.assertEqual(
             "",
             options["voice_config"]
@@ -1012,7 +1083,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/"
+                    "config/profiles/imagen/youtube/estandar/"
                     "perfil_imagen_youtube.json"
                 )
             }
@@ -1130,6 +1201,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 pipeline_mode=pipeline_mode
             ):
                 controller = RunController()
+                profile_key = ProfileKey(
+                    ProfileComponent.IMAGEN,
+                    "youtube",
+                    "imagen_youtube",
+                    "estandar",
+                )
 
                 with patch.object(
                     controller,
@@ -1144,9 +1221,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/imagen/youtube/"
+                            "config/profiles/imagen/youtube/estandar/"
                             "perfil_imagen_youtube.json"
-                        )
+                        ),
+                        "profile_key": profile_key,
                     }
                 ), patch.object(
                     controller,
@@ -1204,6 +1282,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_full_without_subtitles_skips_subtitle_selection(self):
         controller = RunController()
+        profile_key = ProfileKey(
+            ProfileComponent.IMAGEN,
+            "youtube",
+            "imagen_youtube",
+            "estandar",
+        )
 
         with patch.object(
             controller,
@@ -1218,9 +1302,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/"
+                    "config/profiles/imagen/youtube/estandar/"
                     "perfil_imagen_youtube.json"
-                )
+                ),
+                "profile_key": profile_key,
             },
         ), patch.object(
             controller,
@@ -1332,7 +1417,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/imagen/youtube/"
+                            "config/profiles/imagen/youtube/estandar/"
                             "perfil_imagen_youtube.json"
                         )
                     }

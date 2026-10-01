@@ -39,16 +39,15 @@ from app.modules.studio.montage import (
     StudioMontageCandidates,
     StudioMontageClip,
     StudioMontageError,
-    StudioMontageFullResult,
     StudioMontageInputError,
-    StudioMontageMode,
+    StudioMontageRenderResult,
     StudioMontagePlan,
     StudioMontagePlanningService,
     StudioMontagePreparedClip,
     StudioMontageResult,
     StudioMontageService,
-    coerce_studio_montage_mode,
 )
+from app.modules.studio.incidents import adapt_legacy_studio_error
 
 __all__ = [
     "PreparedStudioInput",
@@ -79,13 +78,12 @@ __all__ = [
     "StudioMontageCandidates",
     "StudioMontageClip",
     "StudioMontageError",
-    "StudioMontageFullResult",
     "StudioMontageInputError",
-    "StudioMontageMode",
+    "StudioMontageRenderResult",
     "StudioMontagePlan",
     "StudioMontagePlanningService",
     "StudioMontagePreparedClip",
     "StudioMontageResult",
     "StudioMontageService",
-    "coerce_studio_montage_mode",
+    "adapt_legacy_studio_error",
 ]

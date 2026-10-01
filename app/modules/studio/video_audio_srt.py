@@ -14,6 +14,11 @@ from app.modules.video.subtitles.ass_subtitle_builder import (
 from app.modules.studio.input_preparation import StudioInputPreparationService
 from app.modules.studio.render_service import StudioOutputValidator
 from app.shared.media_probe import MediaProbe
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+    summarize_technical_text,
+)
 
 
 class StudioVideoAudioSrtInputError(ValueError):
@@ -29,6 +34,10 @@ class StudioVideoAudioSrtPlan:
     video_path: Path
     audio_path: Path
     subtitle_path: Path | None = None
+    audio_tail_mode: str = "silence"
+    music_path: Path | None = None
+    video_duration: float | None = None
+    audio_duration: float | None = None
 
 
 @dataclass(frozen=True)
@@ -128,14 +137,14 @@ class StudioVideoAudioSrtInputService:
         if len(candidates) > 1:
             names = ", ".join(path.name for path in candidates)
             raise StudioVideoAudioSrtInputError(
-                "VIDEO + AUDIO SRT requiere seleccionar exactamente un "
-                f"archivo {label}. Se encontraron: {names}."
+                "VIDEO + AUDIO SRT requiere seleccionar un archivo "
+                f"{label}. Se encontraron: {names}."
             )
         return candidates[0]
 
 
 class StudioVideoAudioSrtService:
-    """Renderiza el vídeo ajustado con el audio nuevo como única autoridad."""
+    """Renderiza el vídeo completo con el audio nuevo como pista de salida."""
 
     FONTS_DIRECTORY = Path("assets/fonts")
 
@@ -160,12 +169,18 @@ class StudioVideoAudioSrtService:
                 f"No existe el audio VIDEO + AUDIO SRT: {plan.audio_path}"
             )
         video = self.probe.inspect(plan.video_path)
+        video_duration = video.duration
+        if video_duration <= 0:
+            raise StudioVideoAudioSrtError(
+                "La duracion del video debe ser positiva."
+            )
         try:
             audio_duration = self.probe.get_duration(plan.audio_path)
         except Exception as error:
             raise StudioVideoAudioSrtError("No se pudo detectar la duracion del audio nuevo.") from error
         if audio_duration <= 0:
             raise StudioVideoAudioSrtError("La duracion del audio nuevo debe ser positiva.")
+        music_path = self._validated_music_path(plan, audio_duration, video_duration)
         output_path = Path(output_path)
         if output_path.exists():
             raise FileExistsError(
@@ -182,7 +197,7 @@ class StudioVideoAudioSrtService:
             f"[0:v:0]scale={profile.width}:{profile.height}:"
             f"force_original_aspect_ratio=decrease,pad={profile.width}:"
             f"{profile.height}:(ow-iw)/2:(oh-ih),setsar=1,fps={profile.fps},"
-            f"format={profile.pixel_format},trim=duration={audio_duration:.6f},"
+            f"format={profile.pixel_format},trim=duration={video_duration:.6f},"
             "setpts=PTS-STARTPTS[studio_base]"
         ]
         if prepared_subtitle is None:
@@ -200,35 +215,84 @@ class StudioVideoAudioSrtService:
                 f"fontsdir='{self._escape_filter_path(self.FONTS_DIRECTORY)}':"
                 f"force_style='{self._escape_style(prepared_subtitle.force_style)}'[vout]"
             )
-        command = ["ffmpeg", "-y"]
-        if audio_duration > video.duration:
-            command.extend(["-stream_loop", "-1"])
-        command.extend(["-i", str(plan.video_path), "-i", str(plan.audio_path)])
-        filters.append(
-            f"[1:a:0]aresample={profile.audio_sample_rate},apad,"
-            f"atrim=duration={audio_duration:.6f},asetpts=PTS-STARTPTS[aout]"
-        )
-        command.extend(["-filter_complex", ";".join(filters), "-map", "[vout]", "-map", "[aout]", "-t", f"{audio_duration:.6f}", "-c:v", profile.codec, "-preset", profile.preset, "-crf", str(profile.crf), "-pix_fmt", profile.pixel_format, "-c:a", profile.audio_codec, "-b:a", profile.audio_bitrate, "-ar", str(profile.audio_sample_rate), "-ac", str(profile.audio_channels), "-movflags", profile.movflags, str(temporary)])
+        command = ["ffmpeg", "-y", "-i", str(plan.video_path), "-i", str(plan.audio_path)]
+        if audio_duration < video_duration and music_path is not None:
+            command.extend(["-stream_loop", "-1", "-i", str(music_path)])
+            remaining_duration = video_duration - audio_duration
+            filters.extend([
+                f"[1:a:0]aresample={profile.audio_sample_rate},"
+                f"atrim=duration={audio_duration:.6f},asetpts=PTS-STARTPTS[new_audio]",
+                f"[2:a:0]aresample={profile.audio_sample_rate},"
+                f"atrim=duration={remaining_duration:.6f},asetpts=PTS-STARTPTS[tail_music]",
+                "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]",
+            ])
+        elif audio_duration < video_duration:
+            filters.append(
+                f"[1:a:0]aresample={profile.audio_sample_rate},apad,"
+                f"atrim=duration={video_duration:.6f},asetpts=PTS-STARTPTS[aout]"
+            )
+        else:
+            filters.append(
+                f"[1:a:0]aresample={profile.audio_sample_rate},"
+                f"atrim=duration={video_duration:.6f},asetpts=PTS-STARTPTS[aout]"
+            )
+        command.extend(["-filter_complex", ";".join(filters), "-map", "[vout]", "-map", "[aout]", "-t", f"{video_duration:.6f}", "-c:v", profile.codec, "-preset", profile.preset, "-crf", str(profile.crf), "-pix_fmt", profile.pixel_format, "-c:a", profile.audio_codec, "-b:a", profile.audio_bitrate, "-ar", str(profile.audio_sample_rate), "-ac", str(profile.audio_channels), "-movflags", profile.movflags, str(temporary)])
         try:
             self.runner.run(command)
             duration = self.validator.validate(
                 temporary,
-                audio_duration,
+                video_duration,
                 profile,
             )
             temporary.replace(output_path)
         except Exception as error:
             if temporary.exists():
                 temporary.unlink()
+            if isinstance(error, OperationalError):
+                raise
             if isinstance(error, subprocess.CalledProcessError):
-                raise StudioVideoAudioSrtError(
-                    "FFmpeg no pudo generar VIDEO + AUDIO SRT."
+                metadata = {
+                    "command": tuple(map(str, error.cmd or command)),
+                    "returncode": error.returncode,
+                    "phase": "video_audio_srt_render",
+                }
+                stderr = summarize_technical_text(error.stderr)
+                if stderr:
+                    metadata["stderr_summary"] = stderr
+                raise create_operational_error(
+                    family="FFMPEG",
+                    user_message="FFmpeg no pudo generar VIDEO + AUDIO SRT.",
+                    recommended_action="Revisa los archivos de entrada y el diagnóstico del proceso.",
+                    operation="STUDIO/video_audio_srt",
+                    resource=str(output_path),
+                    technical_metadata=metadata,
                 ) from error
             raise
         finally:
             if prepared_subtitle is not None:
                 prepared_subtitle.cleanup()
         return output_path, duration, tuple(command)
+
+    @staticmethod
+    def _validated_music_path(plan, audio_duration, video_duration):
+        if audio_duration >= video_duration:
+            return None
+        if plan.audio_tail_mode not in {"silence", "music"}:
+            raise ValueError(
+                "El tratamiento final de audio VIDEO + AUDIO SRT no es valido."
+            )
+        if plan.audio_tail_mode == "silence":
+            return None
+        if plan.music_path is None:
+            raise ValueError(
+                "COMPLETAR CON MUSICA requiere una pista musical seleccionada."
+            )
+        music_path = Path(plan.music_path)
+        if not music_path.is_file():
+            raise FileNotFoundError(
+                f"No existe la musica VIDEO + AUDIO SRT: {music_path}"
+            )
+        return music_path
 
     def _prepare_subtitles(self, subtitle_path, subtitle_profile, profile):
         if subtitle_path is None:

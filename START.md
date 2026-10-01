@@ -159,9 +159,10 @@ VIDEO offers `TRANSCRIBIR` or `CONVERTIR` without rendering an audiovisual
 video.
 
 Studio preserves source files and writes its validated result under the
-selected project output. Optional INTRO assets belong in
-`assets/videos/intro_outro/intro/`; optional OUTRO assets belong in
-`assets/videos/intro_outro/outro/`.
+selected project output. Optional INTRO / OUTRO assets are selected from the
+operational platform catalog:
+`assets/videos/intro_outro/<platform>/intro/` and
+`assets/videos/intro_outro/<platform>/outro/`.
 
 For native GUION, IMAGEN, and VIDEO runs that produce a full video, the output
 contains one canonical subtitle-bearing MP4:

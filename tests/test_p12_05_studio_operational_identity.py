@@ -1,0 +1,117 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from app.controllers.run_controller import RunController
+from app.modules.studio import StudioInputMode
+from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+class StudioOperationalIdentityTest(unittest.TestCase):
+
+    def test_dynamic_operational_and_subtitle_keys_are_discovered_independently(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            operational_key, subtitle_key = self._write_dynamic_profiles(root)
+            profile_resolver = ProfileResolver(root)
+            subtitle_resolver = SubtitleProfileResolver(root)
+            controller = RunController(
+                profile_resolver=profile_resolver,
+                subtitle_profile_resolver=subtitle_resolver,
+                studio_profile_loader=Mock(load=Mock(return_value=SimpleNamespace())),
+            )
+            descriptor = subtitle_resolver.discover_profiles_for_family(
+                "studio", "test_platform", "test_family",
+            )[0]
+            controller._select_from_list = Mock(
+                side_effect=("test_platform", "test_family", descriptor),
+            )
+
+            with patch(
+                "app.controllers.run_controller.ProfileKey.for_component",
+                side_effect=AssertionError("P-12-05 no fabrica ProfileKey operacional."),
+            ):
+                selected_operational, _ = controller._select_studio_profile(
+                    StudioInputMode.SRT_VIDEO.value,
+                )
+
+        self.assertEqual(operational_key, selected_operational)
+        self.assertEqual(subtitle_key, controller._active_studio_subtitle_key)
+        self.assertNotEqual(
+            selected_operational.profile_id,
+            controller._active_studio_subtitle_key.profile_id,
+        )
+        self.assertTrue(controller._active_studio_subtitle_original)
+
+    def test_subtitle_selection_uses_operational_platform_as_discovery_context(self):
+        controller = RunController()
+        descriptor = SubtitleProfileResolver().discover_profiles_for_family(
+            "studio", "instagram", "estandar",
+        )[0]
+        messages = []
+        controller._print = messages.append
+        controller._select_from_list = Mock(
+            side_effect=("estandar", descriptor),
+        )
+
+        selected, original = controller._select_studio_subtitle_profile(
+            StudioInputMode.SRT_VIDEO.value,
+            platform="instagram",
+        )
+
+        self.assertEqual(descriptor.key, selected)
+        self.assertTrue(original)
+        self.assertNotIn("PLATAFORMA", "\n".join(messages))
+        controller._select_from_list.assert_any_call(
+            SubtitleProfileResolver().discover_families("studio", "instagram"),
+        )
+
+    @staticmethod
+    def _write_dynamic_profiles(root):
+        operational_source = Path(
+            "config/profiles/studio/instagram/estandar/perfil_studio_instagram.json"
+        )
+        subtitle_source = Path(
+            "config/profiles/studio/instagram/estandar/subtitulos/"
+            "subtitulo_studio_instagram_linea_unica.json"
+        )
+        operational = json.loads(operational_source.read_text(encoding="utf-8"))
+        operational.update({
+            "component": "studio",
+            "platform": "test_platform",
+            "family": "test_family",
+            "profile_id": "test_operational",
+            "display_name": "Operational test",
+        })
+        subtitle = json.loads(subtitle_source.read_text(encoding="utf-8"))
+        subtitle.update({
+            "component": "studio",
+            "platform": "test_platform",
+            "family": "test_family",
+            "profile_id": "test_subtitle",
+            "display_name": "Subtitle test",
+        })
+        directory = root / "studio" / "test_platform" / "test_family"
+        directory.mkdir(parents=True)
+        (directory / "test_operational.json").write_text(
+            json.dumps(operational), encoding="utf-8",
+        )
+        subtitle_directory = directory / "subtitulos"
+        subtitle_directory.mkdir()
+        (subtitle_directory / "test_subtitle.json").write_text(
+            json.dumps(subtitle), encoding="utf-8",
+        )
+        return (
+            ProfileResolver(root).discover("studio", "test_platform", "test_family")[0][0],
+            SubtitleProfileResolver(root).discover_profiles_for_family(
+                "studio", "test_platform", "test_family",
+            )[0].key,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

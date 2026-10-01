@@ -44,7 +44,7 @@ class FFmpegDiagnostics:
 
         return {
             "component": profile_key.component.value,
-            "platform": profile_key.platform.value,
+            "platform": profile_key.platform,
             "profile_id": profile_key.profile_id,
             "path": str(
                 config.profile_resolver.resolve(

@@ -9,6 +9,10 @@ from app.modules.storyboard.storyboard_validator import (
     StoryboardValidator,
 )
 from app.shared.config_manager import ConfigManager
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+)
 
 
 class VisualDesignInterpretationError(RuntimeError):
@@ -59,17 +63,39 @@ class VisualDesignInterpreter:
             return self._interpret(
                 text
             )
-        except TimeoutError as error:
-            raise VisualDesignInterpretationError(
-                "La interpretacion visual excedio el tiempo "
-                "maximo de espera."
-            ) from error
-        except VisualDesignInterpretationError:
+        except OperationalError:
             raise
-        except Exception as error:
-            raise VisualDesignInterpretationError(
-                "No se pudo completar la interpretacion visual."
+        except TimeoutError as error:
+            raise self._external_service_error(
+                "La interpretacion visual no pudo completarse.",
+                error,
             ) from error
+        except VisualDesignInterpretationError as error:
+            raise self._external_service_error(
+                "La interpretacion visual no pudo completarse.",
+                error,
+            ) from error
+        except Exception as error:
+            raise self._external_service_error(
+                "La interpretacion visual no pudo completarse.",
+                error,
+            ) from error
+
+    @staticmethod
+    def _external_service_error(user_message, error):
+        return create_operational_error(
+            family="EXTERNAL_SERVICE",
+            user_message=user_message,
+            recommended_action=(
+                "Comprueba la disponibilidad del proveedor de diseno visual "
+                "e intentalo de nuevo."
+            ),
+            operation="Interpretar diseno visual",
+            technical_metadata={
+                "service": "visual_design",
+                "provider_error": type(error).__name__,
+            },
+        )
 
     def _interpret(
         self,

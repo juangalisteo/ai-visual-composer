@@ -15,6 +15,17 @@ from app.benchmarks.ovb_001.image import (
 )
 from app.benchmarks.ovb_001.pipeline import OVB001ExecutionPipeline
 from app.benchmarks.ovb_001.serialization import read_json
+from app.visual_quality import (
+    ImageQualityFlowCoordinator,
+    ImageValidator,
+    NuditySafetyCheck,
+)
+
+
+class SafeNudityDetector:
+    def detect(self, path):
+        del path
+        return ()
 
 
 class OVB001BenchmarkHarnessTest(unittest.TestCase):
@@ -22,10 +33,23 @@ class OVB001BenchmarkHarnessTest(unittest.TestCase):
     def harness(self):
         return OVB001BenchmarkHarness(
             baseline_pipeline=OVB001ExecutionPipeline(
-                image_generator=DeterministicBenchmarkImageGenerator()
+                image_generator=DeterministicBenchmarkImageGenerator(),
+                image_quality_flow=self._approved_quality_flow(),
             ),
             candidate_pipeline=OVB001ExecutionPipeline(
-                image_generator=DeterministicBenchmarkImageGenerator()
+                image_generator=DeterministicBenchmarkImageGenerator(),
+                image_quality_flow=self._approved_quality_flow(),
+            ),
+        )
+
+    def _approved_quality_flow(self):
+        return ImageQualityFlowCoordinator(
+            validator=ImageValidator(
+                checks=(
+                    NuditySafetyCheck(
+                        detector=SafeNudityDetector(),
+                    ),
+                ),
             ),
         )
 

@@ -20,6 +20,7 @@ from app.modules.video.ffmpeg.diagnostics import (
 from app.modules.video.ffmpeg.i2v_normalizer import (
     I2VClipNormalizer
 )
+from app.shared.operational_error import OperationalError, create_operational_error
 
 
 class VideoBuilder:
@@ -29,12 +30,14 @@ class VideoBuilder:
         subtitle_profile=None,
         intro_outro_selection=None,
         render_subtitles=True,
+        warnings=None,
     ):
         self.subtitle_profile = subtitle_profile
         self.intro_outro_selection = (
             intro_outro_selection
         )
         self.render_subtitles = bool(render_subtitles)
+        self.warnings = warnings
 
     def build(
         self,
@@ -62,7 +65,8 @@ class VideoBuilder:
 
         build_context = (
             VideoBuildContextFactory(
-                subtitle_profile=self.subtitle_profile
+                subtitle_profile=self.subtitle_profile,
+                warnings=self.warnings,
             ).build(**context_options)
         )
 
@@ -141,6 +145,18 @@ class VideoBuilder:
                 "FAILED",
                 error=str(error),
             )
+            if isinstance(error, OperationalError):
+                raise
+            if isinstance(error, (ValueError, RuntimeError)):
+                raise create_operational_error(
+                    family="VIDEO",
+                    user_message="No se pudo preparar el render del video final.",
+                    recommended_action="Revisa el diagnostico de FFmpeg y los recursos de entrada.",
+                    operation="Preparar render de video",
+                    resource=str(build_context.media.output_path),
+                    diagnostic_reference=str(diagnostics.path),
+                    technical_metadata={"phase": "video_build"},
+                ) from error
             raise
         finally:
             if filter_context is not None:

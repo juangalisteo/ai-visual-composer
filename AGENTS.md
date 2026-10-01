@@ -1,473 +1,699 @@
-# AI Visual Composer — Agent Guidelines
+# CODEX Operating Policy
 
-This document defines the recommended methodology for working with AI coding agents on AI Visual Composer.
+This file defines the active private operating policy for Codex in AI Visual Composer.
 
-Its purpose is simple:
+## Source
 
-> Use AI as a controlled engineering tool without losing ownership, traceability, validation, or the ability to restore the project.
+Recovered from the historical Codex policy present in commit `aae889d`.
 
-These guidelines are intentionally public so the methodology can be reused by anyone working with AI-assisted software development.
+## Mandatory Documentation Policy
 
-Project-specific agent policies, development memory, internal reports, and local operational instructions may remain private.
+- `AGENT_AI/CODEX/BITACORA.md` is the permanent project memory.
 
----
+- `AGENT_AI/CODEX/BITACORA.md` must never be deleted, overwritten, restarted, or summarized.
 
-## 1. Core Workflow
+- Every completed prompt MUST append a new chronological entry to `AGENT_AI/CODEX/BITACORA.md`.
 
-AI-assisted development follows this sequence:
+- `AGENT_AI/CODEX/CHATGPT.md` is not a history.
 
-```text
-UNDERSTAND
-    ↓
-ANALYZE
-    ↓
-PROPOSE
-    ↓
-DECIDE
-    ↓
-IMPLEMENT
-    ↓
-VALIDATE
-    ↓
-DOCUMENT
-    ↓
-CHECKPOINT
-```
+- `AGENT_AI/CODEX/CHATGPT.md` is not a bitacora.
 
-### UNDERSTAND
+- `AGENT_AI/CODEX/CHATGPT.md` acts only as the bridge document between Codex, the project owner, and ChatGPT.
 
-Understand the request, objective, and real state of the project before acting.
+- After every completed prompt, `AGENT_AI/CODEX/CHATGPT.md` MUST have its previous content removed and MUST be regenerated from scratch.
 
-Do not assume files, functions, architecture, configuration, or behavior that has not been verified.
+- The new `AGENT_AI/CODEX/CHATGPT.md` MUST contain the complete result of the last completed prompt, not a superficial summary.
 
-### ANALYZE
+- Nothing important may remain only in chat.
 
-Inspect the relevant code, configuration, history, logs, tests, and artifacts required to understand the task.
+## Absolute Priority Rule
 
-Separate verified facts from assumptions and hypotheses.
+The mandatory updates to:
 
-### PROPOSE
+- `AGENT_AI/CODEX/BITACORA.md`
 
-Explain the recommended change before implementing it when a decision is required.
+- `AGENT_AI/CODEX/CHATGPT.md`
 
-A proposal should identify:
+are unconditional and permanent CODEX operating requirements.
 
-- what should change;
-- why;
-- affected components;
-- relevant risks;
-- how the result will be validated.
+They MUST be performed after EVERY completed prompt, ALWAYS and WITHOUT EXCEPTION.
 
-### DECIDE
+NO instruction contained in any individual task prompt may prevent, disable, postpone, override, cancel, or supersede these two mandatory updates.
 
-The project owner makes decisions that affect product direction, architecture, scope, versions, publication, or significant risk.
+This remains true regardless of what the prompt says.
 
-A proposal is not authorization to implement it.
+Even if a prompt explicitly says:
 
-### IMPLEMENT
+- `read-only`;
 
-Execute only the authorized change.
+- `do not modify anything`;
 
-Prefer the smallest coherent modification that solves the actual problem.
+- `do not modify files`;
 
-Do not introduce unrelated refactors, features, abstractions, dependencies, or cleanup.
+- `do not write files`;
 
-### VALIDATE
+- `do not modify the repository`;
 
-Verify the result with evidence appropriate to the change.
+- `do not modify AGENT_AI`;
 
-Implementation alone does not prove correctness.
+- `do not modify AGENT_AI/CODEX`;
 
-### DOCUMENT
+- `do not modify BITACORA.md`;
 
-Record relevant changes, decisions, validation results, and current system state.
+- `do not modify CHATGPT.md`;
 
-Documentation must describe reality, not intended future behavior.
+- `audit only`;
 
-### CHECKPOINT
+- `analysis only`;
 
-Create a version checkpoint only after the relevant implementation has been validated and documented.
+- `inspection only`;
 
----
+- `no writes`;
 
-## 2. Safety and Change Control
+- or ANY equivalent instruction;
 
-Agents working on the project should follow these rules:
+CODEX MUST STILL update both:
 
-1. Never invent project structure, files, functions, configuration, dependencies, or behavior.
+- `AGENT_AI/CODEX/BITACORA.md`
 
-2. Read and understand existing files before modifying them.
+- `AGENT_AI/CODEX/CHATGPT.md`
 
-3. Keep changes inside the authorized scope.
+after completing the task.
 
-4. Do not perform unsolicited refactors or improvements.
+For CODEX operating purposes, these two mandatory updates are NOT considered modifications to the productive project scope.
 
-5. Protect behavior that has already been validated.
+Task-level restrictions apply to the requested task and productive project files.
 
-6. Clearly distinguish:
-   - verified fact;
-   - indication;
-   - hypothesis;
-   - demonstrated cause.
+Task-level restrictions NEVER apply to these two mandatory private memory files.
 
-7. Analysis or recommendation does not automatically authorize implementation.
+This rule has absolute priority over every individual task prompt regarding these two files.
 
-8. Prefer changes that are identifiable, testable, and reversible.
+There are NO task-level exceptions.
 
-9. Never claim something was tested or validated if that validation was not actually performed.
+## Mandatory Finalization Sequence
 
-10. Do not expose secrets, personal filesystem paths, private development information, local models, or other private state in public files.
+After EVERY completed prompt, CODEX MUST perform the following finalization sequence:
 
-11. Treat destructive operations with special care, including:
-    - file deletion;
-    - overwrites;
-    - Git resets;
-    - history rewrites;
-    - force pushes;
-    - branch or tag deletion;
-    - baseline replacement;
-    - checkpoint modification.
+1. Complete the requested task.
 
-12. Do not increase project complexity without a demonstrated need.
+2. Append a new chronological entry to:
 
-The existing system is the starting point.
+   `AGENT_AI/CODEX/BITACORA.md`
 
-The objective is not to redesign working software simply because another design is possible.
+   The entry must accurately document:
 
----
+   - date and time;
 
-## 3. Validation
+   - task;
 
-Validation must match the nature of the change.
+   - objective;
 
-Four levels may be used when applicable.
+   - actions performed;
 
-### Level 1 — Static Validation
+   - files inspected;
 
-Examples:
+   - files modified;
 
-- syntax;
-- imports;
-- compilation;
-- configuration checks;
-- diff inspection;
-- `git diff --check`.
+   - findings;
 
-Passing static validation does not prove runtime behavior.
+   - validations;
 
-### Level 2 — Automated Tests
+   - result;
 
-Run relevant tests and, when appropriate, the complete test suite.
+   - decisions, if any;
 
-A test proves only what it actually checks.
+   - unresolved points, if any.
 
-### Level 3 — Real Execution
+3. Remove the previous contents of:
 
-When behavior depends on a real runtime, model, renderer, external process, or perceptual result, execute the real workflow when validation requires it.
+   `AGENT_AI/CODEX/CHATGPT.md`
+
+4. Regenerate `AGENT_AI/CODEX/CHATGPT.md` from scratch with the complete result of the latest completed prompt.
+
+5. Ensure that nothing important from the completed task remains only in chat.
+
+A prompt is not considered fully finalized until both mandatory documentation operations have been completed.
+
+## Validation Policy
+
+Validation MUST be proportional to the real scope and risk of the task.
+
+The objective is to maintain sufficient technical confidence without repeatedly executing large validation suites when focused validation already covers the modified behavior.
+
+### Small Changes / Isolated Functions
 
 Examples include:
 
-- image generation;
-- video generation;
-- TTS;
-- subtitle synchronization;
-- ComfyUI execution;
-- FFmpeg rendering;
-- complete end-to-end workflows.
+- menu changes;
 
-Never replace:
+- literal changes;
 
-```text
-"It should work"
-```
+- isolated functions;
 
-with:
+- localized bug fixes;
 
-```text
-"It works"
-```
+- small integrations;
 
-unless it has actually been demonstrated.
+- isolated STUDIO functions;
 
-### Level 4 — Baseline Comparison
+- small configuration changes;
 
-When validated historical evidence exists, compare the new behavior against it.
+- changes with a clearly bounded impact surface.
 
-A baseline may contain:
+For these tasks, CODEX should execute only the validation necessary for the affected scope.
 
-- real outputs;
-- images;
-- videos;
-- audio;
-- manifests;
-- metrics;
-- configuration;
-- test results;
-- visual evidence.
+Normally:
 
-The objective is not only to confirm that the system still executes.
+- focused tests for the affected code;
 
-It is also to detect whether previously validated behavior has degraded.
+- `compileall` only for the necessary scope;
 
-### Definition of Done
+- `git diff --check`;
 
-```text
-IMPLEMENTED ≠ VALIDATED
+- JSON validation only when configuration or JSON files were modified.
 
-TESTS PASSED ≠ REAL EXECUTION PASSED
+CODEX MUST NOT execute the full global suite:
 
-REAL EXECUTION PASSED ≠ NO REGRESSION
+`python -m pytest tests -q`
 
-VALIDATED = sufficient evidence for the change performed
-```
+for a small or isolated task unless:
 
-The agent must state what was validated and what was not.
+- the project owner explicitly requests it;
 
----
+- the task closes a larger functional phase;
 
-## 4. Debugging and Regression Analysis
+- or CODEX finds concrete evidence that the change has a genuinely transversal impact requiring global regression validation.
 
-When something stops working or becomes worse, investigate before changing code.
+### Large Phases / Transversal Changes
 
-The first objective is to determine:
+Examples include:
 
-- what is happening;
-- where it first appears;
-- what previously worked;
-- what changed;
-- what evidence exists;
-- what remains unknown.
+- system-wide reorganization;
 
-For multi-stage pipelines, locate the first point where degradation appears.
+- modularization;
 
-Example:
+- architectural changes;
 
-```text
-SOURCE
-   ↓
-GENERATION
-   ↓
-PROCESSING
-   ↓
-COMPOSITION
-   ↓
-FINAL OUTPUT
-```
+- transversal refactors;
 
-Inspect intermediate artifacts instead of assuming the final stage is responsible.
+- common subtitle-system changes;
 
-When possible, compare before and after:
+- shared infrastructure changes;
 
-- inputs;
-- code;
-- profiles;
-- configuration;
-- dependencies;
-- models;
-- seeds;
-- manifests;
-- logs;
-- intermediate artifacts;
-- final outputs;
-- runtime environment.
+- changes affecting multiple main components;
 
-Do not confuse correlation with causation.
+- completion of a complete functional phase.
 
-Do not change multiple parameters blindly until something appears to improve.
+For these tasks, the global suite may be executed:
 
-When performing experiments, prefer controlled A/B comparisons and change one relevant variable at a time whenever possible.
+`python -m pytest tests -q`
 
-Remember:
+but it should normally be executed only ONCE at the end of the phase.
 
-```text
-SAME CONFIGURATION ≠ SAME RESULT
+Focused tests may still be used during implementation.
 
-SAME TECHNICAL METADATA ≠ SAME PERCEPTUAL QUALITY
+### Checkpoints / Important Pre-Commit Validation
 
-NO GIT DIFFERENCE ≠ IDENTICAL RUNTIME ENVIRONMENT
-```
+Before an important checkpoint or explicitly authorized commit, validation may include:
 
-If versioned code does not explain a regression, investigate relevant external state such as models, runtimes, dependencies, custom nodes, ignored configuration, environment variables, drivers, or other local state.
+- global suite once;
 
-A valid investigation may conclude:
+- final diff review;
 
-```text
-CAUSE DEMONSTRATED
+- relevant manual validation;
 
-CAUSE PROBABLE
+- static validation required by the affected scope.
 
-MULTIPLE OPEN HYPOTHESES
+The global suite should not be repeatedly executed during the same checkpoint unless a subsequent code change invalidates the previous result.
 
-INSUFFICIENT EVIDENCE
+### Prohibited Redundant Validation
 
-PROBLEM NOT REPRODUCED
+CODEX MUST NOT:
 
-NOT DETERMINED
-```
+- repeat a global suite because terminal output was truncated;
 
-Never invent certainty to close an investigation.
+- repeat the same large suite merely to obtain another summary format;
 
----
+- run hundreds or thousands of tests after every small modification;
 
-## 5. Documentation and Traceability
+- repeat validation already adequately covered by focused tests;
 
-Important work should remain understandable after the conversation with the AI agent ends.
+- rerun a global suite solely to recover an exit code;
 
-Relevant changes should make it possible to determine:
+- execute multiple equivalent regression batteries without a technical reason;
 
-- what was requested;
-- what was analyzed;
-- what was decided;
-- what changed;
-- why it changed;
-- what files were affected;
-- what was validated;
-- what was not validated;
-- what the final result was.
+- treat every completed prompt as automatically requiring a global suite.
 
-The AI conversation must not become the project's only memory.
+If the exit code or complete result of a global suite is required, CODEX should capture it during the SAME execution.
 
-Persistent documentation should preserve important technical decisions and project state.
+If output redirection or logging is required, it should be configured before launching the suite rather than launching the complete suite a second time.
 
-Public documentation and private development memory should remain separated.
+### Validation Principle
 
-Public documentation describes the product and its use.
+Validation must be:
 
-Private development records may contain:
+- sufficient;
 
-- internal investigations;
-- audits;
-- agent policies;
-- development history;
-- operational context;
-- local information.
+- proportional;
 
-Private information must not leak into the public repository.
+- non-redundant;
 
----
+- technically justified.
 
-## 6. Git, Versions and Checkpoints
+Focused validation is the default for bounded changes.
 
-Git is a fundamental restoration tool, but Git does not necessarily represent the complete local project state.
+Global validation is reserved for:
 
-Distinguish between:
+- large phases;
 
-```text
-GIT CHECKPOINT
-=
-exact state of version-controlled files
-```
+- transversal changes;
 
-and:
+- significant checkpoints;
 
-```text
-FULL CHECKPOINT
-=
-the complete state required to reproduce or restore the project
-```
+- explicit owner requests;
 
-A full checkpoint may require:
+- or technically demonstrated regression risk.
 
-- exact commit;
-- version tag;
-- project snapshot or backup;
-- relevant private files;
-- relevant local configuration;
-- checkpoint manifest;
-- version;
-- date;
-- validation results.
+Passing more tests is not, by itself, justification for repeatedly executing unnecessary test suites.
 
-Large external models and runtimes may remain outside the snapshot when they are clearly identified and reproducible.
+## Architectural Principle — Data / Config Driven
 
-Never claim that a project has been restored exactly when only Git-tracked files were restored and relevant state exists outside Git.
+AI Visual Composer MUST be data/config-driven.
 
-The preferred sequence is:
+The code implements generic infrastructure, contracts, engines, capabilities, and reusable technical behavior.
 
-```text
-IMPLEMENT
-    ↓
-VALIDATE
-    ↓
-DOCUMENT
-    ↓
-REVIEW STATE
-    ↓
-CHECKPOINT
-```
+The configuration structure and declarative files determine which components, families, profiles, variants, and combinations exist.
 
-A version should represent an identifiable and sufficiently validated state of the system.
+Technical IDs and values transport identity.
 
----
+Human-readable names such as:
 
-## 7. Agent Authority
+- `display_name`;
 
-The AI agent assists the project owner.
+- terminal labels;
 
-It does not replace the project owner.
+- menu labels;
 
-The agent may inspect, analyze, test, compare, investigate, and propose within the scope of the task.
+- profile names;
 
-Significant changes in scope, architecture, product behavior, versioning, publication, or destructive operations remain owner decisions.
+- family names shown to the user;
 
-Authorization for one change does not authorize unrelated changes.
+exist exclusively for human presentation and MUST NOT participate in functional decisions, routing, resolution, identity reconstruction, or runtime behavior.
 
-If new evidence significantly contradicts the original analysis during implementation, the agent should stop expanding the modification, preserve the current state, report the finding, and reassess the plan.
+A new profile or family that uses capabilities already supported by the system MUST NOT require modification of Python code.
 
-The agent must be comfortable saying:
+### Structure Is Context
 
-```text
-I do not know.
+The physical/configuration structure defines the context in which a configuration exists.
 
-I have not verified this.
+Conceptually:
 
-The evidence is insufficient.
+`config/profiles/<component>/<platform>/<family>/<profile>.json`
 
-This is a hypothesis.
+provides the structural context:
 
-The cause is not yet determined.
-```
+- component;
 
-Explicit uncertainty is preferable to invented certainty.
+- platform;
 
-The guiding principle is:
+- family;
 
-```text
-AI AGENT ≠ AUTONOMOUS OWNER
+- profile location.
 
-The agent understands.
-The agent analyzes.
-The agent proposes.
-The owner decides.
-The agent implements.
-The system validates.
-The evidence determines the result.
-```
+The system must discover that structure dynamically whenever the relevant architecture supports dynamic discovery.
 
-Autonomy should exist inside the authorized scope.
+Python MUST NOT require prior nominal registration of future family or profile names.
 
-Changing the scope requires a new decision.
+A future family must not require:
 
----
+- a new Enum member;
 
-## Private Agent Policy
+- a new hardcoded list entry;
 
-AI Visual Composer may use additional private agent instructions during development.
+- a new dictionary entry;
 
-When available, the active private Codex policy is located at:
+- a new `if`;
 
-```text
-AGENT_AI/CODEX/AGENTS.md
-```
+- a new `elif`;
 
-Private agent configuration, development memory, internal handoff documents, reports, and local operational state are intentionally excluded from the public repository.
+- a new match branch;
 
-The public methodology in this document defines the general engineering principles.
+- or another nominal Python registration;
 
-Private policies may add project-specific operational rules without changing those principles.
+when that family only uses capabilities already supported by the engine.
 
----
+### Technical Identity
 
-Copyright © 2026 Juan Bautista Galisteo Marqués.
+`profile_id` and equivalent technical identifiers are identities.
 
-AI Visual Composer was created and is maintained by Juan Bautista Galisteo Marqués.
+They MUST be treated as technical values, not as human labels and not as encoded instructions.
+
+Unless a legacy compatibility contract explicitly requires otherwise, code MUST NOT:
+
+- infer behavior from substrings contained in an ID;
+
+- require an ID to repeat component, platform, family, style, or display name;
+
+- parse an ID to rediscover context already known from configuration structure;
+
+- use `startswith`, `endswith`, `removeprefix`, `removesuffix`, splitting, regex extraction, or equivalent string interpretation to infer functional meaning from an otherwise opaque technical ID;
+
+- construct mandatory IDs by concatenating human or structural names when the complete identity is already represented by explicit fields/context.
+
+The complete technical context may be represented by separate values such as:
+
+- component;
+
+- platform;
+
+- family;
+
+- profile_id;
+
+rather than duplicating all of them inside one string.
+
+### Human Presentation
+
+`display_name` is presentation only.
+
+Changing `display_name` MUST NOT change:
+
+- identity;
+
+- routing;
+
+- resolution;
+
+- configuration loading;
+
+- behavior;
+
+- selected capabilities;
+
+- runtime execution;
+
+- file discovery;
+
+- technical relationships between profiles.
+
+The same principle applies to any other human-facing label.
+
+The terminal may show human-readable labels, but after selection it MUST transport technical identities/values.
+
+### Configuration Declares Behavior
+
+Profiles and declarative configuration select and configure capabilities.
+
+Code implements those capabilities generically.
+
+The system MUST prefer:
+
+`configuration -> capability -> runtime`
+
+over:
+
+`profile name -> special-case code -> runtime`
+
+If multiple profiles use the same capability, they MUST reuse the same generic implementation rather than creating profile-specific Python branches.
+
+### New Profiles and Families
+
+If the engine already supports all capabilities required by a new profile or family, creating that profile or family should normally require only:
+
+- creating the appropriate configuration structure;
+
+- creating the corresponding declarative file or files;
+
+- assigning technical IDs/values;
+
+- assigning optional human-readable labels;
+
+- configuring supported capabilities.
+
+It MUST NOT normally require modification of Python code.
+
+### New Engine Capabilities
+
+A genuinely new engine capability may require new Python implementation.
+
+When this happens, CODEX must implement the capability generically.
+
+It MUST NOT implement an exception tied only to the name of the profile or family that first requires it.
+
+Correct conceptual model:
+
+`new capability -> generic engine implementation -> configurable use by profiles`
+
+Incorrect conceptual model:
+
+`profile named X -> if X -> special behavior`
+
+### Discovery
+
+Where a subsystem is designed for dynamic discovery, the preferred flow is:
+
+`STRUCTURE / CONFIGURATION`
+
+→ `DISCOVERY`
+
+→ `TECHNICAL IDENTITY`
+
+→ `VALIDATION`
+
+→ `CAPABILITIES / CONFIGURATION`
+
+→ `RUNTIME`
+
+The architecture MUST NOT be inverted into:
+
+`NAME KNOWN BY PYTHON`
+
+→ `CONSTRUCT EXPECTED ID`
+
+→ `CONSTRUCT EXPECTED PATH`
+
+→ `SPECIAL-CASE BEHAVIOR`
+
+unless an explicitly documented legacy compatibility boundary temporarily requires it.
+
+### Generic Runtime Principle
+
+Runtime code should know:
+
+- technical contracts;
+
+- capabilities;
+
+- configuration values;
+
+- validated identities;
+
+- resources;
+
+- execution rules.
+
+Runtime code should not need to know:
+
+- creative profile names;
+
+- future family names;
+
+- marketing names;
+
+- human-facing labels;
+
+- examples used in tests;
+
+- names chosen by the project owner for future configurations.
+
+### Test Fixture Naming
+
+Tests MUST NOT use plausible product names in a way that can be mistaken for product architecture or future product decisions.
+
+Artificial dynamic fixtures should use explicitly technical names such as:
+
+- `test_family`;
+
+- `test_profile`;
+
+- `fixture_family`;
+
+- `dummy_profile`;
+
+or equivalent clearly non-product identifiers.
+
+A test fixture name MUST NOT become:
+
+- a production enum;
+
+- a production family;
+
+- a production profile;
+
+- a runtime branch;
+
+- a naming convention inferred for future product development.
+
+### Legacy Compatibility
+
+Existing legacy contracts may temporarily contain nominal knowledge where changing them belongs to a later authorized phase.
+
+Such exceptions MUST:
+
+- remain explicit;
+
+- remain documented;
+
+- not spread into new architecture;
+
+- not be used as a template for future implementations;
+
+- be removed or generalized when their designated migration phase is authorized.
+
+CODEX MUST distinguish between:
+
+- preserving an explicitly protected legacy compatibility contract;
+
+and
+
+- introducing new nominal coupling.
+
+Preserving legacy compatibility does NOT authorize new hardcoded names.
+
+### Architectural Review Rule
+
+When CODEX creates or modifies architecture, identity, discovery, selectors, profiles, configuration loaders, registries, routing, or runtime integration, it MUST verify that the implementation respects this principle.
+
+Before introducing a new nominal constant, Enum member, map entry, branch, suffix table, prefix parser, or special-case path, CODEX must determine whether the same behavior can and should be driven by configuration or technical identity instead.
+
+If an existing capability can support the requested configuration without new Python code, CODEX MUST prefer the data/config-driven solution.
+
+### Core Principle
+
+The permanent architectural direction of AI Visual Composer is:
+
+`STRUCTURE / CONFIGURATION`
+
+→ `DISCOVERY`
+
+→ `TECHNICAL IDENTITY`
+
+→ `CAPABILITIES`
+
+→ `RUNTIME`
+
+Human-readable names are presentation.
+
+Technical IDs transport identity.
+
+Configuration selects behavior.
+
+Code implements generic capabilities.
+
+A new profile or family using existing capabilities MUST NOT require Python modification.
+
+## Scope
+
+This policy applies to EVERY CODEX task, including:
+
+- read-only audits;
+
+- analysis;
+
+- inspections;
+
+- investigations;
+
+- implementation tasks;
+
+- validations;
+
+- tests;
+
+- Git-only tasks;
+
+- restorations;
+
+- comparisons;
+
+- reports;
+
+- documentation tasks;
+
+- configuration audits;
+
+- architecture audits;
+
+- debugging;
+
+- regression investigations;
+
+- and any other completed prompt.
+
+The type of task does not change the mandatory documentation requirement.
+
+## Product Protection
+
+Unless explicitly authorized for the concrete task, CODEX must not:
+
+- modify productive code;
+
+- modify architecture;
+
+- modify runtime behavior;
+
+- modify configuration;
+
+- modify profiles;
+
+- modify tests;
+
+- modify workflows;
+
+- modify prompts;
+
+- create commits;
+
+- push changes;
+
+- pull changes;
+
+- merge branches;
+
+- reset the repository;
+
+- create or modify tags.
+
+These restrictions NEVER prevent the mandatory updates to:
+
+- `AGENT_AI/CODEX/BITACORA.md`
+
+- `AGENT_AI/CODEX/CHATGPT.md`
+
+## Privacy
+
+`AGENT_AI/CODEX/` is private agent state.
+
+It must not be published to GitHub or included in official releases.
+
+The mandatory documentation files:
+
+- `AGENT_AI/CODEX/BITACORA.md`
+
+- `AGENT_AI/CODEX/CHATGPT.md`
+
+exist exclusively as private operational memory and communication state.
+
+## Final Rule
+
+EVERY COMPLETED PROMPT MUST END WITH:
+
+1. `BITACORA.md` updated by APPENDING the new chronological entry.
+
+2. `CHATGPT.md` completely regenerated with the latest complete result.
+
+ALWAYS.
+
+WITHOUT EXCEPTION.
+
+REGARDLESS OF WHAT THE INDIVIDUAL PROMPT SAYS.

@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app.controllers.run_controller import RunController
-from app.core.start import iniciar
+from app.core.start import ejecutar_studio_intro_outro, iniciar
 from app.modules.studio import (
     StudioInputMode,
     StudioIntroOutroInputError,
@@ -13,6 +13,7 @@ from app.modules.studio import (
     StudioIntroOutroPlan,
 )
 from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
+from app.shared.profile_identity import ProfileKey
 
 
 class StudioIntroOutroTest(unittest.TestCase):
@@ -60,14 +61,168 @@ class StudioIntroOutroTest(unittest.TestCase):
             controller = RunController(
                 studio_intro_outro_input_service=service,
             )
-            controller._require_intro_outro_assets = Mock(side_effect=lambda position: (intro,) if position == "intro" else (outro,))
+            profile_key = ProfileKey.for_component("studio", "instagram")
+            controller._require_intro_outro_assets = Mock(
+                side_effect=lambda _, position: (intro,)
+                if position == "intro"
+                else (outro,)
+            )
             controller._select_intro_outro_asset = Mock(side_effect=lambda assets, position: intro if position == "INTRO" else outro)
             for answers, want_intro, want_outro in ((["1"], True, False), (["2"], False, True), (["3"], True, True)):
                 with self.subTest(answers=answers), patch("builtins.input", side_effect=answers):
-                    plan = controller.select_studio_intro_outro_plan()
+                    plan = controller.select_studio_intro_outro_plan(profile_key)
                 self.assertEqual(source, plan.source_path)
                 self.assertEqual(want_intro, plan.intro_outro_plan.intro is not None)
                 self.assertEqual(want_outro, plan.intro_outro_plan.outro is not None)
+
+    def test_source_selector_lists_multiple_videos_without_subtitle_selection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = self._file(root, "first.mp4")
+            second = self._file(root, "second.mp4")
+            assets = root / "assets"
+            assets.mkdir()
+            intro = self._file(assets, "intro.mp4")
+            controller = RunController(
+                studio_intro_outro_input_service=StudioIntroOutroInputService(root),
+            )
+            controller._require_intro_outro_assets = Mock(return_value=(intro,))
+            controller._select_intro_outro_asset = Mock(return_value=intro)
+            messages = []
+            controller._print = messages.append
+            controller._select_from_list = Mock(side_effect=(second, "intro"))
+
+            plan = controller.select_studio_intro_outro_plan(
+                ProfileKey.for_component("studio", "instagram"),
+            )
+
+        self.assertEqual(second, plan.source_path)
+        self.assertIn("\nVIDEO\n", messages)
+        self.assertIn("1. first.mp4", messages)
+        self.assertIn("2. second.mp4", messages)
+        self.assertNotIn("SUBTÍTULOS", "\n".join(messages))
+
+    def test_run_intro_outro_uses_only_an_operational_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = self._file(directory, "source.mp4")
+            plan = StudioIntroOutroPlan(
+                source,
+                IntroOutroPlan(intro=IntroOutroSelection(source, "intro")),
+            )
+            subtitle_resolver = Mock()
+            controller = RunController(
+                subtitle_profile_resolver=subtitle_resolver,
+            )
+            profile_key = ProfileKey.for_component("studio", "instagram")
+            selection_order = []
+            controller.select_studio_input_mode = Mock(
+                return_value=StudioInputMode.INTRO_OUTRO.value,
+            )
+            controller._select_studio_operational_profile = Mock(
+                side_effect=lambda: selection_order.append("platform")
+                or (profile_key, Mock()),
+            )
+            controller.select_studio_intro_outro_plan = Mock(
+                side_effect=lambda key: selection_order.append("intro_outro")
+                or plan,
+            )
+            controller._select_studio_profile = Mock()
+            controller.ask_project_name = Mock(return_value="demo")
+            controller.ask_clear_output = Mock(return_value=False)
+            messages = []
+            controller._print = messages.append
+
+            options = controller._run_studio()
+
+        self.assertEqual(StudioInputMode.INTRO_OUTRO.value, options["studio_input_mode"])
+        self.assertIs(plan, options["studio_intro_outro_plan"])
+        self.assertIsNone(options["subtitle_config"])
+        self.assertNotIn("subtitle_profile_key", options)
+        self.assertEqual(profile_key.platform, options["profile_platform"])
+        self.assertNotIn("SUBTÍTULOS", "\n".join(messages))
+        subtitle_resolver.assert_not_called()
+        controller._select_studio_profile.assert_not_called()
+        controller.select_studio_intro_outro_plan.assert_called_once_with(
+            profile_key,
+        )
+        self.assertEqual(["platform", "intro_outro"], selection_order)
+
+    def test_operational_profile_discovery_does_not_use_subtitle_profiles(self):
+        profile_key = ProfileKey(
+            "studio",
+            "test_platform",
+            "test_profile",
+            "test_family",
+        )
+        profile_resolver = Mock()
+        profile_resolver.discover_platforms.return_value = ("test_platform",)
+        profile_resolver.discover_families.return_value = ("test_family",)
+        profile_resolver.discover.return_value = ((profile_key, "Test profile"),)
+        profile_resolver.load.return_value = {"profile_id": "test_profile"}
+        subtitle_resolver = Mock()
+        loader = Mock()
+        loaded_profile = Mock()
+        loader.load.return_value = loaded_profile
+        controller = RunController(
+            profile_resolver=profile_resolver,
+            subtitle_profile_resolver=subtitle_resolver,
+            studio_profile_loader=loader,
+        )
+        controller._print = Mock()
+        controller._select_from_list = Mock(return_value="test_platform")
+
+        selected_key, selected_profile = controller._select_studio_operational_profile()
+
+        self.assertEqual(profile_key, selected_key)
+        self.assertIs(loaded_profile, selected_profile)
+        subtitle_resolver.assert_not_called()
+        profile_resolver.discover.assert_called_once_with(
+            "studio",
+            "test_platform",
+            "test_family",
+        )
+
+    def test_intro_outro_execution_passes_no_subtitle_to_renderer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = self._file(directory, "source.mp4")
+            original_bytes = source.read_bytes()
+            plan = StudioIntroOutroPlan(
+                source,
+                IntroOutroPlan(outro=IntroOutroSelection(source, "outro")),
+            )
+            profile_key = ProfileKey.for_component("studio", "instagram")
+            config = Mock()
+            config.get_profile_key.return_value = profile_key
+            config.get_profile_config.return_value = {"profile_id": profile_key.profile_id}
+            profile = Mock()
+            profile_loader = Mock()
+            profile_loader.load.return_value = profile
+            output_path = Path(directory) / "final.mp4"
+            resolver = Mock()
+            resolver.resolve.return_value = output_path
+            renderer = Mock()
+            renderer.render.return_value = "rendered"
+
+            result = ejecutar_studio_intro_outro(
+                plan,
+                config_manager=config,
+                profile_loader=profile_loader,
+                output_path_resolver=resolver,
+                render_service=renderer,
+            )
+
+            self.assertEqual(original_bytes, source.read_bytes())
+
+        self.assertEqual("rendered", result)
+        config.get_subtitle_profile.assert_not_called()
+        renderer.render.assert_called_once_with(
+            video_path=source,
+            subtitle_path=None,
+            profile_key=profile_key,
+            profile=profile,
+            output_path=output_path,
+            intro_outro_selection=plan.intro_outro_plan,
+        )
 
     def test_start_dispatches_plan_without_standard_studio_pipeline(self):
         with tempfile.TemporaryDirectory() as directory:

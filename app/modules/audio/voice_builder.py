@@ -5,9 +5,10 @@ import time
 import edge_tts
 
 from app.managers.project_manager import ProjectManager
-from app.modules.subtitles.timing import edge_word_boundaries_path
+from app.modules.subtitles.policies.timing import edge_word_boundaries_path
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
+from app.shared.operational_error import OperationalError, create_operational_error
 
 
 class VoiceBuilder:
@@ -76,25 +77,56 @@ class VoiceBuilder:
             exist_ok=True
         )
 
-        asyncio.run(
-            self._generate_audio(
-                text=text,
-                output_path=output_path
+        try:
+            asyncio.run(
+                self._generate_audio(
+                    text=text,
+                    output_path=output_path
+                )
             )
-        )
+        except OperationalError:
+            raise
+        except Exception as error:
+            raise create_operational_error(
+                family="AUDIO",
+                user_message="No se pudo generar la voz con Edge TTS.",
+                recommended_action="Comprueba la voz configurada y la disponibilidad del servicio.",
+                operation="Generar voz con Edge TTS",
+                resource=str(output_path),
+                technical_metadata={
+                    "voice": self.voice,
+                    "phase": "voice_generation",
+                },
+            ) from error
 
         if not output_path.exists():
-            raise FileNotFoundError(
+            error = FileNotFoundError(
                 "La generación de voz terminó, "
                 "pero no se encontró el archivo: "
                 f"{output_path}"
             )
+            raise create_operational_error(
+                family="VALIDATION",
+                user_message="La generación de voz terminó sin crear el archivo esperado.",
+                recommended_action="Revisa el servicio de voz y el directorio de salida.",
+                operation="Validar salida de voz",
+                resource=str(output_path),
+                technical_metadata={"voice": self.voice, "phase": "voice_output"},
+            ) from error
 
         if output_path.stat().st_size <= 0:
-            raise RuntimeError(
+            error = RuntimeError(
                 "El archivo de voz generado "
                 "está vacío."
             )
+            raise create_operational_error(
+                family="VALIDATION",
+                user_message="La generación de voz creó un archivo vacío.",
+                recommended_action="Revisa el servicio de voz y vuelve a intentarlo.",
+                operation="Validar salida de voz",
+                resource=str(output_path),
+                technical_metadata={"voice": self.voice, "phase": "voice_output"},
+            ) from error
 
         elapsed = (
             time.perf_counter()

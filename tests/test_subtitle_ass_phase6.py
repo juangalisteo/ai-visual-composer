@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from app.modules.subtitles.models.word_by_word_model import WordByWordModel
+from app.modules.subtitles.modes.word_by_word import WordByWordModel
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.subtitles.ass_subtitle_builder import (
     AssSubtitleBuilder,

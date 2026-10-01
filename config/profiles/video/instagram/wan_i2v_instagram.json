@@ -1,10 +1,5 @@
 {
     "platform": "video",
-    "format": "instagram",
-    "resolution": "1080x1920",
-    "duration": 4.083333333333333,
-    "tone": "i2v",
-
     "video_component": {
         "profile": "Instagram",
         "generation": {

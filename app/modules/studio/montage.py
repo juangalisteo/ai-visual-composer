@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 import json
 from pathlib import Path
 import re
@@ -19,6 +18,11 @@ from app.shared.media_probe import MediaInfo, MediaProbe
 from app.shared.progress_logger import ProgressLogger
 from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.video_validator import VideoValidator
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+    summarize_technical_text,
+)
 
 
 class StudioMontageInputError(ValueError):
@@ -27,22 +31,6 @@ class StudioMontageInputError(ValueError):
 
 class StudioMontageError(RuntimeError):
     """Expected user-facing error while assembling a STUDIO montage."""
-
-
-class StudioMontageMode(str, Enum):
-    SOLO_MONTAJE = "solo_montaje"
-    MONTAJE_COMPLETO = "montaje_completo"
-
-
-def coerce_studio_montage_mode(value):
-    if isinstance(value, StudioMontageMode):
-        return value
-    try:
-        return StudioMontageMode(str(value).strip().lower())
-    except ValueError as error:
-        raise StudioMontageInputError(
-            f"Modo de MONTAJE DE VIDEOS no soportado: {value}."
-        ) from error
 
 
 @dataclass(frozen=True)
@@ -84,7 +72,6 @@ class StudioMontageCandidates:
 @dataclass(frozen=True)
 class StudioMontagePlan:
     profile_key: ProfileKey
-    mode: StudioMontageMode
     transitions_enabled: bool
     clips: tuple[StudioMontageClip, ...]
 
@@ -93,12 +80,11 @@ class StudioMontagePlan:
             raise TypeError("MONTAJE DE VIDEOS requiere un ProfileKey explicito.")
         if self.profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("MONTAJE DE VIDEOS requiere component=studio.")
-        mode = coerce_studio_montage_mode(self.mode)
         if not isinstance(self.transitions_enabled, bool):
             raise TypeError("transitions_enabled debe ser booleano.")
-        if not self.clips:
+        if len(self.clips) < 2:
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS no contiene clips."
+                "El plan de MONTAJE DE VIDEOS requiere al menos dos clips."
             )
         if any(not isinstance(clip, StudioMontageClip) for clip in self.clips):
             raise TypeError("El plan contiene un clip de montaje no valido.")
@@ -118,12 +104,11 @@ class StudioMontagePlan:
                 "El clip seleccionado ya no existe: "
                 f"{missing}."
             )
-        object.__setattr__(self, "mode", mode)
         object.__setattr__(self, "clips", tuple(self.clips))
 
     @property
     def platform(self):
-        return self.profile_key.platform.value
+        return self.profile_key.platform
 
     @property
     def profile_id(self):
@@ -173,7 +158,7 @@ class StudioMontageResult:
 
 
 @dataclass(frozen=True)
-class StudioMontageFullResult:
+class StudioMontageRenderResult:
     montage_result: StudioMontageResult
     render_result: object
 
@@ -259,18 +244,20 @@ class StudioMontagePlanningService:
                 )
             seen.add(temporary_id)
             selected.append(clip)
+        if len(selected) < 2:
+            raise StudioMontageInputError(
+                "Selecciona al menos dos clips para MONTAJE DE VIDEOS."
+            )
         return tuple(selected)
 
     def create_plan(
         self,
         profile_key,
-        mode,
         transitions_enabled,
         clips,
     ):
         return StudioMontagePlan(
             profile_key=profile_key,
-            mode=coerce_studio_montage_mode(mode),
             transitions_enabled=transitions_enabled,
             clips=tuple(clips),
         )
@@ -396,10 +383,25 @@ class StudioMontageService:
                 try:
                     self.runner.run(command)
                 except subprocess.CalledProcessError as error:
-                    raise StudioMontageError(
-                        "FFmpeg no pudo aplicar las transiciones del montaje."
-                        if plan.transitions_enabled
-                        else "FFmpeg no pudo concatenar los clips compatibles."
+                    metadata = {
+                        "command": tuple(map(str, error.cmd or command)),
+                        "returncode": error.returncode,
+                        "phase": "montage_transitions" if plan.transitions_enabled else "montage_concat",
+                    }
+                    stderr = summarize_technical_text(error.stderr)
+                    if stderr:
+                        metadata["stderr_summary"] = stderr
+                    raise create_operational_error(
+                        family="FFMPEG",
+                        user_message=(
+                            "FFmpeg no pudo aplicar las transiciones del montaje."
+                            if plan.transitions_enabled
+                            else "FFmpeg no pudo concatenar los clips compatibles."
+                        ),
+                        recommended_action="Revisa los clips seleccionados y el diagnóstico del proceso.",
+                        operation="STUDIO/montaje_videos",
+                        resource=str(output_path),
+                        technical_metadata=metadata,
                     ) from error
 
                 try:
@@ -411,6 +413,8 @@ class StudioMontageService:
                         ),
                         expected_info=expected_info,
                     )
+                except OperationalError:
+                    raise
                 except (
                     FileNotFoundError,
                     RuntimeError,
@@ -731,6 +735,8 @@ class StudioMontageService:
     def _inspect_clip(self, clip):
         try:
             return self.probe.inspect(clip.path)
+        except OperationalError:
+            raise
         except FileNotFoundError as error:
             raise StudioMontageError(
                 f"El clip seleccionado ya no existe: {clip.path}."
@@ -946,7 +952,26 @@ class StudioMontageService:
                 expected_duration=source_info.duration,
                 max_duration_difference=profile.max_duration_difference,
             )
-        except (FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as error:
+        except OperationalError:
+            raise
+        except subprocess.CalledProcessError as error:
+            metadata = {
+                "command": tuple(map(str, error.cmd or command)),
+                "returncode": error.returncode,
+                "phase": "montage_normalization",
+            }
+            stderr = summarize_technical_text(error.stderr)
+            if stderr:
+                metadata["stderr_summary"] = stderr
+            raise create_operational_error(
+                family="FFMPEG",
+                user_message="FFmpeg no pudo normalizar un clip del montaje.",
+                recommended_action="Revisa el clip seleccionado y el diagnóstico del proceso.",
+                operation="STUDIO/montaje_videos",
+                resource=str(output_path),
+                technical_metadata=metadata,
+            ) from error
+        except (FileNotFoundError, RuntimeError) as error:
             raise StudioMontageError(
                 "No se pudo normalizar el clip: "
                 f"{clip.original_name}. Comprobacion: {error}"

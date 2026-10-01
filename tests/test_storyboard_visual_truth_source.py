@@ -10,6 +10,17 @@ from app.modules.images.image_builder import ImageBuilder
 from app.modules.storyboard.storyboard_composer import StoryboardComposer
 from app.modules.storyboard.storyboard_validator import StoryboardValidator
 from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
+from app.visual_quality import (
+    ImageQualityFlowCoordinator,
+    ImageValidator,
+    NuditySafetyCheck,
+)
+
+
+class SafeNudityDetector:
+    def detect(self, path):
+        del path
+        return ()
 
 
 class StoryboardVisualTruthSourceTest(unittest.TestCase):
@@ -237,6 +248,15 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                         budget_policy=PromptBudgetPolicy(
                             encoder_token_limit=10_000,
                         )
+                    ),
+                    image_quality_flow=ImageQualityFlowCoordinator(
+                        validator=ImageValidator(
+                            checks=(
+                                NuditySafetyCheck(
+                                    detector=SafeNudityDetector(),
+                                ),
+                            ),
+                        ),
                     ),
                 )
 

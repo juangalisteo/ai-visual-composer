@@ -9,7 +9,6 @@ from unittest.mock import Mock, patch
 
 from app.modules.studio import (
     StudioInputPreparationService,
-    StudioMontageMode,
     StudioMontagePlanningService,
     StudioMontageService,
 )
@@ -142,7 +141,6 @@ class StudioMontagePhase3ContractTest(unittest.TestCase):
             )
             plan = planner.create_plan(
                 ProfileKey.for_component("studio", "instagram"),
-                StudioMontageMode.SOLO_MONTAJE,
                 False,
                 planner.parse_order("1 2", candidates),
             )
@@ -246,7 +244,6 @@ class StudioMontagePhase3RealFFmpegTest(unittest.TestCase):
         candidates = planner.discover(SimpleNamespace(video_extensions=(".mp4",)))
         return planner.create_plan(
             ProfileKey.for_component("studio", "instagram"),
-            StudioMontageMode.SOLO_MONTAJE,
             False,
             planner.parse_order(order, candidates),
         )

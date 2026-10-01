@@ -1,7 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from app.modules.video.video_build_context import (
     VideoBuildArtifacts,
@@ -40,6 +40,13 @@ class VideoBuilderOrchestrationTest(
             visual_effect_builder=object()
         )
 
+    def make_filter_context(
+        self
+    ):
+        return SimpleNamespace(
+            cleanup_temporary_subtitle=Mock()
+        )
+
     def test_build_keeps_public_api_and_returns_output_path(
         self
     ):
@@ -48,7 +55,7 @@ class VideoBuilderOrchestrationTest(
             "final.mp4"
         )
         components = self.make_components()
-        filter_context = object()
+        filter_context = self.make_filter_context()
         artifacts = VideoBuildArtifacts(
             filter_complex="[vout]",
             command=[
@@ -183,6 +190,7 @@ class VideoBuilderOrchestrationTest(
             video_clips_manifest_path=None,
             output_path="final.mp4"
         )
+        filter_context.cleanup_temporary_subtitle.assert_called_once_with()
 
     def test_build_accepts_video_clips_manifest_without_changing_api(
         self
@@ -197,6 +205,7 @@ class VideoBuilderOrchestrationTest(
                 "ffmpeg"
             ]
         )
+        filter_context = self.make_filter_context()
 
         with patch(
             "app.modules.video.video_builder"
@@ -221,7 +230,7 @@ class VideoBuilderOrchestrationTest(
                 components
             )
             filter_context_factory_class.return_value.build.return_value = (
-                object()
+                filter_context
             )
             render_service_class.return_value.build_artifacts.return_value = (
                 artifacts
@@ -247,6 +256,7 @@ class VideoBuilderOrchestrationTest(
             video_clips_manifest_path="video_clips.json",
             output_path="final.mp4"
         )
+        filter_context.cleanup_temporary_subtitle.assert_called_once_with()
 
     def test_build_transports_explicit_disabled_subtitle_rendering(self):
         context = self.make_context("final.mp4")
@@ -354,8 +364,8 @@ class VideoBuilderOrchestrationTest(
             self.make_components()
         ]
         filter_contexts = [
-            object(),
-            object()
+            self.make_filter_context(),
+            self.make_filter_context(),
         ]
         artifacts = [
             VideoBuildArtifacts(
@@ -438,6 +448,8 @@ class VideoBuilderOrchestrationTest(
             components[0].visual_effect_builder,
             components[1].visual_effect_builder
         )
+        for filter_context in filter_contexts:
+            filter_context.cleanup_temporary_subtitle.assert_called_once_with()
 
 
 if __name__ == "__main__":

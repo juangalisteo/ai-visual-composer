@@ -17,28 +17,28 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
     COMPONENTS = ("guion", "imagen", "video")
     PLATFORMS = ("instagram", "youtube")
-    STYLES = {
+    MODES = {
         "linea_unica": "single_line",
         "palabra_por_palabra": "word_by_word",
     }
     MAIN_PROFILES = {
         ("guion", "instagram"): Path(
-            "config/profiles/guion/instagram/perfil_guion_instagram.json"
+            "config/profiles/guion/instagram/estandar/perfil_guion_instagram.json"
         ),
         ("guion", "youtube"): Path(
-            "config/profiles/guion/youtube/perfil_guion_youtube.json"
+            "config/profiles/guion/youtube/estandar/perfil_guion_youtube.json"
         ),
         ("imagen", "instagram"): Path(
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json"
+            "config/profiles/imagen/instagram/estandar/perfil_imagen_instagram.json"
         ),
         ("imagen", "youtube"): Path(
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json"
+            "config/profiles/imagen/youtube/estandar/perfil_imagen_youtube.json"
         ),
         ("video", "instagram"): Path(
-            "config/profiles/video/instagram/perfil_video_instagram.json"
+            "config/profiles/video/instagram/estandar/perfil_video_instagram.json"
         ),
         ("video", "youtube"): Path(
-            "config/profiles/video/youtube/perfil_video_youtube.json"
+            "config/profiles/video/youtube/estandar/perfil_video_youtube.json"
         ),
     }
     EXPECTED_CUE_POLICIES = {
@@ -48,6 +48,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "min_duration": 1.0,
             "max_duration": 3.0,
             "significant_gap_threshold": 0.35,
+            "uppercase": False,
             "split_on_punctuation": True,
             "avoid_orphan_words": True,
             "merge_short_chunks": True,
@@ -132,7 +133,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             for component in self.COMPONENTS
             for path in Path(
                 "config/profiles"
-            ).glob(f"{component}/*/estandar/*.json")
+            ).glob(f"{component}/*/estandar/subtitulos/*.json")
         }
 
         self.assertTrue(self._expected_paths().issubset(actual))
@@ -142,7 +143,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     def test_profiles_have_valid_unique_canonical_identity(self):
         profile_ids = set()
 
-        for component, platform, suffix, style, path in self._cases():
+        for component, platform, suffix, mode, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
                 expected_id = f"subtitulo_{component}_{platform}_{suffix}"
@@ -151,37 +152,38 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                     {
                     "component",
                     "platform",
+                    "family",
                     "profile_id",
                     "display_name",
-                    "style",
-                        "cue_policy",
-                        "render_style",
+                    "cue_policy",
+                    "render_style",
                     },
                     set(profile),
                 )
                 self.assertEqual(component, profile["component"])
                 self.assertEqual(platform, profile["platform"])
+                self.assertEqual("estandar", profile["family"])
                 self.assertEqual(expected_id, profile["profile_id"])
                 self.assertEqual(
                     (
                         "Línea única"
-                        if style == "single_line"
+                        if mode == "single_line"
                         else "Palabra por palabra"
                     ),
                     profile["display_name"],
                 )
-                self.assertEqual(style, profile["style"])
+                self.assertEqual(mode, profile["cue_policy"]["mode"])
                 self.assertNotIn(expected_id, profile_ids)
                 profile_ids.add(expected_id)
 
         self.assertEqual(12, len(profile_ids))
 
     def test_profiles_preserve_the_final_cue_and_render_contract(self):
-        for _, platform, _, style, path in self._cases():
+        for _, platform, _, mode, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
                 self.assertEqual(
-                    self.EXPECTED_CUE_POLICIES[style],
+                    self.EXPECTED_CUE_POLICIES[mode],
                     profile["cue_policy"],
                 )
                 self.assertEqual(
@@ -225,7 +227,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 )
 
     def test_official_runtime_loads_new_cue_profiles(self):
-        for component, platform, _, style, path in self._cases():
+        for component, platform, _, _, path in self._cases():
             profile_key = ProfileKey.for_component(component, platform)
             environment = {
                 "MC_PROFILE_COMPONENT": component,
@@ -259,16 +261,16 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     def _cases(self):
         for component in self.COMPONENTS:
             for platform in self.PLATFORMS:
-                for suffix, style in self.STYLES.items():
+                for suffix, mode in self.MODES.items():
                     yield (
                         component,
                         platform,
                         suffix,
-                        style,
+                        mode,
                         Path("config/profiles")
                         / component
                         / platform
-                        / "estandar"
+                        / "estandar" / "subtitulos"
                         / f"subtitulo_{component}_{platform}_{suffix}.json",
                     )
 

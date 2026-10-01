@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from app.modules.images.backends import ComfyUIBackend, ComfyUIBackendError
 from app.modules.images.image_builder import ImageBuilder
+from app.shared.operational_error import OperationalError
 
 
 class MockResponse:
@@ -73,6 +74,38 @@ class RecordingBackend:
 
 
 class ComfyUIBackendTest(unittest.TestCase):
+
+    def test_generate_adapts_backend_failure_with_safe_context(self):
+        class FailingBackend(ComfyUIBackend):
+            def _generate(self, **kwargs):
+                raise ComfyUIBackendError(
+                    "backend failure",
+                    category="OUT_OF_MEMORY",
+                    prompt_id="prompt-123",
+                    node_id="30",
+                    node_type="ModelSamplingFlux",
+                    exception_type="OutOfMemoryError",
+                    status="error",
+                )
+
+        with self.assertRaises(OperationalError) as context:
+            FailingBackend(workflow_path="config/test-workflow.json").generate(
+                prompt="must not enter metadata",
+                scene_number=7,
+                output_dir=Path("output/images"),
+                width=1080,
+                height=1920,
+            )
+
+        error = context.exception
+        self.assertEqual("EXTERNAL_SERVICE", error.context.family)
+        self.assertEqual("comfyui", error.context.technical_metadata["service"])
+        self.assertEqual("image", error.context.technical_metadata["backend"])
+        self.assertEqual("prompt-123", error.context.technical_metadata["prompt_id"])
+        self.assertEqual("30", error.context.technical_metadata["node_id"])
+        self.assertEqual("OUT_OF_MEMORY", error.context.technical_metadata["category"])
+        self.assertNotIn("must not enter metadata", str(error.context.technical_metadata))
+        self.assertIsInstance(error.__cause__, ComfyUIBackendError)
 
     def test_inject_prompt_matches_legacy_behavior(self):
         workflow = self._workflow()

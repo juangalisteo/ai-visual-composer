@@ -12,6 +12,10 @@ from app.modules.video_component.models import (
     ComfyUIVideoWorkflow,
     VideoClipGenerationResult,
 )
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+)
 
 
 class ComfyUIVideoBackend:
@@ -35,6 +39,27 @@ class ComfyUIVideoBackend:
         prepared_workflow: ComfyUIVideoWorkflow,
         output_dir,
         output_name="clip_001.mp4"
+    ) -> VideoClipGenerationResult:
+        try:
+            return self._generate(
+                prepared_workflow=prepared_workflow,
+                output_dir=output_dir,
+                output_name=output_name,
+            )
+        except OperationalError:
+            raise
+        except ComfyUIVideoBackendError as error:
+            raise _operational_video_backend_error(
+                error,
+                prepared_workflow=prepared_workflow,
+            ) from error
+
+    def _generate(
+        self,
+        *,
+        prepared_workflow,
+        output_dir,
+        output_name,
     ) -> VideoClipGenerationResult:
         output_dir = Path(
             output_dir
@@ -438,6 +463,41 @@ def _find_video_output(
                 ):
                     return item
     return None
+
+
+def _operational_video_backend_error(
+    error,
+    *,
+    prepared_workflow,
+):
+    backend_prompt = prepared_workflow.backend_prompt
+    metadata = {
+        "service": "comfyui",
+        "backend": "wan_i2v",
+        "category": error.category,
+        "workflow": backend_prompt.workflow,
+    }
+    for field_name in (
+        "prompt_id",
+        "node_id",
+        "node_type",
+        "exception_type",
+        "status",
+    ):
+        value = getattr(error, field_name, "")
+        if value:
+            metadata[field_name] = value
+    return create_operational_error(
+        family="EXTERNAL_SERVICE",
+        user_message="ComfyUI no pudo generar el clip de video solicitado.",
+        recommended_action=(
+            "Comprueba que ComfyUI y el backend Wan/I2V esten disponibles "
+            "antes de reintentar."
+        ),
+        operation="Generar video I2V con ComfyUI",
+        resource=str(backend_prompt.source_image),
+        technical_metadata=metadata,
+    )
 
 
 def _extract_error_detail(

@@ -11,6 +11,7 @@ from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
 from app.shared.profile_identity import ProfileKey
+from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -150,14 +151,16 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
             data["render_style"]["shadow"] = -1
             path = (
                 root
-                / "guion/instagram/estandar"
+                / "guion/instagram/estandar/subtitulos"
                 / "subtitulo_guion_instagram_prueba_c.json"
             )
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps(data), encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "shadow debe ser >= 0"):
+            with self.assertRaises(OperationalError) as captured:
                 SubtitleProfileResolver(root).discover_profiles(main_key)
+            self.assertEqual("VALIDATION", captured.exception.context.family)
+            self.assertIsInstance(captured.exception.__cause__, ValueError)
 
     def _assert_invalid_standard_profile(self, field, value):
         with tempfile.TemporaryDirectory() as directory:
@@ -172,32 +175,32 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
             data["render_style"][field] = value
             path.write_text(json.dumps(data), encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, f"{field}.*Valor recibido"):
+            with self.assertRaises(OperationalError) as captured:
                 SubtitleProfileResolver(root).load(key)
+            self.assertEqual("VALIDATION", captured.exception.context.family)
+            self.assertIsInstance(captured.exception.__cause__, ValueError)
 
     def _assert_invalid_design_profile(self, field, value):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            profile_key = ProfileKey.for_component(
-                "video",
-                "instagram",
-                family="design",
-                profile_id="video_instagram_design_modo_conciencia_reels",
+            key = SubtitleProfileKey(
+                "video", "instagram", "modo_conciencia_reels", "design",
             )
-            key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
-            path = root / key.relative_path
+            path = root / "video/instagram/design/subtitulos/modo_conciencia_reels.json"
             path.parent.mkdir(parents=True)
             data = json.loads(
                 Path(
                     "config/profiles/video/instagram/design/"
-                    "modo_conciencia_reels.json"
+                    "subtitulos/modo_conciencia_reels.json"
                 ).read_text(encoding="utf-8")
             )
-            data["subtitle_profile"]["render_style"][field] = value
+            data["render_style"][field] = value
             path.write_text(json.dumps(data), encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, f"{field}.*Valor recibido"):
+            with self.assertRaises(OperationalError) as captured:
                 SubtitleProfileResolver(root).load(key)
+            self.assertEqual("VALIDATION", captured.exception.context.family)
+            self.assertIsInstance(captured.exception.__cause__, ValueError)
 
     def _assert_invalid(self, field, value, message):
         with self.assertRaisesRegex((TypeError, ValueError), message):
@@ -214,7 +217,7 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     @staticmethod
     def _source_standard():
         return Path(
-            "config/profiles/guion/instagram/estandar/"
+            "config/profiles/guion/instagram/estandar/subtitulos/"
             "subtitulo_guion_instagram_linea_unica.json"
         )
 

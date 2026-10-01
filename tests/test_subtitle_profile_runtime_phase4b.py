@@ -6,13 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
-from app.modules.subtitles.models.single_line_model import (
+from app.modules.subtitles.modes.single_line import (
     SingleLineModel,
 )
-from app.modules.subtitles.models.word_by_word_model import (
+from app.modules.subtitles.modes.word_by_word import (
     WordByWordModel,
 )
-from app.modules.subtitles.srt_optimizer import SrtOptimizer
+from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
 from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
 )
@@ -23,11 +23,10 @@ from app.modules.video.video_config import VideoConfigLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileFamily,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_identity import (
     SubtitleProfileKey,
     SubtitleStyle,
@@ -50,7 +49,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         ProfileComponent.IMAGEN,
         ProfileComponent.VIDEO,
     )
-    PLATFORMS = tuple(ProfilePlatform)
+    PLATFORMS = ("instagram", "youtube")
     STYLES = tuple(SubtitleStyle)
 
     def setUp(self):
@@ -79,28 +78,31 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertEqual(12, len(resolved_paths))
         self.assertEqual(12, len(profile_ids))
 
-    def test_design_subtitle_profile_is_embedded_in_one_design_json(self):
+    def test_design_subtitle_profile_is_autonomous(self):
         for component in ProfileComponent:
             main_key = ProfileKey.for_component(
                 component,
-                ProfilePlatform.INSTAGRAM,
-                family=ProfileFamily.DESIGN,
+                "instagram",
+                family="design",
                 profile_id=(
                     f"{component.value}_instagram_design_"
                     "modo_conciencia_reels"
                 ),
             )
-            for style in (SubtitleStyle.WORD_BY_WORD,):
-                with self.subTest(component=component.value, style=style.value):
-                    key = SubtitleProfileKey.for_profile(main_key, style)
+            descriptors = self.subtitle_resolver.discover_profiles_for_family(
+                component, "instagram", "design",
+            )
+            for descriptor in descriptors:
+                with self.subTest(component=component.value, mode=descriptor.mode):
+                    key = descriptor.key
                     resolved = self.subtitle_resolver.load(key)
-                    self.assertEqual(ProfileFamily.DESIGN, resolved.key.family)
-                    self.assertEqual(main_key.profile_id, resolved.key.parent_profile_id)
+                    self.assertEqual("design", resolved.key.family)
                     self.assertEqual(
                         Path("config/profiles")
                         / component.value
                         / "instagram"
                         / "design"
+                        / "subtitulos"
                         / "modo_conciencia_reels.json",
                         resolved.path,
                     )
@@ -124,26 +126,27 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             family="design",
             profile_id="studio_instagram_design_modo_conciencia_reels",
         )
-        design_key = SubtitleProfileKey.for_profile(main_key, "single_line")
+        design_key = SubtitleProfileKey(
+            "studio", "instagram", "modo_conciencia_reels", "design",
+        )
         system_source = self._expected_path(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
             SubtitleStyle.SINGLE_LINE,
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            system_path = root / "studio/instagram/estandar/subtitulo_studio_instagram_linea_unica.json"
+            system_path = root / "studio/instagram/estandar/subtitulos/subtitulo_studio_instagram_linea_unica.json"
             system_path.parent.mkdir(parents=True)
             system_path.write_text(system_source.read_text(encoding="utf-8"), encoding="utf-8")
 
-            with self.assertRaisesRegex(
-                FileNotFoundError,
-                "No existe el perfil de subtitulos esperado",
-            ):
+            with self.assertRaises(OperationalError) as caught:
                 SubtitleProfileResolver(root).load(design_key)
 
-    def test_each_design_profile_declares_and_automatically_resolves_word_by_word(self):
-        controller = RunController()
+        self.assertEqual("PROFILE", caught.exception.context.family)
+        self.assertIsInstance(caught.exception.__cause__, FileNotFoundError)
+
+    def test_each_design_profile_resolves_word_by_word_from_its_own_contract(self):
         for component in ProfileComponent:
             main_key = ProfileKey.for_component(
                 component,
@@ -155,18 +158,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 ),
             )
             with self.subTest(component=component.value):
-                self.assertEqual(
-                    "word_by_word",
-                    self.profile_resolver.declared_subtitle_style(main_key),
-                )
-                self.assertEqual(
-                    "word_by_word",
-                    controller._select_profile_subtitle_config(main_key),
-                )
-                subtitle = self.subtitle_resolver.load(
-                    SubtitleProfileKey.for_profile(main_key, "word_by_word")
-                )
-                self.assertEqual(main_key.profile_id, subtitle.key.parent_profile_id)
+                descriptor = self.subtitle_resolver.discover_profiles_for_family(
+                    component, "instagram", "design",
+                )[0]
+                subtitle = self.subtitle_resolver.load(descriptor.key)
+                self.assertEqual("word_by_word", subtitle.cue_policy["mode"])
 
     def test_system_keeps_the_generic_subtitle_style_selector(self):
         controller = RunController()
@@ -181,44 +177,40 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertEqual("single_line", style)
         self.assertTrue(any("SUBT" in message for message in messages))
 
-    def test_rejects_invalid_component_platform_and_style(self):
+    def test_rejects_invalid_component_platform_and_profile_id(self):
         with self.assertRaisesRegex(ValueError, "Componente"):
             SubtitleProfileKey(
                 component="design",
                 platform="instagram",
-                style="single_line",
-                profile_id="invalid"
+                profile_id="invalid",
+                family="estandar",
             )
 
         with self.assertRaisesRegex(ValueError, "Plataforma"):
             SubtitleProfileKey(
                 component="video",
-                platform="tiktok",
-                style="single_line",
-                profile_id="invalid"
+                platform="instagram reels",
+                profile_id="invalid",
+                family="estandar",
             )
 
-        with self.assertRaisesRegex(ValueError, "Estilo"):
+        with self.assertRaisesRegex(ValueError, "profile_id"):
             SubtitleProfileKey(
                 component="video",
                 platform="instagram",
-                style="invalid style",
-                profile_id="invalid"
+                profile_id="invalid profile",
+                family="estandar",
             )
 
-    def test_rejects_incompatible_profile_id(self):
-        with self.assertRaisesRegex(
-            ValueError,
-            "profile_id de subtitulos incompatible"
-        ):
-            SubtitleProfileKey(
-                component="video",
-                platform="instagram",
-                style="single_line",
-                profile_id=(
-                    "subtitulo_video_youtube_linea_unica"
-                )
-            )
+    def test_accepts_opaque_subtitle_profile_id(self):
+        key = SubtitleProfileKey(
+            component="video",
+            platform="instagram",
+            profile_id="test_profile",
+            family="estandar",
+        )
+
+        self.assertEqual("test_profile", key.profile_id)
 
     def test_missing_official_profile_is_explicit_without_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -226,11 +218,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             alternatives = (
                 (
                     ProfileComponent.VIDEO,
-                    ProfilePlatform.YOUTUBE,
+                    "youtube",
                 ),
                 (
                     ProfileComponent.IMAGEN,
-                    ProfilePlatform.INSTAGRAM,
+                    "instagram",
                 ),
             )
             for component, platform in alternatives:
@@ -255,11 +247,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             )
             resolver = SubtitleProfileResolver(root)
 
-            with self.assertRaisesRegex(
-                FileNotFoundError,
-                "No existe el perfil de subtitulos esperado"
-            ):
+            with self.assertRaises(OperationalError) as caught:
                 resolver.load(instagram_key)
+
+        self.assertEqual("PROFILE", caught.exception.context.family)
+        self.assertIsInstance(caught.exception.__cause__, FileNotFoundError)
 
     def test_loaded_profiles_do_not_share_mutable_configuration(self):
         key = SubtitleProfileKey.for_profile(
@@ -283,7 +275,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertEqual(
             self._load(self._expected_path(
                 ProfileComponent.VIDEO,
-                ProfilePlatform.INSTAGRAM,
+                "instagram",
                 SubtitleStyle.WORD_BY_WORD
             ))["cue_policy"],
             second.cue_policy
@@ -302,7 +294,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 self._expected_path(
                     key.component,
                     key.platform,
-                    key.style
+                    SubtitleStyle.WORD_BY_WORD,
                 )
             )
             data["component"] = "video"
@@ -311,11 +303,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 encoding="utf-8"
             )
 
-            with self.assertRaisesRegex(
-                ValueError,
-                "identidad interna"
-            ):
+            with self.assertRaises(OperationalError) as caught:
                 SubtitleProfileResolver(root).load(key)
+
+        self.assertEqual("PROFILE", caught.exception.context.family)
+        self.assertIsInstance(caught.exception.__cause__, ValueError)
 
     def test_console_keeps_two_styles_and_resolves_selected_identity(self):
         selections = (
@@ -338,7 +330,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             self.assertEqual(
                 self._expected_path(
                     ProfileComponent.VIDEO,
-                    ProfilePlatform.INSTAGRAM,
+                    "instagram",
                     style
                 ),
                 self.subtitle_resolver.resolve(key)
@@ -352,7 +344,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             )
             with self.subTest(
                 component=component.value,
-                platform=platform.value,
+                platform=platform,
                 style=style.value
             ), patch.dict(os.environ, environment, clear=True):
                 manager = ConfigManager()
@@ -394,7 +386,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
             with self.subTest(
                 component=component.value,
-                platform=platform.value,
+                platform=platform,
                 style=style.value
             ), patch.dict(os.environ, environment, clear=True):
                 resolved = ConfigManager().get_subtitle_profile(
@@ -435,18 +427,17 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         }
 
         with patch.dict(os.environ, environment, clear=True):
-            with self.assertRaisesRegex(
-                ValueError,
-                "Falta identidad estructurada de perfil"
-            ):
+            with self.assertRaises(OperationalError) as caught:
                 ConfigManager().get_subtitle_profile(
                     "word_by_word"
                 )
 
+        self.assertEqual("CONFIG", caught.exception.context.family)
+
     def test_video_config_uses_injected_resolved_render_style(self):
         environment = self._environment(
             ProfileComponent.VIDEO,
-            ProfilePlatform.YOUTUBE
+            "youtube"
         )
 
         with patch.dict(os.environ, environment, clear=True):
@@ -460,7 +451,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         expected = self._load(
             self._expected_path(
                 ProfileComponent.VIDEO,
-                ProfilePlatform.YOUTUBE,
+                "youtube",
                 SubtitleStyle.SINGLE_LINE
             )
         )["render_style"]
@@ -516,7 +507,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         main_key = ProfileKey.for_component(component, platform)
         return {
             "MC_PROFILE_COMPONENT": component.value,
-            "MC_PROFILE_PLATFORM": platform.value,
+            "MC_PROFILE_PLATFORM": platform,
             "MC_PROFILE_ID": main_key.profile_id,
         }
 

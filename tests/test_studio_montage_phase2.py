@@ -12,13 +12,13 @@ from app.core.start import ejecutar_studio_montaje
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioMontageError,
-    StudioMontageMode,
     StudioMontagePlanningService,
     StudioMontageResult,
     StudioMontageService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
 from app.shared.profile_identity import ProfileKey
+from app.shared.operational_error import OperationalError
 
 
 class StudioMontagePhase2Test(unittest.TestCase):
@@ -74,7 +74,6 @@ class StudioMontagePhase2Test(unittest.TestCase):
         candidates = planner.discover(self.input_profile)
         return planner.create_plan(
             profile_key=self.profile_key,
-            mode=StudioMontageMode.SOLO_MONTAJE,
             transitions_enabled=False,
             clips=planner.parse_order(order, candidates),
         )
@@ -220,7 +219,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
     def test_corrupt_or_incomplete_clip_metadata_fails_before_concat(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            plan = self._plan(root, names=("A.mp4",), order="1")
+            plan = self._plan(root, names=("A.mp4", "B.mp4"), order="1 2")
             for probe_result, message in (
                 (RuntimeError("bad media"), "No se pudo inspeccionar"),
                 (self._info(width=None), "Metadata de video insuficiente"),
@@ -244,22 +243,6 @@ class StudioMontagePhase2Test(unittest.TestCase):
                             self.output_profile,
                         )
                     runner.run.assert_not_called()
-
-    def test_transitions_are_not_silently_accepted(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            plan = self._plan(root, names=("A.mp4",), order="1")
-            service, probe, runner, _ = self._service((self._info(),))
-            transitions_plan = StudioMontagePlanningService().create_plan(
-                self.profile_key,
-                StudioMontageMode.SOLO_MONTAJE,
-                True,
-                plan.clips,
-            )
-            with self.assertRaisesRegex(StudioMontageError, "transiciones"):
-                service.compose(transitions_plan, root / "transitions.mp4", self.output_profile)
-            probe.inspect.assert_not_called()
-            runner.run.assert_not_called()
 
     def test_concat_or_validation_failure_never_promotes_final_output(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -285,8 +268,14 @@ class StudioMontagePhase2Test(unittest.TestCase):
                         runner=runner,
                         validator=validator,
                     )
-                    with self.assertRaises(StudioMontageError):
-                        service.compose(plan, output_path, self.output_profile)
+                    if stage == "concat":
+                        with self.assertRaises(OperationalError) as caught:
+                            service.compose(plan, output_path, self.output_profile)
+                        self.assertEqual("FFMPEG", caught.exception.context.family)
+                        self.assertEqual("STUDIO/montaje_videos", caught.exception.context.operation)
+                    else:
+                        with self.assertRaises(StudioMontageError):
+                            service.compose(plan, output_path, self.output_profile)
                     self.assertFalse(output_path.exists())
 
     def test_output_time_base_remux_change_is_validated_and_promoted(self):
@@ -325,46 +314,10 @@ class StudioMontagePhase2Test(unittest.TestCase):
             ):
                 service.compose(plan, root / "out.mp4", self.output_profile)
 
-    def test_start_uses_project_output_and_montage_service(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            plan = self._plan(root, names=("A.mp4",), order="1")
-            project = Mock()
-            output_path = root / "output" / "montaje.mp4"
-            resolver = Mock()
-            resolver.resolve.return_value = output_path
-            profile_loader = Mock()
-            profile_loader.load.return_value = self.output_profile
-            profile_resolver = Mock()
-            profile_resolver.load.return_value = {"studio": {}}
-            montage_service = Mock()
-            montage_service.compose.return_value = "result"
-
-            result = ejecutar_studio_montaje(
-                plan,
-                project=project,
-                profile_resolver=profile_resolver,
-                profile_loader=profile_loader,
-                output_path_resolver=resolver,
-                montage_service=montage_service,
-            )
-
-        self.assertEqual("result", result)
-        project.setup.assert_called_once_with()
-        resolver.resolve.assert_called_once_with(
-            profile_key=self.profile_key,
-            project=project,
-        )
-        montage_service.compose.assert_called_once_with(
-            plan=plan,
-            output_path=output_path,
-            profile=self.output_profile,
-        )
-
     def test_montage_summary_uses_real_result_stages_and_global_clock(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            plan = self._plan(root, names=("A.mp4",), order="1")
+            plan = self._plan(root, names=("A.mp4", "B.mp4"), order="1 2")
             result = StudioMontageResult(
                 output_path=root / "out.mp4",
                 command=("ffmpeg",),
@@ -396,7 +349,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
     def test_montage_summary_omits_normalization_for_fast_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            plan = self._plan(root, names=("A.mp4",), order="1")
+            plan = self._plan(root, names=("A.mp4", "B.mp4"), order="1 2")
             result = StudioMontageResult(
                 output_path=root / "out.mp4",
                 command=("ffmpeg",),
@@ -469,7 +422,6 @@ class StudioMontagePhase2RealFFmpegTest(unittest.TestCase):
         candidates = planner.discover(profile)
         return planner.create_plan(
             ProfileKey.for_component("studio", "instagram"),
-            StudioMontageMode.SOLO_MONTAJE,
             False,
             planner.parse_order(order, candidates),
         )

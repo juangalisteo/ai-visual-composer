@@ -12,11 +12,10 @@ from app.modules.video_component import (
     VideoDesignVisualTruthAdapter,
 )
 from app.modules.visual_design import VisualDesignInterpreter
-from app.modules.visual_design import VisualDesignInterpretationError
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
 
@@ -489,13 +488,12 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             ai_builder_factory=DegenerateAIBuilder
         )
 
-        with self.assertRaisesRegex(
-            VisualDesignInterpretationError,
-            "copiar"
-        ):
+        with self.assertRaises(OperationalError) as context:
             interpreter.interpret(
                 "Harry Potter y el misterio del principe"
             )
+
+        self.assertEqual("EXTERNAL_SERVICE", context.exception.context.family)
 
     def test_design_video_generates_one_image_and_one_i2v_clip(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -516,7 +514,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             )
             profile_key = ProfileKey.for_component(
                 ProfileComponent.VIDEO,
-                ProfilePlatform.INSTAGRAM
+                "instagram"
             )
             profile = profile_resolver.load(
                 profile_key

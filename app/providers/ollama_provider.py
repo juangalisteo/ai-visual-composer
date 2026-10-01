@@ -6,6 +6,11 @@ from typing import Mapping
 
 import requests
 
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+)
+
 
 class OllamaRequestError(RuntimeError):
     """A visible, actionable failure while contacting local Ollama."""
@@ -98,6 +103,37 @@ class OllamaProvider:
                 "policy debe ser OllamaRequestPolicy."
             )
 
+        try:
+            return self._generate_result(
+                prompt=prompt,
+                policy=policy,
+            )
+        except OperationalError:
+            raise
+        except OllamaRequestError as error:
+            raise create_operational_error(
+                family="EXTERNAL_SERVICE",
+                user_message="No se pudo completar la solicitud a Ollama.",
+                recommended_action=(
+                    "Comprueba que Ollama este en ejecucion y que el modelo "
+                    "solicitado este disponible."
+                ),
+                operation="Generar respuesta con Ollama",
+                resource=self.url,
+                diagnostic_reference="logs/prompt_debug.txt",
+                technical_metadata={
+                    "service": "ollama",
+                    "model": str(self.model),
+                    "provider_error": type(error).__name__,
+                },
+            ) from error
+
+    def _generate_result(
+        self,
+        *,
+        prompt,
+        policy,
+    ) -> OllamaProviderResult:
         Path("logs").mkdir(exist_ok=True)
         Path("logs/prompt_debug.txt").write_text(prompt, encoding="utf-8")
 

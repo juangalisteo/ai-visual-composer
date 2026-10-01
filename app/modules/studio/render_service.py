@@ -530,7 +530,7 @@ class StudioRenderService:
                 "El perfil de subtitulos debe pertenecer a STUDIO."
             )
         if (
-            subtitle_profile.key.platform is not profile_key.platform
+            subtitle_profile.key.platform != profile_key.platform
         ):
             raise ValueError(
                 "El perfil principal y el de subtitulos deben compartir plataforma."

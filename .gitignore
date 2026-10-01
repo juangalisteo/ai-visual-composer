@@ -60,10 +60,8 @@ input/studio/exportar_srt/transcribir/*
 !input/studio/exportar_srt/convertir/
 input/studio/exportar_srt/convertir/*
 !input/studio/exportar_srt/convertir/.gitkeep
-assets/videos/intro_outro/intro/*
-!assets/videos/intro_outro/intro/.gitkeep
-assets/videos/intro_outro/outro/*
-!assets/videos/intro_outro/outro/.gitkeep
+# Intro/outro media is local working state, never a versioned product asset.
+/assets/videos/intro_outro/
 
 # Official product assets under assets/fonts, assets/music, and
 # assets/videos/visual_effects are intentionally versioned.

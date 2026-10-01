@@ -4,6 +4,7 @@ from pathlib import Path
 import requests
 
 from app.shared.config_manager import ConfigManager
+from app.shared.operation_warnings import OperationWarning, OperationWarnings
 
 
 @dataclass(frozen=True)
@@ -36,9 +37,11 @@ class OverlayFolderResolver:
 
     def __init__(
         self,
-        provider=None
+        provider=None,
+        warnings=None,
     ):
         self.provider = provider
+        self.warnings = warnings
 
     def discover_valid_folders(
         self,
@@ -118,13 +121,35 @@ class OverlayFolderResolver:
                     )
                 )
             )
-        except Exception:
+        except Exception as error:
+            self._record_provider_degradation(error)
             return OverlayCategoryResolution()
 
         return self._validate_response(
             response=response,
             folders=folders
         )
+
+    def _record_provider_degradation(self, error):
+        """Keep the neutral fallback while exposing the omitted capability."""
+        warning = OperationWarning(
+            family="DEGRADATION",
+            user_message=(
+                "Los overlays tem\u00e1ticos por IA fueron omitidos; el video "
+                "contin\u00faa sin esa capacidad."
+            ),
+            recommended_action=(
+                "Revisa la disponibilidad del servicio de IA si necesitas "
+                "overlays tem\u00e1ticos."
+            ),
+            operation="Resolver categor\u00edas de overlays IA",
+            technical_metadata={
+                "cause_type": type(error).__name__,
+                "source": "overlay_folder_resolver",
+            },
+        )
+        if isinstance(self.warnings, OperationWarnings):
+            self.warnings.add(warning)
 
     def _provider(
         self

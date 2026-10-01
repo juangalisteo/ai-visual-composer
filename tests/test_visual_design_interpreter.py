@@ -5,6 +5,8 @@ from app.modules.visual_design import (
     VisualDesignInterpretationError,
     VisualDesignInterpreter,
 )
+from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
+from app.shared.operational_error import OperationalError
 
 
 class FakeAIBuilder:
@@ -150,24 +152,25 @@ class VisualDesignInterpreterTest(unittest.TestCase):
             ""
         )
 
-        with self.assertRaises(
-            VisualDesignInterpretationError
-        ):
+        with self.assertRaises(OperationalError) as context:
             interpreter.interpret(
                 "El misterio del universo"
             )
+
+        self.assertEqual("EXTERNAL_SERVICE", context.exception.context.family)
+        self.assertIsInstance(context.exception.__cause__, ValueError)
 
     def test_rejects_invalid_json_response(self):
         interpreter = _interpreter_with_raw_response(
             "not-json"
         )
 
-        with self.assertRaises(
-            VisualDesignInterpretationError
-        ):
+        with self.assertRaises(OperationalError) as context:
             interpreter.interpret(
                 "El misterio del universo"
             )
+
+        self.assertEqual("visual_design", context.exception.context.technical_metadata["service"])
 
     def test_rejects_degenerate_literal_copy(self):
         source_text = "Harry Potter y el misterio del principe"
@@ -183,26 +186,24 @@ class VisualDesignInterpreterTest(unittest.TestCase):
             ]
         )
 
-        with self.assertRaisesRegex(
-            VisualDesignInterpretationError,
-            "copiar"
-        ):
+        with self.assertRaises(OperationalError) as context:
             interpreter.interpret(
                 source_text
             )
+
+        self.assertIsInstance(context.exception.__cause__, VisualDesignInterpretationError)
 
     def test_reports_timeout_as_controlled_error(self):
         interpreter = _interpreter_with_error(
             TimeoutError()
         )
 
-        with self.assertRaisesRegex(
-            VisualDesignInterpretationError,
-            "tiempo maximo"
-        ):
+        with self.assertRaises(OperationalError) as context:
             interpreter.interpret(
                 "El despertar de la conciencia"
             )
+
+        self.assertIsInstance(context.exception.__cause__, TimeoutError)
 
     def test_reports_provider_error_as_controlled_error(self):
         interpreter = _interpreter_with_error(
@@ -211,13 +212,28 @@ class VisualDesignInterpreterTest(unittest.TestCase):
             )
         )
 
-        with self.assertRaisesRegex(
-            VisualDesignInterpretationError,
-            "No se pudo completar"
-        ):
+        with self.assertRaises(OperationalError) as context:
             interpreter.interpret(
                 "El despertar de la conciencia"
             )
+
+        self.assertIsInstance(context.exception.__cause__, RuntimeError)
+
+    def test_existing_operational_error_is_not_wrapped_again(self):
+        expected = OperationalError(
+            ErrorContext(
+                family="EXTERNAL_SERVICE",
+                severity=ErrorSeverity.FATAL_OPERATIONAL,
+                user_message="Fallo previo.",
+                exit_kind=ExitKind.OPERATIONAL_ERROR,
+            )
+        )
+        interpreter = _interpreter_with_error(expected)
+
+        with self.assertRaises(OperationalError) as context:
+            interpreter.interpret("El despertar de la conciencia")
+
+        self.assertIs(expected, context.exception)
 
 
 def _interpreter_with_response(

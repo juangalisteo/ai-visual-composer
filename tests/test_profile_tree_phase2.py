@@ -1,3 +1,4 @@
+import json
 import shutil
 import tempfile
 import unittest
@@ -6,7 +7,6 @@ from pathlib import Path
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
 
@@ -15,48 +15,59 @@ class ProfileTreePhase2Test(unittest.TestCase):
 
     COMPONENT_PATHS = {
         "guion_instagram": Path(
-            "config/profiles/guion/instagram/"
+            "config/profiles/guion/instagram/estandar/"
             "perfil_guion_instagram.json"
         ),
         "guion_youtube": Path(
-            "config/profiles/guion/youtube/"
+            "config/profiles/guion/youtube/estandar/"
             "perfil_guion_youtube.json"
         ),
         "imagen_instagram": Path(
-            "config/profiles/imagen/instagram/"
+            "config/profiles/imagen/instagram/estandar/"
             "perfil_imagen_instagram.json"
         ),
         "imagen_youtube": Path(
-            "config/profiles/imagen/youtube/"
+            "config/profiles/imagen/youtube/estandar/"
             "perfil_imagen_youtube.json"
         ),
         "video_instagram": Path(
-            "config/profiles/video/instagram/"
+            "config/profiles/video/instagram/estandar/"
             "perfil_video_instagram.json"
         ),
         "video_youtube": Path(
-            "config/profiles/video/youtube/"
+            "config/profiles/video/youtube/estandar/"
             "perfil_video_youtube.json"
         ),
         "studio_instagram": Path(
-            "config/profiles/studio/instagram/"
+            "config/profiles/studio/instagram/estandar/"
             "perfil_studio_instagram.json"
         ),
         "studio_youtube": Path(
-            "config/profiles/studio/youtube/"
+            "config/profiles/studio/youtube/estandar/"
             "perfil_studio_youtube.json"
         ),
     }
 
     WAN_PATHS = {
-        ProfilePlatform.INSTAGRAM: Path(
+        "instagram": Path(
             "config/profiles/video/instagram/"
             "wan_i2v_instagram.json"
         ),
-        ProfilePlatform.YOUTUBE: Path(
+        "youtube": Path(
             "config/profiles/video/youtube/"
             "wan_i2v_youtube.json"
         ),
+    }
+
+    BASE_IDENTITIES = {
+        "guion_instagram": ("guion", "instagram", "guion_instagram"),
+        "guion_youtube": ("guion", "youtube", "guion_youtube"),
+        "imagen_instagram": ("imagen", "instagram", "imagen_instagram"),
+        "imagen_youtube": ("imagen", "youtube", "imagen_youtube"),
+        "video_instagram": ("video", "instagram", "video_instagram"),
+        "video_youtube": ("video", "youtube", "video_youtube"),
+        "studio_instagram": ("studio", "instagram", "studio_instagram"),
+        "studio_youtube": ("studio", "youtube", "studio_youtube"),
     }
 
     REMOVED_LEGACY_PATHS = (
@@ -84,6 +95,15 @@ class ProfileTreePhase2Test(unittest.TestCase):
         for path in self.REMOVED_LEGACY_PATHS:
             with self.subTest(path=path):
                 self.assertFalse(path.exists())
+
+    def test_base_profiles_declare_their_structural_identity(self):
+        for profile_id, expected in self.BASE_IDENTITIES.items():
+            with self.subTest(profile_id=profile_id):
+                path = self.COMPONENT_PATHS[profile_id]
+                data = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(expected[0], data["component"])
+                self.assertEqual(expected[1], data["platform"])
+                self.assertEqual(expected[2], data["profile_id"])
 
     def test_component_profiles_can_diverge_independently(self):
         image_source = self.COMPONENT_PATHS["imagen_instagram"]
@@ -126,7 +146,7 @@ class ProfileTreePhase2Test(unittest.TestCase):
         resolver = ProfileResolver()
 
         for component in ProfileComponent:
-            for platform in ProfilePlatform:
+            for platform in ("instagram", "youtube"):
                 profile_key = ProfileKey.for_component(component, platform)
                 with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
@@ -142,7 +162,7 @@ class ProfileTreePhase2Test(unittest.TestCase):
                 ProfileComponent.VIDEO,
                 platform,
             )
-            with self.subTest(platform=platform.value):
+            with self.subTest(platform=platform):
                 self.assertEqual(
                     expected_path,
                     resolver.resolve_video_component(profile_key),

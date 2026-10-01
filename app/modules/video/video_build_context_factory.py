@@ -19,9 +19,11 @@ class VideoBuildContextFactory:
 
     def __init__(
         self,
-        subtitle_profile=None
+        subtitle_profile=None,
+        warnings=None,
     ):
         self.subtitle_profile = subtitle_profile
+        self.warnings = warnings
 
     def build(
         self,
@@ -196,7 +198,9 @@ class VideoBuildContextFactory:
         if overlays_mode != "smart":
             return video_config
 
-        resolver = OverlayFolderResolver()
+        resolver = OverlayFolderResolver(
+            warnings=self.warnings
+        )
 
         valid_folders = (
             resolver.discover_valid_folders(

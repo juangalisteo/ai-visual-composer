@@ -294,7 +294,7 @@ class LayerConfigLoaderTest(
             for path in Path(
                 "config/profiles"
             ).glob(
-                f"{component}/*/perfil_*.json"
+                f"{component}/*/*/perfil_*.json"
             )
         )
 

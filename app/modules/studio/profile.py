@@ -29,7 +29,6 @@ class StudioProfile:
     platform: str
     profile_id: str
     format: str
-    resolution: str
     video_extensions: tuple[str, ...]
     subtitle_extensions: tuple[str, ...]
     width: int
@@ -124,12 +123,6 @@ class StudioProfileLoader:
                 "y mayor que cero."
             )
 
-        resolution = require_text(profile, "resolution", "resolution")
-        if resolution != f"{width}x{height}":
-            raise ValueError(
-                "resolution no coincide con studio.output.width/height."
-            )
-
         music_config = StudioMusicConfig(
             volume=require_float(music, "volume", "studio.music.volume"),
             loop_shorter=require_bool(
@@ -149,7 +142,6 @@ class StudioProfileLoader:
             platform=require_text(profile, "platform", "platform"),
             profile_id=require_text(profile, "profile_id", "profile_id"),
             format=require_text(profile, "format", "format"),
-            resolution=resolution,
             video_extensions=self._extensions(
                 input_config,
                 "video_extensions",
@@ -192,26 +184,15 @@ class StudioProfileLoader:
     def _require_identity(self, profile, profile_key):
         expected = {
             "component": profile_key.component.value,
-            "platform": profile_key.platform.value,
+            "platform": profile_key.platform,
             "profile_id": profile_key.profile_id,
+            "family": profile_key.family,
         }
-        if profile_key.family.value == "design":
-            expected["family"] = "design"
         actual = {key: profile.get(key) for key in expected}
         if actual != expected:
             raise ValueError(
                 "La identidad interna del perfil STUDIO no coincide "
                 "con el ProfileKey."
-            )
-        if (
-            profile_key.family.value == "design"
-            and (
-                not isinstance(profile.get("display_name"), str)
-                or not profile["display_name"].strip()
-            )
-        ):
-            raise ValueError(
-                "El perfil STUDIO DESIGN requiere un display_name."
             )
 
     def _extensions(self, data, key, path):

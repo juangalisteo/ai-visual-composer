@@ -20,10 +20,10 @@ from app.modules.studio import (
     StudioSubtitleExportResult,
     StudioSubtitleExportService,
 )
-from app.modules.subtitles.external_media_subtitles import (
+from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
-from app.modules.subtitles.timing import whisper_timing_path
+from app.modules.subtitles.policies.timing import whisper_timing_path
 from app.shared.profile_identity import ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -348,8 +348,8 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 "2. SRT + VIDEO",
                 "3. INTRO / OUTRO",
                 "4. MONTAJE VÍDEOS",
-                "5. VIDEO + AUDIO SRT",
-                "6. EXPORTAR SRT VIDEO",
+                "5. VIDEO + AUDIO | SRT",
+                "6. EXPORTAR SRT ➜  VIDEO",
             ],
             messages,
         )
@@ -376,22 +376,28 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 self.assertEqual(selected_mode, selected)
                 controller._select_from_list.assert_called_once_with(modes)
 
-    def test_controller_convertir_selects_srt_then_format_without_music(self):
+    def test_controller_convertir_uses_the_selected_key_without_second_selector(self):
         plan = StudioSubtitleExportPlan(
             StudioSubtitleExportMode.CONVERTIR,
             Path("input/studio/exportar_srt/source.srt"),
         )
         controller = RunController()
-        with patch.object(controller, "select_profile", return_value={
-            "profile_key": ProfileKey.for_component("studio", "instagram"),
-        }), patch.object(controller, "select_studio_input_mode", return_value="exportar_srt"), patch.object(
+        profile_key = ProfileKey.for_component("studio", "instagram")
+        subtitle_key = SubtitleProfileResolver().discover_profiles_for_family(
+            "studio", "instagram", "estandar",
+        )[0].key
+        controller._active_studio_subtitle_key = subtitle_key
+        with patch.object(controller, "_select_studio_profile", return_value=(
+            profile_key,
+            Mock(),
+        )), patch.object(controller, "select_studio_input_mode", return_value="exportar_srt"), patch.object(
             controller, "select_studio_subtitle_export_mode",
             return_value=StudioSubtitleExportMode.CONVERTIR,
         ), patch.object(
             controller, "select_studio_subtitle_export_plan", return_value=plan,
         ), patch.object(
-            controller, "select_studio_subtitle_config", return_value="word_by_word",
-        ), patch.object(controller, "select_studio_music") as music, patch.object(
+            controller, "select_studio_subtitle_config",
+        ) as duplicate, patch.object(controller, "select_studio_music") as music, patch.object(
             controller, "select_studio_intro_outro",
         ) as intro_outro, patch.object(controller, "ask_project_name", return_value="demo"), patch.object(
             controller, "ask_clear_output", return_value=False,
@@ -399,11 +405,145 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             options = controller._run_studio()
 
         self.assertEqual("exportar_srt", options["studio_input_mode"])
-        self.assertEqual("word_by_word", options["subtitle_config"])
+        self.assertEqual(subtitle_key.profile_id, options["subtitle_config"])
+        self.assertEqual(subtitle_key, options["subtitle_profile_key"])
         self.assertIs(plan, options["studio_subtitle_export_plan"])
         self.assertEqual("studio", options["profile_component"])
+        duplicate.assert_not_called()
         music.assert_not_called()
         intro_outro.assert_not_called()
+
+    def test_controller_convertir_uses_mode_from_each_real_selected_profile(self):
+        plan = StudioSubtitleExportPlan(
+            StudioSubtitleExportMode.CONVERTIR,
+            Path("input/studio/exportar_srt/source.srt"),
+        )
+        resolver = SubtitleProfileResolver()
+        cases = (
+            ("instagram", "design", "word_by_word"),
+            ("instagram", "estandar", "single_line"),
+            ("instagram", "estandar", "word_by_word"),
+            ("youtube", "estandar", "single_line"),
+            ("youtube", "estandar", "word_by_word"),
+        )
+        for platform, family, expected_mode in cases:
+            with self.subTest(platform=platform, family=family, mode=expected_mode):
+                descriptor = next(
+                    item
+                    for item in resolver.discover_profiles_for_family(
+                        "studio", platform, family,
+                    )
+                    if resolver.load(item.key).cue_policy["mode"] == expected_mode
+                )
+                controller = RunController()
+                controller._active_studio_subtitle_key = descriptor.key
+                profile_key = ProfileKey.for_component("studio", platform)
+                with patch.object(
+                    controller,
+                    "_select_studio_profile",
+                    return_value=(profile_key, Mock()),
+                ), patch.object(
+                    controller,
+                    "select_studio_input_mode",
+                    return_value="exportar_srt",
+                ), patch.object(
+                    controller,
+                    "select_studio_subtitle_export_mode",
+                    return_value=StudioSubtitleExportMode.CONVERTIR,
+                ), patch.object(
+                    controller,
+                    "select_studio_subtitle_export_plan",
+                    return_value=plan,
+                ), patch.object(
+                    controller,
+                    "select_studio_subtitle_config",
+                ) as duplicate, patch.object(
+                    controller,
+                    "ask_project_name",
+                    return_value="demo",
+                ), patch.object(
+                    controller,
+                    "ask_clear_output",
+                    return_value=False,
+                ):
+                    options = controller._run_studio()
+
+                self.assertEqual(descriptor.key, options["subtitle_profile_key"])
+                self.assertEqual(descriptor.profile_id, options["subtitle_config"])
+                self.assertEqual(
+                    expected_mode,
+                    resolver.load(options["subtitle_profile_key"]).cue_policy["mode"],
+                )
+                duplicate.assert_not_called()
+
+    def test_controller_convertir_transports_a_dynamic_subtitle_profile_key(self):
+        plan = StudioSubtitleExportPlan(
+            StudioSubtitleExportMode.CONVERTIR,
+            Path("input/studio/exportar_srt/source.srt"),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = Path(
+                "config/profiles/studio/instagram/estandar/subtitulos/"
+                "subtitulo_studio_instagram_linea_unica.json"
+            )
+            payload = json.loads(source.read_text(encoding="utf-8"))
+            payload.update({
+                "component": "studio",
+                "platform": "test_platform",
+                "family": "test_family",
+                "profile_id": "test_profile",
+                "display_name": "Test profile",
+            })
+            path = (
+                root / "studio" / "test_platform" / "test_family"
+                / "subtitulos" / "test_profile.json"
+            )
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            resolver = SubtitleProfileResolver(root)
+            descriptor = resolver.discover_profiles_for_family(
+                "studio", "test_platform", "test_family",
+            )[0]
+            mode = resolver.load(descriptor.key).cue_policy["mode"]
+            controller = RunController(subtitle_profile_resolver=resolver)
+            controller._active_studio_subtitle_key = descriptor.key
+            profile_key = ProfileKey(
+                "studio", "test_platform", "test_operational", "test_family",
+            )
+            with patch.object(
+                controller,
+                "_select_studio_profile",
+                return_value=(profile_key, Mock()),
+            ), patch.object(
+                controller,
+                "select_studio_input_mode",
+                return_value="exportar_srt",
+            ), patch.object(
+                controller,
+                "select_studio_subtitle_export_mode",
+                return_value=StudioSubtitleExportMode.CONVERTIR,
+            ), patch.object(
+                controller,
+                "select_studio_subtitle_export_plan",
+                return_value=plan,
+            ), patch.object(
+                controller,
+                "select_studio_subtitle_config",
+            ) as duplicate, patch.object(
+                controller,
+                "ask_project_name",
+                return_value="demo",
+            ), patch.object(
+                controller,
+                "ask_clear_output",
+                return_value=False,
+            ):
+                options = controller._run_studio()
+
+        self.assertEqual(descriptor.key, options["subtitle_profile_key"])
+        self.assertEqual("single_line", mode)
+        duplicate.assert_not_called()
 
     def test_controller_transcribir_never_selects_a_profile(self):
         plan = StudioSubtitleExportPlan(
@@ -493,6 +633,44 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
                 config_manager=config,
             )
 
+    def test_start_convertir_resolves_the_selected_key_not_a_legacy_style(self):
+        plan = StudioSubtitleExportPlan(
+            StudioSubtitleExportMode.CONVERTIR,
+            Path("source.srt"),
+        )
+        profile_key = ProfileKey.for_component("studio", "instagram")
+        resolver = SubtitleProfileResolver()
+        selected_key = next(
+            descriptor.key
+            for descriptor in resolver.discover_profiles_for_family(
+                "studio", "instagram", "estandar",
+            )
+            if resolver.load(descriptor.key).cue_policy["mode"] == "word_by_word"
+        )
+        selected_profile = resolver.load(selected_key)
+        config = Mock()
+        config.get_profile_key.return_value = profile_key
+        config.get_profile_config.return_value = {}
+        config.get_subtitle_profile_by_key.return_value = selected_profile
+        service = Mock()
+
+        ejecutar_studio_exportar_srt(
+            plan,
+            subtitle_style="single_line",
+            subtitle_profile_key=selected_key,
+            project=Mock(),
+            config_manager=config,
+            profile_loader=Mock(load=Mock(return_value=Mock())),
+            export_service=service,
+        )
+
+        config.get_subtitle_profile_by_key.assert_called_once_with(selected_key)
+        config.adapt_legacy_subtitle_selection.assert_not_called()
+        self.assertEqual(
+            "word_by_word",
+            service.export.call_args.kwargs["subtitle_profile"].cue_policy["mode"],
+        )
+
     def test_iniciar_dispatches_export_without_render_arguments(self):
         from app.core.start import iniciar
 
@@ -508,7 +686,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             result = iniciar(studio_subtitle_export_plan=plan)
 
         self.assertIs(expected, result)
-        exporter.assert_called_once_with(plan, subtitle_style=None)
+        exporter.assert_called_once_with(plan)
 
     def test_main_transcribe_clears_profile_transport(self):
         plan = StudioSubtitleExportPlan(
@@ -549,7 +727,6 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             self.assertEqual("", os.environ["MC_PROFILE_PLATFORM"])
             self.assertEqual("", os.environ["MC_PROFILE_ID"])
         iniciar_mock.assert_called_once_with(
-            subtitle_style=None,
             studio_music_path=None,
             studio_input_mode="exportar_srt",
             studio_subtitle_export_plan=plan,

@@ -1,13 +1,14 @@
 import json
 import os
-from dataclasses import replace
 from pathlib import Path
 
-from app.shared.profile_identity import ProfileComponent, ProfileFamily, ProfileKey
+from app.shared.profile_identity import ProfileKey
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.operational_error import create_operational_error
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
 )
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class ConfigManager:
@@ -32,8 +33,38 @@ class ConfigManager:
         )
 
     def load_json(self, path):
-        with open(path, "r", encoding="utf-8") as file:
-            return json.load(file)
+        path = Path(path)
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                return json.load(file)
+        except FileNotFoundError as error:
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="No se encontró el archivo de configuración requerido.",
+                recommended_action="Revise que el archivo exista y vuelva a intentarlo.",
+                operation="Cargar configuración",
+                resource=str(path),
+            ) from error
+        except json.JSONDecodeError as error:
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="El archivo de configuración no contiene JSON válido.",
+                recommended_action="Corrija el JSON indicado y vuelva a intentarlo.",
+                operation="Cargar configuración",
+                resource=str(path),
+                technical_metadata={
+                    "line": error.lineno,
+                    "column": error.colno,
+                },
+            ) from error
+        except OSError as error:
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message="No se pudo leer el archivo de configuración.",
+                recommended_action="Revise la ruta, permisos y disponibilidad del archivo.",
+                operation="Cargar configuración",
+                resource=str(path),
+            ) from error
 
     def get_app_config(self):
         return self.load_json(self.config_path / "app.json")
@@ -60,10 +91,14 @@ class ConfigManager:
         if profile_key is not None:
             return self.profile_resolver.load(profile_key)
 
-        raise ValueError(
-            "Falta identidad estructurada de perfil. Configure "
-            "MC_PROFILE_COMPONENT, MC_PROFILE_PLATFORM y "
-            "MC_PROFILE_ID."
+        raise create_operational_error(
+            family="CONFIG",
+            user_message="Falta la identidad estructurada de perfil.",
+            recommended_action=(
+                "Configure component, platform y profile_id antes de iniciar "
+                "la operación."
+            ),
+            operation="Resolver configuración de perfil",
         )
 
     def get_profile_key(self):
@@ -80,91 +115,87 @@ class ConfigManager:
                 "MC_PROFILE_ID",
                 ""
             ).strip(),
-            os.environ.get("MC_PROFILE_FAMILY", "system").strip() or "system",
+            os.environ.get("MC_PROFILE_FAMILY", "estandar").strip() or "estandar",
         )
 
         if not any(values[:3]):
             return None
         if not all(values[:3]):
-            raise ValueError(
-                "La identidad de perfil requiere component, "
-                "platform y profile_id."
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="La identidad de perfil está incompleta.",
+                recommended_action=(
+                    "Configure component, platform y profile_id antes de "
+                    "iniciar la operación."
+                ),
+                operation="Leer identidad de perfil",
+                technical_metadata={
+                    "component_present": bool(values[0]),
+                    "platform_present": bool(values[1]),
+                    "profile_id_present": bool(values[2]),
+                },
             )
 
-        return ProfileKey(
-            component=values[0],
-            platform=values[1],
-            profile_id=values[2],
-            family=values[3],
-        )
+        # LEGACY_ADAPTER: persisted MC_PROFILE_FAMILY=system predates the
+        # physical ESTANDAR family and is normalized at this input boundary.
+        family = "estandar" if values[3].casefold() == "system" else values[3]
+        try:
+            return ProfileKey(
+                component=values[0],
+                platform=values[1],
+                profile_id=values[2],
+                family=family,
+            )
+        except (TypeError, ValueError) as error:
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="La identidad de perfil configurada no es válida.",
+                recommended_action=(
+                    "Revise component, platform, family y profile_id de la "
+                    "configuración activa."
+                ),
+                operation="Leer identidad de perfil",
+                resource="MC_PROFILE_COMPONENT/MC_PROFILE_PLATFORM/MC_PROFILE_ID",
+            ) from error
 
-    def get_subtitle_profile(
-        self,
-        selection,
-        original=False,
-        design_selection=None,
-    ):
+    def get_subtitle_profile_by_key(self, subtitle_profile_key):
+        """Resolve a modern, complete subtitle identity without adaptation."""
+        if not isinstance(subtitle_profile_key, SubtitleProfileKey):
+            error = TypeError(
+                "La ruta moderna requiere una SubtitleProfileKey completa."
+            )
+            raise create_operational_error(
+                family="VALIDATION",
+                user_message="La identidad de subtítulos no es válida.",
+                recommended_action="Seleccione un perfil de subtítulos completo.",
+                operation="Resolver perfil de subtítulos",
+            ) from error
+        return self.subtitle_profile_resolver.load(subtitle_profile_key)
+
+    def adapt_legacy_subtitle_selection(self, selection):
+        """Convert one legacy string/style input at the compatibility boundary."""
         profile_key = self.get_profile_key()
         if profile_key is None:
-            raise ValueError(
-                "Falta identidad estructurada de perfil para "
-                "resolver subtitulos."
-            )
-
-        if (
-            design_selection is None
-            and profile_key.component is ProfileComponent.STUDIO
-            and profile_key.family is ProfileFamily.DESIGN
-        ):
-            try:
-                functional_profile = self.subtitle_profile_resolver.load_selection(
-                    profile_key=ProfileKey.for_component(
-                        profile_key.component,
-                        profile_key.platform,
-                    ),
-                    selection=selection,
-                )
-            except ValueError:
-                return self.subtitle_profile_resolver.load_selection(
-                    profile_key=profile_key,
-                    selection=selection,
-                )
-            design_style = self.profile_resolver.declared_subtitle_style(
-                profile_key
-            )
-            design_profile = self.subtitle_profile_resolver.load_selection(
-                profile_key=profile_key,
-                selection=design_style,
-            )
-            return replace(
-                functional_profile,
-                cue_policy=(
-                    design_profile.cue_policy
-                    if original
-                    else functional_profile.cue_policy
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="Falta la identidad de perfil para resolver subtítulos.",
+                recommended_action=(
+                    "Configure component, platform y profile_id antes de "
+                    "resolver subtítulos."
                 ),
-                render_style=design_profile.render_style,
+                operation="Resolver perfil de subtítulos",
             )
-
-        functional_profile = self.subtitle_profile_resolver.load_selection(
+        return self.subtitle_profile_resolver.adapt_legacy_selection(
             profile_key=profile_key,
             selection=selection,
         )
-        if design_selection is None:
-            return functional_profile
 
-        design_profile = self.subtitle_profile_resolver.load_selection(
-            profile_key=profile_key,
-            selection=design_selection,
+    def get_subtitle_profile(self, selection, original=False):
+        """Legacy public facade; modern callers use ``get_subtitle_profile_by_key``."""
+        del original
+        subtitle_profile_key = (
+            selection
+            if isinstance(selection, SubtitleProfileKey)
+            else self.adapt_legacy_subtitle_selection(selection)
         )
-        if profile_key.component is not ProfileComponent.STUDIO:
-            return design_profile
-        return replace(
-            functional_profile,
-            cue_policy=(
-                design_profile.cue_policy
-                if original
-                else functional_profile.cue_policy
-            ),
-            render_style=design_profile.render_style,
-        )
+        return self.get_subtitle_profile_by_key(subtitle_profile_key)

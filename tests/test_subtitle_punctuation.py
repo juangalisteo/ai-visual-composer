@@ -4,10 +4,9 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
-from app.modules.subtitles.punctuation import reconcile_timing_text
-from app.modules.subtitles.timing import SpeechSegment, SubtitleTiming, WordTiming
-from app.shared.profile_identity import ProfileKey
+from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
+from app.modules.subtitles.policies.punctuation import reconcile_timing_text
+from app.modules.subtitles.policies.timing import SpeechSegment, SubtitleTiming, WordTiming
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -153,7 +152,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
 
     def test_active_youtube_word_by_word_profile_removes_only_comma_and_period(self):
         profile_path = Path(
-            "config/profiles/guion/youtube/estandar/"
+            "config/profiles/guion/youtube/estandar/subtitulos/"
             "subtitulo_guion_youtube_palabra_por_palabra.json"
         )
         cue_policy = json.loads(
@@ -234,14 +233,15 @@ class SubtitlePunctuationTest(unittest.TestCase):
         timing = self._timing_from_words(timed_words)
         resolver = SubtitleProfileResolver()
 
-        for path in sorted(Path("config/profiles").glob("*/*/estandar/*.json")):
+        for path in sorted(Path("config/profiles").glob("*/*/estandar/subtitulos/*.json")):
             data = json.loads(path.read_text(encoding="utf-8"))
-            profile_key = ProfileKey.for_component(
-                data["component"],
-                data["platform"],
-            )
             subtitle_profile = resolver.load(
-                SubtitleProfileKey.for_profile(profile_key, data["style"])
+                SubtitleProfileKey(
+                    component=data["component"],
+                    platform=data["platform"],
+                    family=data["family"],
+                    profile_id=data["profile_id"],
+                )
             )
             for selected_timing in (None, timing):
                 with self.subTest(path=path, timing=selected_timing is not None):
@@ -263,7 +263,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
                             self.assertIn(sign, rendered_text)
 
     def test_all_profiles_declare_the_explicit_policy(self):
-        profiles = sorted(Path("config/profiles").glob("*/*/estandar/*.json"))
+        profiles = sorted(Path("config/profiles").glob("*/*/estandar/subtitulos/*.json"))
         self.assertGreaterEqual(len(profiles), 16)
         for path in profiles:
             with self.subTest(path=path):

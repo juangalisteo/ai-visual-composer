@@ -10,6 +10,8 @@ from app.providers.ollama_provider import (
     OllamaRequestError,
     OllamaRequestPolicy,
 )
+from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
+from app.shared.operational_error import OperationalError
 
 
 class FakeResponse:
@@ -53,16 +55,19 @@ class OllamaProviderTest(unittest.TestCase):
             post_mock.call_args.kwargs,
         )
 
-    def test_timeout_raises_a_clear_error(self):
+    def test_timeout_becomes_contextual_external_service_error(self):
         with patch(
             "app.providers.ollama_provider.requests.post",
             side_effect=requests.Timeout(),
         ):
-            with self.assertRaisesRegex(
-                OllamaRequestError,
-                "espera de red",
-            ):
+            with self.assertRaises(OperationalError) as context:
                 OllamaProvider("fake-model").generate("prompt")
+
+        self.assertEqual("EXTERNAL_SERVICE", context.exception.context.family)
+        self.assertEqual("ollama", context.exception.context.technical_metadata["service"])
+        self.assertEqual("fake-model", context.exception.context.technical_metadata["model"])
+        self.assertIsInstance(context.exception.__cause__, OllamaRequestError)
+        self.assertIsInstance(context.exception.__cause__.__cause__, requests.Timeout)
 
     def test_generate_result_separates_content_and_metadata(self):
         response = FakeResponse(
@@ -221,16 +226,35 @@ class OllamaProviderTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             policy.options["seed"] = 9
 
-    def test_http_error_remains_an_error(self):
+    def test_http_error_preserves_provider_error_as_cause(self):
         with patch(
             "app.providers.ollama_provider.requests.post",
             return_value=_HttpErrorResponse(),
         ):
-            with self.assertRaisesRegex(
-                OllamaRequestError,
-                "No se pudo conectar",
-            ):
+            with self.assertRaises(OperationalError) as context:
                 OllamaProvider("fake-model").generate("prompt")
+
+        self.assertIsInstance(context.exception.__cause__, OllamaRequestError)
+        self.assertIsInstance(context.exception.__cause__.__cause__, requests.HTTPError)
+
+    def test_existing_operational_error_is_not_wrapped_again(self):
+        expected = OperationalError(
+            ErrorContext(
+                family="EXTERNAL_SERVICE",
+                severity=ErrorSeverity.FATAL_OPERATIONAL,
+                user_message="Fallo previo.",
+                exit_kind=ExitKind.OPERATIONAL_ERROR,
+            )
+        )
+
+        class PrecontextualizedProvider(OllamaProvider):
+            def _generate_result(self, *, prompt, policy):
+                raise expected
+
+        with self.assertRaises(OperationalError) as context:
+            PrecontextualizedProvider("fake-model").generate("prompt")
+
+        self.assertIs(expected, context.exception)
 
 
 class _HttpErrorResponse(FakeResponse):

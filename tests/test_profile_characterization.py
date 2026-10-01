@@ -10,9 +10,9 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 class ProfileCharacterizationTest(unittest.TestCase):
@@ -24,9 +24,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
     )
 
     PLATFORM_EXPECTATIONS = {
-        ProfilePlatform.INSTAGRAM: {
+        "instagram": {
             "format": "vertical",
-            "resolution": "1080x1920",
             "width": 1080,
             "height": 1920,
             "fps": 30,
@@ -37,9 +36,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_offset": -0.06,
             "seconds_per_image": 20,
         },
-        ProfilePlatform.YOUTUBE: {
+        "youtube": {
             "format": "horizontal",
-            "resolution": "1920x1080",
             "width": 1920,
             "height": 1080,
             "fps": 30,
@@ -54,13 +52,14 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def setUp(self):
         self.resolver = ProfileResolver()
+        self.subtitle_resolver = SubtitleProfileResolver()
 
     def test_guion_image_and_video_profiles_keep_effective_behavior(self):
         for component in self.RUNTIME_COMPONENTS:
             for platform, expected in self.PLATFORM_EXPECTATIONS.items():
                 with self.subTest(
                     component=component.value,
-                    platform=platform.value
+                    platform=platform
                 ):
                     profile_key = ProfileKey.for_component(
                         component,
@@ -78,25 +77,20 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         environment,
                         clear=True
                     ):
-                        subtitle_profile = (
-                            ConfigManager().get_subtitle_profile(
-                                expected["subtitle_config"]
-                            )
+                        subtitle_profile = ConfigManager().get_subtitle_profile(
+                            expected["subtitle_config"]
                         )
                     subtitles = subtitle_profile.render_style
 
                     self.assertEqual(
-                        platform.value,
+                        platform,
                         profile["platform"]
                     )
                     self.assertEqual(
                         expected["format"],
                         profile["format"]
                     )
-                    self.assertEqual(
-                        expected["resolution"],
-                        profile["resolution"]
-                    )
+                    self.assertNotIn("resolution", profile)
                     self.assertEqual(
                         expected["width"],
                         video_style["width"]
@@ -109,10 +103,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         expected["fps"],
                         video_style["fps"]
                     )
-                    self.assertEqual(
-                        expected["subtitle_config"],
-                        profile["subtitle_config"]
-                    )
+                    self.assertNotIn("subtitle_config", profile)
                     self.assertNotIn("subtitles", video_style)
                     self.assertEqual(
                         expected["subtitle_font"],
@@ -159,7 +150,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             for platform, expected in self.PLATFORM_EXPECTATIONS.items():
                 with self.subTest(
                     target=target_component.value,
-                    platform=platform.value
+                    platform=platform
                 ):
                     profile_key = ProfileKey.for_component(
                         target_component,
@@ -203,18 +194,18 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_video_wan_profiles_keep_current_parameters(self):
         expected_by_platform = {
-            ProfilePlatform.INSTAGRAM: (
+            "instagram": (
                 (448, 800),
                 (1080, 1920),
             ),
-            ProfilePlatform.YOUTUBE: (
+            "youtube": (
                 (800, 448),
                 (1920, 1080),
             ),
         }
 
         for platform, dimensions in expected_by_platform.items():
-            with self.subTest(platform=platform.value):
+            with self.subTest(platform=platform):
                 profile_key = ProfileKey.for_component(
                     ProfileComponent.VIDEO,
                     platform
@@ -229,8 +220,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
                 self.assertEqual(
                     Path("config/profiles/video")
-                    / platform.value
-                    / f"wan_i2v_{platform.value}.json",
+                    / platform
+                    / f"wan_i2v_{platform}.json",
                     path
                 )
                 self.assertEqual(
@@ -262,7 +253,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_official_subtitle_configuration_is_unified_and_equivalent(self):
         for platform, expected in self.PLATFORM_EXPECTATIONS.items():
-            with self.subTest(platform=platform.value):
+            with self.subTest(platform=platform):
                 profile_key = ProfileKey.for_component(
                     ProfileComponent.VIDEO,
                     platform
@@ -288,13 +279,13 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 )
                 self.assertEqual(
                     expected["subtitle_config"],
-                    subtitle_profile.key.style.value
+                    subtitle_profile.cue_policy["mode"]
                 )
 
     def test_structured_identity_controls_wan_profile_resolution(self):
         instagram_key = ProfileKey.for_component(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM
+            "instagram"
         )
 
         self.assertEqual(
@@ -337,7 +328,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
         image_key = ProfileKey.for_component(
             ProfileComponent.IMAGEN,
-            ProfilePlatform.INSTAGRAM
+            "instagram"
         )
         with self.assertRaisesRegex(
             ValueError,
@@ -349,7 +340,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_runtime_objects_are_consistent_with_structured_identity(self):
         for platform, expected in self.PLATFORM_EXPECTATIONS.items():
-            with self.subTest(platform=platform.value):
+            with self.subTest(platform=platform):
                 profile_key = ProfileKey.for_component(
                     ProfileComponent.VIDEO,
                     platform
@@ -364,11 +355,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         ConfigManager()
                         .get_profile_config()
                     )
-                    subtitle_profile = (
-                        ConfigManager()
-                        .get_subtitle_profile(
-                            identity_profile["subtitle_config"]
-                        )
+                    subtitle_profile = ConfigManager().get_subtitle_profile(
+                        expected["subtitle_config"]
                     )
                     identity_video = VideoConfigLoader(
                         subtitle_profile=subtitle_profile
@@ -399,7 +387,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
     ):
         return {
             "MC_PROFILE_COMPONENT": profile_key.component.value,
-            "MC_PROFILE_PLATFORM": profile_key.platform.value,
+            "MC_PROFILE_PLATFORM": profile_key.platform,
             "MC_PROFILE_ID": profile_key.profile_id,
         }
 

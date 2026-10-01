@@ -9,7 +9,6 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 
 
@@ -20,11 +19,11 @@ class ScriptComponentProfilesTest(
     def test_script_profiles_are_independent_component_files(self):
         script_profiles = (
             Path(
-                "config/profiles/guion/instagram/"
+                "config/profiles/guion/instagram/estandar/"
                 "perfil_guion_instagram.json"
             ),
             Path(
-                "config/profiles/guion/youtube/"
+                "config/profiles/guion/youtube/estandar/"
                 "perfil_guion_youtube.json"
             ),
         )
@@ -45,7 +44,7 @@ class ScriptComponentProfilesTest(
     def test_script_profiles_preserve_source_orientation(self):
         instagram = json.loads(
             Path(
-                "config/profiles/guion/instagram/"
+                "config/profiles/guion/instagram/estandar/"
                 "perfil_guion_instagram.json"
             ).read_text(
                 encoding="utf-8"
@@ -53,7 +52,7 @@ class ScriptComponentProfilesTest(
         )
         youtube = json.loads(
             Path(
-                "config/profiles/guion/youtube/"
+                "config/profiles/guion/youtube/estandar/"
                 "perfil_guion_youtube.json"
             ).read_text(
                 encoding="utf-8"
@@ -65,24 +64,32 @@ class ScriptComponentProfilesTest(
             instagram["format"]
         )
         self.assertEqual(
-            "1080x1920",
-            instagram["resolution"]
+            (1080, 1920),
+            (
+                instagram["video_style"]["width"],
+                instagram["video_style"]["height"],
+            ),
         )
         self.assertEqual(
             "horizontal",
             youtube["format"]
         )
         self.assertEqual(
-            "1920x1080",
-            youtube["resolution"]
+            (1920, 1080),
+            (
+                youtube["video_style"]["width"],
+                youtube["video_style"]["height"],
+            ),
         )
+        self.assertNotIn("resolution", instagram)
+        self.assertNotIn("resolution", youtube)
 
     def test_script_profile_selection_uses_script_profile_directory(self):
         controller = RunController()
 
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=("1", "2", "1")
         ), patch(
             "builtins.print"
         ) as print_mock:
@@ -92,7 +99,7 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/guion/instagram/"
+                "config/profiles/guion/instagram/estandar/"
                 "perfil_guion_instagram.json"
             ),
             selected["path"]
@@ -107,7 +114,7 @@ class ScriptComponentProfilesTest(
             printed
         )
         self.assertIn(
-            "2. YouTube",
+            "2. Youtube",
             printed
         )
         self.assertNotIn(
@@ -130,7 +137,7 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/imagen/instagram/"
+                "config/profiles/imagen/instagram/estandar/"
                 "perfil_imagen_instagram.json"
             ),
             selected["path"]
@@ -152,7 +159,7 @@ class ScriptComponentProfilesTest(
     def test_config_manager_loads_selected_script_profile_identity(self):
         profile_key = ProfileKey.for_component(
             ProfileComponent.GUION,
-            ProfilePlatform.YOUTUBE
+            "youtube"
         )
         with patch.dict(
             os.environ,

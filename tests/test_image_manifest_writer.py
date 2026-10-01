@@ -10,6 +10,17 @@ from app.modules.images.image_builder import ImageBuilder
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.video.media.media_loader import MediaLoader
 from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
+from app.visual_quality import (
+    ImageQualityFlowCoordinator,
+    ImageValidator,
+    NuditySafetyCheck,
+)
+
+
+class SafeNudityDetector:
+    def detect(self, path):
+        del path
+        return ()
 
 
 class RecordingBackend:
@@ -370,6 +381,15 @@ class ImageManifestWriterTest(unittest.TestCase):
                             encoder_token_limit=10_000,
                         )
                     ),
+                image_quality_flow=ImageQualityFlowCoordinator(
+                    validator=ImageValidator(
+                        checks=(
+                            NuditySafetyCheck(
+                                detector=SafeNudityDetector(),
+                            ),
+                        ),
+                    ),
+                ),
                 ).build(
                     storyboard_path=storyboard_path,
                     output_dir=output_dir

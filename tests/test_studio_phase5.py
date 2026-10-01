@@ -65,12 +65,18 @@ class StudioPhase5Test(unittest.TestCase):
 
     def test_none_keeps_phase_four_controller_contract(self):
         controller = RunController()
+        controller._active_studio_subtitle_key = (
+            controller.subtitle_profile_resolver.discover_profiles_for_family(
+                "studio", "instagram", "estandar",
+            )[0].key
+        )
+        controller._active_studio_subtitle_original = False
         with patch.object(
             controller, "select_visual_pipeline", return_value="studio"
         ), patch.object(
             controller,
-            "select_profile",
-            return_value={"profile_key": self.profile_key},
+            "_select_studio_profile",
+            return_value=(self.profile_key, self.profile),
         ), patch.object(
             controller,
             "select_studio_input_mode",
@@ -102,10 +108,10 @@ class StudioPhase5Test(unittest.TestCase):
     def test_studio_menu_selects_intro_outro_and_allows_same_asset(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            intro = root / "intro"
-            outro = root / "outro"
-            intro.mkdir()
-            outro.mkdir()
+            intro = root / "instagram" / "intro"
+            outro = root / "instagram" / "outro"
+            intro.mkdir(parents=True)
+            outro.mkdir(parents=True)
             intro_asset = intro / "brand.mp4"
             outro_asset = outro / "brand.mp4"
             intro_asset.touch()
@@ -114,7 +120,7 @@ class StudioPhase5Test(unittest.TestCase):
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
             with patch("builtins.input", side_effect=("4", "1", "1")):
-                plan = controller.select_studio_intro_outro()
+                plan = controller.select_studio_intro_outro(self.profile_key)
 
         self.assertEqual(intro_asset, plan.intro.asset_path)
         self.assertEqual(outro_asset, plan.outro.asset_path)
@@ -122,10 +128,10 @@ class StudioPhase5Test(unittest.TestCase):
     def test_studio_menu_selects_single_positions_dynamically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            intro_directory = root / "intro"
-            outro_directory = root / "outro"
-            intro_directory.mkdir()
-            outro_directory.mkdir()
+            intro_directory = root / "instagram" / "intro"
+            outro_directory = root / "instagram" / "outro"
+            intro_directory.mkdir(parents=True)
+            outro_directory.mkdir(parents=True)
             first = intro_directory / "a.mp4"
             second = intro_directory / "b.MP4"
             outro_asset = outro_directory / "c.mp4"
@@ -136,9 +142,9 @@ class StudioPhase5Test(unittest.TestCase):
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
             with patch("builtins.input", side_effect=("2", "2")):
-                intro = controller.select_studio_intro_outro()
+                intro = controller.select_studio_intro_outro(self.profile_key)
             with patch("builtins.input", side_effect=("3", "1")):
-                outro_plan = controller.select_studio_intro_outro()
+                outro_plan = controller.select_studio_intro_outro(self.profile_key)
 
         self.assertEqual(second, intro.intro.asset_path)
         self.assertIsNone(intro.outro)
@@ -153,11 +159,11 @@ class StudioPhase5Test(unittest.TestCase):
             with patch("builtins.input", return_value="2"), self.assertRaisesRegex(
                 FileNotFoundError, "No hay archivos MP4"
             ):
-                controller.select_studio_intro_outro()
+                controller.select_studio_intro_outro(self.profile_key)
 
     def test_main_and_start_transport_structured_plan(self):
         intro = self._selection(
-            "assets/videos/intro_outro/intro/a.mp4",
+            "assets/videos/intro_outro/instagram/intro/a.mp4",
             "intro",
         )
         plan = IntroOutroPlan(intro=intro)
@@ -379,7 +385,7 @@ class StudioPhase5Test(unittest.TestCase):
                 "app.modules.studio.render_service.ProgressLogger"
             ) as progress_logger:
                 subtitle_loader.return_value.load_render_style.return_value = (
-                    SimpleNamespace(offset=0.0)
+                    SimpleNamespace(offset=0.0, dynamic=False)
                 )
                 result = service.render(
                     source,
@@ -482,7 +488,7 @@ class StudioPhase5Test(unittest.TestCase):
                 RuntimeError, "concat failed"
             ):
                 subtitle_loader.return_value.load_render_style.return_value = (
-                    SimpleNamespace(offset=0.0)
+                    SimpleNamespace(offset=0.0, dynamic=False)
                 )
                 service.render(
                     source,
@@ -522,7 +528,6 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             profile,
             width=320,
             height=568,
-            resolution="320x568",
             fps=12,
             preset="ultrafast",
         )

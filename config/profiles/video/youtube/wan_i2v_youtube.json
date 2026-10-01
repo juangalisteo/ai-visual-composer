@@ -1,10 +1,5 @@
 {
     "platform": "video",
-    "format": "youtube",
-    "resolution": "1920x1080",
-    "duration": 4.083333333333333,
-    "tone": "i2v",
-
     "video_component": {
         "profile": "YouTube",
         "generation": {

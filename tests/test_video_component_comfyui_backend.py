@@ -11,6 +11,7 @@ from app.modules.video_component import (
     ComfyUIVideoBackendError,
     ComfyUIVideoWorkflow,
 )
+from app.shared.operational_error import OperationalError
 
 
 class FakeResponse:
@@ -37,6 +38,52 @@ class FakeResponse:
 
 
 class ComfyUIVideoBackendTest(unittest.TestCase):
+
+    def test_generate_adapts_wan_backend_failure_with_context(self):
+        class FailingBackend(ComfyUIVideoBackend):
+            def _generate(self, **kwargs):
+                raise ComfyUIVideoBackendError(
+                    "backend failure",
+                    category="EXECUTION_ERROR",
+                    prompt_id="video-prompt-123",
+                    node_id="42",
+                    node_type="Wan22ImageToVideoLatent",
+                    exception_type="BackendError",
+                    status="error",
+                )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "source.png"
+            source.write_bytes(b"png")
+            prepared = ComfyUIVideoWorkflow(
+                workflow={"sensitive": "workflow payload"},
+                backend_prompt=BackendVideoPrompt(
+                    source_image=source,
+                    positive_prompt="positive prompt must stay private",
+                    negative_prompt="negative prompt must stay private",
+                    motion_summary="subtle motion",
+                    camera_motion="static",
+                    motion_intensity="subtle",
+                    stability="high",
+                    temporal_rhythm="slow",
+                    profile_name="test_profile",
+                    workflow="wan-workflow.json",
+                ),
+                source_image_name="source.png",
+                output_prefix="vc1/clip",
+            )
+
+            with self.assertRaises(OperationalError) as context:
+                FailingBackend().generate(prepared, Path(temp_dir) / "output")
+
+        error = context.exception
+        self.assertEqual("EXTERNAL_SERVICE", error.context.family)
+        self.assertEqual("wan_i2v", error.context.technical_metadata["backend"])
+        self.assertEqual("wan-workflow.json", error.context.technical_metadata["workflow"])
+        self.assertEqual("video-prompt-123", error.context.technical_metadata["prompt_id"])
+        self.assertEqual("42", error.context.technical_metadata["node_id"])
+        self.assertNotIn("positive prompt", str(error.context.technical_metadata))
+        self.assertIsInstance(error.__cause__, ComfyUIVideoBackendError)
 
     def test_queue_prompt_returns_prompt_id(self):
         backend = ComfyUIVideoBackend()

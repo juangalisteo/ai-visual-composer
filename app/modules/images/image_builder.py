@@ -20,6 +20,12 @@ from app.shared.config_contract import (
 )
 from app.shared.config_manager import ConfigManager
 from app.shared.progress_logger import ProgressLogger
+from app.shared.error_context import (
+    ErrorContext,
+    ErrorSeverity,
+    ExitKind,
+)
+from app.shared.operational_error import OperationalError
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
 from app.prompt_translation import (
@@ -312,18 +318,27 @@ class ImageBuilder:
                         generate_attempt=generate_quality_attempt
                     )
                 )
+                quality_evidence = None
                 if self._is_visual_quality_result(
                     quality_result
                 ):
-                    self._evidence_writer().write_visual_quality_result(
-                        output_dir=output_dir,
-                        scene_number=scene_number,
-                        visual_quality_result=quality_result,
+                    quality_evidence = (
+                        self._evidence_writer().write_visual_quality_result(
+                            output_dir=output_dir,
+                            scene_number=scene_number,
+                            visual_quality_result=quality_result,
+                        )
                     )
                 if hasattr(quality_result, "history"):
                     prompt_metadata["visual_quality"] = (
                         self._visual_quality_trace(quality_result)
                 )
+                if quality_result.status == "manual_review":
+                    raise self._manual_review_required_error(
+                        quality_result=quality_result,
+                        quality_evidence=quality_evidence,
+                        scene_number=scene_number,
+                    )
                 if quality_result.status != "approved":
                     raise RuntimeError(
                         "La validación de imagen requiere "
@@ -813,6 +828,89 @@ class ImageBuilder:
             and hasattr(
                 quality_result,
                 "history"
+            )
+        )
+
+    def _manual_review_required_error(
+        self,
+        *,
+        quality_result,
+        quality_evidence,
+        scene_number,
+    ):
+        """Translate a review outcome without turning it into approval."""
+        asset = getattr(
+            quality_result,
+            "generated_asset",
+            None,
+        )
+        history = getattr(
+            quality_result,
+            "history",
+            None,
+        )
+        marker = getattr(
+            quality_result,
+            "manual_review_marker",
+            None,
+        )
+        scene_id = getattr(
+            asset,
+            "scene_id",
+            f"scene_{scene_number:03d}",
+        )
+        resource = getattr(asset, "path", None)
+        technical_metadata = {
+            "validation_status": "manual_review",
+            "scene_id": scene_id,
+            "attempt_count": len(
+                getattr(history, "generated_assets", ())
+            ),
+            "history_fingerprint": getattr(
+                history,
+                "history_fingerprint",
+                "",
+            ),
+            "manual_review_marker": getattr(
+                marker,
+                "marker_id",
+                "",
+            ),
+            "quality_result_fingerprint": getattr(
+                quality_result,
+                "result_fingerprint",
+                "",
+            ),
+        }
+        if quality_evidence is not None:
+            technical_metadata["evidence_index"] = str(
+                quality_evidence.index_path
+            )
+
+        return OperationalError(
+            ErrorContext(
+                family="VALIDATION",
+                severity=ErrorSeverity.FATAL_OPERATIONAL,
+                user_message=(
+                    "La imagen candidata requiere revision manual "
+                    "antes de continuar."
+                ),
+                recommended_action=(
+                    "Revise la imagen candidata y la evidencia de "
+                    "validacion; no se ha aprobado como asset final."
+                ),
+                operation=(
+                    "Validar calidad visual de "
+                    f"{scene_id}"
+                ),
+                resource=str(resource) if resource else None,
+                diagnostic_reference=(
+                    str(quality_evidence.artifact_path)
+                    if quality_evidence is not None
+                    else None
+                ),
+                technical_metadata=technical_metadata,
+                exit_kind=ExitKind.OPERATIONAL_ERROR,
             )
         )
 

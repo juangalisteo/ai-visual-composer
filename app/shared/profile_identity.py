@@ -10,22 +10,6 @@ class ProfileComponent(str, Enum):
     STUDIO = "studio"
 
 
-class ProfilePlatform(str, Enum):
-    INSTAGRAM = "instagram"
-    YOUTUBE = "youtube"
-
-
-class ProfileFamily(str, Enum):
-    SYSTEM = "system"
-    DESIGN = "design"
-
-
-_DESIGN_PROFILE_ID = re.compile(
-    r"^(guion|imagen|video|studio)_(instagram|youtube)_design_"
-    r"[a-z0-9]+(?:_[a-z0-9]+)*$"
-)
-
-
 def coerce_profile_component(value):
     return _coerce_enum(
         ProfileComponent,
@@ -35,15 +19,29 @@ def coerce_profile_component(value):
 
 
 def coerce_profile_platform(value):
-    return _coerce_enum(
-        ProfilePlatform,
-        value,
-        "Plataforma"
-    )
+    if not isinstance(value, str):
+        raise ValueError(
+            f"Plataforma de perfil no soportado: {value}"
+        )
+    normalized = value.strip().lower()
+    if not re.fullmatch(r"[a-z0-9]+(?:_[a-z0-9]+)*", normalized):
+        raise ValueError(
+            f"Plataforma de perfil no soportado: {value}"
+        )
+    return normalized
 
 
 def coerce_profile_family(value):
-    return _coerce_enum(ProfileFamily, value, "Familia")
+    if not isinstance(value, str):
+        raise ValueError(
+            f"Familia de perfil no soportada: {value}"
+        )
+    normalized = value.strip().lower()
+    if normalized == "system" or not re.fullmatch(
+        r"[a-z0-9]+(?:_[a-z0-9]+)*", normalized
+    ):
+        raise ValueError(f"Familia de perfil no soportada: {value}")
+    return normalized
 
 
 def _coerce_enum(
@@ -66,9 +64,9 @@ def _coerce_enum(
 @dataclass(frozen=True)
 class ProfileKey:
     component: ProfileComponent
-    platform: ProfilePlatform
+    platform: str
     profile_id: str
-    family: ProfileFamily = ProfileFamily.SYSTEM
+    family: str
 
     def __post_init__(self):
         component = coerce_profile_component(
@@ -78,26 +76,21 @@ class ProfileKey:
             self.platform
         )
         family = coerce_profile_family(self.family)
+        if not isinstance(self.profile_id, str):
+            raise ValueError(
+                "profile_id invalido: debe ser texto."
+            )
         profile_id = str(
             self.profile_id
         ).strip().lower()
-        expected_id = f"{component.value}_{platform.value}"
-        if family is ProfileFamily.SYSTEM:
-            valid = profile_id == expected_id
-        else:
-            valid = bool(_DESIGN_PROFILE_ID.fullmatch(profile_id)) and (
-                profile_id.startswith(
-                    f"{component.value}_{platform.value}_design_"
-                )
-            )
-        if not valid:
+        if not re.fullmatch(
+            r"[a-z0-9]+(?:_[a-z0-9]+)*",
+            profile_id,
+        ):
             raise ValueError(
-                "profile_id incompatible con componente y "
-                f"plataforma/familia: se esperaba {expected_id} "
-                "para SYSTEM o un ID DESIGN canónico, "
-                f"se recibió {self.profile_id}"
+                "profile_id invalido: se requiere un identificador tecnico "
+                f"seguro, se recibio {self.profile_id}"
             )
-
         object.__setattr__(
             self,
             "component",
@@ -120,7 +113,7 @@ class ProfileKey:
         cls,
         component,
         platform,
-        family=ProfileFamily.SYSTEM,
+        family=None,
         profile_id=None,
     ):
         component = coerce_profile_component(
@@ -129,14 +122,17 @@ class ProfileKey:
         platform = coerce_profile_platform(
             platform
         )
-        family = coerce_profile_family(family)
-        if family is ProfileFamily.DESIGN and not profile_id:
+        legacy_family_missing = family is None
+        # LEGACY_ADAPTER: callers pre-Phase-2 that omit family represent
+        # the physical ESTANDAR family. New callers transport it explicitly.
+        family = coerce_profile_family("estandar" if family is None else family)
+        if not legacy_family_missing and profile_id is None:
             raise ValueError(
-                "Un perfil DESIGN requiere un profile_id concreto."
+                "Una family explicita requiere un profile_id concreto."
             )
         return cls(
             component=component,
             platform=platform,
-            profile_id=(profile_id or f"{component.value}_{platform.value}"),
+            profile_id=(profile_id or f"{component.value}_{platform}"),
             family=family,
         )

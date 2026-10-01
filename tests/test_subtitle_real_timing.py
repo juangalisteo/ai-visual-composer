@@ -6,10 +6,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.modules.audio.voice_builder import VoiceBuilder
-from app.modules.subtitles.models.single_line_model import SingleLineModel
-from app.modules.subtitles.models.word_by_word_model import WordByWordModel
-from app.modules.subtitles.subtitle_builder import SubtitleBuilder
-from app.modules.subtitles.timing import (
+from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
+from app.modules.subtitles.modes.single_line import SingleLineModel
+from app.modules.subtitles.modes.word_by_word import WordByWordModel
+from app.modules.subtitles.policies.timing import (
     EDGE_TTS_TICKS_PER_SECOND,
     EdgeWordBoundaryParser,
     SpeechSegment,
@@ -401,7 +401,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 )
 
             with patch(
-                "app.modules.subtitles.subtitle_builder.subprocess.run",
+                "app.modules.subtitles.io.subtitle_builder.subprocess.run",
                 side_effect=fake_run,
             ):
                 SubtitleBuilder().build(

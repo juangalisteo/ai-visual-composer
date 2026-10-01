@@ -5,9 +5,7 @@ from app.modules.video.subtitles.subtitle_style_builder import (
 )
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileFamily,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -28,7 +26,7 @@ OPTIONAL_FORCE_STYLE_FIELDS = (
 
 
 @pytest.mark.parametrize("component", tuple(ProfileComponent))
-@pytest.mark.parametrize("platform", tuple(ProfilePlatform))
+@pytest.mark.parametrize("platform", ("instagram", "youtube"))
 def test_phase3_official_standard_baseline_uses_the_static_srt_engine(
     component,
     platform,
@@ -56,17 +54,9 @@ def test_phase3_official_standard_baseline_uses_the_static_srt_engine(
 
 @pytest.mark.parametrize("component", tuple(ProfileComponent))
 def test_phase3_official_design_baseline_is_static_and_pure(component):
-    design_key, _ = ProfileResolver().discover(
-        component,
-        ProfilePlatform.INSTAGRAM,
-        ProfileFamily.DESIGN,
-    )[0]
-    subtitle_key = SubtitleProfileKey.for_design(
-        component,
-        ProfilePlatform.INSTAGRAM,
-        design_key.profile_id,
-        ProfileResolver().declared_subtitle_style(design_key),
-    )
+    subtitle_key = SubtitleProfileResolver().discover_profiles_for_family(
+        component, "instagram", "design",
+    )[0].key
     resolved = SubtitleProfileResolver().load(subtitle_key)
     raw = resolved.path.read_text(encoding="utf-8")
     force_style = SubtitleStyleBuilder().build(resolved.render_style)
@@ -76,4 +66,4 @@ def test_phase3_official_design_baseline_is_static_and_pure(component):
     assert "FontSize=22" in force_style
     assert "Bold=1" in force_style
     assert all(field not in force_style for field in OPTIONAL_FORCE_STYLE_FIELDS)
-    assert '"subtitle_profile"' in raw
+    assert '"cue_policy"' in raw

@@ -196,22 +196,18 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
     def _assert_design_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            profile_key = ProfileKey.for_component(
-                "video",
-                "instagram",
-                family="design",
-                profile_id="video_instagram_design_modo_conciencia_reels",
+            key = SubtitleProfileKey(
+                "video", "instagram", "modo_conciencia_reels", "design",
             )
-            key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
-            path = root / key.relative_path
+            path = root / "video/instagram/design/subtitulos/modo_conciencia_reels.json"
             path.parent.mkdir(parents=True)
             data = json.loads(
                 Path(
                     "config/profiles/video/instagram/design/"
-                    "modo_conciencia_reels.json"
+                    "subtitulos/modo_conciencia_reels.json"
                 ).read_text(encoding="utf-8")
             )
-            data["subtitle_profile"]["render_style"].update(self.EXTENDED_STYLE)
+            data["render_style"].update(self.EXTENDED_STYLE)
             path.write_text(json.dumps(data), encoding="utf-8")
 
             resolved = SubtitleProfileResolver(root).load(key)
@@ -226,7 +222,7 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
             data["profile_id"] = profile_id
             data["display_name"] = "Tipografico"
             data["render_style"].update(self.EXTENDED_STYLE)
-            path = root / "studio/instagram/estandar" / f"{profile_id}.json"
+            path = root / "studio/instagram/estandar/subtitulos" / f"{profile_id}.json"
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps(data), encoding="utf-8")
 
@@ -248,7 +244,7 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
     @staticmethod
     def _source_standard(component):
         path = Path(
-            f"config/profiles/{component}/instagram/estandar/"
+            f"config/profiles/{component}/instagram/estandar/subtitulos/"
             f"subtitulo_{component}_instagram_linea_unica.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))

@@ -12,13 +12,11 @@ from app.modules.studio import (
     StudioInputMode,
     StudioInputPreparationService,
     StudioMontageInputError,
-    StudioMontageMode,
     StudioMontagePlanningService,
 )
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 
 
@@ -28,7 +26,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
         self.profile = SimpleNamespace(video_extensions=(".mp4",))
         self.profile_key = ProfileKey.for_component(
             ProfileComponent.STUDIO,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
         )
 
     def _service(self, root):
@@ -100,7 +98,6 @@ class StudioMontagePhase1Test(unittest.TestCase):
             clips = service.parse_order(" 1  3 2 ", candidates)
             plan = service.create_plan(
                 self.profile_key,
-                StudioMontageMode.MONTAJE_COMPLETO,
                 True,
                 clips,
             )
@@ -112,42 +109,40 @@ class StudioMontagePhase1Test(unittest.TestCase):
         self.assertEqual((1, 3, 2), tuple(clip.temporary_id for clip in plan.clips))
         self.assertEqual("instagram", plan.platform)
         self.assertEqual("studio_instagram", plan.profile_id)
-        self.assertEqual(StudioMontageMode.MONTAJE_COMPLETO, plan.mode)
         self.assertTrue(plan.transitions_enabled)
 
     def test_plan_preserves_youtube_studio_identity(self):
         youtube_key = ProfileKey.for_component(
             ProfileComponent.STUDIO,
-            ProfilePlatform.YOUTUBE,
+            "youtube",
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self._write_clips(root, ("A.mp4",))
+            self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             plan = service.create_plan(
                 youtube_key,
-                StudioMontageMode.SOLO_MONTAJE,
                 False,
-                service.parse_order("1", service.discover(self.profile)),
+                service.parse_order("1 2", service.discover(self.profile)),
             )
 
         self.assertEqual("youtube", plan.platform)
         self.assertEqual("studio_youtube", plan.profile_id)
 
-    def test_parser_accepts_one_clip_and_large_complete_selection(self):
+    def test_parser_requires_multiple_clips_and_accepts_large_selection(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             names = tuple(f"clip_{index:03}.mp4" for index in range(1, 231))
             self._write_clips(root, names)
             service = self._service(root)
             candidates = service.discover(self.profile)
-            one_clip = service.parse_order("230", candidates)
+            with self.assertRaisesRegex(StudioMontageInputError, "al menos dos"):
+                service.parse_order("230", candidates)
             all_clips = service.parse_order(
                 " ".join(str(index) for index in range(230, 0, -1)),
                 candidates,
             )
 
-        self.assertEqual("clip_230.mp4", one_clip[0].original_name)
         self.assertEqual(230, len(all_clips))
         self.assertEqual(230, all_clips[0].temporary_id)
         self.assertEqual(1, all_clips[-1].temporary_id)
@@ -189,7 +184,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             ):
                 service.parse_order("1", candidates)
 
-    def test_cli_shows_mode_before_discovery_order_and_transitions(self):
+    def test_cli_shows_discovery_order_and_transitions_without_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self._write_clips(root, ("A.mp4", "B.mp4", "C.mp4"))
@@ -198,7 +193,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             )
             with patch(
                 "builtins.input",
-                side_effect=("2", "1 3 2", "1"),
+                side_effect=("1 3 2", "1"),
             ), patch(
                 "app.controllers.run_controller.ProgressLogger.info"
             ) as logger:
@@ -208,7 +203,6 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 )
 
         rendered = "\n".join(call.args[0] for call in logger.call_args_list)
-        self.assertLess(rendered.index("MODO"), rendered.index("VÍDEOS ENCONTRADOS"))
         self.assertLess(
             rendered.index("VÍDEOS ENCONTRADOS"),
             rendered.index("Introduce el orden de montaje:"),
@@ -219,45 +213,42 @@ class StudioMontagePhase1Test(unittest.TestCase):
         )
         self.assertIn("[1] A.mp4", rendered)
         self.assertIn("[3] C.mp4", rendered)
-        self.assertEqual(StudioMontageMode.MONTAJE_COMPLETO, plan.mode)
         self.assertTrue(plan.transitions_enabled)
         self.assertEqual(("A.mp4", "C.mp4", "B.mp4"), tuple(
             clip.original_name for clip in plan.clips
         ))
 
-    def test_cli_records_solo_montage_and_transitions_no(self):
+    def test_cli_records_transitions_no_without_a_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self._write_clips(root, ("A.mp4",))
+            self._write_clips(root, ("A.mp4", "B.mp4"))
             controller = RunController(
                 studio_input_preparation_service=StudioInputPreparationService(root)
             )
-            with patch("builtins.input", side_effect=("1", "1", "2")):
+            with patch("builtins.input", side_effect=("1 2", "2")):
                 plan = controller.select_studio_montage_plan(
                     self.profile_key,
                     self.profile,
                 )
 
-        self.assertEqual(StudioMontageMode.SOLO_MONTAJE, plan.mode)
         self.assertFalse(plan.transitions_enabled)
 
     def test_run_controller_transports_montage_without_legacy_studio_options(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self._write_clips(root, ("A.mp4",))
+            self._write_clips(root, ("A.mp4", "B.mp4"))
             clip_service = self._service(root)
             candidates = clip_service.discover(self.profile)
             plan = clip_service.create_plan(
                 self.profile_key,
-                StudioMontageMode.SOLO_MONTAJE,
                 False,
-                clip_service.parse_order("1", candidates),
+                clip_service.parse_order("1 2", candidates),
             )
             controller = RunController()
             with patch.object(
                 controller,
-                "select_profile",
-                return_value={"profile_key": self.profile_key},
+                "_select_studio_operational_profile",
+                return_value=(self.profile_key, self.profile),
             ), patch.object(
                 controller,
                 "select_studio_input_mode",
@@ -280,6 +271,14 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 side_effect=AssertionError("subtitle must not run"),
             ), patch.object(
                 controller,
+                "select_studio_music",
+                return_value=None,
+            ), patch.object(
+                controller,
+                "select_studio_intro_outro",
+                return_value=None,
+            ), patch.object(
+                controller,
                 "ask_project_name",
                 return_value="montaje",
             ), patch.object(
@@ -291,19 +290,18 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
         self.assertIs(plan, options["studio_montage_plan"])
         self.assertEqual("montaje_videos", options["studio_input_mode"])
-        self.assertEqual("", options["subtitle_config"])
+        self.assertIsNone(options["subtitle_config"])
         self.assertIsNone(options["studio_music_path"])
 
     def test_start_transports_montage_plan_to_phase_two_orchestrator(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self._write_clips(root, ("A.mp4",))
+            self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             plan = service.create_plan(
                 self.profile_key,
-                StudioMontageMode.SOLO_MONTAJE,
                 False,
-                service.parse_order("1", service.discover(self.profile)),
+                service.parse_order("1 2", service.discover(self.profile)),
             )
             with patch.dict(
                 os.environ,
@@ -322,13 +320,12 @@ class StudioMontagePhase1Test(unittest.TestCase):
     def test_main_transports_montage_with_reset_and_montage_summary(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self._write_clips(root, ("A.mp4",))
+            self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             plan = service.create_plan(
                 self.profile_key,
-                StudioMontageMode.SOLO_MONTAJE,
                 False,
-                service.parse_order("1", service.discover(self.profile)),
+                service.parse_order("1 2", service.discover(self.profile)),
             )
             options = {
                 "profile_component": "studio",

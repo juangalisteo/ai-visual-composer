@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import main as app_main
 
@@ -11,18 +11,36 @@ from app.modules.script import PreparedScript
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class FakeConfigManager:
 
     subtitle_profile = object()
+    script_profile_key = ProfileKey(
+        component=ProfileComponent.GUION,
+        platform="test_platform",
+        family="test_family",
+        profile_id="test_profile",
+    )
+    video_profile_key = ProfileKey(
+        component=ProfileComponent.VIDEO,
+        platform="test_platform",
+        family="test_family",
+        profile_id="test_profile",
+    )
+    subtitle_profile_key = SubtitleProfileKey(
+        component=ProfileComponent.GUION,
+        platform="test_platform",
+        family="test_family",
+        profile_id="test_profile",
+    )
 
     def get_profile_key(
         self
     ):
-        return None
+        return self.script_profile_key
 
     def get_ai_config(
         self
@@ -57,6 +75,47 @@ class FakeConfigManager:
         style
     ):
         return self.subtitle_profile
+
+    def get_subtitle_profile_by_key(
+        self,
+        subtitle_profile_key,
+    ):
+        if subtitle_profile_key != self.subtitle_profile_key:
+            raise AssertionError(
+                "La prueba debe transportar la SubtitleProfileKey completa."
+            )
+        return self.subtitle_profile
+
+
+class FakeProfileResolver:
+    def discover_families(
+        self,
+        component,
+        platform,
+    ):
+        if (
+            component is not ProfileComponent.VIDEO
+            or platform != FakeConfigManager.video_profile_key.platform
+        ):
+            raise AssertionError("La prueba debe resolver el perfil VIDEO real.")
+        return (FakeConfigManager.video_profile_key.family,)
+
+    def discover(
+        self,
+        component,
+        platform,
+        family,
+    ):
+        if (
+            component is not ProfileComponent.VIDEO
+            or platform != FakeConfigManager.video_profile_key.platform
+            or family != FakeConfigManager.video_profile_key.family
+        ):
+            raise AssertionError("La prueba debe conservar la identidad VIDEO.")
+        return ((FakeConfigManager.video_profile_key, "Test profile"),)
+
+
+FakeConfigManager.profile_resolver = FakeProfileResolver()
 
 
 class FakePromptEngine:
@@ -429,10 +488,13 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "script_source": "manual",
                         "pipeline_mode": "full",
                         "profile_path": (
-                            "config/profiles/guion/instagram/"
+                            "config/profiles/guion/instagram/estandar/"
                             "perfil_guion_instagram.json"
                         ),
-                        "subtitle_config": "single_line",
+                        "subtitle_profile_key": (
+                            FakeConfigManager.subtitle_profile_key
+                        ),
+                        "subtitle_config": None,
                         "voice_config": "masculina",
                         "music_category": None,
                         "overlays_mode": "smart",
@@ -486,6 +548,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 video_builder.return_value.build.assert_called_once()
                 video_builder.assert_called_once_with(
                     subtitle_profile=FakeConfigManager.subtitle_profile,
+                    warnings=ANY,
                     intro_outro_selection=intro_outro_selection,
                 )
                 image_builder.return_value.build.assert_called_once()
@@ -535,10 +598,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ), patch.object(
                     FakeConfigManager,
                     "get_profile_key",
-                    return_value=ProfileKey.for_component(
-                        ProfileComponent.GUION,
-                        ProfilePlatform.YOUTUBE
-                    )
+                    return_value=FakeConfigManager.script_profile_key,
                 ), patch(
                     "app.modules.script.preparation.PromptEngine",
                     side_effect=AssertionError(
@@ -584,9 +644,16 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "script_source": "manual",
                         "pipeline_mode": "full",
                         "profile_component": "guion",
-                        "profile_platform": "youtube",
-                        "profile_id": "guion_youtube",
-                        "subtitle_config": "single_line",
+                        "profile_platform": (
+                            FakeConfigManager.script_profile_key.platform
+                        ),
+                        "profile_id": (
+                            FakeConfigManager.script_profile_key.profile_id
+                        ),
+                        "subtitle_profile_key": (
+                            FakeConfigManager.subtitle_profile_key
+                        ),
+                        "subtitle_config": None,
                         "voice_config": "masculina",
                         "music_category": None,
                         "overlays_mode": "smart",
@@ -639,10 +706,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 )
                 video_clips_builder.assert_called_once()
                 self.assertEqual(
-                    ProfileKey.for_component(
-                        ProfileComponent.VIDEO,
-                        ProfilePlatform.YOUTUBE
-                    ),
+                    FakeConfigManager.video_profile_key,
                     video_clips_builder.call_args.kwargs[
                         "profile_key"
                     ]
@@ -742,6 +806,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 srt_optimizer.assert_not_called()
                 video_builder.assert_called_once_with(
                     subtitle_profile=None,
+                    warnings=ANY,
                     render_subtitles=False,
                 )
                 video_builder.return_value.build.assert_called_once_with()
@@ -834,7 +899,11 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "output/full test/video/full test.mp4"
                     )
 
-                    result = start.iniciar()
+                    result = start.iniciar(
+                        subtitle_profile_key=(
+                            FakeConfigManager.subtitle_profile_key
+                        ),
+                    )
 
                 self.assertEqual(
                     1,
@@ -948,7 +1017,11 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "output/full generated source/video/full generated source.mp4"
                     )
 
-                    start.iniciar()
+                    start.iniciar(
+                        subtitle_profile_key=(
+                            FakeConfigManager.subtitle_profile_key
+                        ),
+                    )
 
                 self.assertEqual(
                     1,

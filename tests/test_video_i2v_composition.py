@@ -19,9 +19,9 @@ from app.modules.video.video_validator import VideoValidator
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.operational_error import OperationalError
 
 
 class I2VCompositionTest(unittest.TestCase):
@@ -52,11 +52,11 @@ class I2VCompositionTest(unittest.TestCase):
     def test_diagnostics_uses_structured_profile_identity(self):
         profile_key = ProfileKey.for_component(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM
+            "instagram"
         )
         environment = {
             "MC_PROFILE_COMPONENT": profile_key.component.value,
-            "MC_PROFILE_PLATFORM": profile_key.platform.value,
+            "MC_PROFILE_PLATFORM": profile_key.platform,
             "MC_PROFILE_ID": profile_key.profile_id,
             "MC_PROFILE_PATH": "C:/arbitrary/profile.json",
         }
@@ -255,14 +255,16 @@ class I2VCompositionTest(unittest.TestCase):
                     )
                 )
 
-                with self.assertRaises(
-                    subprocess.CalledProcessError
-                ):
+                with self.assertRaises(OperationalError) as caught:
                     VideoRenderService().render_final(
                         build_context=context,
                         artifacts=artifacts,
                         diagnostics=diagnostics,
                     )
+
+            self.assertEqual("FFMPEG", caught.exception.context.family)
+            self.assertEqual(str(diagnostics.path), caught.exception.context.diagnostic_reference)
+            self.assertIsInstance(caught.exception.__cause__, subprocess.CalledProcessError)
 
             self.assertFalse(final_path.exists())
             self.assertTrue(render_path.exists())
@@ -270,6 +272,43 @@ class I2VCompositionTest(unittest.TestCase):
                 '"status": "FAILED"',
                 diagnostics.path.read_text(encoding="utf-8"),
             )
+
+    def test_failed_i2v_normalization_keeps_diagnostic_reference(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source_path = root / "wan.mp4"
+            source_path.write_bytes(b"source")
+            final_path = root / "video" / "final.mp4"
+            context = VideoBuildContext(
+                config=self.make_config(),
+                media=VideoMedia(
+                    audio_path=root / "audio.mp3",
+                    subtitle_path=root / "subtitles.srt",
+                    images_manifest_path=root / "clips.json",
+                    output_path=final_path,
+                    image_paths=(source_path,),
+                    media_types=("video",),
+                    media_durations=(4.0,),
+                ),
+                timeline=SimpleNamespace(image_duration=4.0),
+            )
+            diagnostics = FFmpegDiagnostics(output_path=final_path, scene_count=1)
+            failure = subprocess.CalledProcessError(
+                8, ["ffmpeg", "-i", str(source_path)], stderr="normalize failed"
+            )
+            with patch(
+                "app.modules.video.ffmpeg.i2v_normalizer.MediaProbe.get_video_frame_count",
+                return_value=48,
+            ), patch("app.modules.video.ffmpeg.i2v_normalizer.Runner") as runner_class, self.assertRaises(OperationalError) as caught:
+                runner_class.return_value.run.side_effect = failure
+                I2VClipNormalizer().normalize(context, diagnostics)
+
+            self.assertEqual("FFMPEG", caught.exception.context.family)
+            self.assertEqual(str(diagnostics.path), caught.exception.context.diagnostic_reference)
+            self.assertIs(caught.exception.__cause__, failure)
+            diagnostic = diagnostics.path.read_text(encoding="utf-8")
+            self.assertIn("normalize failed", diagnostic)
+            self.assertIn('"FAILED"', diagnostic)
 
     def test_successful_render_promotes_validated_temporary_file(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -374,15 +413,15 @@ class I2VCompositionTest(unittest.TestCase):
             with patch(
                 "app.modules.video.video_validator.MediaProbe.get_duration",
                 return_value=3.0,
-            ), self.assertRaisesRegex(
-                RuntimeError,
-                "tolerancia configurada",
-            ):
+            ), self.assertRaises(OperationalError) as caught:
                 VideoValidator().validate(
                     output_path=output_path,
                     expected_duration=4.0,
                     max_duration_difference=0.2,
                 )
+
+        self.assertEqual("VALIDATION", caught.exception.context.family)
+        self.assertIsInstance(caught.exception.__cause__, RuntimeError)
 
 
 if __name__ == "__main__":

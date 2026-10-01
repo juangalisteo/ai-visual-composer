@@ -5,6 +5,12 @@ import time
 from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.video_validator import VideoValidator
 from app.shared.media_probe import MediaProbe
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+    summarize_technical_text,
+)
+import subprocess
 
 
 class I2VClipNormalizer:
@@ -82,6 +88,27 @@ class I2VClipNormalizer:
                         stderr=self._stderr(error),
                         status="FAILED",
                     )
+                    if isinstance(error, OperationalError):
+                        raise
+                    if isinstance(error, subprocess.CalledProcessError):
+                        metadata = {
+                            "command": tuple(map(str, error.cmd or command)),
+                            "returncode": error.returncode,
+                            "phase": "i2v_normalization",
+                            "scene_number": index + 1,
+                        }
+                        stderr = summarize_technical_text(error.stderr)
+                        if stderr:
+                            metadata["stderr_summary"] = stderr
+                        raise create_operational_error(
+                            family="FFMPEG",
+                            user_message="FFmpeg no pudo normalizar el clip I2V.",
+                            recommended_action="Revisa el diagnostico de FFmpeg generado para esta escena.",
+                            operation="Normalizar clip I2V",
+                            resource=str(output_path),
+                            diagnostic_reference=str(diagnostics.path),
+                            technical_metadata=metadata,
+                        ) from error
                     raise
 
                 diagnostics.record_normalized_clip(

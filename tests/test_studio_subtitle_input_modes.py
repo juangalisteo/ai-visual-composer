@@ -19,11 +19,11 @@ from app.modules.studio import (
     StudioProfileLoader,
     StudioRenderResult,
 )
-from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
-from app.modules.subtitles.external_media_subtitles import (
+from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
-from app.modules.subtitles.timing import (
+from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
+from app.modules.subtitles.policies.timing import (
     SubtitleTimingResolver,
     whisper_timing_path,
 )
@@ -53,6 +53,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         return SubtitleProfileResolver().load(
             SubtitleProfileKey.for_profile(self.profile_key, style)
         )
+
+    @staticmethod
+    def _design_subtitle_key():
+        return SubtitleProfileResolver().discover_profiles_for_family(
+            "studio", "instagram", "design",
+        )[0].key
 
     def test_selected_srt_video_directory_ignores_video_directory(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -318,14 +324,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             base.parent.mkdir(parents=True)
             base.write_text(source, encoding="utf-8")
             subtitle_profile = ConfigManager().get_subtitle_profile(
-                "single_line",
-                original=True,
-                design_selection=SubtitleProfileKey.for_design(
-                    "studio",
-                    "instagram",
-                    "studio_instagram_design_modo_conciencia_reels",
-                    "word_by_word",
-                ),
+                self._design_subtitle_key(), original=True,
             )
 
             with patch("app.core.start.SubtitleCueTransformer") as transformer:
@@ -381,14 +380,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             base.parent.mkdir(parents=True)
             base.write_text(source, encoding="utf-8")
             design_profile = ConfigManager().get_subtitle_profile(
-                "single_line",
-                original=True,
-                design_selection=SubtitleProfileKey.for_design(
-                    "studio",
-                    "instagram",
-                    "studio_instagram_design_modo_conciencia_reels",
-                    "word_by_word",
-                ),
+                self._design_subtitle_key(), original=True,
             )
             subtitle_profile = replace(
                 design_profile,
@@ -476,14 +468,21 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 self.assertEqual(base, renderer.render.call_args.kwargs["subtitle_path"])
                 transformer.assert_not_called()
 
-    def test_menu_selects_input_before_subtitles(self):
+    def test_menu_selects_subtitles_before_video(self):
         controller = RunController()
         order = []
         with patch.object(
-            controller, "select_profile",
-            side_effect=lambda _: order.append("profile") or {
-                "profile_key": self.profile_key
-            },
+            controller, "_select_studio_profile",
+            side_effect=lambda *_: (
+                order.append("subtitle"),
+                setattr(
+                    controller,
+                    "_active_studio_subtitle_key",
+                    self._subtitle_profile("single_line").key,
+                ),
+                setattr(controller, "_active_studio_subtitle_original", False),
+                (self.profile_key, self.profile),
+            )[-1],
         ), patch.object(
             controller, "select_studio_input_mode",
             side_effect=lambda: order.append("input") or "video",
@@ -493,12 +492,6 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             side_effect=lambda *_: order.append("files") or SimpleNamespace(
                 video_path=Path("input/studio/video/source.mp4"),
                 subtitle_path=None,
-            ),
-        ), patch.object(
-            controller, "select_studio_subtitle_options",
-            side_effect=lambda *_: order.append("subtitle") or (
-                "single_line",
-                False,
             ),
         ), patch.object(
             controller, "select_studio_music", return_value=None,
@@ -511,28 +504,235 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         ):
             options = controller._run_studio()
 
-        self.assertEqual(["input", "profile", "files", "subtitle"], order)
+        self.assertEqual(["input", "subtitle", "files"], order)
         self.assertEqual("video", options["studio_input_mode"])
+
+    def test_studio_subtitle_selector_discovers_standard_and_design_before_video(self):
+        controller = RunController()
+        messages = []
+        controller._print = messages.append
+        resolver = SubtitleProfileResolver()
+        design = resolver.discover_profiles_for_family(
+            "studio", "instagram", "design",
+        )[0]
+        standard = resolver.discover_profiles_for_family(
+            "studio", "instagram", "estandar",
+        )
+        controller._select_from_list = Mock(
+            side_effect=("instagram", "design", design),
+        )
+
+        selected, original = controller._select_studio_subtitle_profile(
+            StudioInputMode.VIDEO.value,
+        )
+
+        self.assertEqual(design.key, selected)
+        self.assertFalse(original)
+        self.assertIn("SUBTÍTULOS", "\n".join(messages))
+        self.assertIn("1. DESIGN", messages)
+        self.assertIn("2. ESTANDAR", messages)
+        self.assertIn("1. Modo Conciencia | Reels", messages)
+        self.assertEqual(
+            {"Línea única", "Palabra por palabra"},
+            {descriptor.display_name for descriptor in standard},
+        )
+
+    def test_srt_video_selector_uses_real_profiles_and_activates_original_policy(self):
+        resolver = SubtitleProfileResolver()
+        cases = (
+            ("instagram", "design", "modo_conciencia_reels"),
+            ("instagram", "estandar", "subtitulo_studio_instagram_linea_unica"),
+            ("instagram", "estandar", "subtitulo_studio_instagram_palabra_por_palabra"),
+            ("youtube", "estandar", "subtitulo_studio_youtube_linea_unica"),
+        )
+        for platform, family, profile_id in cases:
+            with self.subTest(
+                platform=platform,
+                family=family,
+                profile_id=profile_id,
+            ):
+                controller = RunController()
+                messages = []
+                controller._print = messages.append
+                descriptor = next(
+                    item
+                    for item in resolver.discover_profiles_for_family(
+                        "studio", platform, family,
+                    )
+                    if item.profile_id == profile_id
+                )
+                controller._select_from_list = Mock(
+                    side_effect=(platform, family, descriptor),
+                )
+
+                selected, original = controller._select_studio_subtitle_profile(
+                    StudioInputMode.SRT_VIDEO.value,
+                )
+
+                self.assertEqual(descriptor.key, selected)
+                self.assertTrue(original)
+                self.assertNotIn("ORIGINAL", "\n".join(messages))
+
+    def test_srt_video_original_standard_profiles_preserve_human_structure(self):
+        source = (
+            "1\n"
+            "00:00:01,000 --> 00:00:02,000\n"
+            "Texto humano, con puntuación.\n\n"
+            "2\n"
+            "00:00:03,000 --> 00:00:04,000\n"
+            "Segundo cue humano.\n"
+        )
+        resolver = SubtitleProfileResolver()
+        descriptors = resolver.discover_profiles_for_family(
+            "studio", "instagram", "estandar",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "demo" / "subtitles" / "demo.srt"
+            base.parent.mkdir(parents=True)
+            base.write_text(source, encoding="utf-8")
+            for descriptor in descriptors:
+                with self.subTest(profile_id=descriptor.profile_id), patch(
+                    "app.core.start.SubtitleCueTransformer"
+                ) as transformer:
+                    rendered_path = _persist_studio_render_subtitle(
+                        base_subtitle_path=base,
+                        output_path=root / "demo" / "video" / "demo.mp4",
+                        subtitle_profile=resolver.load(descriptor.key),
+                        render_fps=self.profile.fps,
+                        original=True,
+                    )
+
+                self.assertEqual(base, rendered_path)
+                self.assertEqual(source, base.read_text(encoding="utf-8"))
+                self.assertEqual(
+                    source,
+                    rendered_path.read_text(encoding="utf-8"),
+                )
+                transformer.assert_not_called()
+
+    def test_srt_video_selected_profile_is_not_taken_from_discovery_order(self):
+        source = Path(
+            "config/profiles/studio/instagram/estandar/subtitulos/"
+            "subtitulo_studio_instagram_linea_unica.json"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subtitle_dir = root / "studio/instagram/test_family/subtitulos"
+            subtitle_dir.mkdir(parents=True)
+            for profile_id, display_name in (
+                ("test_profile_first", "First profile"),
+                ("test_profile_selected", "Selected profile"),
+            ):
+                payload = json.loads(source.read_text(encoding="utf-8"))
+                payload.update(
+                    {
+                        "family": "test_family",
+                        "profile_id": profile_id,
+                        "display_name": display_name,
+                    }
+                )
+                (subtitle_dir / f"{profile_id}.json").write_text(
+                    json.dumps(payload), encoding="utf-8",
+                )
+
+            resolver = SubtitleProfileResolver(root)
+            descriptors = resolver.discover_profiles_for_family(
+                "studio", "instagram", "test_family",
+            )
+            selected_descriptor = next(
+                descriptor
+                for descriptor in descriptors
+                if descriptor.profile_id == "test_profile_selected"
+            )
+            controller = RunController(subtitle_profile_resolver=resolver)
+            operational_key = ProfileKey(
+                "studio", "instagram", "test_operational", "test_operational_family",
+            )
+            controller._select_from_list = Mock(
+                side_effect=("instagram", "test_family", selected_descriptor),
+            )
+
+            with patch.object(
+                controller,
+                "_select_studio_operational_profile",
+                return_value=(operational_key, Mock()),
+            ) as operational, patch(
+                "app.controllers.run_controller.ProfileKey.for_component",
+                side_effect=AssertionError("No debe fabricar una identidad operacional."),
+            ):
+                profile_key, _ = controller._select_studio_profile(
+                    StudioInputMode.SRT_VIDEO.value,
+                )
+            selected = controller._studio_profile_options(profile_key)[
+                "subtitle_profile_key"
+            ]
+            original = controller._active_studio_subtitle_original
+
+        self.assertEqual(operational_key, profile_key)
+        self.assertEqual(selected_descriptor.key, selected)
+        self.assertNotEqual(descriptors[0].key, selected)
+        self.assertTrue(original)
+
+    def test_design_and_standard_word_by_word_profiles_are_independent(self):
+        resolver = SubtitleProfileResolver()
+        design = resolver.discover_profiles_for_family(
+            "studio", "instagram", "design",
+        )[0]
+        standard = next(
+            descriptor for descriptor in resolver.discover_profiles_for_family(
+                "studio", "instagram", "estandar",
+            )
+            if descriptor.mode == "word_by_word"
+        )
+
+        self.assertNotEqual(design.key.profile_id, standard.key.profile_id)
+        self.assertEqual("word_by_word", design.mode)
+        self.assertEqual("word_by_word", standard.mode)
+        self.assertNotEqual(design.key.family, standard.key.family)
+
+    def test_future_family_is_discovered_from_subtitles_without_root_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subtitle_dir = root / "studio/instagram/test_family/subtitulos"
+            subtitle_dir.mkdir(parents=True)
+            payload = json.loads(
+                Path(
+                    "config/profiles/studio/instagram/estandar/subtitulos/"
+                    "subtitulo_studio_instagram_linea_unica.json"
+                ).read_text(encoding="utf-8")
+            )
+            payload.update(
+                {
+                    "family": "test_family",
+                    "profile_id": "test_profile",
+                    "display_name": "Test profile",
+                }
+            )
+            (subtitle_dir / "test_profile.json").write_text(
+                json.dumps(payload), encoding="utf-8",
+            )
+
+            resolver = SubtitleProfileResolver(root)
+            families = resolver.discover_families("studio", "instagram")
+            descriptors = resolver.discover_profiles_for_family(
+                "studio", "instagram", "test_family",
+            )
+            self.assertFalse(any(subtitle_dir.parent.glob("*.json")))
+
+        self.assertIn("test_family", families)
+        self.assertEqual("test_profile", descriptors[0].profile_id)
 
     def test_srt_video_subtitle_choice_is_the_only_style_selection(self):
         controller = RunController()
         messages = []
         controller._print = messages.append
-        for selected, expected_style, expected_original in (
-            ("original", "single_line", True),
-            (
-                "subtitulo_studio_instagram_linea_unica",
-                "subtitulo_studio_instagram_linea_unica",
-                False,
-            ),
-            (
-                "subtitulo_studio_instagram_palabra_por_palabra",
-                "subtitulo_studio_instagram_palabra_por_palabra",
-                False,
-            ),
-        ):
-            with self.subTest(selected=selected):
-                controller._select_from_list = Mock(return_value=selected)
+        descriptors = controller.subtitle_profile_resolver.discover_profiles(
+            self.profile_key
+        )
+        for descriptor in descriptors:
+            with self.subTest(profile_id=descriptor.profile_id):
+                controller._select_from_list = Mock(return_value=descriptor)
                 with patch.object(
                     controller,
                     "select_studio_subtitle_config",
@@ -542,21 +742,17 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                         StudioInputMode.SRT_VIDEO.value,
                     )
 
-                self.assertEqual(expected_style, style)
-                self.assertEqual(expected_original, original)
+                self.assertEqual(descriptor.key, style)
+                self.assertTrue(original)
                 visual_style.assert_not_called()
                 controller._select_from_list.assert_called_once_with(
-                    (
-                        "original",
-                        "subtitulo_studio_instagram_linea_unica",
-                        "subtitulo_studio_instagram_palabra_por_palabra",
-                    )
+                    tuple(descriptors)
                 )
 
         self.assertIn("\nSUBT\u00cdTULOS\n", messages)
-        self.assertIn("1. ORIGINAL", messages)
-        self.assertIn("2. Línea única", messages)
-        self.assertIn("3. Palabra por palabra", messages)
+        self.assertIn("1. Línea única", messages)
+        self.assertIn("2. Palabra por palabra", messages)
+        self.assertNotIn("ORIGINAL", "\n".join(messages))
 
     def test_video_offers_only_transformed_subtitle_styles(self):
         controller = RunController()
@@ -578,7 +774,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertIn("2. Palabra por palabra", messages)
         self.assertNotIn("ORIGINAL", "\n".join(messages))
 
-    def test_design_srt_video_offers_original_and_common_subtitle_modes(self):
+    def test_design_srt_video_offers_only_its_real_profile(self):
         profile_key = ProfileKey.for_component(
             "studio",
             "instagram",
@@ -588,69 +784,23 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         controller = RunController()
         messages = []
         controller._print = messages.append
-        for selected, expected_style, expected_original in (
-            ("original", "single_line", True),
-            (
-                "subtitulo_studio_instagram_linea_unica",
-                "subtitulo_studio_instagram_linea_unica",
-                False,
-            ),
-            (
-                "subtitulo_studio_instagram_palabra_por_palabra",
-                "subtitulo_studio_instagram_palabra_por_palabra",
-                False,
-            ),
-        ):
-            with self.subTest(selected=selected):
-                controller._select_from_list = Mock(return_value=selected)
-                style, original = controller.select_studio_subtitle_options(
-                    profile_key,
-                    StudioInputMode.SRT_VIDEO.value,
-                )
-
-                self.assertEqual(expected_style, style)
-                self.assertEqual(expected_original, original)
-                controller._select_from_list.assert_called_once_with(
-                    (
-                        "original",
-                        "subtitulo_studio_instagram_linea_unica",
-                        "subtitulo_studio_instagram_palabra_por_palabra",
-                    )
-                )
-
-        self.assertIn("\nSUBTÍTULOS\n", messages)
-        self.assertIn("1. ORIGINAL", messages)
-        self.assertIn("2. Línea única", messages)
-        self.assertIn("3. Palabra por palabra", messages)
-
-    def test_design_video_audio_srt_reuses_the_common_functional_selector(self):
-        controller = RunController()
-        controller._active_studio_design_subtitle_key = (
-            SubtitleProfileKey.for_design(
-                "studio",
-                "instagram",
-                "studio_instagram_design_modo_conciencia_reels",
-                "word_by_word",
-            )
-        )
-        controller._select_from_list = Mock(return_value="original")
-
-        style, original = controller.select_studio_subtitle_options(
-            self.profile_key,
-            StudioInputMode.VIDEO_AUDIO_SRT.value,
+        descriptor = controller.subtitle_profile_resolver.discover_profiles(
+            profile_key
+        )[0]
+        controller._select_from_list = Mock(return_value=descriptor)
+        selected, original = controller.select_studio_subtitle_options(
+            profile_key,
+            StudioInputMode.SRT_VIDEO.value,
         )
 
-        self.assertEqual("single_line", style)
+        self.assertEqual(descriptor.key, selected)
         self.assertTrue(original)
-        controller._select_from_list.assert_called_once_with(
-            (
-                "original",
-                "subtitulo_studio_instagram_linea_unica",
-                "subtitulo_studio_instagram_palabra_por_palabra",
-            )
-        )
+        controller._select_from_list.assert_called_once_with((descriptor,))
+        self.assertIn("\nSUBTÍTULOS\n", messages)
+        self.assertIn("1. Modo Conciencia | Reels", messages)
+        self.assertNotIn("ORIGINAL", "\n".join(messages))
 
-    def test_design_srt_video_uses_standard_treatment_and_design_render_style(self):
+    def test_design_video_audio_srt_uses_its_autonomous_subtitle_profile(self):
         environment = {
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
@@ -658,56 +808,37 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "MC_PROFILE_FAMILY": "system",
         }
         with patch.dict(os.environ, environment, clear=False):
-            for selection, expected_style in (
-                ("single_line", "single_line"),
-                (
-                    "subtitulo_studio_instagram_linea_unica",
-                    "single_line",
-                ),
-                (
-                    "subtitulo_studio_instagram_palabra_por_palabra",
-                    "word_by_word",
-                ),
-            ):
-                with self.subTest(selection=selection):
-                    subtitle_profile = ConfigManager().get_subtitle_profile(
-                        selection,
-                        design_selection=SubtitleProfileKey.for_design(
-                            "studio",
-                            "instagram",
-                            "studio_instagram_design_modo_conciencia_reels",
-                            "word_by_word",
-                        ),
-                    )
+            subtitle_profile = ConfigManager().get_subtitle_profile(
+                self._design_subtitle_key(),
+            )
 
-                    self.assertEqual(expected_style, subtitle_profile.key.style.value)
-                    self.assertEqual(expected_style, subtitle_profile.cue_policy["mode"])
-                    self.assertEqual("oswald", subtitle_profile.render_style["font"])
-                    self.assertEqual(22, subtitle_profile.render_style["font_size"])
-                    self.assertTrue(subtitle_profile.render_style["bold"])
+        self.assertEqual("word_by_word", subtitle_profile.cue_policy["mode"])
+        self.assertEqual("oswald", subtitle_profile.render_style["font"])
+        self.assertEqual(22, subtitle_profile.render_style["font_size"])
+        self.assertTrue(subtitle_profile.render_style["bold"])
 
-    def test_discovery_accepts_a_future_visual_model_without_menu_changes(self):
+    def test_discovery_accepts_a_future_profile_with_an_existing_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            subtitle_dir = root / "studio" / "instagram" / "estandar"
+            subtitle_dir = root / "studio" / "instagram" / "estandar" / "subtitulos"
             subtitle_dir.mkdir(parents=True)
-            for style in ("single_line", "word_by_word", "modo_conciencia"):
+            for profile_suffix, mode in (
+                ("linea_unica", "single_line"),
+                ("palabra_por_palabra", "word_by_word"),
+                ("modo_conciencia", "word_by_word"),
+            ):
                 profile_id = (
                     "subtitulo_studio_instagram_"
-                    + {
-                        "single_line": "linea_unica",
-                        "word_by_word": "palabra_por_palabra",
-                        "modo_conciencia": "modo_conciencia",
-                    }[style]
+                    + profile_suffix
                 )
                 (subtitle_dir / f"{profile_id}.json").write_text(
                     json.dumps({
                         "component": "studio",
                         "platform": "instagram",
+                        "family": "estandar",
                         "profile_id": profile_id,
                         "display_name": profile_id,
-                        "style": style,
-                        "cue_policy": {"mode": "single_line"},
+                        "cue_policy": {"mode": mode},
                         "render_style": {
                             "font": "unisans",
                             "font_size": 14,
@@ -731,8 +862,11 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             )
 
         self.assertEqual(
-            ("single_line", "modo_conciencia", "word_by_word"),
-            styles,
+            ("single_line", "word_by_word", "word_by_word"),
+            tuple(
+                style.value if hasattr(style, "value") else style
+                for style in styles
+            ),
         )
 
 

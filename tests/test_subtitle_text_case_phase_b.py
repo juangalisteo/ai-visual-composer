@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
-from app.modules.subtitles.text_case import TextCasePolicy
+from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
+from app.modules.subtitles.policies.text_case import TextCasePolicy
 from app.shared.profile_identity import ProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -46,6 +46,24 @@ def test_text_case_is_common_to_models_and_preserves_timestamps(style, text_case
     assert "00:00:00,000 --> 00:00:02,000" in output if style == "single_line" else "00:00:00,000" in output
 
 
+@pytest.mark.parametrize("style", ("single_line", "word_by_word"))
+@pytest.mark.parametrize(
+    "uppercase, expected",
+    ((False, SPANISH), (True, SPANISH.upper())),
+)
+def test_uppercase_is_a_common_declarative_cue_policy_option(
+    style, uppercase, expected,
+):
+    output = SubtitleCueTransformer(
+        SimpleNamespace(cue_policy=_policy(style, uppercase=uppercase)), 30,
+    ).transform(SOURCE)
+    rendered = " ".join(
+        line for line in output.splitlines()
+        if "-->" not in line and not line.isdigit()
+    )
+    assert " ".join(expected.split()) == " ".join(rendered.split())
+
+
 def test_legacy_and_explicit_contract_validation():
     assert TextCasePolicy.from_cue_policy({"uppercase": True}).mode == "uppercase"
     assert TextCasePolicy.from_cue_policy({"uppercase": False}).mode == "original"
@@ -63,6 +81,7 @@ def test_design_and_standard_profiles_use_the_common_policy_without_original_pat
     design_key = ProfileKey.for_component("studio", "instagram", family="design", profile_id="studio_instagram_design_modo_conciencia_reels")
     design = resolver.load_selection(design_key, "word_by_word")
     standard.cue_policy["text_case"] = "lowercase"
+    standard.cue_policy.pop("uppercase")
     design.cue_policy["text_case"] = "uppercase"
     design.cue_policy.pop("uppercase")
     assert SPANISH.lower() in SubtitleCueTransformer(standard, 30).transform(SOURCE)

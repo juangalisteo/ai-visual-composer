@@ -5,9 +5,9 @@ from types import SimpleNamespace
 from app.core.start import _required_builders
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
-from app.modules.subtitles.models.single_line_model import SingleLineModel
-from app.modules.subtitles.models.word_by_word_model import WordByWordModel
-from app.modules.subtitles.srt_optimizer import SrtOptimizer
+from app.modules.subtitles.modes.single_line import SingleLineModel
+from app.modules.subtitles.modes.word_by_word import WordByWordModel
+from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
 from app.modules.video.config.loaders.overlay_loader import OverlayConfigLoader
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.config.loaders.visual_effect_loader import (
@@ -17,7 +17,6 @@ from app.modules.video.video_config import VideoConfigLoader
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -33,7 +32,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     )
 
     EXPECTED = {
-        ProfilePlatform.INSTAGRAM: {
+        "instagram": {
             "format": "vertical",
             "width": 1080,
             "height": 1920,
@@ -47,7 +46,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "audio_codec": "aac",
             "audio_bitrate": "192k",
         },
-        ProfilePlatform.YOUTUBE: {
+        "youtube": {
             "format": "horizontal",
             "width": 1920,
             "height": 1080,
@@ -72,7 +71,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             for platform, expected in self.EXPECTED.items():
                 with self.subTest(
                     component=component.value,
-                    platform=platform.value,
+                    platform=platform,
                 ):
                     profile_key, profile = self._profile(
                         component,
@@ -114,7 +113,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_video_loader_rejects_every_missing_critical_key(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
         )
         critical_paths = (
             ("video_style", "width"),
@@ -143,7 +142,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_visual_loaders_reject_missing_critical_keys(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
         )
         critical_paths = {
             "motion": (
@@ -188,7 +187,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_image_storyboard_and_builder_contracts_fail_fast(self):
         _, profile = self._profile(
             ProfileComponent.IMAGEN,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
         )
         builder = ImageBuilder.__new__(ImageBuilder)
         storyboard = StoryboardBuilder.__new__(StoryboardBuilder)
@@ -220,7 +219,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_subtitle_render_style_rejects_missing_critical_keys(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
         )
         subtitle = self._subtitle_profile(profile_key, profile)
 
@@ -239,7 +238,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             with self.subTest(style=style):
                 profile_key = ProfileKey.for_component(
                     ProfileComponent.VIDEO,
-                    ProfilePlatform.INSTAGRAM,
+                    "instagram",
                 )
                 subtitle_key = SubtitleProfileKey.for_profile(
                     profile_key,
@@ -326,7 +325,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
 
         _, profile = self._profile(
             ProfileComponent.VIDEO,
-            ProfilePlatform.INSTAGRAM,
+            "instagram",
         )
         self.assertEqual(
             7.5,
@@ -339,11 +338,11 @@ class RequiredProfileContractsTest(unittest.TestCase):
         return key, self.profile_resolver.load(key)
 
     def _subtitle_profile(self, profile_key, profile):
-        subtitle_key = SubtitleProfileKey.for_profile(
+        del profile
+        return self.subtitle_resolver.load_selection(
             profile_key,
-            profile["subtitle_config"],
+            "word_by_word",
         )
-        return self.subtitle_resolver.load(subtitle_key)
 
     def _video_config(self, profile_key, profile):
         subtitle_profile = self._subtitle_profile(profile_key, profile)

@@ -4,7 +4,13 @@ from app.modules.video.ffmpeg.runner import Runner
 from app.modules.video.video_build_context import VideoBuildArtifacts
 from app.modules.video.video_validator import VideoValidator
 from app.modules.video.intro_outro import IntroOutroComposer
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+    summarize_technical_text,
+)
 from pathlib import Path
+import subprocess
 import time
 
 
@@ -171,6 +177,26 @@ class VideoRenderService:
                 ),
                 status="FAILED",
             )
+            if isinstance(error, OperationalError):
+                raise
+            if isinstance(error, subprocess.CalledProcessError):
+                metadata = {
+                    "command": tuple(map(str, error.cmd or artifacts.command)),
+                    "returncode": error.returncode,
+                    "phase": "final_assembly",
+                }
+                stderr = summarize_technical_text(error.stderr)
+                if stderr:
+                    metadata["stderr_summary"] = stderr
+                raise create_operational_error(
+                    family="FFMPEG",
+                    user_message="FFmpeg no pudo renderizar el video final.",
+                    recommended_action="Revisa el diagnostico de FFmpeg generado para esta ejecucion.",
+                    operation="Renderizar video final",
+                    resource=str(build_context.media.output_path),
+                    diagnostic_reference=str(diagnostics.path),
+                    technical_metadata=metadata,
+                ) from error
             raise
 
         diagnostics.record_final_assembly(

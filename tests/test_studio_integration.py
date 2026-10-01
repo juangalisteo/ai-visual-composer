@@ -23,7 +23,7 @@ from app.modules.video.intro_outro import (
     IntroOutroSelection,
 )
 from app.shared.media_probe import MediaProbe
-from app.shared.profile_identity import ProfileFamily, ProfileKey
+from app.shared.profile_identity import ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -33,37 +33,25 @@ class StudioFinalContractTest(unittest.TestCase):
 
     def test_design_subtitles_do_not_replace_the_studio_system_profile(self):
         system_key = ProfileKey.for_component("studio", "instagram")
-        design_key = ProfileKey.for_component(
-            "studio",
-            "instagram",
-            family=ProfileFamily.DESIGN,
-            profile_id="studio_instagram_design_modo_conciencia_reels",
-        )
         profile = StudioProfileLoader().load(
             ProfileResolver().load(system_key), system_key
         )
-        styles = SubtitleProfileResolver().discover_styles(design_key)
+        descriptors = SubtitleProfileResolver().discover_profiles_for_family(
+            "studio", "instagram", "design",
+        )
 
         self.assertEqual(1080, profile.width)
         self.assertEqual(
             {"word_by_word"},
-            {style.value for style in styles},
+            {descriptor.mode for descriptor in descriptors},
         )
-        for style in styles:
+        for descriptor in descriptors:
             subtitle = SubtitleProfileResolver().load(
-                SubtitleProfileKey.for_profile(design_key, style)
+                descriptor.key
             )
-            self.assertEqual(design_key.profile_id, subtitle.key.parent_profile_id)
+            self.assertEqual("design", subtitle.key.family)
             self.assertIn("design", subtitle.path.parts)
 
-        invalid = deepcopy(ProfileResolver().load(design_key))
-        del invalid["display_name"]
-        with self.assertRaisesRegex(ValueError, "Identidad DESIGN"):
-            ProfileResolver._validate_design_identity(
-                invalid,
-                design_key,
-                Path("design.json"),
-            )
 
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()

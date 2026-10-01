@@ -238,11 +238,11 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
 
         for profile_path in (
             Path(
-                "config/profiles/imagen/youtube/"
+                "config/profiles/imagen/youtube/estandar/"
                 "perfil_imagen_youtube.json"
             ),
             Path(
-                "config/profiles/imagen/instagram/"
+                "config/profiles/imagen/instagram/estandar/"
                 "perfil_imagen_instagram.json"
             ),
         ):

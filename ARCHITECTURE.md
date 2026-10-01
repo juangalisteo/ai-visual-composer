@@ -387,9 +387,13 @@ the current `SOLO MONTAJE` and `MONTAJE COMPLETO` paths. Clips are inspected
 and normalized only when required by the target Studio profile.
 
 Without transitions, composition uses the compatible concat path. With
-transitions, the montage service uses the profile's transition duration for
-video and audio transition timing: Instagram uses `0.25 s` and YouTube uses
-`0.50 s`. MONTAJE does not expose an `ORIGINAL` subtitle option.
+transitions, `studio.montage.transition_duration` is a configurable Studio
+visual-montage value: it controls the perceptible `xfade` duration between
+clips and the visual `tpad` required at each boundary. Each clip must be
+longer than that value; it does not change the expected total duration,
+timestamps, or audio/video synchronization. Audio does not use `acrossfade`:
+it remains sequential through audio `concat`. Instagram uses `0.25 s` and
+YouTube uses `0.50 s`. MONTAJE does not expose an `ORIGINAL` subtitle option.
 
 ## VIDEO + AUDIO SRT
 
@@ -427,8 +431,9 @@ and a `0.95` limiter.
 When INTRO or OUTRO is selected, only incompatible assets are normalized. The
 validated Studio principal is then concatenated through the concat demuxer
 with `-c copy`, so it is not encoded a second time. The shared
-`IntroOutroCatalog` resolves assets only from the semantic directories
-`assets/videos/intro_outro/intro/` and `assets/videos/intro_outro/outro/`.
+`IntroOutroCatalog` resolves assets only from the selected operational
+platform directories `assets/videos/intro_outro/<platform>/intro/` and
+`assets/videos/intro_outro/<platform>/outro/`.
 
 ## Native full-video output
 

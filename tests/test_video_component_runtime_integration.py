@@ -2,14 +2,15 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from app.core import start
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
+from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class FakeProject:
@@ -207,7 +208,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     project=project,
                     profile_key=ProfileKey.for_component(
                         ProfileComponent.VIDEO,
-                        ProfilePlatform.INSTAGRAM
+                        "instagram"
                     ),
                     source_path=root / "source.png",
                     video_builder=builder,
@@ -311,7 +312,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return ProfileKey.for_component(
                         ProfileComponent.VIDEO,
-                        ProfilePlatform.YOUTUBE
+                        "youtube"
                     )
 
                 def get_profile_config(
@@ -383,7 +384,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     ),
                     profile_key=ProfileKey.for_component(
                         ProfileComponent.VIDEO,
-                        ProfilePlatform.INSTAGRAM
+                        "instagram"
                     ),
                     source_path=missing,
                 )
@@ -494,12 +495,12 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_active_video_profiles_keep_quality_encoding_settings(self):
         profile_paths = (
-            "config/profiles/guion/instagram/perfil_guion_instagram.json",
-            "config/profiles/guion/youtube/perfil_guion_youtube.json",
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json",
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json",
-            "config/profiles/video/instagram/perfil_video_instagram.json",
-            "config/profiles/video/youtube/perfil_video_youtube.json",
+            "config/profiles/guion/instagram/estandar/perfil_guion_instagram.json",
+            "config/profiles/guion/youtube/estandar/perfil_guion_youtube.json",
+            "config/profiles/imagen/instagram/estandar/perfil_imagen_instagram.json",
+            "config/profiles/imagen/youtube/estandar/perfil_imagen_youtube.json",
+            "config/profiles/video/instagram/estandar/perfil_video_instagram.json",
+            "config/profiles/video/youtube/estandar/perfil_video_youtube.json",
         )
 
         for profile_path in profile_paths:
@@ -595,7 +596,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
             resolved_subtitle_profile = object()
             intro_outro_selection = object()
-            requested_subtitle_styles = []
+            requested_subtitle_keys = []
+            subtitle_key = SubtitleProfileKey(
+                ProfileComponent.VIDEO,
+                "instagram",
+                "test_subtitle_profile",
+                "test_family",
+            )
 
             class FakeConfig:
                 def get_ai_config(
@@ -608,7 +615,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return ProfileKey.for_component(
                         ProfileComponent.VIDEO,
-                        ProfilePlatform.INSTAGRAM
+                        "instagram"
                     )
 
                 def get_profile_config(
@@ -629,11 +636,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         },
                     }
 
-                def get_subtitle_profile(
-                    self,
-                    style
-                ):
-                    requested_subtitle_styles.append(style)
+                def adapt_legacy_subtitle_selection(self, selection):
+                    if selection != "single_line":
+                        raise AssertionError(selection)
+                    return subtitle_key
+
+                def get_subtitle_profile_by_key(self, selected_key):
+                    requested_subtitle_keys.append(selected_key)
                     return resolved_subtitle_profile
 
             with patch.dict(
@@ -714,8 +723,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             result
         )
         self.assertEqual(
-            ["single_line"],
-            requested_subtitle_styles
+            [subtitle_key],
+            requested_subtitle_keys,
         )
         clips_builder.assert_called_once()
         srt_optimizer.assert_called_once_with(
@@ -727,13 +736,14 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         )
         video_builder.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
+            warnings=ANY,
             intro_outro_selection=intro_outro_selection,
         )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=video_clips_manifest
         )
 
-    def test_iniciar_video_product_without_subtitles_keeps_design_i2v_identity(self):
+    def test_iniciar_video_product_without_subtitles_uses_standard_operational_identity(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             project = FakeProject(Path(temp_dir) / "output" / "video-product")
             final_video = project.video_path()
@@ -745,18 +755,17 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             subtitle_profile = object()
 
             class FakeConfig:
+                profile_resolver = ProfileResolver()
+
                 def get_ai_config(self):
                     return {}
 
                 def get_profile_key(self):
-                    return ProfileKey.for_component(
+                    return ProfileKey(
                         ProfileComponent.GUION,
-                        ProfilePlatform.INSTAGRAM,
-                        family="design",
-                        profile_id=(
-                            "guion_instagram_design_"
-                            "modo_conciencia_reels"
-                        ),
+                        "instagram",
+                        "guion_instagram",
+                        "estandar",
                     )
 
                 def get_profile_config(self):
@@ -770,6 +779,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                             "video": True,
                         },
                         "video_style": {"fps": 30},
+                        "subtitle_config": "word_by_word",
+                        "subtitle_profile": {"style": "word_by_word"},
                     }
 
                 def get_subtitle_profile(self, style):
@@ -829,19 +840,17 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         srt_optimizer.assert_not_called()
         clips_builder.assert_called_once()
         self.assertEqual(
-            ProfileKey.for_component(
+            ProfileKey(
                 ProfileComponent.VIDEO,
-                ProfilePlatform.INSTAGRAM,
-                family="design",
-                profile_id=(
-                    "video_instagram_design_"
-                    "modo_conciencia_reels"
-                ),
+                "instagram",
+                "video_instagram",
+                "estandar",
             ),
             clips_builder.call_args.kwargs["profile_key"],
         )
         video_builder.assert_called_once_with(
             subtitle_profile=None,
+            warnings=ANY,
             render_subtitles=False,
         )
         video_builder.return_value.build.assert_called_once_with(
@@ -953,7 +962,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     video_builder=builder,
                     profile_key=ProfileKey.for_component(
                         ProfileComponent.VIDEO,
-                        ProfilePlatform.INSTAGRAM
+                        "instagram"
                     ),
                 )
                 manifest = json.loads(

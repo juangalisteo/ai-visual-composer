@@ -8,6 +8,10 @@ The system integrates text processing, voice generation, audio, subtitles, story
 
 AI Visual Composer is designed around a modular, profile-driven architecture that keeps each stage of the generation process structured, traceable, configurable, and independently evolvable.
 
+AI Visual Composer follows a data/config-driven architecture. The code implements generic capabilities, while the configuration structure determines which components, families, profiles, and variants exist. Technical IDs transport identity, while human-readable names are used exclusively for presentation and do not participate in functional decisions.
+
+A new profile or family that uses capabilities already supported by the system must not require changes to Python code.
+
 **Current stable version:** `V2.0`
 
 ---
@@ -116,9 +120,10 @@ VIDEO` and `EXPORTAR SRT VIDEO` may use Whisper where their mode requires a
 transcription. `VIDEO + AUDIO SRT` never retranscribes a supplied SRT and uses
 the new audio as the final temporal and audio authority; it does not mix music.
 
-Studio uses FFmpeg locally. INTRO and OUTRO assets use the shared
-position-specific catalog `assets/videos/intro_outro/intro/` and
-`assets/videos/intro_outro/outro/`.
+Studio uses FFmpeg locally. INTRO and OUTRO assets use the shared catalog
+selected by operational platform:
+`assets/videos/intro_outro/<platform>/intro/` and
+`assets/videos/intro_outro/<platform>/outro/`.
 
 ---
 

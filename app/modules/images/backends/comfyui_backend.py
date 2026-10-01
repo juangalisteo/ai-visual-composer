@@ -5,6 +5,11 @@ import urllib.parse
 import urllib.request
 import uuid
 
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+)
+
 
 class ComfyUIBackendError(RuntimeError):
     def __init__(
@@ -50,6 +55,34 @@ class ComfyUIBackend:
         output_dir,
         width,
         height
+    ):
+        try:
+            return self._generate(
+                prompt=prompt,
+                scene_number=scene_number,
+                output_dir=output_dir,
+                width=width,
+                height=height,
+            )
+        except OperationalError:
+            raise
+        except ComfyUIBackendError as error:
+            raise _operational_backend_error(
+                error,
+                operation="Generar imagen con ComfyUI",
+                resource=str(self.workflow_path),
+                backend="image",
+                scene_number=scene_number,
+            ) from error
+
+    def _generate(
+        self,
+        *,
+        prompt,
+        scene_number,
+        output_dir,
+        width,
+        height,
     ):
         workflow = json.loads(
             self.workflow_path.read_text(
@@ -433,6 +466,43 @@ def _extract_error_detail(
             exception_message,
         ),
     }
+
+
+def _operational_backend_error(
+    error,
+    *,
+    operation,
+    resource,
+    backend,
+    scene_number,
+):
+    metadata = {
+        "service": "comfyui",
+        "backend": backend,
+        "category": error.category,
+        "scene_number": scene_number,
+    }
+    for field_name in (
+        "prompt_id",
+        "node_id",
+        "node_type",
+        "exception_type",
+        "status",
+    ):
+        value = getattr(error, field_name, "")
+        if value:
+            metadata[field_name] = value
+    return create_operational_error(
+        family="EXTERNAL_SERVICE",
+        user_message="ComfyUI no pudo generar la imagen solicitada.",
+        recommended_action=(
+            "Comprueba que ComfyUI este disponible y revisa el estado del "
+            "backend antes de reintentar."
+        ),
+        operation=operation,
+        resource=resource,
+        technical_metadata=metadata,
+    )
 
 
 def _classify_comfyui_error(

@@ -1,0 +1,158 @@
+{
+    "component": "guion",
+    "platform": "youtube",
+    "family": "estandar",
+    "profile_id": "guion_youtube",
+    "format": "horizontal",
+    "duration": 10,
+    "tone": "modo_conciencia",
+
+    "builders": {
+        "script": true,
+        "voice": true,
+        "subtitles": true,
+        "storyboard": true,
+        "images": true,
+        "video": true
+    },
+
+    "image_validation": {
+        "enabled": false
+    },
+
+    "video_style": {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+
+        "storyboard": {
+            "seconds_per_image": 30
+        },
+
+        "motion": {
+            "enabled": true,
+
+            "internal_scale": 2,
+
+            "base_zoom": 0.05,
+            "zoom_amount": 0.20,
+
+            "pan_zoom_enabled": true,
+            "pan_zoom_start": 0.05,
+
+            "selection": "random",
+            "avoid_repeats": true,
+
+            "types": [
+                "zoom_in",
+                "zoom_out",
+                "pan_left",
+                "pan_right",
+                "pan_up",
+                "pan_down"
+            ],
+
+            "weights": {
+                "zoom_in": 2,
+                "zoom_out": 2,
+                "pan_left": 1,
+                "pan_right": 1,
+                "pan_up": 1,
+                "pan_down": 1
+            }
+        },
+
+        "transitions": {
+            "enabled": true,
+
+            "selection": "random",
+            "avoid_repeats": true,
+
+            "duration": 0.40,
+
+            "types": [
+                "fade",
+                "smoothleft"
+            ],
+
+            "weights": {
+                "fade": 2,
+                "smoothleft": 1
+            }
+        },
+
+        "fade": {
+            "enabled": true,
+            "fade_in": false,
+            "fade_out": false,
+            "duration": 0.40
+        },
+
+        "overlays": {
+            "enabled": false,
+            "directory": "assets/videos/overlays",
+            "folder_selection": "random",
+            "file_selection": "random",
+            "repeat_mode": "scene",
+            "min_seconds": 6,
+            "max_seconds": 12,
+            "loop_file": true,
+            "avoid_repeats": true,
+            "opacity": 0.15,
+            "blend_mode": "screen",
+            "probability": 1.0,
+            "folders": [],
+            "types": [],
+            "extensions": [
+                ".mov",
+                ".mp4"
+            ],
+            "folder_weights": {},
+            "file_weights": {}
+        },
+
+        "visual_effects": {
+            "enabled": false,
+            "directory": "assets/videos/visual_effects",
+            "mode": "overlay",
+            "folder_selection": "random",
+            "file_selection": "random",
+            "repeat_mode": "interval",
+            "min_seconds": 6,
+            "max_seconds": 12,
+            "loop_file": true,
+            "avoid_repeats": true,
+            "opacity": 0.15,
+            "blend_mode": "screen",
+            "probability": 1.0,
+            "folders": [
+                "LightLeak"
+            ],
+            "types": [],
+            "extensions": [
+                ".mov"
+            ],
+            "folder_weights": {
+                "LightLeak": 1.0
+            },
+            "file_weights": {}
+        }
+    },
+
+    "validation": {
+        "max_duration_difference": 0.20
+    },
+
+    "video": {
+        "codec": "libx264",
+        "preset": "slow",
+        "crf": 16,
+        "pixel_format": "yuv420p",
+        "movflags": "+faststart"
+    },
+
+    "audio": {
+        "codec": "aac",
+        "bitrate": "192k"
+    }
+}

@@ -413,7 +413,7 @@ class StudioPhase4Test(unittest.TestCase):
                     info,
                     self.profile,
                     "FontName=Arial",
-                    music,
+                    music_path=music,
                 )
                 graph = command[command.index("-filter_complex") + 1]
                 self.assertIn(audio_label, graph)

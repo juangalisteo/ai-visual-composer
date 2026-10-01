@@ -7,10 +7,11 @@ import time
 from app.modules.studio.input_preparation import (
     StudioInputPreparationService,
 )
-from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
-from app.modules.subtitles.external_media_subtitles import (
+from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
+from app.modules.subtitles.modes.registry import CueModelRegistry
+from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.shared.progress_logger import ProgressLogger
 
 
@@ -217,13 +218,9 @@ class StudioSubtitleExportService:
             raise ValueError(
                 "CONVERTIR requiere perfil STUDIO y perfil de subtitulos."
             )
-        style = (
-            subtitle_profile.key.style.value
-            if hasattr(subtitle_profile.key.style, "value")
-            else str(subtitle_profile.key.style)
-        )
+        mode = CueModelRegistry.mode_from(subtitle_profile.cue_policy)
         output_path = project.subtitles_dir() / (
-            f"{project.project_name}_{style}.srt"
+            f"{project.project_name}_{mode}.srt"
         )
         start = time.perf_counter()
         ProgressLogger.start("CONVIRTIENDO SRT")
@@ -244,7 +241,7 @@ class StudioSubtitleExportService:
             mode=plan.mode,
             source_path=plan.source_path,
             output_path=output_path,
-            subtitle_style=style,
+            subtitle_style=mode,
             operation_duration=elapsed,
         )
 

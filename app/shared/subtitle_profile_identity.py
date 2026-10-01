@@ -5,9 +5,7 @@ import re
 
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileFamily,
     ProfileKey,
-    ProfilePlatform,
     coerce_profile_component,
     coerce_profile_platform,
     coerce_profile_family,
@@ -15,6 +13,8 @@ from app.shared.profile_identity import (
 
 
 class SubtitleStyle(str, Enum):
+    """Legacy selection values; modern profiles declare cue_policy.mode."""
+
     SINGLE_LINE = "single_line"
     WORD_BY_WORD = "word_by_word"
 
@@ -38,13 +38,12 @@ def coerce_subtitle_style(value):
 @dataclass(frozen=True)
 class SubtitleProfileKey:
     component: ProfileComponent
-    platform: ProfilePlatform
-    style: SubtitleStyle | str
+    platform: str
     profile_id: str
-    family: ProfileFamily = ProfileFamily.SYSTEM
+    family: str
     parent_profile_id: str | None = None
 
-    _STYLE_PROFILE_SUFFIXES = {
+    _LEGACY_PROFILE_SUFFIXES = {
         "single_line": "linea_unica",
         "word_by_word": "palabra_por_palabra",
     }
@@ -57,9 +56,6 @@ class SubtitleProfileKey:
             self.platform
         )
         family = coerce_profile_family(self.family)
-        style = coerce_subtitle_style(
-            self.style
-        )
         profile_id = str(
             self.profile_id
         ).strip().lower()
@@ -72,32 +68,8 @@ class SubtitleProfileKey:
                 f"{self.profile_id}"
             )
 
-        if family is ProfileFamily.DESIGN:
-            expected_id = self.expected_profile_id(
-                component=component,
-                platform=platform,
-                style=style,
-                family=family,
-                parent_profile_id=self.parent_profile_id,
-            )
-            if profile_id != expected_id:
-                raise ValueError(
-                    "profile_id de subtitulos incompatible: "
-                    f"se esperaba {expected_id}, "
-                    f"se recibio {self.profile_id}"
-                )
-        else:
-            prefix = f"subtitulo_{component.value}_{platform.value}_"
-            if not profile_id.startswith(prefix):
-                raise ValueError(
-                    "profile_id de subtitulos incompatible con "
-                    "component/platform: "
-                    f"{self.profile_id}"
-                )
-
         object.__setattr__(self, "component", component)
         object.__setattr__(self, "platform", platform)
-        object.__setattr__(self, "style", style)
         object.__setattr__(self, "profile_id", profile_id)
         object.__setattr__(self, "family", family)
         object.__setattr__(self, "parent_profile_id", self.parent_profile_id)
@@ -106,130 +78,41 @@ class SubtitleProfileKey:
     def for_profile(
         cls,
         profile_key,
-        style
+        style,
+        profile_id=None,
     ):
         if not isinstance(profile_key, ProfileKey):
             raise TypeError(
                 "La identidad principal debe ser un ProfileKey."
-            )
+        )
         style = coerce_subtitle_style(style)
+        if profile_id is None:
+            profile_id = cls._legacy_profile_id(
+                profile_key.component,
+                profile_key.platform,
+                style,
+            )
         return cls(
             component=profile_key.component,
             platform=profile_key.platform,
-            style=style,
-            profile_id=cls.expected_profile_id(
-                component=profile_key.component,
-                platform=profile_key.platform,
-                style=style,
-                family=profile_key.family,
-                parent_profile_id=profile_key.profile_id,
-            ),
+            profile_id=profile_id,
             family=profile_key.family,
             parent_profile_id=profile_key.profile_id,
         )
 
     @classmethod
-    def for_design(
-        cls,
-        component,
-        platform,
-        design_profile_id,
-        style,
-    ):
-        """Create a subtitle-only DESIGN identity.
-
-        DESIGN is not an operational profile selection.  This constructor
-        deliberately receives only the identity needed by the subtitle
-        resolver, so callers do not need to promote it to a global
-        ``ProfileKey``.
-        """
-        style = coerce_subtitle_style(style)
-        return cls(
-            component=component,
-            platform=platform,
-            style=style,
-            profile_id=cls.expected_profile_id(
-                component=component,
-                platform=platform,
-                style=style,
-                family=ProfileFamily.DESIGN,
-                parent_profile_id=design_profile_id,
-            ),
-            family=ProfileFamily.DESIGN,
-            parent_profile_id=design_profile_id,
-        )
-
-    @classmethod
-    def expected_profile_id(
-        cls,
-        component,
-        platform,
-        style,
-        family=ProfileFamily.SYSTEM,
-        parent_profile_id=None,
-    ):
+    def _legacy_profile_id(cls, component, platform, style):
+        """Adapt callers that omit a concrete subtitle profile ID."""
         component = coerce_profile_component(component)
         platform = coerce_profile_platform(platform)
         style = coerce_subtitle_style(style)
-        family = coerce_profile_family(family)
-        if family is ProfileFamily.DESIGN:
-            parent_key = ProfileKey(
-                component=component,
-                platform=platform,
-                profile_id=parent_profile_id,
-                family=family,
-            )
-            return (
-                f"subtitulo_{component.value}_{platform.value}_design_"
-                f"{parent_key.profile_id.removeprefix(component.value + '_' + platform.value + '_design_')}_"
-                f"{cls._profile_suffix(style)}"
-            )
-        return (
-            f"subtitulo_{component.value}_{platform.value}_"
-            f"{cls._profile_suffix(style)}"
-        )
-
-    @classmethod
-    def is_legacy_standard_profile_id(
-        cls,
-        component,
-        platform,
-        style,
-        profile_id,
-    ):
-        return str(profile_id).strip().lower() == cls.expected_profile_id(
-            component=component,
-            platform=platform,
-            style=style,
-        )
-
-    @classmethod
-    def _profile_suffix(cls, style):
-        style = (
-            style.value
-            if isinstance(style, SubtitleStyle)
-            else style
-        )
-        return cls._STYLE_PROFILE_SUFFIXES.get(
-            style,
-            style
-        )
+        style_value = style.value if isinstance(style, SubtitleStyle) else style
+        suffix = cls._LEGACY_PROFILE_SUFFIXES.get(style_value, style_value)
+        return f"subtitulo_{component.value}_{platform}_{suffix}"
 
     @property
     def relative_path(self):
-        if self.family is ProfileFamily.DESIGN:
-            slug = self.parent_profile_id.removeprefix(
-                f"{self.component.value}_{self.platform.value}_design_"
-            )
-            # A design is a single, self-contained JSON document.  It owns
-            # its subtitle settings instead of creating a second hierarchy
-            # below ``design/<slug>/``.
-            return Path(self.component.value) / self.platform.value / "design" / f"{slug}.json"
-        return Path(
-            self.component.value
-        ) / self.platform.value / "estandar" / (
-            f"{self.profile_id}.json"
-        )
+        return Path(self.component.value) / self.platform / self.family / "subtitulos" / f"{self.profile_id}.json"
 
 
 @dataclass(frozen=True)
@@ -245,14 +128,11 @@ class ResolvedSubtitleProfile:
 class SubtitleProfileDescriptor:
     key: SubtitleProfileKey
     display_name: str
+    mode: str
 
     @property
     def profile_id(self):
         return self.key.profile_id
-
-    @property
-    def style(self):
-        return self.key.style
 
     @property
     def component(self):

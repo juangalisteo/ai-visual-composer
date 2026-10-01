@@ -1,13 +1,16 @@
 import os
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
 import pytest
+import main
 
 from app.core.start import ejecutar_studio_video_audio_srt, iniciar
 from app.controllers.run_controller import RunController
 from app.modules.studio import (
+    StudioInputMode,
     StudioProfileLoader,
     StudioVideoAudioSrtInputError,
     StudioVideoAudioSrtInputService,
@@ -90,25 +93,46 @@ def test_video_audio_runtime_dispatches_service():
             return_value="ok",
         ) as run:
             assert iniciar(studio_video_audio_srt_plan=plan) == "ok"
-        run.assert_called_once_with(
-            plan,
-            subtitle_style=None,
-            subtitle_original=False,
-        )
+        run.assert_called_once_with(plan)
+
+
+def test_studio_export_menu_label_changes_without_changing_its_mode_id():
+    controller = RunController()
+    messages = []
+    controller._print = messages.append
+    controller._select_from_list = Mock(return_value=StudioInputMode.EXPORTAR_SRT.value)
+
+    assert controller.select_studio_input_mode() == StudioInputMode.EXPORTAR_SRT.value
+    assert "6. EXPORTAR SRT ➜  VIDEO" in messages
 
 
 @pytest.mark.parametrize("subtitles", (False, True))
-def test_menu_option_seven_never_asks_for_or_returns_music(subtitles):
+def test_video_audio_srt_menu_uses_operational_platform_and_never_asks_for_music(
+    subtitles,
+):
     profile_key, _, _ = _profile_and_subtitles()
     planner = Mock()
     controller = RunController(studio_video_audio_srt_input_service=planner)
     controller.select_studio_input_mode = Mock(return_value="video_audio_srt")
-    controller._select_studio_profile = Mock(return_value=(profile_key, Mock()))
-    controller._select_from_list = Mock(return_value=subtitles)
-    controller.select_studio_subtitle_options = Mock(
-        return_value=("word_by_word", False)
+    controller._select_studio_operational_profile = Mock(
+        return_value=(profile_key, Mock())
     )
-    controller.select_studio_video_audio_srt_plan = Mock(return_value=Mock())
+    controller._select_from_list = Mock(return_value=subtitles)
+    subtitle_key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
+    controller._select_studio_video_audio_srt_subtitle_profile = Mock(
+        return_value=subtitle_key
+    )
+    video_path = Path("input/studio/video_audio_srt/source.mp4")
+    audio_path = Path("input/studio/video_audio_srt/new-audio.wav")
+    plan = StudioVideoAudioSrtPlan(video_path, audio_path)
+    controller.select_studio_video_audio_srt_inputs = Mock(
+        return_value=(video_path, audio_path)
+    )
+    controller.select_studio_video_audio_srt_subtitle = Mock(
+        return_value=Path("input/studio/video_audio_srt/human.srt")
+    )
+    controller.select_studio_video_audio_srt_plan = Mock(return_value=plan)
+    controller.select_studio_video_audio_srt_audio_tail = Mock(return_value=plan)
     controller.select_studio_music = Mock()
     controller.ask_project_name = Mock(return_value="project")
     controller.ask_clear_output = Mock(return_value=False)
@@ -116,14 +140,31 @@ def test_menu_option_seven_never_asks_for_or_returns_music(subtitles):
     options = controller._run_studio()
 
     controller.select_studio_video_audio_srt_plan.assert_called_once_with(
-        subtitles
+        subtitles,
+        video_path=video_path,
+        audio_path=audio_path,
+        subtitle_path=(
+            Path("input/studio/video_audio_srt/human.srt")
+            if subtitles
+            else None
+        ),
     )
-    controller._select_from_list.assert_called_once_with((True, False))
+    assert controller._select_from_list.call_args_list[0].args == ((True, False),)
     controller.select_studio_music.assert_not_called()
     assert "studio_music_path" not in options
     assert options["subtitle_config"] == (
-        "word_by_word" if subtitles else None
+        subtitle_key.profile_id if subtitles else None
     )
+    assert ("subtitle_profile_key" in options) is subtitles
+    assert "studio_subtitle_original" not in options
+    if subtitles:
+        controller.select_studio_video_audio_srt_subtitle.assert_called_once_with()
+        controller._select_studio_video_audio_srt_subtitle_profile.assert_called_once_with(
+            profile_key
+        )
+    else:
+        controller.select_studio_video_audio_srt_subtitle.assert_not_called()
+        controller._select_studio_video_audio_srt_subtitle_profile.assert_not_called()
 
 
 def test_input_requires_required_files_and_ignores_srt_when_disabled():
@@ -167,8 +208,36 @@ def test_input_requires_required_files_and_ignores_srt_when_disabled():
             "1\n00:00:00,000 --> 00:00:01,000\nDos\n",
             encoding="utf-8",
         )
-        with pytest.raises(StudioVideoAudioSrtInputError, match="exactamente un archivo SRT"):
+        with pytest.raises(StudioVideoAudioSrtInputError, match="seleccionar un archivo SRT"):
             service.create_plan(True)
+
+
+@pytest.mark.parametrize("srt_count", (0, 1, 3))
+def test_disabled_subtitles_ignore_all_srt_cardinalities(srt_count):
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        video, audio, _ = _write_sources(root)
+        for index in range(srt_count):
+            (root / f"ignored-{index}.srt").write_text(
+                "SRT deliberadamente invalido para esta rama",
+                encoding="utf-8",
+            )
+        service = StudioVideoAudioSrtInputService(root)
+        candidates = Mock(wraps=service._candidates)
+        service._candidates = candidates
+        service._valid_subtitle_candidates = Mock(
+            side_effect=AssertionError("SUBTÍTULOS = No no debe validar SRT")
+        )
+
+        plan = service.create_plan(False)
+
+    assert plan == StudioVideoAudioSrtPlan(video, audio)
+    assert plan.subtitle_path is None
+    service._valid_subtitle_candidates.assert_not_called()
+    assert candidates.call_args_list == [
+        call((".mp4",)),
+        call(service.audio_extensions),
+    ]
 
 
 def test_input_candidates_are_ordered_and_selected_individually():
@@ -198,23 +267,20 @@ def test_input_candidates_are_ordered_and_selected_individually():
         assert tuple(path.name for path in candidates.audios) == (
             "audio-a.flac", "audio-z.mp3",
         )
-        assert tuple(path.name for path in candidates.subtitles) == (
-            "a.srt", "z.srt",
-        )
-        plan = service.create_plan(
+        assert tuple(path.name for path in candidates.subtitles) == ("a.srt", "z.srt")
+        assert service.create_plan(
             True,
             video_path=selected_video,
             audio_path=selected_audio,
             subtitle_path=selected_subtitle,
-        )
-        assert plan == StudioVideoAudioSrtPlan(
+        ) == StudioVideoAudioSrtPlan(
             selected_video,
             selected_audio,
             selected_subtitle,
         )
 
 
-def test_controller_lists_multiple_video_audio_and_srt_candidates():
+def test_video_audio_srt_input_menus_only_appear_for_multiple_candidates():
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         video_one = root / "one.mp4"
@@ -231,63 +297,135 @@ def test_controller_lists_multiple_video_audio_and_srt_candidates():
                 encoding="utf-8",
             )
         controller = RunController(
-            studio_video_audio_srt_input_service=(
-                StudioVideoAudioSrtInputService(root)
-            )
+            studio_video_audio_srt_input_service=StudioVideoAudioSrtInputService(root)
         )
-        messages = []
-        controller._print = messages.append
         controller._select_from_list = Mock(
             side_effect=(video_two, audio_one, subtitle_two)
         )
 
         plan = controller.select_studio_video_audio_srt_plan(True)
 
-        assert plan == StudioVideoAudioSrtPlan(
-            video_two,
-            audio_one,
-            subtitle_two,
-        )
+        assert plan == StudioVideoAudioSrtPlan(video_two, audio_one, subtitle_two)
         assert controller._select_from_list.call_args_list == [
             call((video_one, video_two)),
             call((audio_one, audio_two)),
             call((subtitle_one, subtitle_two)),
         ]
-        assert "VIDEO" in "\n".join(messages)
-        assert "AUDIO" in "\n".join(messages)
-        assert "SRT" in "\n".join(messages)
 
 
-def test_video_audio_subtitle_options_offer_original_without_second_selector():
-    profile_key, _, _ = _profile_and_subtitles()
-    controller = RunController()
-    controller._select_from_list = Mock(return_value="original")
-    with patch.object(controller, "select_studio_subtitle_config") as visual:
-        style, original = controller.select_studio_subtitle_options(
-            profile_key,
-            "video_audio_srt",
+def test_video_audio_srt_single_candidates_are_selected_without_a_menu():
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        video, audio, subtitle = _write_sources(root, with_subtitle=True)
+        controller = RunController(
+            studio_video_audio_srt_input_service=StudioVideoAudioSrtInputService(root)
         )
+        controller._select_from_list = Mock()
 
-    assert style == "single_line"
-    assert original is True
-    visual.assert_not_called()
-    controller._select_from_list.assert_called_once_with(
-        (
-            "original",
-            "subtitulo_studio_youtube_linea_unica",
-            "subtitulo_studio_youtube_palabra_por_palabra",
-        )
+        assert controller.select_studio_video_audio_srt_inputs() == (video, audio)
+        assert controller.select_studio_video_audio_srt_subtitle() == subtitle
+        controller._select_from_list.assert_not_called()
+
+
+def test_video_audio_srt_without_subtitles_never_discovers_srt():
+    planner = Mock()
+    planner.discover.return_value = SimpleNamespace(
+        videos=(Path("video.mp4"),),
+        audios=(Path("audio.mp3"),),
     )
+    controller = RunController(studio_video_audio_srt_input_service=planner)
+
+    assert controller.select_studio_video_audio_srt_inputs() == (
+        Path("video.mp4"),
+        Path("audio.mp3"),
+    )
+
+    planner.discover.assert_called_once_with(False)
 
 
 @pytest.mark.parametrize(
-    ("video_duration", "audio_duration", "expects_loop"),
-    ((10.0, 3.0, False), (2.0, 3.0, True)),
+    ("audio_duration", "choice", "expected_mode"),
+    ((10.0, None, "silence"), (3.0, "silence", "silence"), (3.0, "music", "music")),
 )
-def test_video_is_trimmed_or_looped_and_new_audio_is_the_only_audio(
+def test_audio_tail_selection_only_prompts_when_audio_is_shorter(
+    audio_duration,
+    choice,
+    expected_mode,
+):
+    video = Path("video.mp4")
+    audio = Path("audio.mp3")
+    music_selector = Mock()
+    music_selector.select.return_value = Path("assets/music/tail.mp3")
+    probe = Mock()
+    probe.inspect.return_value = _media_info(8.0)
+    probe.get_duration.return_value = audio_duration
+    controller = RunController(
+        studio_music_selector=music_selector,
+        media_probe=probe,
+    )
+    messages = []
+    controller._print = messages.append
+    controller._select_from_list = Mock(return_value=choice)
+
+    selected = controller.select_studio_video_audio_srt_audio_tail(
+        StudioVideoAudioSrtPlan(video, audio)
+    )
+
+    assert selected.video_duration == 8.0
+    assert selected.audio_duration == audio_duration
+    assert selected.audio_tail_mode == expected_mode
+    if expected_mode == "music":
+        assert selected.music_path == Path("assets/music/tail.mp3")
+        music_selector.select.assert_called_once_with("random")
+    else:
+        assert selected.music_path is None
+        music_selector.select.assert_not_called()
+    if choice is None:
+        controller._select_from_list.assert_not_called()
+    else:
+        assert "1. SIN MÚSICA" in messages
+        assert "2. CON MÚSICA" in messages
+        assert "DEJAR SILENCIO" not in "\n".join(messages)
+        assert "COMPLETAR CON MÚSICA" not in "\n".join(messages)
+
+
+def test_video_audio_srt_subtitle_selection_uses_real_profiles_without_original():
+    profile_key, _, _ = _profile_and_subtitles()
+    controller = RunController()
+    family = controller.subtitle_profile_resolver.discover_families(
+        profile_key.component,
+        profile_key.platform,
+    )[0]
+    descriptors = controller.subtitle_profile_resolver.discover_profiles_for_family(
+        profile_key.component,
+        profile_key.platform,
+        family,
+    )
+    messages = []
+    controller._print = messages.append
+    controller._select_from_list = Mock(side_effect=(family, descriptors[-1]))
+
+    selected = controller._select_studio_video_audio_srt_subtitle_profile(
+        profile_key
+    )
+
+    assert selected == descriptors[-1].key
+    assert "ORIGINAL" not in "\n".join(messages)
+
+
+@pytest.mark.parametrize(
+    ("video_duration", "audio_duration", "tail_mode", "expected_audio_filter"),
+    (
+        (10.0, 10.0, "silence", "atrim=duration=10.000000"),
+        (10.0, 15.0, "silence", "atrim=duration=10.000000"),
+        (10.0, 3.0, "silence", "apad,atrim=duration=10.000000"),
+    ),
+)
+def test_video_is_temporal_authority_and_new_audio_never_loops(
     video_duration,
     audio_duration,
-    expects_loop,
+    tail_mode,
+    expected_audio_filter,
 ):
     _, profile, _ = _profile_and_subtitles()
     with tempfile.TemporaryDirectory() as directory:
@@ -304,14 +442,23 @@ def test_video_is_trimmed_or_looped_and_new_audio_is_the_only_audio(
             probe=probe,
             runner=runner,
             validator=validator,
-        ).render(StudioVideoAudioSrtPlan(video, audio), output, profile)
+        ).render(
+            StudioVideoAudioSrtPlan(
+                video,
+                audio,
+                audio_tail_mode=tail_mode,
+            ),
+            output,
+            profile,
+        )
 
         graph = command[command.index("-filter_complex") + 1]
         assert rendered == output
-        assert duration == audio_duration
+        assert duration == video_duration
         assert output.read_bytes() == b"rendered"
-        assert ("-stream_loop" in command) is expects_loop
-        assert f"trim=duration={audio_duration:.6f}" in graph
+        assert "-stream_loop" not in command
+        assert f"trim=duration={video_duration:.6f}" in graph
+        assert expected_audio_filter in graph
         assert f"[1:a:0]aresample={profile.audio_sample_rate}" in graph
         assert "[0:a:0]" not in graph
         assert "amix=" not in graph
@@ -319,6 +466,44 @@ def test_video_is_trimmed_or_looped_and_new_audio_is_the_only_audio(
         assert validator.profile is profile
         assert video.read_bytes() == b"video-original"
         assert audio.read_bytes() == b"audio-new"
+
+
+def test_short_audio_can_be_completed_with_music_only_in_the_final_gap():
+    _, profile, _ = _profile_and_subtitles()
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        video, audio, _ = _write_sources(root)
+        music = root / "tail.mp3"
+        music.write_bytes(b"music")
+        runner = RecordingRunner()
+        probe = Mock()
+        probe.inspect.return_value = _media_info(10.0)
+        probe.get_duration.return_value = 3.0
+        output = root / "out.mp4"
+
+        _, duration, command = StudioVideoAudioSrtService(
+            probe=probe,
+            runner=runner,
+            validator=DurationValidator(),
+        ).render(
+            StudioVideoAudioSrtPlan(
+                video,
+                audio,
+                audio_tail_mode="music",
+                music_path=music,
+            ),
+            output,
+            profile,
+        )
+
+        graph = command[command.index("-filter_complex") + 1]
+        assert duration == 10.0
+        assert command.count("-stream_loop") == 1
+        assert "[0:a:0]" not in graph
+        assert "amix=" not in graph
+        assert "atrim=duration=3.000000" in graph
+        assert "atrim=duration=7.000000" in graph
+        assert "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]" in graph
 
 
 @pytest.mark.parametrize("style", ("single_line", "word_by_word"))
@@ -355,11 +540,8 @@ def test_render_uses_the_common_studio_style_for_human_srt(style):
         assert "amix=" not in graph
 
 
-@pytest.mark.parametrize(
-    "style, original",
-    (("single_line", True), ("single_line", False), ("word_by_word", False)),
-)
-def test_human_srt_is_persisted_and_transformed_without_whisper(style, original):
+@pytest.mark.parametrize("style", ("single_line", "word_by_word"))
+def test_human_srt_is_preserved_without_whisper_or_transformers(style):
     profile_key, profile, resolver = _profile_and_subtitles()
     subtitle_profile = resolver.load(
         SubtitleProfileKey.for_profile(profile_key, style)
@@ -371,7 +553,7 @@ def test_human_srt_is_persisted_and_transformed_without_whisper(style, original)
         config = Mock()
         config.get_profile_key.return_value = profile_key
         config.get_profile_config.return_value = {}
-        config.get_subtitle_profile.return_value = subtitle_profile
+        config.get_subtitle_profile_by_key.return_value = subtitle_profile
         project = Mock()
         resolver_output = Mock()
         resolver_output.resolve.return_value = output
@@ -380,37 +562,125 @@ def test_human_srt_is_persisted_and_transformed_without_whisper(style, original)
 
         options = dict(
             subtitle_style=style,
-            subtitle_original=original,
+            subtitle_profile_key=subtitle_profile.key,
             project=project,
             config_manager=config,
             profile_loader=Mock(load=Mock(return_value=profile)),
             output_path_resolver=resolver_output,
             service=renderer,
         )
-        with patch("app.core.start.ExternalMediaSubtitlePreparationService") as whisper:
-            if original:
-                with patch("app.core.start.SubtitleCueTransformer") as transformer:
-                    result = ejecutar_studio_video_audio_srt(
-                        StudioVideoAudioSrtPlan(video, audio, subtitle),
-                        **options,
-                    )
-                transformer.assert_not_called()
-            else:
+        with patch("app.core.start.ExternalMediaSubtitlePreparationService") as whisper, patch(
+            "app.core.start.SubtitleCueTransformer"
+        ) as transformer:
                 result = ejecutar_studio_video_audio_srt(
                     StudioVideoAudioSrtPlan(video, audio, subtitle),
                     **options,
                 )
 
         whisper.assert_not_called()
+        transformer.assert_not_called()
         assert subtitle.read_text(encoding="utf-8") == (
             "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
         )
         assert result.base_subtitle_path.is_file()
         assert result.generated_subtitle_path.is_file()
-        if original:
-            assert result.generated_subtitle_path == result.base_subtitle_path
-        else:
-            assert result.generated_subtitle_path != result.base_subtitle_path
+        assert result.generated_subtitle_path == result.base_subtitle_path
+        assert result.base_subtitle_path.read_text(encoding="utf-8") == (
+            "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
+        )
         render_plan = renderer.render.call_args.args[0]
         assert render_plan.subtitle_path == result.generated_subtitle_path
         assert renderer.render.call_args.kwargs["subtitle_profile"] == subtitle_profile
+
+
+def test_human_srt_allows_only_a_visual_uppercase_derivative():
+    profile_key, profile, resolver = _profile_and_subtitles()
+    subtitle_profile = resolver.load(
+        SubtitleProfileKey.for_profile(profile_key, "single_line")
+    )
+    subtitle_profile = type("UppercaseProfile", (), {
+        "key": subtitle_profile.key,
+        "cue_policy": {**subtitle_profile.cue_policy, "uppercase": True},
+        "render_style": subtitle_profile.render_style,
+    })()
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        video, audio, subtitle = _write_sources(root, with_subtitle=True)
+        output = root / "output" / "video" / "final.mp4"
+        config = Mock()
+        config.get_profile_key.return_value = profile_key
+        config.get_profile_config.return_value = {}
+        config.get_subtitle_profile_by_key.return_value = subtitle_profile
+        renderer = Mock()
+        renderer.render.return_value = (output, 2.0, ("ffmpeg",))
+        resolver_output = Mock()
+        resolver_output.resolve.return_value = output
+
+        with patch("app.core.start.SubtitleCueTransformer") as transformer:
+            result = ejecutar_studio_video_audio_srt(
+                StudioVideoAudioSrtPlan(video, audio, subtitle),
+                subtitle_profile_key=subtitle_profile.key,
+                project=Mock(),
+                config_manager=config,
+                profile_loader=Mock(load=Mock(return_value=profile)),
+                output_path_resolver=resolver_output,
+                service=renderer,
+            )
+
+        transformer.assert_not_called()
+        assert subtitle.read_text(encoding="utf-8") == (
+            "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
+        )
+        assert result.generated_subtitle_path != result.base_subtitle_path
+        assert result.generated_subtitle_path.read_text(encoding="utf-8") == (
+            "1\n00:00:00,000 --> 00:00:01,500\nTEXTO HUMANO INTACTO.\n"
+        )
+
+
+def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
+    plan = StudioVideoAudioSrtPlan(
+        Path("input/studio/video_audio_srt/source.mp4"),
+        Path("input/studio/video_audio_srt/new-audio.wav"),
+        Path("input/studio/video_audio_srt/human.srt"),
+        video_duration=12.345,
+        audio_duration=18.0,
+    )
+    options = {
+        "project_name": "video-audio-srt",
+        "profile_id": "studio_youtube",
+        "profile_platform": "youtube",
+        "studio_input_mode": "video_audio_srt",
+        "studio_video_audio_srt_plan": plan,
+        "subtitle_config": "subtitulo_studio_youtube_linea_unica",
+        "subtitle_profile_key": SubtitleProfileKey.for_profile(
+            ProfileKey.for_component("studio", "youtube"),
+            "single_line",
+        ),
+    }
+    result = SimpleNamespace(
+        output_path=Path("output/video/final.mp4"),
+        generated_duration=12.345,
+        base_subtitle_path=Path("output/subtitles/final.srt"),
+        generated_subtitle_path=Path("output/subtitles/final.srt"),
+    )
+    summary = Mock()
+    with patch.object(main, "PipelineSummary", return_value=summary), patch.object(
+        main,
+        "_subtitle_display_name",
+        return_value="Línea única",
+    ):
+        main._print_studio_summary(options, result, 1.0)
+
+    details = [call.args for call in summary.add_detail.call_args_list]
+    assert ("Proyecto", "video-audio-srt") in details
+    assert ("Perfil / plataforma", "studio_youtube / Youtube") in details
+    assert ("Video fuente", plan.video_path) in details
+    assert ("Audio nuevo", plan.audio_path) in details
+    assert ("Subtítulos", "Sí") in details
+    assert ("Perfil de subtítulos", "Línea única") in details
+    assert ("Duración vídeo", "12.345 s") in details
+    assert ("Duración audio original", "18.000 s") in details
+    assert ("Duración final", "12.345 s") in details
+    assert ("Tratamiento audio", "Recortado al vídeo") in details
+    assert ("Video final", result.output_path) in details
+    assert ("Estado final", "VIDEO + AUDIO SRT COMPLETADO") in details

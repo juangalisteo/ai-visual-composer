@@ -1,18 +1,24 @@
 import json
-import sys
+from dataclasses import replace
 from pathlib import Path
 
 from app.shared.progress_logger import ProgressLogger
+from app.shared.error_context import (
+    ErrorContext,
+    ErrorSeverity,
+    ExitKind,
+)
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
-    ProfilePlatform,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
 )
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from app.shared.media_probe import MediaProbe
 from app.modules.video.intro_outro import (
     IntroOutroCatalog,
     IntroOutroPlan,
@@ -25,7 +31,6 @@ from app.modules.studio import (
     StudioSubtitleExportInputService,
     StudioSubtitleExportMode,
     StudioMontageInputError,
-    StudioMontageMode,
     StudioMontagePlanningService,
     StudioProfileLoader,
     StudioIntroOutroInputService,
@@ -47,6 +52,7 @@ class RunController:
         studio_intro_outro_input_service=None,
         studio_video_audio_srt_input_service=None,
         studio_profile_loader=None,
+        media_probe=None,
     ):
         self.profile_resolver = (
             profile_resolver
@@ -77,6 +83,7 @@ class RunController:
             or StudioIntroOutroInputService()
         )
         self.studio_video_audio_srt_input_service = studio_video_audio_srt_input_service or StudioVideoAudioSrtInputService()
+        self.media_probe = media_probe or MediaProbe()
         self.studio_profile_loader = (
             studio_profile_loader
             or StudioProfileLoader()
@@ -125,6 +132,7 @@ class RunController:
                 design_target=design_target
             )
         )
+        profile_key = profile.get("profile_key")
         subtitle_config = ""
         voice_config = ""
         music_category = None
@@ -159,15 +167,11 @@ class RunController:
 
         if produces_final_video:
             intro_outro_selection = (
-                self.select_intro_outro()
+                self.select_intro_outro(profile_key.platform)
             )
 
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
-        profile_key = profile.get(
-            "profile_key"
-        )
-
         return {
             "visual_pipeline": visual_pipeline,
             "script_source": script_source,
@@ -179,7 +183,7 @@ class RunController:
                 else ""
             ),
             "profile_platform": (
-                profile_key.platform.value
+                profile_key.platform
                 if profile_key
                 else ""
             ),
@@ -189,12 +193,12 @@ class RunController:
                 else ""
             ),
             "profile_family": (
-                profile_key.family.value
+                profile_key.family
                 if profile_key
-                else "system"
+                else "estandar"
             ),
             "subtitle_config": subtitle_config,
-            "subtitle_design_profile_key": profile.get(
+            "subtitle_profile_key": profile.get(
                 "subtitle_profile_key"
             ),
             "voice_config": voice_config,
@@ -307,32 +311,32 @@ class RunController:
             }
         ]
 
-        self._print("\nDISEÑO\n")
+        while True:
+            self._print("\nDISEÑO\n")
 
-        for i, target in enumerate(
-            targets,
-            start=1
-        ):
-            self._print(
-                f"{i}. {target['name']}"
+            for i, target in enumerate(
+                targets,
+                start=1
+            ):
+                self._print(
+                    f"{i}. {target['name']}"
+                )
+
+            selected = self._select_from_list(
+                targets
             )
 
-        selected = self._select_from_list(
-            targets
-        )
+            if selected.get(
+                "available",
+                True
+            ):
+                return selected[
+                    "pipeline"
+                ]
 
-        if not selected.get(
-            "available",
-            True
-        ):
             self._print(
                 "\nNo disponible."
             )
-            sys.exit(0)
-
-        return selected[
-            "pipeline"
-        ]
 
     def select_pipeline_mode(
         self,
@@ -384,195 +388,100 @@ class RunController:
         visual_pipeline="image"
     ):
         components = {
-            "script": ProfileComponent.GUION,
-            "design_image": ProfileComponent.IMAGEN,
-            "design_video": ProfileComponent.VIDEO,
-            "image": ProfileComponent.IMAGEN,
-            "video": ProfileComponent.VIDEO,
-            "studio": ProfileComponent.STUDIO,
+            "script": (ProfileComponent.GUION, True),
+            "design_image": (ProfileComponent.IMAGEN, False),
+            "design_video": (ProfileComponent.VIDEO, False),
+            "image": (ProfileComponent.IMAGEN, True),
+            "video": (ProfileComponent.VIDEO, True),
+            "studio": (ProfileComponent.STUDIO, True),
         }
         if visual_pipeline in components:
-            return self._select_profile_identity(components[visual_pipeline])
-        profiles = []
-
-        if visual_pipeline == "script":
-            for platform in ProfilePlatform:
-                profile_key = ProfileKey.for_component(
-                    ProfileComponent.GUION,
-                    platform
-                )
-                profile = self.profile_resolver.resolve(
-                    profile_key
-                )
-                profiles.append({
-                    "platform": "guion",
-                    "profile": platform.value,
-                    "path": profile,
-                    "profile_key": profile_key,
-                })
-        elif visual_pipeline == "design_image":
-            for platform in ProfilePlatform:
-                profile_key = ProfileKey.for_component(
-                    ProfileComponent.IMAGEN,
-                    platform
-                )
-                profile = self.profile_resolver.resolve(
-                    profile_key
-                )
-                profiles.append({
-                    "platform": "diseno",
-                    "profile": platform.value,
-                    "path": profile,
-                    "profile_key": profile_key,
-                })
-        elif visual_pipeline == "design_video":
-            for platform in ProfilePlatform:
-                profile_key = ProfileKey.for_component(
-                    ProfileComponent.VIDEO,
-                    platform
-                )
-                profile = self.profile_resolver.resolve(
-                    profile_key
-                )
-                profiles.append({
-                    "platform": "diseno",
-                    "profile": platform.value,
-                    "path": profile,
-                    "profile_key": profile_key,
-                })
-        else:
-            components = {
-                "image": ProfileComponent.IMAGEN,
-                "video": ProfileComponent.VIDEO,
-                "studio": ProfileComponent.STUDIO,
-            }
-            if visual_pipeline not in components:
-                raise ValueError(
-                    "Ámbito de perfil no soportado: "
-                    f"{visual_pipeline}"
-                )
-
-            for platform in ProfilePlatform:
-                component = components[visual_pipeline]
-                profile_key = ProfileKey.for_component(
-                    component,
-                    platform
-                )
-                profile = self.profile_resolver.resolve(
-                    profile_key
-                )
-                profiles.append({
-                    "platform": (
-                        "studio"
-                        if component is ProfileComponent.STUDIO
-                        else platform.value
-                    ),
-                    "profile": (
-                        platform.value
-                        if component is ProfileComponent.STUDIO
-                        else "Modo Conciencia"
-                    ),
-                    "path": profile,
-                    "profile_key": profile_key,
-                })
-
-        if not profiles:
-            raise FileNotFoundError(
-                "No se encontraron perfiles "
-                "en config/profiles."
+            component, select_subtitles = components[visual_pipeline]
+            return self._select_profile_identity(
+                component,
+                select_subtitles=select_subtitles,
             )
-
-        self._print("\nPERFIL\n")
-
-        for i, item in enumerate(
-            profiles,
-            start=1
-        ):
-            if item["platform"] in {
-                "guion",
-                "diseno",
-                "studio",
-            }:
-                label = self._label(
-                    item["profile"]
-                )
-            else:
-                label = (
-                    f"{self._label(item['platform'])}"
-                )
-
-            self._print(
-                f"{i}. {label}"
-            )
-
-        return self._select_from_list(
-            profiles
+        raise ValueError(
+            "Ámbito de perfil no soportado: "
+            f"{visual_pipeline}"
         )
 
-    def _select_profile_identity(self, component):
+    def _select_profile_identity(self, component, select_subtitles=True):
+        profiles_by_platform = {}
+        for platform in self.profile_resolver.discover_platforms(component):
+            descriptors = []
+            for family in self.profile_resolver.discover_families(
+                component,
+                platform,
+            ):
+                descriptors.extend(
+                    self.profile_resolver.discover(
+                        component,
+                        platform,
+                        family,
+                    )
+                )
+            if descriptors:
+                profiles_by_platform[platform] = tuple(descriptors)
+
         self._print("\nPLATAFORMA\n")
-        platforms = tuple(
-            platform
-            for platform in ProfilePlatform
-            if self._available_profile_families(component, platform)
-        )
+        platforms = tuple(sorted(profiles_by_platform))
         if not platforms:
             raise FileNotFoundError(
-                "No hay perfiles validos para el componente seleccionado."
+                "No hay perfiles operacionales validos para el componente "
+                "seleccionado."
             )
         for index, platform in enumerate(platforms, start=1):
-            self._print(f"{index}. {self._label(platform.value)}")
+            self._print(f"{index}. {self._label(platform)}")
         platform = self._select_from_list(platforms)
-        families = self._available_profile_families(component, platform)
-        self._print("\nESTILO DE SUBTÍTULOS\n")
-        labels = {"system": "ESTÁNDAR", "design": "DISEÑO"}
-        for index, family in enumerate(families, start=1):
-            self._print(f"{index}. {labels[family]}")
-        family = self._select_from_list(families)
-        if family == "system":
-            system = ProfileKey.for_component(component, platform)
-            return {"path": self.profile_resolver.resolve(system), "profile_key": system}
-        designs = self.profile_resolver.discover(component, platform, "design")
-        self._print("\nDISEÑO\n")
-        for index, (_, display_name) in enumerate(designs, start=1):
-            self._print(f"{index}. {display_name}")
-        design_key, _ = self._select_from_list(designs)
-        style = self.profile_resolver.declared_subtitle_style(design_key)
-        subtitle_key = SubtitleProfileKey.for_design(
-            component,
-            platform,
-            design_key.profile_id,
-            style,
-        )
-        self.subtitle_profile_resolver.load(subtitle_key)
-        system = ProfileKey.for_component(component, platform)
-        return {
-            "path": self.profile_resolver.resolve(system),
-            "profile_key": system,
-            "subtitle_profile_key": subtitle_key,
+
+        operational_profiles = profiles_by_platform[platform]
+        if len(operational_profiles) == 1:
+            profile_key = operational_profiles[0][0]
+        else:
+            self._print("\nPERFIL OPERACIONAL\n")
+            for index, (_, display_name) in enumerate(
+                operational_profiles,
+                start=1,
+            ):
+                self._print(f"{index}. {display_name}")
+            profile_key = self._select_from_list(operational_profiles)[0]
+
+        selection = {
+            "path": self.profile_resolver.resolve(profile_key),
+            "profile_key": profile_key,
         }
+        if not select_subtitles:
+            return selection
+
+        families = self.subtitle_profile_resolver.discover_families(component, platform)
+        if not families:
+            raise FileNotFoundError(
+                "No hay familias de subtitulos para la plataforma "
+                f"{platform}."
+            )
+        self._print("\nSUBTÍTULOS\n")
+        self._print("FAMILIA\n")
+        for index, family in enumerate(families, start=1):
+            self._print(f"{index}. {self._family_label(family)}")
+        family = self._select_from_list(families)
+        profiles = self.subtitle_profile_resolver.discover_profiles_for_family(
+            component, platform, family,
+        )
+        self._print("\nPERFIL\n")
+        for index, descriptor in enumerate(profiles, start=1):
+            self._print(f"{index}. {descriptor.display_name}")
+        subtitle_key = self._select_from_list(profiles).key
+        selection["subtitle_profile_key"] = subtitle_key
+        return selection
 
     def _available_profile_families(self, component, platform):
-        """Return families only when their on-disk subtitle profiles validate."""
-        families = []
-        system = ProfileKey.for_component(component, platform)
-        try:
-            self.profile_resolver.load(system)
-            self.subtitle_profile_resolver.discover_styles(system)
-        except (FileNotFoundError, TypeError, ValueError, json.JSONDecodeError):
-            pass
-        else:
-            families.append("system")
+        """Return valid operational profile families for one component/platform."""
+        return self.profile_resolver.discover_families(component, platform)
 
-        designs = self.profile_resolver.discover(component, platform, "design")
-        for design, _ in designs:
-            try:
-                self.subtitle_profile_resolver.discover_styles(design)
-            except (FileNotFoundError, TypeError, ValueError, json.JSONDecodeError):
-                continue
-            families.append("design")
-            break
-        return tuple(families)
+    @staticmethod
+    def _family_label(family):
+        return family.replace("_", " ").upper()
 
     def select_subtitle_config(self, profile_key=None):
         if profile_key is not None:
@@ -608,24 +517,7 @@ class RunController:
     def _select_profile_subtitle_config(self, profile_key, subtitle_profile_key=None):
         if subtitle_profile_key is not None:
             return subtitle_profile_key
-        automatic_style = self._automatic_subtitle_style(profile_key)
-        if automatic_style is not None:
-            return automatic_style
         return self.select_subtitle_config(profile_key)
-
-    def _automatic_subtitle_style(self, profile_key):
-        style = self.profile_resolver.declared_subtitle_style(profile_key)
-        if style is None:
-            return None
-        style = style.value if hasattr(style, "value") else style
-        available = self.subtitle_profile_resolver.discover_styles(profile_key)
-        if style not in available:
-            raise ValueError(
-                "El estilo declarado por el perfil DESIGN no tiene "
-                "un SubtitleProfile válido: "
-                f"{profile_key.profile_id} / {style}"
-            )
-        return style
 
     def select_studio_subtitle_config(self, profile_key):
         return self._select_subtitle_profile(
@@ -644,10 +536,7 @@ class RunController:
             descriptor.profile_id
             for descriptor in descriptors
         )
-        if input_mode in {
-            StudioInputMode.SRT_VIDEO.value,
-            StudioInputMode.VIDEO_AUDIO_SRT.value,
-        }:
+        if input_mode == StudioInputMode.SRT_VIDEO.value:
             selections = ("original", *selections)
         self._print("\nSUBT\u00cdTULOS\n")
         for index, selection in enumerate(selections, start=1):
@@ -665,41 +554,15 @@ class RunController:
         return "single_line", True
 
     def _select_studio_srt_video_subtitle_options(self, profile_key):
-        functional_profile_key = ProfileKey.for_component(
-            profile_key.component,
-            profile_key.platform,
-        )
         descriptors = self.subtitle_profile_resolver.discover_profiles(
-            functional_profile_key
+            profile_key
         )
-        selections = (
-            "original",
-            *(
-                descriptor.profile_id
-                for descriptor in descriptors
-            ),
-        )
+        selections = tuple(descriptors)
         self._print("\nSUBTÍTULOS\n")
-        self._print("1. ORIGINAL")
-        for index, descriptor in enumerate(descriptors, start=2):
+        for index, descriptor in enumerate(descriptors, start=1):
             self._print(f"{index}. {descriptor.display_name}")
         selection = self._select_from_list(selections)
-        if selection != "original":
-            return selection, False
-        return "single_line", True
-
-    def select_studio_montage_subtitle_options(self, profile_key):
-        self._print("\nSUBTÍTULOS\n")
-        self._print("1. Sí")
-        self._print("2. No")
-        subtitles_enabled = self._select_from_list((True, False))
-        if not subtitles_enabled:
-            return False, ""
-
-        return True, self._select_subtitle_profile(
-            profile_key,
-            "\nESTILO DE SUBTÍTULOS\n",
-        )
+        return selection.key, True
 
     def _select_subtitle_profile(self, profile_key, heading):
         descriptors = self.subtitle_profile_resolver.discover_profiles(
@@ -719,7 +582,7 @@ class RunController:
         if (
             key is not None
             and key.component is profile_key.component
-            and key.platform is profile_key.platform
+            and key.platform == profile_key.platform
         ):
             return key
         return None
@@ -738,8 +601,8 @@ class RunController:
         self._print("2. SRT + VIDEO")
         self._print("3. INTRO / OUTRO")
         self._print("4. MONTAJE VÍDEOS")
-        self._print("5. VIDEO + AUDIO SRT")
-        self._print("6. EXPORTAR SRT VIDEO")
+        self._print("5. VIDEO + AUDIO | SRT")
+        self._print("6. EXPORTAR SRT ➜  VIDEO")
         return self._select_from_list(modes)
 
     def select_studio_subtitle_export_mode(self):
@@ -771,27 +634,40 @@ class RunController:
             source_path=source_path,
         )
 
-    def select_studio_video_audio_srt_plan(self, subtitles):
-        candidates = self.studio_video_audio_srt_input_service.discover(
-            subtitles,
+    def select_studio_video_audio_srt_inputs(self):
+        candidates = self.studio_video_audio_srt_input_service.discover(False)
+        return (
+            self._select_studio_input_candidate(
+                "VIDEO",
+                candidates.videos,
+                direct=len(candidates.videos) == 1,
+            ),
+            self._select_studio_input_candidate(
+                "AUDIO",
+                candidates.audios,
+                direct=len(candidates.audios) == 1,
+            ),
         )
-        video_path = self._select_studio_input_candidate(
-            "VIDEO",
-            candidates.videos,
-            direct=len(candidates.videos) == 1,
+
+    def select_studio_video_audio_srt_subtitle(self):
+        candidates = self.studio_video_audio_srt_input_service.discover(True)
+        return self._select_studio_input_candidate(
+            "SRT",
+            candidates.subtitles,
+            direct=len(candidates.subtitles) == 1,
         )
-        audio_path = self._select_studio_input_candidate(
-            "AUDIO",
-            candidates.audios,
-            direct=len(candidates.audios) == 1,
-        )
-        subtitle_path = None
-        if subtitles:
-            subtitle_path = self._select_studio_input_candidate(
-                "SRT",
-                candidates.subtitles,
-                direct=len(candidates.subtitles) == 1,
-            )
+
+    def select_studio_video_audio_srt_plan(
+        self,
+        subtitles,
+        video_path=None,
+        audio_path=None,
+        subtitle_path=None,
+    ):
+        if video_path is None or audio_path is None:
+            video_path, audio_path = self.select_studio_video_audio_srt_inputs()
+        if subtitles and subtitle_path is None:
+            subtitle_path = self.select_studio_video_audio_srt_subtitle()
         return self.studio_video_audio_srt_input_service.create_plan(
             subtitles,
             video_path=video_path,
@@ -799,8 +675,33 @@ class RunController:
             subtitle_path=subtitle_path,
         )
 
+    def select_studio_video_audio_srt_audio_tail(self, plan):
+        video_duration = self.media_probe.inspect(plan.video_path).duration
+        audio_duration = self.media_probe.get_duration(plan.audio_path)
+        if audio_duration >= video_duration:
+            return replace(
+                plan,
+                video_duration=video_duration,
+                audio_duration=audio_duration,
+            )
+        self._print("\nAUDIO MÁS CORTO QUE EL VÍDEO\n")
+        self._print("1. SIN MÚSICA")
+        self._print("2. CON MÚSICA")
+        mode = self._select_from_list(("silence", "music"))
+        music_path = (
+            self.studio_music_selector.select("random")
+            if mode == "music"
+            else None
+        )
+        return replace(
+            plan,
+            audio_tail_mode=mode,
+            music_path=music_path,
+            video_duration=video_duration,
+            audio_duration=audio_duration,
+        )
+
     def select_studio_montage_plan(self, profile_key, profile):
-        mode = self.select_studio_montage_mode()
         candidates = self.studio_montage_planning_service.discover(profile)
         self._print("\nVÍDEOS ENCONTRADOS\n")
         for clip in candidates.clips:
@@ -810,20 +711,9 @@ class RunController:
         transitions_enabled = self.select_studio_montage_transitions()
         return self.studio_montage_planning_service.create_plan(
             profile_key=profile_key,
-            mode=mode,
             transitions_enabled=transitions_enabled,
             clips=clips,
         )
-
-    def select_studio_montage_mode(self):
-        modes = (
-            StudioMontageMode.SOLO_MONTAJE,
-            StudioMontageMode.MONTAJE_COMPLETO,
-        )
-        self._print("\nMODO\n")
-        self._print("1. SOLO MONTAJE")
-        self._print("2. MONTAJE COMPLETO")
-        return self._select_from_list(modes)
 
     def _select_studio_montage_order(self, candidates):
         self._print("\nIntroduce el orden de montaje:")
@@ -842,8 +732,13 @@ class RunController:
         self._print("2. No")
         return self._select_from_list((True, False))
 
-    def select_studio_intro_outro_plan(self):
-        source_path = self.studio_intro_outro_input_service.discover_source()
+    def select_studio_intro_outro_plan(self, profile_key):
+        source_paths = self.studio_intro_outro_input_service.discover_sources()
+        source_path = self._select_studio_input_candidate(
+            "VIDEO",
+            source_paths,
+            direct=len(source_paths) == 1,
+        )
         modes = ("intro", "outro", "both")
         self._print("\nINTRO / OUTRO\n")
         self._print("1. SOLO INTRO")
@@ -854,13 +749,19 @@ class RunController:
         intro = None
         outro = None
         if mode in {"intro", "both"}:
-            assets = self._require_intro_outro_assets("intro")
+            assets = self._require_intro_outro_assets(
+                profile_key.platform,
+                "intro",
+            )
             intro = IntroOutroSelection(
                 self._select_intro_outro_asset(assets, "INTRO"),
                 "intro",
             )
         if mode in {"outro", "both"}:
-            assets = self._require_intro_outro_assets("outro")
+            assets = self._require_intro_outro_assets(
+                profile_key.platform,
+                "outro",
+            )
             outro = IntroOutroSelection(
                 self._select_intro_outro_asset(assets, "OUTRO"),
                 "outro",
@@ -926,10 +827,10 @@ class RunController:
 
         return self.studio_music_selector.select("random")
 
-    def select_studio_intro_outro(self):
-        return self.select_intro_outro()
+    def select_studio_intro_outro(self, profile_key):
+        return self.select_intro_outro(profile_key.platform)
 
-    def select_intro_outro(self):
+    def select_intro_outro(self, platform):
         modes = ("none", "intro", "outro", "both")
         self._print("\nINTRO / OUTRO\n")
         self._print("1. NINGUNO")
@@ -943,25 +844,26 @@ class RunController:
         intro = None
         outro = None
         if mode in {"intro", "both"}:
-            assets = self._require_intro_outro_assets("intro")
+            assets = self._require_intro_outro_assets(platform, "intro")
             intro = IntroOutroSelection(
                 self._select_intro_outro_asset(assets, "INTRO"),
                 "intro",
             )
         if mode in {"outro", "both"}:
-            assets = self._require_intro_outro_assets("outro")
+            assets = self._require_intro_outro_assets(platform, "outro")
             outro = IntroOutroSelection(
                 self._select_intro_outro_asset(assets, "OUTRO"),
                 "outro",
             )
         return IntroOutroPlan(intro=intro, outro=outro)
 
-    def _require_intro_outro_assets(self, position):
-        assets = self.intro_outro_catalog.discover(position)
+    def _require_intro_outro_assets(self, platform, position):
+        assets = self.intro_outro_catalog.discover(platform, position)
         if not assets:
             raise FileNotFoundError(
                 "No hay archivos MP4 disponibles para "
-                f"{position.upper()} en assets/videos/intro_outro/{position}/."
+                f"{position.upper()} en assets/videos/intro_outro/"
+                f"{platform}/{position}/."
             )
         return assets
 
@@ -1113,13 +1015,6 @@ class RunController:
         self,
         value
     ):
-        labels = {
-            "youtube": "YouTube"
-        }
-
-        if value in labels:
-            return labels[value]
-
         return (
             value.replace(
                 "_",
@@ -1173,21 +1068,30 @@ class RunController:
     def _run_studio(self):
         input_mode = self.select_studio_input_mode()
         if input_mode == StudioInputMode.VIDEO_AUDIO_SRT.value:
-            profile_key, _ = self._select_studio_profile()
+            profile_key, _ = self._select_studio_operational_profile()
+            video_path, audio_path = self.select_studio_video_audio_srt_inputs()
             self._print("\nSUBTÍTULOS\n")
             self._print("1. Sí")
             self._print("2. No")
             enabled = self._select_from_list((True, False))
-            plan = self.select_studio_video_audio_srt_plan(enabled)
             subtitle_config = None
-            subtitle_original = False
+            subtitle_profile_key = None
+            subtitle_path = None
             if enabled:
-                subtitle_config, subtitle_original = (
-                    self.select_studio_subtitle_options(
-                        profile_key,
-                        input_mode,
+                subtitle_path = self.select_studio_video_audio_srt_subtitle()
+                subtitle_profile_key = (
+                    self._select_studio_video_audio_srt_subtitle_profile(
+                        profile_key
                     )
                 )
+                subtitle_config = subtitle_profile_key.profile_id
+            plan = self.select_studio_video_audio_srt_plan(
+                enabled,
+                video_path=video_path,
+                audio_path=audio_path,
+                subtitle_path=subtitle_path,
+            )
+            plan = self.select_studio_video_audio_srt_audio_tail(plan)
             return {
                 "visual_pipeline": "studio",
                 "script_source": "external",
@@ -1196,16 +1100,20 @@ class RunController:
                 "subtitle_config": subtitle_config,
                 "studio_input_mode": input_mode,
                 "studio_video_audio_srt_plan": plan,
-                "studio_subtitle_original": subtitle_original,
                 "voice_config": "",
                 "music_category": None,
                 "project_name": self.ask_project_name(),
                 "clear_output": self.ask_clear_output(),
-                **self._studio_profile_options(profile_key),
+                **self._studio_operational_profile_options(profile_key),
+                **(
+                    {"subtitle_profile_key": subtitle_profile_key}
+                    if subtitle_profile_key is not None
+                    else {}
+                ),
             }
         if input_mode == StudioInputMode.INTRO_OUTRO.value:
-            profile_key, _ = self._select_studio_profile()
-            intro_outro_plan = self.select_studio_intro_outro_plan()
+            profile_key, _ = self._select_studio_operational_profile()
+            intro_outro_plan = self.select_studio_intro_outro_plan(profile_key)
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
             return {
@@ -1220,26 +1128,16 @@ class RunController:
                 "music_category": None,
                 "project_name": project_name,
                 "clear_output": clear_output,
-                **self._studio_profile_options(profile_key),
+                **self._studio_operational_profile_options(profile_key),
             }
         if input_mode == StudioInputMode.MONTAJE_VIDEOS.value:
-            profile_key, studio_profile = self._select_studio_profile()
+            profile_key, studio_profile = self._select_studio_operational_profile()
             montage_plan = self.select_studio_montage_plan(
                 profile_key,
                 studio_profile,
             )
-            subtitle_config = ""
-            subtitles_enabled = None
-            music_path = None
-            intro_outro_selection = None
-            if montage_plan.mode is StudioMontageMode.MONTAJE_COMPLETO:
-                subtitles_enabled, subtitle_config = (
-                    self.select_studio_montage_subtitle_options(
-                        profile_key
-                    )
-                )
-                music_path = self.select_studio_music()
-                intro_outro_selection = self.select_studio_intro_outro()
+            music_path = self.select_studio_music()
+            intro_outro_selection = self.select_studio_intro_outro(profile_key)
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
             return {
@@ -1247,8 +1145,7 @@ class RunController:
                 "script_source": "external",
                 "design_target": "",
                 "pipeline_mode": "studio",
-                "subtitle_config": subtitle_config,
-                "studio_subtitles_enabled": subtitles_enabled,
+                "subtitle_config": None,
                 "studio_input_mode": input_mode,
                 "studio_montage_plan": montage_plan,
                 "studio_music_path": str(music_path) if music_path else None,
@@ -1257,7 +1154,7 @@ class RunController:
                 "intro_outro_selection": intro_outro_selection,
                 "project_name": project_name,
                 "clear_output": clear_output,
-                **self._studio_profile_options(profile_key),
+                **self._studio_operational_profile_options(profile_key),
             }
         if input_mode == StudioInputMode.EXPORTAR_SRT.value:
             export_mode = self.select_studio_subtitle_export_mode()
@@ -1266,9 +1163,7 @@ class RunController:
             profile_key = None
             if export_mode is StudioSubtitleExportMode.CONVERTIR:
                 profile_key, _ = self._select_studio_profile()
-                subtitle_config = self.select_studio_subtitle_config(
-                    profile_key
-                )
+                subtitle_config = self._active_studio_subtitle_key.profile_id
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
             return {
@@ -1285,17 +1180,15 @@ class RunController:
                 "clear_output": clear_output,
                 **self._studio_profile_options(profile_key),
             }
-        profile_key, studio_profile = self._select_studio_profile()
+        profile_key, studio_profile = self._select_studio_profile(input_mode)
         prepared_input = self.select_studio_input_files(
             studio_profile,
             input_mode,
         )
-        subtitle_config, subtitle_original = self.select_studio_subtitle_options(
-            profile_key,
-            input_mode,
-        )
+        subtitle_config = self._active_studio_subtitle_key.profile_id
+        subtitle_original = self._active_studio_subtitle_original
         music_path = self.select_studio_music()
-        intro_outro_selection = self.select_studio_intro_outro()
+        intro_outro_selection = self.select_studio_intro_outro(profile_key)
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
 
@@ -1322,12 +1215,78 @@ class RunController:
             **self._studio_profile_options(profile_key),
         }
 
-    def _select_studio_profile(self):
-        profile = self.select_profile("studio")
-        profile_key = profile["profile_key"]
-        self._active_studio_design_subtitle_key = profile.get(
-            "subtitle_profile_key"
+    def _select_studio_profile(self, input_mode=None):
+        profiles_by_platform = self._studio_operational_profiles_by_platform()
+        platform = self._select_studio_operational_platform(
+            profiles_by_platform,
         )
+        profile_key, studio_profile = self._select_studio_operational_profile(
+            platform=platform,
+            profiles_by_platform=profiles_by_platform,
+        )
+        subtitle_key, subtitle_original = self._select_studio_subtitle_profile(
+            input_mode,
+            platform=platform,
+        )
+        self._active_studio_subtitle_key = subtitle_key
+        self._active_studio_subtitle_original = subtitle_original
+        return profile_key, studio_profile
+
+    def _studio_operational_profiles_by_platform(self):
+        component = ProfileComponent.STUDIO
+        profiles_by_platform = {}
+        for platform in self.profile_resolver.discover_platforms(component):
+            descriptors = []
+            for family in self.profile_resolver.discover_families(
+                component,
+                platform,
+            ):
+                descriptors.extend(
+                    self.profile_resolver.discover(component, platform, family)
+                )
+            if descriptors:
+                profiles_by_platform[platform] = tuple(descriptors)
+        return profiles_by_platform
+
+    def _select_studio_operational_platform(self, profiles_by_platform):
+        platforms = tuple(sorted(profiles_by_platform))
+        if not platforms:
+            raise FileNotFoundError(
+                "No hay perfiles operacionales STUDIO disponibles."
+            )
+        self._print("\nPLATAFORMA\n")
+        for index, platform in enumerate(platforms, start=1):
+            self._print(f"{index}. {self._label(platform)}")
+        return self._select_from_list(platforms)
+
+    def _select_studio_operational_profile(
+        self,
+        platform=None,
+        profiles_by_platform=None,
+    ):
+        profiles_by_platform = (
+            profiles_by_platform
+            if profiles_by_platform is not None
+            else self._studio_operational_profiles_by_platform()
+        )
+        if platform is None:
+            platform = self._select_studio_operational_platform(
+                profiles_by_platform,
+            )
+
+        if platform not in profiles_by_platform:
+            raise FileNotFoundError(
+                "No hay perfiles operacionales STUDIO para la plataforma "
+                f"{platform}."
+            )
+        descriptors = profiles_by_platform[platform]
+        if len(descriptors) == 1:
+            profile_key = descriptors[0][0]
+        else:
+            self._print("\nPERFIL OPERACIONAL\n")
+            for index, (_, display_name) in enumerate(descriptors, start=1):
+                self._print(f"{index}. {display_name}")
+            profile_key = self._select_from_list(descriptors)[0]
         return (
             profile_key,
             self.studio_profile_loader.load(
@@ -1336,25 +1295,96 @@ class RunController:
             ),
         )
 
+    def _select_studio_subtitle_profile(self, input_mode, platform=None):
+        component = ProfileComponent.STUDIO
+        if platform is None:
+            self._print("\nPLATAFORMA\n")
+            platforms = self.subtitle_profile_resolver.discover_platforms(component)
+            if not platforms:
+                raise FileNotFoundError("No hay perfiles de subtitulos STUDIO disponibles.")
+            for index, candidate in enumerate(platforms, start=1):
+                self._print(f"{index}. {self._label(candidate)}")
+            platform = self._select_from_list(platforms)
+
+        self._print("\nSUBTÍTULOS\n")
+        self._print("FAMILIA\n")
+        families = self.subtitle_profile_resolver.discover_families(component, platform)
+        for index, family in enumerate(families, start=1):
+            self._print(f"{index}. {self._family_label(family)}")
+        family = self._select_from_list(families)
+        descriptors = self.subtitle_profile_resolver.discover_profiles_for_family(
+            component, platform, family,
+        )
+        selections = list(descriptors)
+        self._print("\nPERFIL\n")
+        for index, selection in enumerate(selections, start=1):
+            self._print(f"{index}. {selection.display_name}")
+        selection = self._select_from_list(tuple(selections))
+        return (
+            selection.key,
+            input_mode == StudioInputMode.SRT_VIDEO.value,
+        )
+
+    def _select_studio_video_audio_srt_subtitle_profile(self, profile_key):
+        """Select a real subtitle profile within the chosen STUDIO platform."""
+        component = ProfileComponent.STUDIO
+        platform = profile_key.platform
+        self._print("\nFAMILIA\n")
+        families = self.subtitle_profile_resolver.discover_families(
+            component,
+            platform,
+        )
+        if not families:
+            raise FileNotFoundError(
+                "No hay familias de subtitulos STUDIO para la plataforma "
+                f"{platform}."
+            )
+        for index, family in enumerate(families, start=1):
+            self._print(f"{index}. {self._family_label(family)}")
+        family = self._select_from_list(families)
+        descriptors = self.subtitle_profile_resolver.discover_profiles_for_family(
+            component,
+            platform,
+            family,
+        )
+        if not descriptors:
+            raise FileNotFoundError(
+                "No hay perfiles de subtitulos STUDIO para la familia "
+                f"{family}."
+            )
+        self._print("\nPERFIL\n")
+        for index, descriptor in enumerate(descriptors, start=1):
+            self._print(f"{index}. {descriptor.display_name}")
+        return self._select_from_list(descriptors).key
+
     def _studio_profile_options(self, profile_key):
-        if profile_key is None:
-            return {}
-        options = {
-            "profile_component": profile_key.component.value,
-            "profile_platform": profile_key.platform.value,
-            "profile_id": profile_key.profile_id,
-            "profile_family": profile_key.family.value,
-        }
-        design_key = self._studio_design_subtitle_key(profile_key)
-        if design_key is not None:
-            options["subtitle_design_profile_key"] = design_key
+        options = self._studio_operational_profile_options(profile_key)
+        subtitle_key = getattr(self, "_active_studio_subtitle_key", None)
+        if subtitle_key is not None:
+            options["subtitle_profile_key"] = subtitle_key
         return options
 
+    @staticmethod
+    def _studio_operational_profile_options(profile_key):
+        if profile_key is None:
+            return {}
+        return {
+            "profile_component": profile_key.component.value,
+            "profile_platform": profile_key.platform,
+            "profile_id": profile_key.profile_id,
+            "profile_family": profile_key.family,
+        }
+
     def _exit_application(self):
-        self._print(
-            "\nFinalizando AI Visual Composer..."
+        raise OperationalError(
+            ErrorContext(
+                family="CANCELLATION",
+                severity=ErrorSeverity.RECOVERABLE,
+                user_message="La operacion fue cancelada por el usuario.",
+                exit_kind=ExitKind.CANCELLATION,
+                operation="Seleccion de opciones",
+            )
         )
-        sys.exit(0)
 
     def _print(
         self,

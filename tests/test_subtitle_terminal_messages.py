@@ -4,8 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.modules.subtitles.srt_optimizer import SrtOptimizer
-from app.modules.subtitles.subtitle_builder import SubtitleBuilder
+from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
+from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
 
 
 class SubtitleTerminalMessagesTest(unittest.TestCase):
@@ -25,12 +25,12 @@ class SubtitleTerminalMessagesTest(unittest.TestCase):
                 )
 
             with patch(
-                "app.modules.subtitles.subtitle_builder.subprocess.run",
+                "app.modules.subtitles.io.subtitle_builder.subprocess.run",
                 side_effect=write_whisper_artifacts,
             ), patch(
-                "app.modules.subtitles.subtitle_builder.ProgressLogger.start"
+                "app.modules.subtitles.io.subtitle_builder.ProgressLogger.start"
             ) as start, patch(
-                "app.modules.subtitles.subtitle_builder.ProgressLogger.finish"
+                "app.modules.subtitles.io.subtitle_builder.ProgressLogger.finish"
             ) as finish:
                 SubtitleBuilder().build(
                     audio_path=audio_path,
@@ -75,15 +75,15 @@ class SubtitleTerminalMessagesTest(unittest.TestCase):
             )
             project = SimpleNamespace(audio_path=lambda: root / "audio.mp3")
             with patch(
-                "app.modules.subtitles.srt_optimizer.ProjectManager",
+                "app.modules.subtitles.pipeline.srt_optimizer.ProjectManager",
                 return_value=project,
             ), patch(
-                "app.modules.subtitles.srt_optimizer.SubtitleTimingResolver.resolve",
+                "app.modules.subtitles.pipeline.srt_optimizer.SubtitleTimingResolver.resolve",
                 return_value=None,
             ), patch(
-                "app.modules.subtitles.srt_optimizer.ProgressLogger.start"
+                "app.modules.subtitles.pipeline.srt_optimizer.ProgressLogger.start"
             ) as start, patch(
-                "app.modules.subtitles.srt_optimizer.ProgressLogger.finish"
+                "app.modules.subtitles.pipeline.srt_optimizer.ProgressLogger.finish"
             ) as finish:
                 SrtOptimizer(
                     subtitle_profile=SimpleNamespace(cue_policy=cue_policy),

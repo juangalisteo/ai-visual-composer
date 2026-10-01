@@ -9,6 +9,7 @@ from unittest.mock import patch
 from app.cinematic_direction import create_cinematic_direction_set
 from app.domain import StoryboardScene, VisualSynthesisResult
 from app.modules.images.image_builder import ImageBuilder
+from app.shared.operational_error import OperationalError
 from app.photography_direction import PhotographyDirection
 from app.prompt_translation import (
     BackendPrompt,
@@ -501,12 +502,70 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                     side_effect=self._fake_generate_image
                 ):
                     with self.assertRaises(
-                        RuntimeError
-                    ):
+                        OperationalError
+                    ) as caught:
                         builder.build(
                             storyboard_path=storyboard_path,
                             output_dir=output_dir
                         )
+
+        self.assertEqual("VALIDATION", caught.exception.context.family)
+        self.assertEqual(
+            "manual_review",
+            caught.exception.context.technical_metadata["validation_status"],
+        )
+        self.assertIn(
+            "revision manual",
+            caught.exception.context.user_message,
+        )
+
+    def test_manual_review_preserves_candidate_and_evidence_without_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            storyboard_path = self._write_storyboard(root)
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(root)
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+                image_validation_enabled=True,
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
+                    image_quality_flow=ImageQualityFlowCoordinator(
+                        validator=ImageValidator(
+                            checks=(FailUntilAttemptCheck(accepted_attempt=4),)
+                        )
+                    ),
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=self._fake_generate_image,
+                ):
+                    with self.assertRaises(OperationalError) as caught:
+                        builder.build(
+                            storyboard_path=storyboard_path,
+                            output_dir=output_dir,
+                        )
+
+            context = caught.exception.context
+            evidence_path = Path(context.diagnostic_reference)
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+
+            self.assertEqual("VALIDATION", context.family)
+            self.assertEqual("manual_review", context.technical_metadata["validation_status"])
+            self.assertEqual(3, context.technical_metadata["attempt_count"])
+            self.assertTrue((output_dir / "scene_001.png").exists())
+            self.assertTrue(evidence_path.exists())
+            self.assertEqual("manual_review", evidence["status"])
+            self.assertEqual("manual_review", evidence["history"]["status"])
+            self.assertIsNone(evidence["approved_asset"])
+            self.assertIsNotNone(evidence["manual_review_marker"])
+            self.assertFalse(manifest_path.exists())
 
     def test_image_validation_retry_preserves_attempt_and_promotes_final_image(self):
         with tempfile.TemporaryDirectory() as temp_dir:

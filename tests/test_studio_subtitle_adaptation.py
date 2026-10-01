@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from app.modules.studio import StudioProfileLoader, StudioRenderService
-from app.modules.subtitles.cue_transformer import SubtitleCueTransformer
+from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.shared.media_probe import MediaInfo, MediaProbe
 from app.shared.profile_identity import ProfileKey
 from app.shared.profile_resolver import ProfileResolver

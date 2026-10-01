@@ -81,14 +81,23 @@ class IntroOutroCatalog:
     ):
         self.directory = Path(directory)
 
-    def discover(self, position):
+    def discover(self, platform, position):
+        platform = str(platform).strip()
+        if (
+            not platform
+            or platform in {".", ".."}
+            or Path(platform).name != platform
+        ):
+            raise ValueError(
+                "La plataforma INTRO / OUTRO debe ser una identidad valida."
+            )
         position = str(position).strip().lower()
         if position not in INTRO_OUTRO_POSITIONS:
             raise ValueError(
                 "La posicion del catalogo INTRO / OUTRO debe ser intro u outro."
             )
 
-        directory = self.directory / position
+        directory = self.directory / platform / position
         if not directory.is_dir():
             return ()
 

@@ -46,6 +46,16 @@ class StudioIntroOutroInputService:
         return StudioIntroOutroPlan(source_path, intro_outro_plan)
 
     def discover_source(self):
+        candidates = self.discover_sources()
+        if len(candidates) > 1:
+            names = ", ".join(path.name for path in candidates)
+            raise StudioIntroOutroInputError(
+                "INTRO / OUTRO requiere exactamente un archivo MP4. "
+                f"Se encontraron: {names}."
+            )
+        return candidates[0]
+
+    def discover_sources(self):
         directory = self.input_directory
         if not directory.exists():
             raise StudioIntroOutroInputError(
@@ -71,10 +81,4 @@ class StudioIntroOutroInputService:
                 "No se encontro ningun archivo MP4 para INTRO / OUTRO en "
                 f"{directory}."
             )
-        if len(candidates) > 1:
-            names = ", ".join(path.name for path in candidates)
-            raise StudioIntroOutroInputError(
-                "INTRO / OUTRO requiere exactamente un archivo MP4. "
-                f"Se encontraron: {names}."
-            )
-        return candidates[0]
+        return candidates

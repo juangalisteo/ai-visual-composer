@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 from app.modules.studio import (
     StudioMontageClip,
-    StudioMontageMode,
+    StudioMontageInputError,
     StudioMontagePlan,
     StudioMontagePreparedClip,
     StudioMontageService,
@@ -82,7 +82,6 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
             clips.append(StudioMontageClip(index, path, path.name))
         return StudioMontagePlan(
             profile_key=ProfileKey.for_component("studio", "instagram"),
-            mode=StudioMontageMode.SOLO_MONTAJE,
             transitions_enabled=transitions_enabled,
             clips=tuple(clips),
         )
@@ -182,23 +181,11 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
         self.assertIn("-filter_complex_script", command)
         self.assertNotIn("-filter_complex", command)
 
-    def test_one_clip_with_transitions_fails_before_ffmpeg(self):
+    def test_one_clip_is_rejected_before_transition_execution(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            plan = self._plan(root, 1)
-            probe = Mock()
-            runner = Mock()
-            service = StudioMontageService(
-                probe=probe,
-                runner=runner,
-                validator=Mock(),
-            )
-
-            with self.assertRaisesRegex(StudioMontageError, "al menos 2 clips"):
-                service.compose(plan, root / "output.mp4", self.profile)
-
-        probe.inspect.assert_not_called()
-        runner.run.assert_not_called()
+            with self.assertRaisesRegex(StudioMontageInputError, "al menos dos clips"):
+                self._plan(root, 1)
 
     def test_short_clip_with_transitions_fails_before_ffmpeg(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -376,7 +363,6 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         )
         return StudioMontagePlan(
             profile_key=ProfileKey.for_component("studio", "instagram"),
-            mode=StudioMontageMode.SOLO_MONTAJE,
             transitions_enabled=True,
             clips=clips,
         )

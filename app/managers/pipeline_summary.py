@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+from app.cli.error_presenter import ErrorPresenter
+from app.shared.operation_warnings import OperationWarning, OperationWarnings
 from app.shared.progress_logger import ProgressLogger
 from app.shared.time_formatter import TimeFormatter
 
@@ -28,21 +30,26 @@ class PipelineSummary:
         self.details = OrderedDict()
         self.stage_times = OrderedDict()
         self._total_time = None
+        self.warnings = OperationWarnings()
 
     def set_scene_count(
         self,
         scene_count
     ):
-        self.scene_count = int(
-            scene_count or 0
+        self.scene_count = (
+            None
+            if scene_count is None
+            else int(scene_count)
         )
 
     def set_image_count(
         self,
         image_count
     ):
-        self.image_count = int(
-            image_count or 0
+        self.image_count = (
+            None
+            if image_count is None
+            else int(image_count)
         )
 
     def set_media_duration(
@@ -74,6 +81,10 @@ class PipelineSummary:
         value
     ):
         self.details[str(name)] = str(value)
+
+    def add_warning(self, warning: OperationWarning):
+        """Attach one non-fatal degradation to this pipeline summary."""
+        return self.warnings.add(warning)
 
     def set_total_time(
         self,
@@ -130,6 +141,18 @@ class PipelineSummary:
                 )
             )
 
+        warning_presentations = tuple(
+            ErrorPresenter().present_warning(warning).text
+            for warning in self.warnings
+        )
+        if warning_presentations:
+            lines.extend([
+                "",
+                "AVISOS",
+                "-" * self.LINE_WIDTH,
+                *warning_presentations,
+            ])
+
         lines.extend([
             "",
             "-" * self.LINE_WIDTH,
@@ -167,10 +190,19 @@ class PipelineSummary:
         )
 
     def print(self):
+        warning_count = len(self.warnings)
         ProgressLogger.info(
             "\n"
-            + self.render()
+            + self.render(),
+            warnings=self.warnings,
+            operation="Resumen del pipeline",
         )
+        if len(self.warnings) > warning_count:
+            warning = self.warnings.snapshot()[-1]
+            ProgressLogger.info(
+                "\n"
+                + ErrorPresenter().present_warning(warning).text
+            )
 
     def _metric_line(
         self,
@@ -199,7 +231,7 @@ class PipelineSummary:
 
     def _format_media_duration(self):
         if self.media_duration is None:
-            return "00:00"
+            return "No disponible"
 
         total_seconds = int(
             round(
