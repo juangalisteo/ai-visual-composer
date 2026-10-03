@@ -23,19 +23,29 @@ from app.modules.video.intro_outro import (
     IntroOutroSelection,
 )
 from app.shared.media_probe import MediaProbe
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+def _load_studio_profile(profile_key):
+    operational_key = OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
+    return StudioProfileLoader().load(
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
+    )
 
 
 class StudioFinalContractTest(unittest.TestCase):
 
     def test_design_subtitles_do_not_replace_the_studio_system_profile(self):
         system_key = ProfileKey.for_component("studio", "instagram")
-        profile = StudioProfileLoader().load(
-            ProfileResolver().load(system_key), system_key
-        )
+        profile = _load_studio_profile(system_key)
         descriptors = SubtitleProfileResolver().discover_profiles_for_family(
             "studio", "instagram", "design",
         )
@@ -55,7 +65,10 @@ class StudioFinalContractTest(unittest.TestCase):
 
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()
-        expected = {"single_line", "word_by_word"}
+        expected_by_platform = {
+            "instagram": {"three_two_words", "word_by_word"},
+            "youtube": {"single_line", "word_by_word"},
+        }
 
         for platform, dimensions in {
             "instagram": (1080, 1920),
@@ -63,9 +76,7 @@ class StudioFinalContractTest(unittest.TestCase):
         }.items():
             with self.subTest(platform=platform):
                 key = ProfileKey.for_component("studio", platform)
-                profile = StudioProfileLoader().load(
-                    ProfileResolver().load(key), key
-                )
+                profile = _load_studio_profile(key)
                 self.assertEqual(dimensions, (profile.width, profile.height))
                 self.assertEqual(30, profile.fps)
                 self.assertEqual("libx264", profile.codec)
@@ -79,10 +90,10 @@ class StudioFinalContractTest(unittest.TestCase):
                     style.value if hasattr(style, "value") else str(style)
                     for style in resolver.discover_styles(key)
                 }
-                self.assertEqual(expected, styles)
-                for style in styles:
+                self.assertEqual(expected_by_platform[platform], styles)
+                for descriptor in resolver.discover_profiles(key):
                     resolved = resolver.load(
-                        SubtitleProfileKey.for_profile(key, style)
+                        descriptor.key
                     )
                     self.assertEqual(0, resolved.render_style["offset"])
 
@@ -99,9 +110,7 @@ class StudioFinalContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             key = ProfileKey.for_component("studio", "instagram")
-            profile = StudioProfileLoader().load(
-                ProfileResolver().load(key), key
-            )
+            profile = _load_studio_profile(key)
             prepared = StudioInputPreparationService(root).prepare(
                 profile,
                 StudioInputMode.SRT_VIDEO,
@@ -111,7 +120,7 @@ class StudioFinalContractTest(unittest.TestCase):
         self.assertEqual(subtitle, prepared.subtitle_path)
 
     def test_output_path_is_project_owned_for_all_feature_combinations(self):
-        key = ProfileKey.for_component("studio", "instagram")
+        key = OperationalProfileKey("studio", "instagram", "studio_instagram")
         project = type("Project", (), {
             "video_path": lambda self: Path(
                 "output/studio-test/video/studio-test.mp4"
@@ -162,7 +171,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
 
     def _context(self, platform, style="single_line"):
         key = ProfileKey.for_component("studio", platform)
-        profile = StudioProfileLoader().load(ProfileResolver().load(key), key)
+        profile = _load_studio_profile(key)
         subtitle = SubtitleProfileResolver().load(
             SubtitleProfileKey.for_profile(key, style)
         )

@@ -32,7 +32,7 @@ def test_registry_is_the_single_dispatch_for_builtin_modes():
 
 def test_registry_extension_requires_one_factory_registration():
     profile = SimpleNamespace(
-        cue_policy={"mode": "test_mode", "uppercase": False},
+        cue_policy={"mode": "test_mode", "text_case": "original"},
     )
     transformer = SubtitleCueTransformer(
         profile,
@@ -112,7 +112,7 @@ def test_new_profile_with_existing_mode_is_discovered_without_style_field(tmp_pa
     )
 
     assert descriptor.key.profile_id == "test_profile"
-    assert descriptor.mode == "single_line"
+    assert descriptor.mode == data["cue_policy"]["mode"]
     assert second_descriptor.mode == descriptor.mode
     assert second_descriptor.key != descriptor.key
     assert CueModelRegistry().resolve(second_descriptor.mode) is CueModelRegistry().resolve(

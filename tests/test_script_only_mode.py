@@ -9,9 +9,11 @@ import main as app_main
 from app.core import start
 from app.modules.script import PreparedScript
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
+from app.shared.profile_resolver import OperationalProfileDescriptor
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
@@ -30,6 +32,16 @@ class FakeConfigManager:
         family="test_family",
         profile_id="test_profile",
     )
+    script_operational_key = OperationalProfileKey(
+        ProfileComponent.GUION,
+        "test_platform",
+        "test_profile",
+    )
+    video_operational_key = OperationalProfileKey(
+        ProfileComponent.VIDEO,
+        "test_platform",
+        "test_profile",
+    )
     subtitle_profile_key = SubtitleProfileKey(
         component=ProfileComponent.GUION,
         platform="test_platform",
@@ -41,6 +53,9 @@ class FakeConfigManager:
         self
     ):
         return self.script_profile_key
+
+    def get_operational_profile_key(self):
+        return self.script_operational_key
 
     def get_ai_config(
         self
@@ -88,31 +103,19 @@ class FakeConfigManager:
 
 
 class FakeProfileResolver:
-    def discover_families(
-        self,
-        component,
-        platform,
-    ):
+    def discover_operational_profiles(self, component, platform):
         if (
             component is not ProfileComponent.VIDEO
-            or platform != FakeConfigManager.video_profile_key.platform
-        ):
-            raise AssertionError("La prueba debe resolver el perfil VIDEO real.")
-        return (FakeConfigManager.video_profile_key.family,)
-
-    def discover(
-        self,
-        component,
-        platform,
-        family,
-    ):
-        if (
-            component is not ProfileComponent.VIDEO
-            or platform != FakeConfigManager.video_profile_key.platform
-            or family != FakeConfigManager.video_profile_key.family
+            or platform != FakeConfigManager.video_operational_key.platform
         ):
             raise AssertionError("La prueba debe conservar la identidad VIDEO.")
-        return ((FakeConfigManager.video_profile_key, "Test profile"),)
+        return (
+            OperationalProfileDescriptor(
+                key=FakeConfigManager.video_operational_key,
+                path=Path("test_video_profile.json"),
+                display_name="Test profile",
+            ),
+        )
 
 
 FakeConfigManager.profile_resolver = FakeProfileResolver()
@@ -706,7 +709,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 )
                 video_clips_builder.assert_called_once()
                 self.assertEqual(
-                    FakeConfigManager.video_profile_key,
+                    FakeConfigManager.video_operational_key,
                     video_clips_builder.call_args.kwargs[
                         "profile_key"
                     ]

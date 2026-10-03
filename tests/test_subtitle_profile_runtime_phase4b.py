@@ -22,6 +22,7 @@ from app.modules.video.subtitles.subtitle_style_builder import (
 from app.modules.video.video_config import VideoConfigLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -103,7 +104,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                         / "instagram"
                         / "design"
                         / "subtitulos"
-                        / "modo_conciencia_reels.json",
+                        / f"{key.profile_id}.json",
                         resolved.path,
                     )
 
@@ -374,8 +375,12 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 component,
                 platform
             )
-            main_profile = self.profile_resolver.load(
-                ProfileKey.for_component(component, platform)
+            main_profile = self.profile_resolver.load_operational(
+                OperationalProfileKey(
+                    component,
+                    platform,
+                    f"{component.value}_{platform}",
+                )
             )
             expected_profile = self._load(
                 self._expected_path(component, platform, style)

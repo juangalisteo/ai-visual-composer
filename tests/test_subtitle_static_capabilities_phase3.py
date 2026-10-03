@@ -63,7 +63,7 @@ def test_phase3_official_design_baseline_is_static_and_pure(component):
 
     assert resolved.render_style["font"] == "oswald"
     assert "FontName=Oswald" in force_style
-    assert "FontSize=22" in force_style
-    assert "Bold=1" in force_style
+    assert f"FontSize={resolved.render_style['font_size']}" in force_style
+    assert f"Bold={int(resolved.render_style['bold'])}" in force_style
     assert all(field not in force_style for field in OPTIONAL_FORCE_STYLE_FIELDS)
     assert '"cue_policy"' in raw

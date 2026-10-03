@@ -15,6 +15,7 @@ from app.modules.video.config.loaders.visual_effect_loader import (
 )
 from app.modules.video.video_config import VideoConfigLoader
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -334,13 +335,24 @@ class RequiredProfileContractsTest(unittest.TestCase):
         )
 
     def _profile(self, component, platform):
-        key = ProfileKey.for_component(component, platform)
-        return key, self.profile_resolver.load(key)
+        legacy_key = ProfileKey.for_component(component, platform)
+        key = OperationalProfileKey(
+            component,
+            platform,
+            legacy_key.profile_id,
+        )
+        return key, self.profile_resolver.load_operational(key)
 
     def _subtitle_profile(self, profile_key, profile):
         del profile
+        legacy_key = ProfileKey(
+            profile_key.component,
+            profile_key.platform,
+            profile_key.profile_id,
+            "estandar",
+        )
         return self.subtitle_resolver.load_selection(
-            profile_key,
+            legacy_key,
             "word_by_word",
         )
 

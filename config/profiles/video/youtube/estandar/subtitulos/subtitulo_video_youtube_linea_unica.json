@@ -10,7 +10,7 @@
         "min_duration": 1.0,
         "max_duration": 3.0,
         "significant_gap_threshold": 0.35,
-        "uppercase": false,
+        "text_case": "original",
         "split_on_punctuation": true,
         "avoid_orphan_words": true,
         "merge_short_chunks": true,

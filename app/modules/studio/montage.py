@@ -11,8 +11,8 @@ from app.modules.studio.input_preparation import (
     StudioInputPreparationService,
 )
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
 from app.shared.progress_logger import ProgressLogger
@@ -71,13 +71,13 @@ class StudioMontageCandidates:
 
 @dataclass(frozen=True)
 class StudioMontagePlan:
-    profile_key: ProfileKey
+    profile_key: OperationalProfileKey
     transitions_enabled: bool
     clips: tuple[StudioMontageClip, ...]
 
     def __post_init__(self):
-        if not isinstance(self.profile_key, ProfileKey):
-            raise TypeError("MONTAJE DE VIDEOS requiere un ProfileKey explicito.")
+        if not isinstance(self.profile_key, OperationalProfileKey):
+            raise TypeError("MONTAJE DE VIDEOS requiere identidad operacional explicita.")
         if self.profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("MONTAJE DE VIDEOS requiere component=studio.")
         if not isinstance(self.transitions_enabled, bool):

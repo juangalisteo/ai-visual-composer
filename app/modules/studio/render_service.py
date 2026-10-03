@@ -23,7 +23,10 @@ from app.modules.video.intro_outro import (
     IntroOutroSelection,
 )
 from app.shared.media_probe import MediaProbe
-from app.shared.profile_identity import ProfileComponent, ProfileKey
+from app.shared.profile_identity import (
+    OperationalProfileKey,
+    ProfileComponent,
+)
 from app.shared.subtitle_profile_identity import ResolvedSubtitleProfile
 from app.managers.project_manager import ProjectManager
 from app.shared.progress_logger import ProgressLogger
@@ -67,8 +70,8 @@ class StudioOutputPathResolver:
         profile_key,
         project=None,
     ):
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError("STUDIO requiere un ProfileKey explicito.")
+        if not isinstance(profile_key, OperationalProfileKey):
+            raise TypeError("STUDIO requiere identidad operacional explicita.")
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("El output STUDIO requiere component=studio.")
 
@@ -509,8 +512,8 @@ class StudioRenderService:
         profile_key,
         subtitle_profile,
     ):
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError("StudioRenderService requiere ProfileKey.")
+        if not isinstance(profile_key, OperationalProfileKey):
+            raise TypeError("StudioRenderService requiere identidad operacional.")
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("StudioRenderService requiere component=studio.")
         if not Path(video_path).is_file():

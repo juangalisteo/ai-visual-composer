@@ -13,7 +13,8 @@ from app.modules.studio import (
     StudioIntroOutroPlan,
 )
 from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_resolver import OperationalProfileDescriptor
 
 
 class StudioIntroOutroTest(unittest.TestCase):
@@ -148,17 +149,23 @@ class StudioIntroOutroTest(unittest.TestCase):
         self.assertEqual(["platform", "intro_outro"], selection_order)
 
     def test_operational_profile_discovery_does_not_use_subtitle_profiles(self):
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             "studio",
             "test_platform",
             "test_profile",
-            "test_family",
         )
         profile_resolver = Mock()
         profile_resolver.discover_platforms.return_value = ("test_platform",)
-        profile_resolver.discover_families.return_value = ("test_family",)
-        profile_resolver.discover.return_value = ((profile_key, "Test profile"),)
-        profile_resolver.load.return_value = {"profile_id": "test_profile"}
+        profile_resolver.discover_operational_profiles.return_value = (
+            OperationalProfileDescriptor(
+                key=profile_key,
+                path=Path("test_profile.json"),
+                display_name="Test profile",
+            ),
+        )
+        profile_resolver.load_operational.return_value = {
+            "profile_id": "test_profile"
+        }
         subtitle_resolver = Mock()
         loader = Mock()
         loaded_profile = Mock()
@@ -176,10 +183,9 @@ class StudioIntroOutroTest(unittest.TestCase):
         self.assertEqual(profile_key, selected_key)
         self.assertIs(loaded_profile, selected_profile)
         subtitle_resolver.assert_not_called()
-        profile_resolver.discover.assert_called_once_with(
+        profile_resolver.discover_operational_profiles.assert_called_once_with(
             "studio",
             "test_platform",
-            "test_family",
         )
 
     def test_intro_outro_execution_passes_no_subtitle_to_renderer(self):
@@ -193,6 +199,9 @@ class StudioIntroOutroTest(unittest.TestCase):
             profile_key = ProfileKey.for_component("studio", "instagram")
             config = Mock()
             config.get_profile_key.return_value = profile_key
+            config.get_operational_profile_key.return_value = OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            )
             config.get_profile_config.return_value = {"profile_id": profile_key.profile_id}
             profile = Mock()
             profile_loader = Mock()
@@ -218,7 +227,9 @@ class StudioIntroOutroTest(unittest.TestCase):
         renderer.render.assert_called_once_with(
             video_path=source,
             subtitle_path=None,
-            profile_key=profile_key,
+            profile_key=OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            ),
             profile=profile,
             output_path=output_path,
             intro_outro_selection=plan.intro_outro_plan,

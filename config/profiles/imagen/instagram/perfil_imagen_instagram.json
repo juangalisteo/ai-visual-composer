@@ -1,9 +1,8 @@
 {
     "component": "imagen",
-    "platform": "youtube",
-    "family": "estandar",
-    "profile_id": "imagen_youtube",
-    "format": "horizontal",
+    "platform": "instagram",
+    "profile_id": "imagen_instagram",
+    "format": "vertical",
     "duration": 10,
     "tone": "modo_conciencia",
 
@@ -21,12 +20,12 @@
     },
 
     "video_style": {
-        "width": 1920,
-        "height": 1080,
+        "width": 1080,
+        "height": 1920,
         "fps": 30,
 
         "storyboard": {
-            "seconds_per_image": 30
+            "seconds_per_image": 20
         },
 
         "motion": {
@@ -35,7 +34,7 @@
             "internal_scale": 2,
 
             "base_zoom": 0.05,
-            "zoom_amount": 0.20,
+            "zoom_amount": 0.30,
 
             "pan_zoom_enabled": true,
             "pan_zoom_start": 0.05,

@@ -23,7 +23,6 @@ from app.modules.studio import (
 )
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.operational_error import OperationalError
-from app.shared.profile_identity import ProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
@@ -79,10 +78,9 @@ def _run_main():
         "profile_id",
         ""
     )
-    os.environ["MC_PROFILE_FAMILY"] = options.get(
-        "profile_family",
-        "system",
-    )
+    # Operational identity is component/platform/profile_id only. Subtitle
+    # family travels in SubtitleProfileKey and is never persisted here.
+    os.environ.pop("MC_PROFILE_FAMILY", None)
     os.environ["MC_VOICE_CONFIG"] = options["voice_config"]
     os.environ["MC_MUSIC_CATEGORY"] = options["music_category"] or ""
     if "overlays_mode" in options:
@@ -256,18 +254,9 @@ def _subtitle_display_name(options):
         selected_key = options.get("subtitle_profile_key")
         if selected_key is not None:
             return SubtitleProfileResolver().load(selected_key).display_name
-        profile_key = ProfileKey(
-            component=options["profile_component"],
-            platform=options["profile_platform"],
-            profile_id=options["profile_id"],
-            family=options.get("profile_family", "system"),
-        )
-        resolver = SubtitleProfileResolver()
-        return resolver.load(
-            resolver.adapt_legacy_selection(profile_key, selection)
-        ).display_name
-    except (KeyError, FileNotFoundError, TypeError, ValueError):
-        return labels.get(selection, selection)
+    except (FileNotFoundError, TypeError, ValueError):
+        pass
+    return labels.get(selection, selection)
 
 
 def _print_studio_summary(options, result, elapsed_seconds):

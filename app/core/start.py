@@ -67,8 +67,8 @@ from app.shared.media_probe import MediaProbe
 from app.shared.operation_warnings import OperationWarning, OperationWarnings
 from app.shared.progress_logger import ProgressLogger
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -187,7 +187,7 @@ def iniciar(
         return ejecutar_video_i2v(
             pipeline_start=pipeline_start,
             project=project,
-            profile_key=config.get_profile_key()
+            profile_key=config.get_operational_profile_key()
         )
 
     builders = _required_builders(
@@ -432,11 +432,11 @@ def iniciar(
             "full_without_subtitles",
         }
     ):
-        profile_key = config.get_profile_key()
+        profile_key = config.get_operational_profile_key()
         if (
             isinstance(
                 profile_key,
-                ProfileKey
+                OperationalProfileKey
             )
             and profile_key.component is ProfileComponent.GUION
         ):
@@ -536,18 +536,13 @@ def _normalise_subtitle_profile_key(
 def _resolve_single_video_operational_key(profile_resolver, platform):
     """Resolve the only applicable VIDEO operational identity for I2V."""
     candidates = []
-    for family in profile_resolver.discover_families(
-        ProfileComponent.VIDEO,
-        platform,
-    ):
-        candidates.extend(
-            descriptor[0]
-            for descriptor in profile_resolver.discover(
-                ProfileComponent.VIDEO,
-                platform,
-                family,
-            )
+    candidates.extend(
+        descriptor.key
+        for descriptor in profile_resolver.discover_operational_profiles(
+            ProfileComponent.VIDEO,
+            platform,
         )
+    )
     if not candidates:
         raise FileNotFoundError(
             "No existe un perfil operacional VIDEO para la plataforma: "
@@ -575,7 +570,7 @@ def preparar_studio(
 ):
     """Validate and transport Studio inputs without creating a project."""
     config = config_manager or ConfigManager()
-    profile_key = config.get_profile_key()
+    profile_key = config.get_operational_profile_key()
     if profile_key is None:
         raise ValueError(
             "STUDIO requiere una identidad de perfil estructurada."
@@ -669,7 +664,7 @@ def ejecutar_studio_video_audio_srt(
     project = project or ProjectManager()
     project.setup()
     config = config_manager or ConfigManager()
-    profile_key = config.get_profile_key()
+    profile_key = config.get_operational_profile_key()
     if profile_key is None or profile_key.component is not ProfileComponent.STUDIO:
         raise ValueError("VIDEO + AUDIO SRT requiere identidad STUDIO estructurada.")
     profile = (profile_loader or StudioProfileLoader()).load(
@@ -738,7 +733,7 @@ def ejecutar_studio_intro_outro(
     project = project or ProjectManager()
     project.setup()
     config = config_manager or ConfigManager()
-    profile_key = config.get_profile_key()
+    profile_key = config.get_operational_profile_key()
     if profile_key is None or profile_key.component is not ProfileComponent.STUDIO:
         raise ValueError("INTRO / OUTRO requiere identidad STUDIO estructurada.")
     profile = (profile_loader or StudioProfileLoader()).load(
@@ -782,7 +777,7 @@ def ejecutar_studio_exportar_srt(
     if subtitle_profile_key is None and subtitle_style is None:
         raise ValueError("CONVERTIR requiere una SubtitleProfileKey.")
     config = config_manager or ConfigManager()
-    profile_key = config.get_profile_key()
+    profile_key = config.get_operational_profile_key()
     if profile_key is None or profile_key.component is not ProfileComponent.STUDIO:
         raise ValueError(
             "CONVERTIR requiere una identidad STUDIO estructurada."
@@ -824,7 +819,7 @@ def ejecutar_studio_montaje(
     profile_resolver = profile_resolver or ProfileResolver()
     profile_loader = profile_loader or StudioProfileLoader()
     profile = profile_loader.load(
-        profile_resolver.load(montage_plan.profile_key),
+        profile_resolver.load_operational(montage_plan.profile_key),
         montage_plan.profile_key,
     )
     output_path = (
@@ -1271,7 +1266,7 @@ def ejecutar_diseno_video(
         config = ConfigManager()
         profile = config.get_profile_config()
         if profile_key is None:
-            profile_key = config.get_profile_key()
+            profile_key = config.get_operational_profile_key()
 
     prepared_design = preparation_service.prepare(
         input_path=(
@@ -1596,10 +1591,10 @@ def _load_video_component_profile(
 ):
     if not isinstance(
         profile_key,
-        ProfileKey
+        OperationalProfileKey
     ):
         raise TypeError(
-            "La configuracion Wan requiere un ProfileKey "
+            "La configuracion Wan requiere una identidad operacional "
             "VIDEO explicito."
         )
 

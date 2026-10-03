@@ -15,30 +15,30 @@ class LegacySubtitleTransportTest(unittest.TestCase):
     def setUp(self):
         self.profile_key = ProfileKey.for_component("studio", "instagram")
         self.resolver = SubtitleProfileResolver()
-        self.single_line = next(
+        self.current_profile = next(
             item.key
             for item in self.resolver.discover_profiles_for_family(
                 "studio", "instagram", "estandar",
             )
-            if item.mode == "single_line"
+            if item.profile_id == "subtitulo_studio_instagram_linea_unica"
         )
 
     def test_modern_resolution_requires_and_uses_the_exact_key(self):
-        resolved = self.resolver.load(self.single_line)
+        resolved = self.resolver.load(self.current_profile)
 
-        self.assertEqual(self.single_line, resolved.key)
+        self.assertEqual(self.current_profile, resolved.key)
         with self.assertRaises(OperationalError) as captured:
-            self.resolver.load(self.single_line.profile_id)
+            self.resolver.load(self.current_profile.profile_id)
         self.assertEqual("VALIDATION", captured.exception.context.family)
         self.assertIsInstance(captured.exception.__cause__, TypeError)
 
     def test_legacy_profile_id_adapts_once_to_a_complete_key(self):
         adapted = self.resolver.adapt_legacy_selection(
             self.profile_key,
-            self.single_line.profile_id,
+            self.current_profile.profile_id,
         )
 
-        self.assertEqual(self.single_line, adapted)
+        self.assertEqual(self.current_profile, adapted)
         self.assertEqual(adapted, self.resolver.load(adapted).key)
 
     def test_legacy_display_name_and_mode_do_not_become_identity(self):
@@ -51,9 +51,9 @@ class LegacySubtitleTransportTest(unittest.TestCase):
     def test_config_manager_modern_key_does_not_enter_legacy_adapter(self):
         config = ConfigManager(subtitle_profile_resolver=self.resolver)
 
-        resolved = config.get_subtitle_profile_by_key(self.single_line)
+        resolved = config.get_subtitle_profile_by_key(self.current_profile)
 
-        self.assertEqual(self.single_line, resolved.key)
+        self.assertEqual(self.current_profile, resolved.key)
 
     def test_dynamic_fixture_has_no_nominal_python_registration(self):
         with tempfile.TemporaryDirectory() as directory:

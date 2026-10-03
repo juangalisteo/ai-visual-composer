@@ -14,6 +14,7 @@ from app.modules.video_component import (
 from app.modules.visual_design import VisualDesignInterpreter
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -512,11 +513,12 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 / "config"
                 / "profiles"
             )
-            profile_key = ProfileKey.for_component(
+            profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram"
+                "instagram",
+                "video_instagram",
             )
-            profile = profile_resolver.load(
+            profile = profile_resolver.load_operational(
                 profile_key
             )
 
@@ -612,7 +614,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                     config_manager_mock.return_value.get_profile_config.return_value = (
                         profile
                     )
-                    config_manager_mock.return_value.get_profile_key.return_value = (
+                    config_manager_mock.return_value.get_operational_profile_key.return_value = (
                         profile_key
                     )
                     result = start.ejecutar_diseno_video(
@@ -626,7 +628,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                     )
 
                 config_manager_mock.return_value.get_profile_config.assert_called_once_with()
-                config_manager_mock.return_value.get_profile_key.assert_called_once_with()
+                config_manager_mock.return_value.get_operational_profile_key.assert_called_once_with()
 
                 self.assertEqual(
                     "scene_001.mp4",

@@ -15,13 +15,13 @@ from app.modules.studio import (
     StudioMontageResult,
     StudioRenderResult,
 )
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 
 
 class StudioMontagePhase4Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
+        self.profile_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
         self.profile = SimpleNamespace(fps=30, max_duration_difference=0.2)
 
     def _plan(self, root, transitions_enabled=False):

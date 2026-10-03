@@ -17,14 +17,14 @@ from app.modules.studio import (
     StudioMontageService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.operational_error import OperationalError
 
 
 class StudioMontagePhase2Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
+        self.profile_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
         self.input_profile = SimpleNamespace(video_extensions=(".mp4",))
         self.output_profile = SimpleNamespace(
             width=320,
@@ -421,7 +421,7 @@ class StudioMontagePhase2RealFFmpegTest(unittest.TestCase):
         )
         candidates = planner.discover(profile)
         return planner.create_plan(
-            ProfileKey.for_component("studio", "instagram"),
+            OperationalProfileKey("studio", "instagram", "studio_instagram"),
             False,
             planner.parse_order(order, candidates),
         )

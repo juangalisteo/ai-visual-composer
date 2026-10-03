@@ -15,8 +15,8 @@ from app.modules.studio import (
     StudioMontagePlanningService,
 )
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 
 
@@ -24,9 +24,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
     def setUp(self):
         self.profile = SimpleNamespace(video_extensions=(".mp4",))
-        self.profile_key = ProfileKey.for_component(
+        self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
             "instagram",
+            "studio_instagram",
         )
 
     def _service(self, root):
@@ -112,9 +113,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
         self.assertTrue(plan.transitions_enabled)
 
     def test_plan_preserves_youtube_studio_identity(self):
-        youtube_key = ProfileKey.for_component(
+        youtube_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
             "youtube",
+            "studio_youtube",
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

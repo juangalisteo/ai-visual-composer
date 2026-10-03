@@ -3,7 +3,7 @@ from copy import deepcopy
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.studio.profile import StudioProfileLoader
 from app.modules.video.video_config import VideoConfigLoader
-from app.shared.profile_identity import ProfileComponent, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.profile_resolver import ProfileResolver
 
 
@@ -35,8 +35,8 @@ def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
         ProfileComponent.VIDEO,
     ):
         for platform, dimensions in expected_dimensions.items():
-            key = ProfileKey.for_component(component, platform)
-            profile = resolver.load(key)
+            key = OperationalProfileKey(component, platform, f"{component.value}_{platform}")
+            profile = resolver.load_operational(key)
 
             assert "resolution" not in profile
             assert (profile["video_style"]["width"], profile["video_style"]["height"]) == dimensions
@@ -45,7 +45,9 @@ def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
 
 def test_legacy_resolution_and_format_do_not_determine_runtime_pixels():
     resolver = ProfileResolver()
-    profile = resolver.load(ProfileKey.for_component("imagen", "instagram"))
+    profile = resolver.load_operational(
+        OperationalProfileKey("imagen", "instagram", "imagen_instagram")
+    )
     variant = deepcopy(profile)
     variant["resolution"] = "1x1"
     variant["format"] = "horizontal"
@@ -62,8 +64,8 @@ def test_studio_output_dimensions_are_the_only_geometry_authority():
     }
 
     for platform, dimensions in expected_dimensions.items():
-        key = ProfileKey.for_component("studio", platform)
-        profile = resolver.load(key)
+        key = OperationalProfileKey("studio", platform, f"studio_{platform}")
+        profile = resolver.load_operational(key)
         variant = deepcopy(profile)
         variant["resolution"] = "1x1"
         variant["format"] = "horizontal" if platform == "instagram" else "vertical"

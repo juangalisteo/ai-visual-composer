@@ -15,7 +15,7 @@
             "min_display_seconds": 0.05,
             "merge_preference": "next"
         },
-        "uppercase": false,
+        "text_case": "original",
         "punctuation": {
             "remove_commas": true,
             "remove_periods": true,

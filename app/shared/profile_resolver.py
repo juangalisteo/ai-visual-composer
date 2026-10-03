@@ -1,13 +1,22 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
-    coerce_profile_family,
     coerce_profile_platform,
 )
 from app.shared.operational_error import create_operational_error
+
+
+@dataclass(frozen=True)
+class OperationalProfileDescriptor:
+    """An operational document discovered at its component/platform root."""
+
+    key: OperationalProfileKey
+    path: Path
+    display_name: str
 
 
 class ProfileResolver:
@@ -28,42 +37,150 @@ class ProfileResolver:
             profiles_root
         )
 
-    def resolve(
-        self,
-        profile_key
-    ):
-        profile_key = self._require_operational_profile_key(
-            profile_key
-        )
-        return self._generic_profile_path(profile_key)
+    def discover_operational_profiles(self, component, platform):
+        """Discover operational documents by canonical identity.
 
-    def discover(self, component, platform, family):
+        Operational documents exist only at component/platform root. Subtitle
+        families are resolved by ``SubtitleProfileResolver`` independently.
+        """
         component = ProfileComponent(component)
         platform = coerce_profile_platform(platform)
-        family = coerce_profile_family(family)
-        directory = self.profiles_root / component.value / platform / family
+        descriptors = self._operational_candidates(component, platform)
+        self._raise_if_duplicate_operational_ids(descriptors)
+        return tuple(sorted(
+            descriptors,
+            key=lambda descriptor: (
+                descriptor.display_name.casefold(),
+                descriptor.key.profile_id,
+            ),
+        ))
+
+    def resolve_operational(self, profile_key):
+        """Resolve one operational document from its canonical identity."""
+        profile_key = self._require_operational_key(profile_key)
+        matches = [
+            descriptor
+            for descriptor in self._operational_candidates(
+                profile_key.component,
+                profile_key.platform,
+            )
+            if descriptor.key.profile_id == profile_key.profile_id
+        ]
+        if not matches:
+            error = FileNotFoundError(
+                f"No existe un perfil operacional: {profile_key.profile_id}"
+            )
+            raise create_operational_error(
+                family="PROFILE",
+                user_message="No se encontro el perfil operacional solicitado.",
+                recommended_action=(
+                    "Revise la identidad seleccionada y la configuracion de "
+                    "perfiles."
+                ),
+                operation="Resolver perfil operacional",
+                resource=self._operational_resource(profile_key),
+            ) from error
+        if len(matches) > 1:
+            self._raise_ambiguous_operational_ids(matches)
+        return matches[0].path
+
+    def load_operational(self, profile_key):
+        """Load a general operational document by canonical identity."""
+        return self._load_profile_json(self.resolve_operational(profile_key))
+
+    def _operational_candidates(self, component, platform):
+        return self._discover_root_operational_profiles(component, platform)
+
+    def _discover_root_operational_profiles(self, component, platform):
+        directory = self.profiles_root / component.value / platform
         self._ensure_within_profiles_root(directory)
         if not directory.is_dir():
             return ()
-        return self._discover_dynamic_family(component, platform, family, directory)
+        discovered = []
+        for path in sorted(directory.glob("*.json"), key=lambda item: item.name.casefold()):
+            self._ensure_within_profiles_root(path)
+            data = self._load_profile_json(path)
+            if not self._is_operational_document(data):
+                continue
+            key = OperationalProfileKey(
+                component,
+                platform,
+                data.get("profile_id", ""),
+            )
+            self._validate_operational_identity(data, key, path)
+            discovered.append(OperationalProfileDescriptor(
+                key=key,
+                path=path,
+                display_name=self._display_name(data, key),
+            ))
+        return tuple(discovered)
 
-    def discover_families(self, component, platform):
-        component = ProfileComponent(component)
-        platform = coerce_profile_platform(platform)
-        families = []
-        root = self.profiles_root / component.value / platform
-        if not root.is_dir():
-            return tuple(families)
-        for directory in sorted(root.iterdir(), key=lambda item: item.name.casefold()):
-            if not directory.is_dir():
-                continue
-            try:
-                family = coerce_profile_family(directory.name)
-            except (ValueError, TypeError):
-                continue
-            if self.discover(component, platform, family):
-                families.append(family)
-        return tuple(families)
+    @staticmethod
+    def _is_operational_document(data):
+        """Recognize operational documents structurally, never by file name."""
+        return "component" in data or "profile_id" in data
+
+    def _validate_operational_identity(self, data, key, path):
+        expected = {
+            "component": key.component.value,
+            "platform": key.platform,
+            "profile_id": key.profile_id,
+        }
+        if not isinstance(data, dict) or any(
+            data.get(field) != value
+            for field, value in expected.items()
+        ):
+            error = ValueError(f"Identidad operacional invalida: {path}")
+            raise create_operational_error(
+                family="PROFILE",
+                user_message=(
+                    "La identidad interna del perfil operacional no coincide "
+                    "con su ruta."
+                ),
+                recommended_action=(
+                    "Revise component, platform y profile_id del perfil."
+                ),
+                operation="Validar perfil operacional",
+                resource=str(path),
+                technical_metadata={
+                    "requested_profile": self._operational_resource(key),
+                },
+            ) from error
+
+    @staticmethod
+    def _display_name(data, key):
+        display_name = data.get("display_name")
+        if isinstance(display_name, str) and display_name.strip():
+            return display_name.strip()
+        return key.profile_id
+
+    def _raise_if_duplicate_operational_ids(self, descriptors):
+        seen = {}
+        for descriptor in descriptors:
+            profile_id = descriptor.key.profile_id
+            if profile_id in seen:
+                self._raise_ambiguous_operational_ids(
+                    (seen[profile_id], descriptor),
+                )
+            seen[profile_id] = descriptor
+
+    def _raise_ambiguous_operational_ids(self, descriptors):
+        profile_id = descriptors[0].key.profile_id
+        error = ValueError(f"profile_id operacional duplicado: {profile_id}")
+        raise create_operational_error(
+            family="AMBIGUITY",
+            user_message=(
+                "La identidad operacional coincide con varios perfiles."
+            ),
+            recommended_action=(
+                "Elimine o corrija los perfiles duplicados antes de continuar."
+            ),
+            operation="Resolver perfil operacional",
+            resource=self._operational_resource(descriptors[0].key),
+            technical_metadata={
+                "candidates": [str(descriptor.path) for descriptor in descriptors],
+            },
+        ) from error
 
     def discover_platforms(self, component):
         component = ProfileComponent(component)
@@ -82,110 +199,6 @@ class ProfileResolver:
             self._ensure_within_profiles_root(path)
             platforms.append(platform)
         return tuple(sorted(platforms))
-
-    def _generic_profile_path(self, profile_key):
-        directory = self.profiles_root / profile_key.component.value / profile_key.platform / profile_key.family
-        self._ensure_within_profiles_root(directory)
-        matches = []
-        for path in directory.glob("*.json"):
-            self._ensure_within_profiles_root(path)
-            data = self._load_profile_json(path)
-            if data.get("profile_id") == profile_key.profile_id:
-                self._validate_profile_identity(data, profile_key, path)
-                matches.append(path)
-        if not matches:
-            error = FileNotFoundError(
-                f"No existe un perfil unico: {profile_key.profile_id}"
-            )
-            raise create_operational_error(
-                family="PROFILE",
-                user_message="No se encontró el perfil operacional solicitado.",
-                recommended_action=(
-                    "Revise la identidad seleccionada y la configuración de "
-                    "perfiles."
-                ),
-                operation="Resolver perfil operacional",
-                resource=self._profile_resource(profile_key),
-            ) from error
-        if len(matches) > 1:
-            error = ValueError(f"profile_id duplicado: {profile_key.profile_id}")
-            raise create_operational_error(
-                family="AMBIGUITY",
-                user_message="La identidad operacional coincide con varios perfiles.",
-                recommended_action=(
-                    "Elimine o corrija los perfiles duplicados antes de "
-                    "continuar."
-                ),
-                operation="Resolver perfil operacional",
-                resource=self._profile_resource(profile_key),
-                technical_metadata={
-                    "candidates": [str(path) for path in matches],
-                },
-            ) from error
-        return matches[0]
-
-    def _discover_dynamic_family(self, component, platform, family, directory):
-        discovered = []
-        profile_ids = set()
-        for path in sorted(directory.glob("*.json"), key=lambda item: item.name.casefold()):
-            self._ensure_within_profiles_root(path)
-            data = self._load_profile_json(path)
-            profile_id = data.get("profile_id", "")
-            key = ProfileKey(component, platform, data.get("profile_id", ""), family)
-            self._validate_profile_identity(data, key, path)
-            display_name = data.get("display_name")
-            if not isinstance(display_name, str) or not display_name.strip():
-                display_name = key.profile_id
-            if key.profile_id in profile_ids:
-                error = ValueError(f"profile_id duplicado: {key.profile_id}")
-                raise create_operational_error(
-                    family="AMBIGUITY",
-                    user_message=(
-                        "La familia contiene perfiles operacionales con la "
-                        "misma identidad."
-                    ),
-                    recommended_action=(
-                        "Elimine o corrija los perfiles duplicados antes de "
-                        "continuar."
-                    ),
-                    operation="Descubrir perfiles operacionales",
-                    resource=self._profile_resource(key),
-                    technical_metadata={"candidate": str(path)},
-                ) from error
-            profile_ids.add(key.profile_id)
-            discovered.append((key, display_name.strip()))
-        return tuple(sorted(discovered, key=lambda item: (item[1].casefold(), item[0].profile_id)))
-
-    def _validate_profile_identity(self, data, key, path):
-        expected = {
-            "component": key.component.value,
-            "platform": key.platform,
-            "family": key.family,
-            "profile_id": key.profile_id,
-        }
-        if not isinstance(data, dict) or any(
-            data.get(field) != value
-            for field, value in expected.items()
-        ):
-            error = ValueError(f"Identidad de perfil invalida: {path}")
-            raise create_operational_error(
-                family="PROFILE",
-                user_message="La identidad interna del perfil no coincide con su ruta.",
-                recommended_action=(
-                    "Revise component, platform, family y profile_id del "
-                    "perfil."
-                ),
-                operation="Validar perfil operacional",
-                resource=str(path),
-                technical_metadata={"requested_profile": self._profile_resource(key)},
-            ) from error
-    def load(
-        self,
-        profile_key
-    ):
-        return self._load_profile_json(
-            self.resolve(profile_key)
-        )
 
     def _load_profile_json(self, path):
         path = Path(path)
@@ -232,7 +245,7 @@ class ProfileResolver:
         self,
         profile_key
     ):
-        profile_key = self._require_profile_key(
+        profile_key = self._require_operational_key(
             profile_key
         )
         if profile_key.component is not ProfileComponent.VIDEO:
@@ -305,37 +318,21 @@ class ProfileResolver:
             )
         return profile
 
-    def _require_profile_key(
-        self,
-        profile_key
-    ):
-        if not isinstance(
-            profile_key,
-            ProfileKey
-        ):
-            raise TypeError(
-                "ProfileResolver requiere un ProfileKey."
-            )
-        return profile_key
-
-    def _require_operational_profile_key(self, profile_key):
-        try:
-            return self._require_profile_key(profile_key)
-        except TypeError as error:
-            raise create_operational_error(
-                family="VALIDATION",
-                user_message="La identidad operacional no tiene el contrato requerido.",
-                recommended_action="Use una ProfileKey completa y válida.",
-                operation="Resolver perfil operacional",
-            ) from error
+    @staticmethod
+    def _require_operational_key(profile_key):
+        if isinstance(profile_key, OperationalProfileKey):
+            return profile_key
+        raise TypeError(
+            "La resolucion operacional canonica requiere una "
+            "OperationalProfileKey."
+        )
 
     @staticmethod
-    def _profile_resource(profile_key):
+    def _operational_resource(profile_key):
         return "/".join(
             (
                 profile_key.component.value,
                 profile_key.platform,
-                profile_key.family,
                 profile_key.profile_id,
             )
         )

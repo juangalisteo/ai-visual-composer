@@ -1,6 +1,7 @@
 """Central registry for executable subtitle cue capabilities."""
 
 from app.modules.subtitles.modes.single_line import SingleLineModel
+from app.modules.subtitles.modes.three_two_words import ThreeTwoWordsModel
 from app.modules.subtitles.modes.word_by_word import WordByWordModel
 from app.shared.config_contract import require_text
 
@@ -17,6 +18,7 @@ class CueModelRegistry:
     def default_factories():
         return {
             "single_line": SingleLineModel,
+            "three_two_words": ThreeTwoWordsModel,
             "word_by_word": WordByWordModel,
         }
 

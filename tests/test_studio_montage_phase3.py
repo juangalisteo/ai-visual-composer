@@ -13,7 +13,7 @@ from app.modules.studio import (
     StudioMontageService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 
 
 class StudioMontagePhase3ContractTest(unittest.TestCase):
@@ -140,7 +140,7 @@ class StudioMontagePhase3ContractTest(unittest.TestCase):
                 SimpleNamespace(video_extensions=(".mp4",))
             )
             plan = planner.create_plan(
-                ProfileKey.for_component("studio", "instagram"),
+                OperationalProfileKey("studio", "instagram", "studio_instagram"),
                 False,
                 planner.parse_order("1 2", candidates),
             )
@@ -243,7 +243,7 @@ class StudioMontagePhase3RealFFmpegTest(unittest.TestCase):
         )
         candidates = planner.discover(SimpleNamespace(video_extensions=(".mp4",)))
         return planner.create_plan(
-            ProfileKey.for_component("studio", "instagram"),
+            OperationalProfileKey("studio", "instagram", "studio_instagram"),
             False,
             planner.parse_order(order, candidates),
         )

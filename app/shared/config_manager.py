@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import create_operational_error
 from app.shared.subtitle_profile_resolver import (
@@ -87,9 +87,9 @@ class ConfigManager:
         return self.load_json(voice_config_path)
 
     def get_profile_config(self):
-        profile_key = self.get_profile_key()
+        profile_key = self.get_operational_profile_key()
         if profile_key is not None:
-            return self.profile_resolver.load(profile_key)
+            return self.profile_resolver.load_operational(profile_key)
 
         raise create_operational_error(
             family="CONFIG",
@@ -101,7 +101,51 @@ class ConfigManager:
             operation="Resolver configuración de perfil",
         )
 
-    def get_profile_key(self):
+    def get_operational_profile_key(self):
+        """Read canonical operational identity without subtitle family."""
+        values = (
+            os.environ.get("MC_PROFILE_COMPONENT", "").strip(),
+            os.environ.get("MC_PROFILE_PLATFORM", "").strip(),
+            os.environ.get("MC_PROFILE_ID", "").strip(),
+        )
+        if not any(values):
+            return None
+        if not all(values):
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="La identidad operacional esta incompleta.",
+                recommended_action=(
+                    "Configure component, platform y profile_id antes de "
+                    "iniciar la operacion."
+                ),
+                operation="Leer identidad operacional",
+                technical_metadata={
+                    "component_present": bool(values[0]),
+                    "platform_present": bool(values[1]),
+                    "profile_id_present": bool(values[2]),
+                },
+            )
+        try:
+            return OperationalProfileKey(*values)
+        except (TypeError, ValueError) as error:
+            raise create_operational_error(
+                family="CONFIG",
+                user_message="La identidad operacional configurada no es valida.",
+                recommended_action=(
+                    "Revise component, platform y profile_id de la "
+                    "configuracion activa."
+                ),
+                operation="Leer identidad operacional",
+                resource="MC_PROFILE_COMPONENT/MC_PROFILE_PLATFORM/MC_PROFILE_ID",
+            ) from error
+
+    def _get_legacy_subtitle_parent_key(self):
+        """Build the isolated parent identity required by legacy subtitles.
+
+        This is not an operational-profile lookup: `family` exists here only
+        because old subtitle-selection inputs do not transport a complete
+        `SubtitleProfileKey` yet.
+        """
         values = (
             os.environ.get(
                 "MC_PROFILE_COMPONENT",
@@ -123,12 +167,12 @@ class ConfigManager:
         if not all(values[:3]):
             raise create_operational_error(
                 family="CONFIG",
-                user_message="La identidad de perfil está incompleta.",
+                user_message="La identidad padre de subtítulos está incompleta.",
                 recommended_action=(
                     "Configure component, platform y profile_id antes de "
                     "iniciar la operación."
                 ),
-                operation="Leer identidad de perfil",
+                operation="Adaptar selección legacy de subtítulos",
                 technical_metadata={
                     "component_present": bool(values[0]),
                     "platform_present": bool(values[1]),
@@ -149,12 +193,12 @@ class ConfigManager:
         except (TypeError, ValueError) as error:
             raise create_operational_error(
                 family="CONFIG",
-                user_message="La identidad de perfil configurada no es válida.",
+                user_message="La identidad padre de subtítulos no es válida.",
                 recommended_action=(
                     "Revise component, platform, family y profile_id de la "
-                    "configuración activa."
+                    "selección legacy de subtítulos."
                 ),
-                operation="Leer identidad de perfil",
+                operation="Adaptar selección legacy de subtítulos",
                 resource="MC_PROFILE_COMPONENT/MC_PROFILE_PLATFORM/MC_PROFILE_ID",
             ) from error
 
@@ -174,7 +218,7 @@ class ConfigManager:
 
     def adapt_legacy_subtitle_selection(self, selection):
         """Convert one legacy string/style input at the compatibility boundary."""
-        profile_key = self.get_profile_key()
+        profile_key = self._get_legacy_subtitle_parent_key()
         if profile_key is None:
             raise create_operational_error(
                 family="CONFIG",

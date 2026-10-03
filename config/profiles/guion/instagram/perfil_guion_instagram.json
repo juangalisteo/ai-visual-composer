@@ -1,8 +1,7 @@
 {
-    "component": "video",
+    "component": "guion",
     "platform": "instagram",
-    "family": "estandar",
-    "profile_id": "video_instagram",
+    "profile_id": "guion_instagram",
     "format": "vertical",
     "duration": 10,
     "tone": "modo_conciencia",

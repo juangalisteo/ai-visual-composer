@@ -1,7 +1,6 @@
 {
     "component": "guion",
     "platform": "youtube",
-    "family": "estandar",
     "profile_id": "guion_youtube",
     "format": "horizontal",
     "duration": 10,

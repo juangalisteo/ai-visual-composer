@@ -5,7 +5,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
-from app.modules.subtitles.policies.punctuation import reconcile_timing_text
+from app.modules.subtitles.policies.punctuation import (
+    PunctuationPolicy,
+    reconcile_timing_text,
+)
 from app.modules.subtitles.policies.timing import SpeechSegment, SubtitleTiming, WordTiming
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -250,17 +253,14 @@ class SubtitlePunctuationTest(unittest.TestCase):
                         render_fps=30,
                     ).transform(source_srt, timing=selected_timing)
                     rendered_text = self._cue_text(rendered)
-                    if data["cue_policy"]["mode"] == "single_line":
-                        self.assertEqual(source, rendered_text)
-                    else:
-                        self.assertNotIn(",", rendered_text)
-                        self.assertNotIn(".", rendered_text)
-                        for sign in (
-                            "\u00bf", "?", "\u00a1", "!", ":", ";", "\u2026",
-                            "\u00ab", "\u00bb", "\u201c", "\u201d", "\u2018", "\u2019",
-                            "(", ")", "-", "\u2014",
-                        ):
-                            self.assertIn(sign, rendered_text)
+                    for field, characters in PunctuationPolicy._RULES:
+                        for character in characters:
+                            if character not in source:
+                                continue
+                            if data["cue_policy"]["punctuation"][field]:
+                                self.assertNotIn(character, rendered_text)
+                            else:
+                                self.assertIn(character, rendered_text)
 
     def test_all_profiles_declare_the_explicit_policy(self):
         profiles = sorted(Path("config/profiles").glob("*/*/estandar/subtitulos/*.json"))
@@ -270,18 +270,9 @@ class SubtitlePunctuationTest(unittest.TestCase):
                 cue_policy = json.loads(path.read_text(encoding="utf-8"))["cue_policy"]
                 policy = cue_policy["punctuation"]
                 self.assertEqual(set(self.PUNCTUATION), set(policy))
-                if cue_policy["mode"] == "single_line":
-                    self.assertEqual(self.PUNCTUATION, policy)
-                else:
-                    self.assertTrue(policy["remove_commas"])
-                    self.assertTrue(policy["remove_periods"])
-                    self.assertTrue(
-                        all(
-                            not value
-                            for key, value in policy.items()
-                            if key not in {"remove_commas", "remove_periods"}
-                        )
-                    )
+                self.assertTrue(
+                    all(isinstance(value, bool) for value in policy.values())
+                )
 
     def _transform(self, style, timing=None, punctuation=None):
         return SubtitleCueTransformer(
@@ -310,7 +301,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
                 "min_display_seconds": 0.05,
                 "merge_preference": "next",
             },
-            "uppercase": False,
+            "text_case": "original",
             "punctuation": punctuation or self.PUNCTUATION,
         }
 

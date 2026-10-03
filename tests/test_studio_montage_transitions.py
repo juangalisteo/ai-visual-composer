@@ -18,9 +18,21 @@ from app.modules.studio import (
 )
 from app.modules.studio.montage import StudioMontageError
 from app.shared.media_probe import MediaInfo
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.modules.studio import StudioProfileLoader
+
+
+def _load_studio_profile(profile_key):
+    operational_key = OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
+    return StudioProfileLoader().load(
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
+    )
 
 
 class StudioMontageTransitionsContractTest(unittest.TestCase):
@@ -81,7 +93,9 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
             path.write_bytes(b"source")
             clips.append(StudioMontageClip(index, path, path.name))
         return StudioMontagePlan(
-            profile_key=ProfileKey.for_component("studio", "instagram"),
+            profile_key=OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            ),
             transitions_enabled=transitions_enabled,
             clips=tuple(clips),
         )
@@ -362,7 +376,9 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
             for index, source in enumerate(sources, start=1)
         )
         return StudioMontagePlan(
-            profile_key=ProfileKey.for_component("studio", "instagram"),
+            profile_key=OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            ),
             transitions_enabled=True,
             clips=clips,
         )
@@ -630,10 +646,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
             with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = ProfileKey.for_component("studio", platform)
-                loaded_profile = StudioProfileLoader().load(
-                    ProfileResolver().load(profile_key),
-                    profile_key,
-                )
+                loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
                     loaded_profile,
                     width=160,
@@ -790,10 +803,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
             with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = ProfileKey.for_component("studio", platform)
-                loaded_profile = StudioProfileLoader().load(
-                    ProfileResolver().load(profile_key),
-                    profile_key,
-                )
+                loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
                     loaded_profile,
                     width=160,

@@ -774,7 +774,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
             {
                 "min_duration": 0.3,
                 "max_duration": 1.2,
-                "uppercase": False,
+                "text_case": "original",
                 "punctuation": {
                     "remove_commas": remove_commas,
                     "remove_periods": remove_periods,

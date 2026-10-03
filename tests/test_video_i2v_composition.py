@@ -17,8 +17,8 @@ from app.modules.video.video_build_context import (
 from app.modules.video.video_render_service import VideoRenderService
 from app.modules.video.video_validator import VideoValidator
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import OperationalError
@@ -50,9 +50,10 @@ class I2VCompositionTest(unittest.TestCase):
         )
 
     def test_diagnostics_uses_structured_profile_identity(self):
-        profile_key = ProfileKey.for_component(
+        profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram"
+            "instagram",
+            "video_instagram",
         )
         environment = {
             "MC_PROFILE_COMPONENT": profile_key.component.value,
@@ -83,7 +84,7 @@ class I2VCompositionTest(unittest.TestCase):
                 "platform": "instagram",
                 "profile_id": "video_instagram",
                 "path": str(
-                    ProfileResolver().resolve(profile_key)
+                    ProfileResolver().resolve_operational(profile_key)
                 ),
             },
             persisted["profile"]

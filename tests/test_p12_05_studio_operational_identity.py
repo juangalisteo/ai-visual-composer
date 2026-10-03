@@ -3,11 +3,12 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
@@ -31,15 +32,18 @@ class StudioOperationalIdentityTest(unittest.TestCase):
                 side_effect=("test_platform", "test_family", descriptor),
             )
 
-            with patch(
-                "app.controllers.run_controller.ProfileKey.for_component",
-                side_effect=AssertionError("P-12-05 no fabrica ProfileKey operacional."),
-            ):
-                selected_operational, _ = controller._select_studio_profile(
-                    StudioInputMode.SRT_VIDEO.value,
-                )
+            selected_operational, _ = controller._select_studio_profile(
+                StudioInputMode.SRT_VIDEO.value,
+            )
 
-        self.assertEqual(operational_key, selected_operational)
+        self.assertEqual(
+            OperationalProfileKey(
+                operational_key.component,
+                operational_key.platform,
+                operational_key.profile_id,
+            ),
+            selected_operational,
+        )
         self.assertEqual(subtitle_key, controller._active_studio_subtitle_key)
         self.assertNotEqual(
             selected_operational.profile_id,
@@ -73,7 +77,7 @@ class StudioOperationalIdentityTest(unittest.TestCase):
     @staticmethod
     def _write_dynamic_profiles(root):
         operational_source = Path(
-            "config/profiles/studio/instagram/estandar/perfil_studio_instagram.json"
+            "config/profiles/studio/instagram/perfil_studio_instagram.json"
         )
         subtitle_source = Path(
             "config/profiles/studio/instagram/estandar/subtitulos/"
@@ -83,7 +87,6 @@ class StudioOperationalIdentityTest(unittest.TestCase):
         operational.update({
             "component": "studio",
             "platform": "test_platform",
-            "family": "test_family",
             "profile_id": "test_operational",
             "display_name": "Operational test",
         })
@@ -95,18 +98,20 @@ class StudioOperationalIdentityTest(unittest.TestCase):
             "profile_id": "test_subtitle",
             "display_name": "Subtitle test",
         })
-        directory = root / "studio" / "test_platform" / "test_family"
+        directory = root / "studio" / "test_platform"
         directory.mkdir(parents=True)
         (directory / "test_operational.json").write_text(
             json.dumps(operational), encoding="utf-8",
         )
-        subtitle_directory = directory / "subtitulos"
-        subtitle_directory.mkdir()
+        subtitle_directory = directory / "test_family" / "subtitulos"
+        subtitle_directory.mkdir(parents=True)
         (subtitle_directory / "test_subtitle.json").write_text(
             json.dumps(subtitle), encoding="utf-8",
         )
         return (
-            ProfileResolver(root).discover("studio", "test_platform", "test_family")[0][0],
+            ProfileResolver(root).discover_operational_profiles(
+                "studio", "test_platform",
+            )[0].key,
             SubtitleProfileResolver(root).discover_profiles_for_family(
                 "studio", "test_platform", "test_family",
             )[0].key,

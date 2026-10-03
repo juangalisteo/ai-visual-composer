@@ -38,7 +38,7 @@ class FFmpegDiagnostics:
 
     def _profile_metadata(self):
         config = ConfigManager()
-        profile_key = config.get_profile_key()
+        profile_key = config.get_operational_profile_key()
         if profile_key is None:
             return None
 
@@ -47,7 +47,7 @@ class FFmpegDiagnostics:
             "platform": profile_key.platform,
             "profile_id": profile_key.profile_id,
             "path": str(
-                config.profile_resolver.resolve(
+                config.profile_resolver.resolve_operational(
                     profile_key
                 )
             ),

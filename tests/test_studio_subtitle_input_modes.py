@@ -27,11 +27,23 @@ from app.modules.subtitles.policies.timing import (
     SubtitleTimingResolver,
     whisper_timing_path,
 )
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+def _load_studio_profile(profile_key):
+    operational_key = OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
+    return StudioProfileLoader().load(
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
+    )
 
 
 class StudioSubtitleInputModesTest(unittest.TestCase):
@@ -44,10 +56,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = ProfileKey.for_component("studio", "instagram")
-        self.profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
-        )
+        self.profile = _load_studio_profile(self.profile_key)
 
     def _subtitle_profile(self, style):
         return SubtitleProfileResolver().load(
@@ -56,9 +65,14 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
     @staticmethod
     def _design_subtitle_key():
-        return SubtitleProfileResolver().discover_profiles_for_family(
+        descriptors = SubtitleProfileResolver().discover_profiles_for_family(
             "studio", "instagram", "design",
-        )[0].key
+        )
+        return next(
+            descriptor.key
+            for descriptor in descriptors
+            if descriptor.profile_id == "modo_conciencia_reels"
+        )
 
     def test_selected_srt_video_directory_ignores_video_directory(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -103,10 +117,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertIsNone(prepared.subtitle_path)
         self.assertEqual(StudioInputMode.VIDEO, prepared.mode)
 
-    def test_srt_source_is_authoritative_with_common_fallback_models(self):
+    def test_current_studio_modes_preserve_source_and_apply_declared_capabilities(self):
         source = self.SOURCE_SRT
         source_hash = hashlib.sha256(source.encode("utf-8")).digest()
-        single_line = SubtitleCueTransformer(
+        three_two_words = SubtitleCueTransformer(
             self._subtitle_profile("single_line"),
             self.profile.fps,
         ).transform(source)
@@ -115,8 +129,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             self.profile.fps,
         ).transform(source)
 
-        self.assertIn("Bienvenidos todos a Modo Conciencia.", single_line)
-        self.assertIn("00:00:01,000 --> 00:00:04,000", single_line)
+        self.assertIn("Bienvenidos", three_two_words)
+        self.assertIn("todos a", three_two_words)
+        self.assertIn("Modo Conciencia.", three_two_words)
         self.assertIn("Bienvenidos", word_by_word)
         self.assertIn("Conciencia", word_by_word)
         self.assertNotIn("Conciencia.", word_by_word)
@@ -248,7 +263,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
             self.assertEqual("rendered", result)
             base = root / "demo" / "subtitles" / "demo.srt"
-            derived = root / "demo" / "subtitles" / "demo_single_line.srt"
+            derived = root / "demo" / "subtitles" / "demo_three_two_words.srt"
             self.assertEqual(source_bytes, human_srt.read_bytes())
             self.assertEqual(self.SOURCE_SRT, base.read_text(encoding="utf-8"))
             self.assertNotEqual(base.read_text(encoding="utf-8"), derived.read_text(encoding="utf-8"))
@@ -299,7 +314,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             self.assertEqual(base, renderer.render.call_args.kwargs["subtitle_path"])
             transformer.assert_not_called()
 
-    def test_design_original_applies_text_case_without_changing_srt_structure(self):
+    def test_design_original_applies_declared_case_and_preserves_srt_structure(self):
         source = (
             "1\n"
             "00:00:10,000 --> 00:00:11,500\n"
@@ -338,6 +353,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
             rendered = rendered_path.read_text(encoding="utf-8")
             self.assertEqual(source, base.read_text(encoding="utf-8"))
+            self.assertEqual(source.upper(), rendered)
+            source = source.lower()
+            rendered = rendered.lower().replace(
+                source.splitlines()[2],
+                source.splitlines()[2].capitalize(),
+            )
             self.assertEqual(
                 ["1", "2"],
                 [block.splitlines()[0] for block in rendered.strip().split("\n\n")],
@@ -351,14 +372,14 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             )
             self.assertEqual(2, len(rendered.strip().split("\n\n")))
             self.assertIn(
-                "QUÉ OCURRE CUANDO DEJAMOS DE BUSCAR FUERA",
+                "Qué ocurre cuando dejamos de buscar fuera",
                 rendered,
             )
-            self.assertIn("SEGUNDO CUE HUMANO", rendered)
+            self.assertIn("segundo cue humano", rendered)
             self.assertNotEqual(base, rendered_path)
             transformer.assert_not_called()
 
-    def test_design_original_with_uppercase_false_uses_the_persisted_base(self):
+    def test_design_original_with_text_case_original_uses_the_persisted_base(self):
         source = (
             "1\n"
             "00:00:01,000 --> 00:00:02,000\n"
@@ -386,7 +407,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 design_profile,
                 cue_policy={
                     **design_profile.cue_policy,
-                    "uppercase": False,
+                    "text_case": "original",
                 },
             )
 
@@ -428,10 +449,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = ProfileKey.for_component("studio", platform)
-                profile = StudioProfileLoader().load(
-                    ProfileResolver().load(profile_key),
-                    profile_key,
-                )
+                profile = _load_studio_profile(profile_key)
                 subtitle_profile = SubtitleProfileResolver().load(
                     SubtitleProfileKey.for_profile(profile_key, "word_by_word")
                 )
@@ -529,9 +547,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertEqual(design.key, selected)
         self.assertFalse(original)
         self.assertIn("SUBTÍTULOS", "\n".join(messages))
-        self.assertIn("1. DESIGN", messages)
-        self.assertIn("2. ESTANDAR", messages)
-        self.assertIn("1. Modo Conciencia | Reels", messages)
+        self.assertIn("1. MODO CONCIENCIA", messages)
+        self.assertIn("2. FORMATO ESTÁNDAR", messages)
+        self.assertIn("2. Modo Conciencia | Reels", messages)
         self.assertEqual(
             {"Línea única", "Palabra por palabra"},
             {descriptor.display_name for descriptor in standard},
@@ -572,6 +590,27 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 self.assertEqual(descriptor.key, selected)
                 self.assertTrue(original)
                 self.assertNotIn("ORIGINAL", "\n".join(messages))
+
+    def test_studio_primado_negativo_uses_visible_label_and_keeps_technical_family(self):
+        controller = RunController()
+        messages = []
+        controller._print = messages.append
+        descriptor = SubtitleProfileResolver().discover_profiles_for_family(
+            "studio", "instagram", "primado_negativo",
+        )[0]
+        controller._select_from_list = Mock(
+            side_effect=("primado_negativo", descriptor),
+        )
+
+        selected = controller._select_studio_video_audio_srt_subtitle_profile(
+            OperationalProfileKey("studio", "instagram", "studio_instagram"),
+        )
+
+        self.assertEqual("primado_negativo", selected.family)
+        self.assertEqual(descriptor.key, selected)
+        self.assertIn("1. MODO CONCIENCIA", messages)
+        self.assertIn("2. FORMATO ESTÁNDAR", messages)
+        self.assertIn("3. PRIMADO NEGATIVO", messages)
 
     def test_srt_video_original_standard_profiles_preserve_human_structure(self):
         source = (
@@ -646,8 +685,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 if descriptor.profile_id == "test_profile_selected"
             )
             controller = RunController(subtitle_profile_resolver=resolver)
-            operational_key = ProfileKey(
-                "studio", "instagram", "test_operational", "test_operational_family",
+            operational_key = OperationalProfileKey(
+                "studio", "instagram", "test_operational",
             )
             controller._select_from_list = Mock(
                 side_effect=("instagram", "test_family", selected_descriptor),
@@ -657,10 +696,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 controller,
                 "_select_studio_operational_profile",
                 return_value=(operational_key, Mock()),
-            ) as operational, patch(
-                "app.controllers.run_controller.ProfileKey.for_component",
-                side_effect=AssertionError("No debe fabricar una identidad operacional."),
-            ):
+            ) as operational:
                 profile_key, _ = controller._select_studio_profile(
                     StudioInputMode.SRT_VIDEO.value,
                 )
@@ -784,9 +820,14 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         controller = RunController()
         messages = []
         controller._print = messages.append
-        descriptor = controller.subtitle_profile_resolver.discover_profiles(
+        descriptors = controller.subtitle_profile_resolver.discover_profiles(
             profile_key
-        )[0]
+        )
+        descriptor = next(
+            item
+            for item in descriptors
+            if item.profile_id == "modo_conciencia_reels"
+        )
         controller._select_from_list = Mock(return_value=descriptor)
         selected, original = controller.select_studio_subtitle_options(
             profile_key,
@@ -795,9 +836,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
         self.assertEqual(descriptor.key, selected)
         self.assertTrue(original)
-        controller._select_from_list.assert_called_once_with((descriptor,))
+        controller._select_from_list.assert_called_once_with(descriptors)
         self.assertIn("\nSUBTÍTULOS\n", messages)
-        self.assertIn("1. Modo Conciencia | Reels", messages)
+        self.assertIn("1. Modo Conciencia | Podcast", messages)
+        self.assertIn("2. Modo Conciencia | Reels", messages)
         self.assertNotIn("ORIGINAL", "\n".join(messages))
 
     def test_design_video_audio_srt_uses_its_autonomous_subtitle_profile(self):

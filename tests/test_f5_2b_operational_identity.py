@@ -1,12 +1,13 @@
 import json
 from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
 from app.controllers.run_controller import RunController
 from app.core import start
-from app.shared.profile_identity import ProfileComponent, ProfileKey
+from app.shared.profile_identity import (
+    OperationalProfileKey,
+    ProfileComponent,
+)
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -35,21 +36,18 @@ def test_generic_selector_discovers_independent_complete_keys_for_components(
         )
         controller = _controller(tmp_path)
 
-        with (
-            patch.object(
-                ProfileKey,
-                "for_component",
-                side_effect=AssertionError("La ruta moderna no usa for_component."),
-            ),
-            patch("builtins.input", side_effect=("1", "1", "1")),
-            patch("builtins.print"),
-        ):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr("builtins.input", lambda _prompt="": "1")
+            monkeypatch.setattr("builtins.print", lambda *_args, **_kwargs: None)
             selected = controller._select_profile_identity(component)
 
-        assert selected["profile_key"] == operational_key
-        assert selected["path"] == _resolver(tmp_path).resolve(operational_key)
+        assert selected["profile_key"] == OperationalProfileKey(
+            component, "test_platform", "test_profile",
+        )
+        assert selected["path"] == _resolver(tmp_path).resolve_operational(
+            selected["profile_key"],
+        )
         assert selected["subtitle_profile_key"] == subtitle_key
-        assert selected["profile_key"].family == "test_family"
         assert selected["subtitle_profile_key"].family == "test_subtitle_family"
         assert selected["profile_key"].profile_id == "test_profile"
         assert selected["subtitle_profile_key"].profile_id == "test_subtitle_profile"
@@ -79,18 +77,15 @@ def test_generic_selector_uses_the_explicit_operational_choice_not_display_name(
     )
     controller = _controller(tmp_path)
 
-    with (
-        patch.object(
-            ProfileKey,
-            "for_component",
-            side_effect=AssertionError("La ruta moderna no usa for_component."),
-        ),
-        patch("builtins.input", side_effect=("1", "2", "1", "1")),
-        patch("builtins.print"),
-    ):
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        selections = iter(("1", "2", "1", "1"))
+        monkeypatch.setattr("builtins.input", lambda _prompt="": next(selections))
+        monkeypatch.setattr("builtins.print", lambda *_args, **_kwargs: None)
         selected = controller._select_profile_identity(ProfileComponent.GUION)
 
-    assert selected["profile_key"] == first_key
+    assert selected["profile_key"] == OperationalProfileKey(
+        ProfileComponent.GUION, "test_platform", "test_profile_first",
+    )
     assert selected["profile_key"].profile_id == "test_profile_first"
 
 
@@ -102,17 +97,14 @@ def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
         display_name="Technical video profile",
     )
 
-    with patch.object(
-        ProfileKey,
-        "for_component",
-        side_effect=AssertionError("El bridge no fabrica identidad VIDEO."),
-    ):
-        resolved = start._resolve_single_video_operational_key(
-            _resolver(tmp_path),
-            "test_platform",
-        )
+    resolved = start._resolve_single_video_operational_key(
+        _resolver(tmp_path),
+        "test_platform",
+    )
 
-    assert resolved == expected
+    assert resolved == OperationalProfileKey(
+        ProfileComponent.VIDEO, "test_platform", "test_profile",
+    )
 
 
 def test_guion_video_bridge_rejects_missing_video_candidate(tmp_path):
@@ -156,17 +148,15 @@ def _resolver(root):
 
 
 def _write_operational_profile(root, component, profile_id, display_name):
-    key = ProfileKey(
+    key = OperationalProfileKey(
         component,
         "test_platform",
         profile_id,
-        "test_family",
     )
     path = (
         Path(root)
         / key.component.value
         / key.platform
-        / key.family
         / f"{key.profile_id}.json"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -175,7 +165,6 @@ def _write_operational_profile(root, component, profile_id, display_name):
             {
                 "component": key.component.value,
                 "platform": key.platform,
-                "family": key.family,
                 "profile_id": key.profile_id,
                 "display_name": display_name,
             }

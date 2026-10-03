@@ -21,22 +21,37 @@ from app.modules.studio import (
     StudioRenderService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+def _load_studio_profile(profile_key):
+    operational_key = OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
+    return StudioProfileLoader().load(
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
+    )
+
+
 class StudioPhase2Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
-        self.profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+        self.profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
         )
+        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
+        self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, "single_line")
+            SubtitleProfileKey(
+                "studio", "instagram",
+                "subtitulo_studio_instagram_linea_unica", "estandar",
+            )
         )
         self.source_info = MediaInfo(
             duration=2.0,
@@ -85,7 +100,7 @@ class StudioPhase2Test(unittest.TestCase):
         project = Mock()
 
         base_path = Path("output/studio/subtitles/result.srt")
-        derived_path = Path("output/studio/subtitles/result_single_line.srt")
+        derived_path = Path("output/studio/subtitles/result_three_two_words.srt")
         with patch(
             "app.core.start._persist_studio_subtitle_base",
             return_value=base_path,
@@ -94,7 +109,7 @@ class StudioPhase2Test(unittest.TestCase):
             return_value=derived_path,
         ):
             result = ejecutar_studio(
-                subtitle_style="single_line",
+                subtitle_style="three_two_words",
                 input_mode="srt_video",
                 preparation_service=prepare,
                 render_service=renderer,
@@ -104,7 +119,7 @@ class StudioPhase2Test(unittest.TestCase):
 
         self.assertEqual("rendered", result)
         prepare.assert_called_once_with(
-            subtitle_style="single_line",
+            subtitle_style="three_two_words",
             input_mode="srt_video",
         )
         resolver.resolve.assert_called_once_with(
@@ -132,12 +147,12 @@ class StudioPhase2Test(unittest.TestCase):
             "app.core.start.SrtOptimizer"
         ) as optimizer:
             iniciar(
-                subtitle_style="single_line",
+                subtitle_style="three_two_words",
                 studio_input_mode="srt_video",
             )
 
         studio.assert_called_once_with(
-            subtitle_style="single_line",
+            subtitle_style="three_two_words",
             music_path=None,
             input_mode="srt_video",
         )
@@ -204,13 +219,13 @@ class StudioPhase2Test(unittest.TestCase):
             output_path="result.rendering.mp4",
             source_info=self.source_info,
             profile=self.profile,
-            subtitle_style="FontName=UniSansHeavyCAPS,FontSize=14",
+            subtitle_style="FontName=UniSansHeavyCAPS,FontSize=10",
         )
         graph = command[command.index("-filter_complex") + 1]
         self.assertIn("scale=1080:1920:force_original_aspect_ratio=decrease", graph)
         self.assertIn("pad=1080:1920:(ow-iw)/2:(oh-ih)/2", graph)
         self.assertIn("subtitles=", graph)
-        self.assertIn("FontName=UniSansHeavyCAPS,FontSize=14", graph)
+        self.assertIn("FontName=UniSansHeavyCAPS,FontSize=10", graph)
         self.assertNotIn("crop=", graph)
         self.assertEqual(1, command.count("-c:v"))
         self.assertNotIn("anullsrc=", " ".join(command))
@@ -238,11 +253,8 @@ class StudioPhase2Test(unittest.TestCase):
         self.assertIn("[1:a:0]aresample=48000", graph)
 
     def test_instagram_and_youtube_keep_independent_output_contracts(self):
-        youtube_key = ProfileKey.for_component("studio", "youtube")
-        youtube_profile = StudioProfileLoader().load(
-            ProfileResolver().load(youtube_key),
-            youtube_key,
-        )
+        youtube_key = OperationalProfileKey("studio", "youtube", "studio_youtube")
+        youtube_profile = _load_studio_profile(youtube_key)
         instagram_command = StudioRenderService().build_command(
             "source.mp4",
             "source.srt",
@@ -284,7 +296,7 @@ class StudioPhase2Test(unittest.TestCase):
         )
         graph = command[command.index("-filter_complex") + 1]
         self.assertIn("FontName=UniSansHeavyCAPS", graph)
-        self.assertIn("FontSize=14", graph)
+        self.assertIn("FontSize=10", graph)
         self.assertIn("Alignment=2", graph)
         self.assertIn("MarginV=55", graph)
         video_graph = graph.split("[vout]", 1)[0]
@@ -327,7 +339,7 @@ class StudioPhase2Test(unittest.TestCase):
                     "min_display_seconds": 0.05,
                     "merge_preference": "next",
                 },
-                "uppercase": True,
+                "text_case": "uppercase",
                 "punctuation": {
                     "remove_commas": False,
                     "remove_periods": False,
@@ -529,10 +541,11 @@ class StudioPhase2Test(unittest.TestCase):
 class StudioPhase2RealFFmpegTest(unittest.TestCase):
 
     def _profile(self, platform="instagram"):
-        key = ProfileKey.for_component("studio", platform)
-        profile = StudioProfileLoader().load(ProfileResolver().load(key), key)
+        subtitle_parent_key = ProfileKey.for_component("studio", platform)
+        key = OperationalProfileKey("studio", platform, f"studio_{platform}")
+        profile = _load_studio_profile(key)
         subtitles = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(key, "single_line")
+            SubtitleProfileKey.for_profile(subtitle_parent_key, "single_line")
         )
         return key, profile, subtitles
 

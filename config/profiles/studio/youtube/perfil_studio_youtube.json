@@ -1,7 +1,6 @@
 {
     "component": "studio",
     "platform": "youtube",
-    "family": "estandar",
     "profile_id": "studio_youtube",
     "format": "horizontal",
     "studio": {

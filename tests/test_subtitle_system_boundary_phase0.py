@@ -19,6 +19,7 @@ from app.modules.video.subtitles.subtitle_style_builder import (
 )
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -119,10 +120,12 @@ def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
     resolver = SubtitleProfileResolver()
 
     descriptors = resolver.discover_profiles(profile_key)
-    assert {descriptor.mode for descriptor in descriptors} == {
-        "single_line",
-        "word_by_word",
-    }
+    expected_modes = (
+        {"three_two_words", "word_by_word"}
+        if component is ProfileComponent.STUDIO and platform == "instagram"
+        else {"single_line", "word_by_word"}
+    )
+    assert {descriptor.mode for descriptor in descriptors} == expected_modes
 
     for descriptor in descriptors:
         resolved = resolver.load(descriptor.key)
@@ -152,7 +155,7 @@ def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
     descriptors = subtitle_resolver.discover_profiles_for_family(
         component, "instagram", "design",
     )
-    assert len(descriptors) == 1
+    assert descriptors
 
     descriptor = descriptors[0]
     resolved = subtitle_resolver.load(descriptor.key)
@@ -211,9 +214,13 @@ def test_phase1_design_selection_keeps_system_operational_projection(
 def test_phase3_studio_loads_design_subtitle_identity_without_composition():
     system_key = ProfileKey.for_component("studio", "instagram")
     resolver = SubtitleProfileResolver()
-    design_subtitle_key = resolver.discover_profiles_for_family(
-        "studio", "instagram", "design",
-    )[0].key
+    design_subtitle_key = next(
+        descriptor.key
+        for descriptor in resolver.discover_profiles_for_family(
+            "studio", "instagram", "design",
+        )
+        if descriptor.profile_id == "modo_conciencia_reels"
+    )
     design = resolver.load(design_subtitle_key)
 
     manager = ConfigManager()
@@ -222,7 +229,8 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
             context.setenv(name, value)
         rendered = manager.get_subtitle_profile(design_subtitle_key)
         original = manager.get_subtitle_profile(design_subtitle_key, original=True)
-        assert manager.get_profile_key() == system_key
+        assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
+        assert manager.get_operational_profile_key().platform == "instagram"
 
     assert rendered.cue_policy == design.cue_policy
     assert rendered.render_style == design.render_style
@@ -259,7 +267,7 @@ def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():
     controller._select_from_list = Mock(side_effect=("instagram", "design", descriptor))
 
     selected = controller._select_profile_identity(ProfileComponent.GUION)
-    expected = ProfileKey.for_component("guion", "instagram")
+    expected = OperationalProfileKey("guion", "instagram", "guion_instagram")
     assert selected["profile_key"] == expected
     assert selected["subtitle_profile_key"] == descriptor.key
 

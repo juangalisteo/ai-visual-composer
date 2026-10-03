@@ -23,22 +23,22 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     }
     MAIN_PROFILES = {
         ("guion", "instagram"): Path(
-            "config/profiles/guion/instagram/estandar/perfil_guion_instagram.json"
+            "config/profiles/guion/instagram/perfil_guion_instagram.json"
         ),
         ("guion", "youtube"): Path(
-            "config/profiles/guion/youtube/estandar/perfil_guion_youtube.json"
+            "config/profiles/guion/youtube/perfil_guion_youtube.json"
         ),
         ("imagen", "instagram"): Path(
-            "config/profiles/imagen/instagram/estandar/perfil_imagen_instagram.json"
+            "config/profiles/imagen/instagram/perfil_imagen_instagram.json"
         ),
         ("imagen", "youtube"): Path(
-            "config/profiles/imagen/youtube/estandar/perfil_imagen_youtube.json"
+            "config/profiles/imagen/youtube/perfil_imagen_youtube.json"
         ),
         ("video", "instagram"): Path(
-            "config/profiles/video/instagram/estandar/perfil_video_instagram.json"
+            "config/profiles/video/instagram/perfil_video_instagram.json"
         ),
         ("video", "youtube"): Path(
-            "config/profiles/video/youtube/estandar/perfil_video_youtube.json"
+            "config/profiles/video/youtube/perfil_video_youtube.json"
         ),
     }
     EXPECTED_CUE_POLICIES = {
@@ -48,7 +48,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "min_duration": 1.0,
             "max_duration": 3.0,
             "significant_gap_threshold": 0.35,
-            "uppercase": False,
+            "text_case": "original",
             "split_on_punctuation": True,
             "avoid_orphan_words": True,
             "merge_short_chunks": True,
@@ -79,7 +79,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 "min_display_seconds": 0.05,
                 "merge_preference": "next",
             },
-            "uppercase": False,
+            "text_case": "original",
             "punctuation": {
                 "remove_commas": True,
                 "remove_periods": True,

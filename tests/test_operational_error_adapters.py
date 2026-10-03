@@ -8,7 +8,7 @@ from unittest.mock import patch
 import main
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -40,13 +40,13 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_invalid_operational_profile_json_preserves_path_and_cause(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "video/instagram/estandar/broken.json"
+            path = root / "video/instagram/broken.json"
             path.parent.mkdir(parents=True)
             path.write_text("{invalid", encoding="utf-8")
 
             with self.assertRaises(OperationalError) as caught:
-                ProfileResolver(root).resolve(
-                    ProfileKey("video", "instagram", "test_profile", "estandar")
+                ProfileResolver(root).resolve_operational(
+                    OperationalProfileKey("video", "instagram", "test_profile")
                 )
 
         self.assertEqual("CONFIG", caught.exception.context.family)
@@ -56,15 +56,15 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_missing_operational_and_subtitle_keys_are_profile_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            operational_key = ProfileKey(
-                "video", "instagram", "test_profile", "estandar"
+            operational_key = OperationalProfileKey(
+                "video", "instagram", "test_profile"
             )
             subtitle_key = SubtitleProfileKey(
                 "video", "instagram", "test_profile", "estandar"
             )
 
             with self.assertRaises(OperationalError) as operational:
-                ProfileResolver(root).resolve(operational_key)
+                ProfileResolver(root).resolve_operational(operational_key)
             with self.assertRaises(OperationalError) as subtitle:
                 SubtitleProfileResolver(root).resolve(subtitle_key)
 
@@ -78,20 +78,19 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_duplicate_operational_profiles_are_ambiguity_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            folder = root / "video/instagram/estandar"
+            folder = root / "video/instagram"
             folder.mkdir(parents=True)
-            key = ProfileKey("video", "instagram", "test_profile", "estandar")
+            key = OperationalProfileKey("video", "instagram", "test_profile")
             data = {
                 "component": "video",
                 "platform": "instagram",
-                "family": "estandar",
                 "profile_id": "test_profile",
             }
             for name in ("first.json", "second.json"):
                 (folder / name).write_text(json.dumps(data), encoding="utf-8")
 
             with self.assertRaises(OperationalError) as caught:
-                ProfileResolver(root).resolve(key)
+                ProfileResolver(root).resolve_operational(key)
 
         self.assertEqual("AMBIGUITY", caught.exception.context.family)
         self.assertEqual(2, len(caught.exception.context.technical_metadata["candidates"]))
@@ -131,8 +130,8 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             error = None
             try:
-                ProfileResolver(Path(directory)).resolve(
-                    ProfileKey("video", "instagram", "test_profile", "estandar")
+                ProfileResolver(Path(directory)).resolve_operational(
+                    OperationalProfileKey("video", "instagram", "test_profile")
                 )
             except OperationalError as caught:
                 error = caught

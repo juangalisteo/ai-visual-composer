@@ -18,7 +18,7 @@ from app.modules.studio import (
     StudioVideoAudioSrtService,
 )
 from app.shared.media_probe import MediaInfo
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -62,9 +62,10 @@ def _media_info(duration):
 
 def _profile_and_subtitles():
     profile_key = ProfileKey.for_component("studio", "youtube")
+    operational_key = OperationalProfileKey("studio", "youtube", "studio_youtube")
     profile = StudioProfileLoader().load(
-        ProfileResolver().load(profile_key),
-        profile_key,
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
     )
     return profile_key, profile, SubtitleProfileResolver()
 
@@ -552,6 +553,11 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
         output = root / "output" / "video" / "final.mp4"
         config = Mock()
         config.get_profile_key.return_value = profile_key
+        config.get_operational_profile_key.return_value = OperationalProfileKey(
+            profile_key.component,
+            profile_key.platform,
+            profile_key.profile_id,
+        )
         config.get_profile_config.return_value = {}
         config.get_subtitle_profile_by_key.return_value = subtitle_profile
         project = Mock()
@@ -600,7 +606,7 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
     )
     subtitle_profile = type("UppercaseProfile", (), {
         "key": subtitle_profile.key,
-        "cue_policy": {**subtitle_profile.cue_policy, "uppercase": True},
+        "cue_policy": {**subtitle_profile.cue_policy, "text_case": "uppercase"},
         "render_style": subtitle_profile.render_style,
     })()
     with tempfile.TemporaryDirectory() as directory:
@@ -609,6 +615,11 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
         output = root / "output" / "video" / "final.mp4"
         config = Mock()
         config.get_profile_key.return_value = profile_key
+        config.get_operational_profile_key.return_value = OperationalProfileKey(
+            profile_key.component,
+            profile_key.platform,
+            profile_key.profile_id,
+        )
         config.get_profile_config.return_value = {}
         config.get_subtitle_profile_by_key.return_value = subtitle_profile
         renderer = Mock()

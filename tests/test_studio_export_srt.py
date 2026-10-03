@@ -24,7 +24,7 @@ from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
 from app.modules.subtitles.policies.timing import whisper_timing_path
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -217,12 +217,22 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = ProfileKey.for_component("studio", "instagram")
+        self.operational_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
+        )
         self.profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+            ProfileResolver().load_operational(self.operational_key),
+            self.operational_key,
         )
 
     def _subtitle_profile(self, style):
+        if style == "three_two_words":
+            return SubtitleProfileResolver().load(
+                SubtitleProfileKey(
+                    "studio", "instagram",
+                    "subtitulo_studio_instagram_linea_unica", "estandar",
+                )
+            )
         return SubtitleProfileResolver().load(
             SubtitleProfileKey.for_profile(self.profile_key, style)
         )
@@ -274,7 +284,7 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
             service = StudioSubtitleExportService(preparer)
 
             outputs = []
-            for style in ("single_line", "word_by_word"):
+            for style in ("three_two_words", "word_by_word"):
                 result = service.export(
                     StudioSubtitleExportPlan(
                         StudioSubtitleExportMode.CONVERTIR,
@@ -293,7 +303,7 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
             self.assertEqual([], preparer.prepare.call_args_list)
             self.assertEqual(source_hash, hashlib.sha256(source.read_bytes()).hexdigest())
             self.assertEqual(
-                ("convertido_single_line.srt", "convertido_word_by_word.srt"),
+                ("convertido_three_two_words.srt", "convertido_word_by_word.srt"),
                 tuple(path.name for path in outputs),
             )
 
@@ -421,7 +431,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         resolver = SubtitleProfileResolver()
         cases = (
             ("instagram", "design", "word_by_word"),
-            ("instagram", "estandar", "single_line"),
+            ("instagram", "estandar", "three_two_words"),
             ("instagram", "estandar", "word_by_word"),
             ("youtube", "estandar", "single_line"),
             ("youtube", "estandar", "word_by_word"),
@@ -542,7 +552,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 options = controller._run_studio()
 
         self.assertEqual(descriptor.key, options["subtitle_profile_key"])
-        self.assertEqual("single_line", mode)
+        self.assertEqual("three_two_words", mode)
         duplicate.assert_not_called()
 
     def test_controller_transcribir_never_selects_a_profile(self):
@@ -650,6 +660,9 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         selected_profile = resolver.load(selected_key)
         config = Mock()
         config.get_profile_key.return_value = profile_key
+        config.get_operational_profile_key.return_value = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
+        )
         config.get_profile_config.return_value = {}
         config.get_subtitle_profile_by_key.return_value = selected_profile
         service = Mock()

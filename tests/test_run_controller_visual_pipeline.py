@@ -6,6 +6,7 @@ from app.controllers.run_controller import RunController
 from app.shared.error_context import ExitKind
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -304,7 +305,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                         scope
                     )
 
-                profile_key = ProfileKey.for_component(component, platform)
+                profile_key = OperationalProfileKey(
+                    component,
+                    platform,
+                    f"{component.value}_{platform}",
+                )
                 printed = "\n".join(
                     str(call.args[0])
                     for call in print_mock.call_args_list
@@ -315,7 +320,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     selected["profile_key"]
                 )
                 self.assertEqual(
-                    controller.profile_resolver.resolve(
+                    controller.profile_resolver.resolve_operational(
                         profile_key
                     ),
                     selected["path"]
@@ -412,7 +417,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertEqual(
             Path(
-                "config/profiles/video/instagram/estandar/"
+                "config/profiles/video/instagram/"
                 "perfil_video_instagram.json"
             ),
             selected["path"]
@@ -749,11 +754,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         self
     ):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
             "instagram",
             "video_instagram",
-            "estandar",
         )
 
         with patch.object(
@@ -769,7 +773,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/video/instagram/estandar/"
+                    "config/profiles/video/instagram/"
                     "perfil_video_instagram.json"
                 ),
                 "profile_key": profile_key,
@@ -841,9 +845,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_design_image_only_requests_design_image_inputs(self):
         controller = RunController()
-        profile_key = ProfileKey.for_component(
+        profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram"
+            "instagram",
+            "imagen_instagram",
         )
 
         with patch.object(
@@ -865,7 +870,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": controller.profile_resolver.resolve(
+                "path": controller.profile_resolver.resolve_operational(
                     profile_key
                 ),
                 "profile_key": profile_key,
@@ -955,9 +960,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_design_video_only_requests_design_video_inputs(self):
         controller = RunController()
-        profile_key = ProfileKey.for_component(
+        profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram"
+            "instagram",
+            "video_instagram",
         )
 
         with patch.object(
@@ -979,7 +985,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_profile",
             return_value={
-                "path": controller.profile_resolver.resolve(
+                "path": controller.profile_resolver.resolve_operational(
                     profile_key
                 ),
                 "profile_key": profile_key,

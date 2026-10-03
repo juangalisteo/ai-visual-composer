@@ -15,12 +15,12 @@
       "min_display_seconds": 0.05,
       "merge_preference": "next"
     },
-    "uppercase": true,
+    "text_case": "uppercase",
     "punctuation": {
       "remove_commas": true,
-      "remove_periods": true,
+      "remove_periods": false,
       "remove_colons": false,
-      "remove_semicolons": false,
+      "remove_semicolons": true,
       "remove_question_marks": false,
       "remove_exclamation_marks": false,
       "remove_ellipsis": false,

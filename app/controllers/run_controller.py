@@ -11,7 +11,6 @@ from app.shared.error_context import (
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import (
@@ -191,11 +190,6 @@ class RunController:
                 profile_key.profile_id
                 if profile_key
                 else ""
-            ),
-            "profile_family": (
-                profile_key.family
-                if profile_key
-                else "estandar"
             ),
             "subtitle_config": subtitle_config,
             "subtitle_profile_key": profile.get(
@@ -409,20 +403,12 @@ class RunController:
     def _select_profile_identity(self, component, select_subtitles=True):
         profiles_by_platform = {}
         for platform in self.profile_resolver.discover_platforms(component):
-            descriptors = []
-            for family in self.profile_resolver.discover_families(
+            descriptors = self.profile_resolver.discover_operational_profiles(
                 component,
                 platform,
-            ):
-                descriptors.extend(
-                    self.profile_resolver.discover(
-                        component,
-                        platform,
-                        family,
-                    )
-                )
+            )
             if descriptors:
-                profiles_by_platform[platform] = tuple(descriptors)
+                profiles_by_platform[platform] = descriptors
 
         self._print("\nPLATAFORMA\n")
         platforms = tuple(sorted(profiles_by_platform))
@@ -437,18 +423,18 @@ class RunController:
 
         operational_profiles = profiles_by_platform[platform]
         if len(operational_profiles) == 1:
-            profile_key = operational_profiles[0][0]
+            profile_key = operational_profiles[0].key
         else:
             self._print("\nPERFIL OPERACIONAL\n")
-            for index, (_, display_name) in enumerate(
+            for index, descriptor in enumerate(
                 operational_profiles,
                 start=1,
             ):
-                self._print(f"{index}. {display_name}")
-            profile_key = self._select_from_list(operational_profiles)[0]
+                self._print(f"{index}. {descriptor.display_name}")
+            profile_key = self._select_from_list(operational_profiles).key
 
         selection = {
-            "path": self.profile_resolver.resolve(profile_key),
+            "path": self.profile_resolver.resolve_operational(profile_key),
             "profile_key": profile_key,
         }
         if not select_subtitles:
@@ -475,13 +461,13 @@ class RunController:
         selection["subtitle_profile_key"] = subtitle_key
         return selection
 
-    def _available_profile_families(self, component, platform):
-        """Return valid operational profile families for one component/platform."""
-        return self.profile_resolver.discover_families(component, platform)
-
     @staticmethod
     def _family_label(family):
-        return family.replace("_", " ").upper()
+        return {
+            "design": "MODO CONCIENCIA",
+            "estandar": "FORMATO ESTÁNDAR",
+            "primado_negativo": "PRIMADO NEGATIVO",
+        }.get(family, family.replace("_", " ").upper())
 
     def select_subtitle_config(self, profile_key=None):
         if profile_key is not None:
@@ -1236,16 +1222,12 @@ class RunController:
         component = ProfileComponent.STUDIO
         profiles_by_platform = {}
         for platform in self.profile_resolver.discover_platforms(component):
-            descriptors = []
-            for family in self.profile_resolver.discover_families(
+            descriptors = self.profile_resolver.discover_operational_profiles(
                 component,
                 platform,
-            ):
-                descriptors.extend(
-                    self.profile_resolver.discover(component, platform, family)
-                )
+            )
             if descriptors:
-                profiles_by_platform[platform] = tuple(descriptors)
+                profiles_by_platform[platform] = descriptors
         return profiles_by_platform
 
     def _select_studio_operational_platform(self, profiles_by_platform):
@@ -1281,16 +1263,16 @@ class RunController:
             )
         descriptors = profiles_by_platform[platform]
         if len(descriptors) == 1:
-            profile_key = descriptors[0][0]
+            profile_key = descriptors[0].key
         else:
             self._print("\nPERFIL OPERACIONAL\n")
-            for index, (_, display_name) in enumerate(descriptors, start=1):
-                self._print(f"{index}. {display_name}")
-            profile_key = self._select_from_list(descriptors)[0]
+            for index, descriptor in enumerate(descriptors, start=1):
+                self._print(f"{index}. {descriptor.display_name}")
+            profile_key = self._select_from_list(descriptors).key
         return (
             profile_key,
             self.studio_profile_loader.load(
-                self.profile_resolver.load(profile_key),
+                self.profile_resolver.load_operational(profile_key),
                 profile_key,
             ),
         )
@@ -1372,7 +1354,6 @@ class RunController:
             "profile_component": profile_key.component.value,
             "profile_platform": profile_key.platform,
             "profile_id": profile_key.profile_id,
-            "profile_family": profile_key.family,
         }
 
     def _exit_application(self):

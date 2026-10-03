@@ -10,8 +10,10 @@ from app.shared.config_contract import (
     require_sequence,
     require_text,
 )
-from app.shared.profile_identity import ProfileComponent
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import (
+    OperationalProfileKey,
+    ProfileComponent,
+)
 from app.shared.subtitle_profile_identity import (
     ResolvedSubtitleProfile,
 )
@@ -50,7 +52,7 @@ class StudioProfile:
 
 @dataclass(frozen=True)
 class StudioPreparation:
-    profile_key: ProfileKey
+    profile_key: OperationalProfileKey
     profile: StudioProfile
     subtitle_profile: ResolvedSubtitleProfile | None
     video_path: Path
@@ -186,13 +188,12 @@ class StudioProfileLoader:
             "component": profile_key.component.value,
             "platform": profile_key.platform,
             "profile_id": profile_key.profile_id,
-            "family": profile_key.family,
         }
         actual = {key: profile.get(key) for key in expected}
         if actual != expected:
             raise ValueError(
                 "La identidad interna del perfil STUDIO no coincide "
-                "con el ProfileKey."
+                "con la identidad operacional."
             )
 
     def _extensions(self, data, key, path):

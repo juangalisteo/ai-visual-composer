@@ -6,6 +6,7 @@ from unittest.mock import ANY, patch
 
 from app.core import start
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -206,9 +207,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 result = start.ejecutar_video_i2v(
                     pipeline_start=0,
                     project=project,
-                    profile_key=ProfileKey.for_component(
+                    profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram"
+                        "instagram",
+                        "video_instagram",
                     ),
                     source_path=root / "source.png",
                     video_builder=builder,
@@ -315,6 +317,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         "youtube"
                     )
 
+                def get_operational_profile_key(self):
+                    return OperationalProfileKey(
+                        ProfileComponent.VIDEO,
+                        "youtube",
+                        "video_youtube",
+                    )
+
                 def get_profile_config(
                     self
                 ):
@@ -382,9 +391,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         )
                         / "output"
                     ),
-                    profile_key=ProfileKey.for_component(
+                    profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram"
+                        "instagram",
+                        "video_instagram",
                     ),
                     source_path=missing,
                 )
@@ -495,12 +505,12 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_active_video_profiles_keep_quality_encoding_settings(self):
         profile_paths = (
-            "config/profiles/guion/instagram/estandar/perfil_guion_instagram.json",
-            "config/profiles/guion/youtube/estandar/perfil_guion_youtube.json",
-            "config/profiles/imagen/instagram/estandar/perfil_imagen_instagram.json",
-            "config/profiles/imagen/youtube/estandar/perfil_imagen_youtube.json",
-            "config/profiles/video/instagram/estandar/perfil_video_instagram.json",
-            "config/profiles/video/youtube/estandar/perfil_video_youtube.json",
+            "config/profiles/guion/instagram/perfil_guion_instagram.json",
+            "config/profiles/guion/youtube/perfil_guion_youtube.json",
+            "config/profiles/imagen/instagram/perfil_imagen_instagram.json",
+            "config/profiles/imagen/youtube/perfil_imagen_youtube.json",
+            "config/profiles/video/instagram/perfil_video_instagram.json",
+            "config/profiles/video/youtube/perfil_video_youtube.json",
         )
 
         for profile_path in profile_paths:
@@ -616,6 +626,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     return ProfileKey.for_component(
                         ProfileComponent.VIDEO,
                         "instagram"
+                    )
+
+                def get_operational_profile_key(self):
+                    return OperationalProfileKey(
+                        ProfileComponent.VIDEO,
+                        "instagram",
+                        "video_instagram",
                     )
 
                 def get_profile_config(
@@ -768,6 +785,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         "estandar",
                     )
 
+                def get_operational_profile_key(self):
+                    return OperationalProfileKey(
+                        ProfileComponent.GUION,
+                        "instagram",
+                        "guion_instagram",
+                    )
+
                 def get_profile_config(self):
                     return {
                         "builders": {
@@ -840,11 +864,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         srt_optimizer.assert_not_called()
         clips_builder.assert_called_once()
         self.assertEqual(
-            ProfileKey(
+            OperationalProfileKey(
                 ProfileComponent.VIDEO,
                 "instagram",
                 "video_instagram",
-                "estandar",
             ),
             clips_builder.call_args.kwargs["profile_key"],
         )
@@ -960,9 +983,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     images_manifest_path=images_manifest_path,
                     project=project,
                     video_builder=builder,
-                    profile_key=ProfileKey.for_component(
+                    profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram"
+                        "instagram",
+                        "video_instagram",
                     ),
                 )
                 manifest = json.loads(

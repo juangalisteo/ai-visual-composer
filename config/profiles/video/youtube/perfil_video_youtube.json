@@ -1,7 +1,6 @@
 {
     "component": "video",
     "platform": "youtube",
-    "family": "estandar",
     "profile_id": "video_youtube",
     "format": "horizontal",
     "duration": 10,

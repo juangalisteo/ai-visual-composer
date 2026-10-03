@@ -18,6 +18,7 @@ from app.modules.studio import (
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
@@ -33,9 +34,14 @@ class StudioPhase1Test(unittest.TestCase):
             ProfileComponent.STUDIO,
             "instagram",
         )
+        self.operational_key = OperationalProfileKey(
+            ProfileComponent.STUDIO,
+            "instagram",
+            "studio_instagram",
+        )
         self.profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+            ProfileResolver().load_operational(self.operational_key),
+            self.operational_key,
         )
 
     def test_studio_is_an_official_component_with_exact_profiles(self):
@@ -43,18 +49,20 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual(ProfileComponent.STUDIO.value, "studio")
         self.assertEqual(
             Path(
-                "config/profiles/studio/instagram/estandar/"
+                "config/profiles/studio/instagram/"
                 "perfil_studio_instagram.json"
             ),
-            resolver.resolve(self.profile_key),
+            resolver.resolve_operational(self.operational_key),
         )
-        youtube_key = ProfileKey.for_component("studio", "youtube")
+        youtube_operational_key = OperationalProfileKey(
+            "studio", "youtube", "studio_youtube"
+        )
         self.assertEqual(
             Path(
-                "config/profiles/studio/youtube/estandar/"
+                "config/profiles/studio/youtube/"
                 "perfil_studio_youtube.json"
             ),
-            resolver.resolve(youtube_key),
+            resolver.resolve_operational(youtube_operational_key),
         )
 
     def test_studio_does_not_fall_back_to_video_profile(self):
@@ -67,7 +75,7 @@ class StudioPhase1Test(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaises(OperationalError) as captured:
-                ProfileResolver(root).resolve(self.profile_key)
+                ProfileResolver(root).resolve_operational(self.operational_key)
             self.assertEqual("PROFILE", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, FileNotFoundError)
 
@@ -76,9 +84,10 @@ class StudioPhase1Test(unittest.TestCase):
         resolved = []
         for platform in ("instagram", "youtube"):
             profile_key = ProfileKey.for_component("studio", platform)
-            for style in ("single_line", "word_by_word"):
-                key = SubtitleProfileKey.for_profile(profile_key, style)
-                profile = resolver.load(key)
+            for descriptor in resolver.discover_profiles_for_family(
+                "studio", platform, "estandar",
+            ):
+                profile = resolver.load(descriptor.key)
                 resolved.append(profile.path)
                 self.assertEqual(profile_key.component, profile.key.component)
                 self.assertEqual(profile_key.platform, profile.key.platform)
@@ -338,7 +347,7 @@ class StudioPhase1Test(unittest.TestCase):
                     )
 
     def test_profile_contract_fails_fast_for_missing_critical_field(self):
-        raw = ProfileResolver().load(self.profile_key)
+        raw = ProfileResolver().load_operational(self.operational_key)
         incomplete = deepcopy(raw)
         del incomplete["studio"]["output"]["video"]["crf"]
         with self.assertRaisesRegex(ValueError, "studio.output.video.crf"):
@@ -346,16 +355,19 @@ class StudioPhase1Test(unittest.TestCase):
 
     def test_transition_duration_is_isolated_by_studio_platform(self):
         youtube_key = ProfileKey.for_component("studio", "youtube")
+        youtube_operational_key = OperationalProfileKey(
+            "studio", "youtube", "studio_youtube"
+        )
         youtube_profile = StudioProfileLoader().load(
-            ProfileResolver().load(youtube_key),
-            youtube_key,
+            ProfileResolver().load_operational(youtube_operational_key),
+            youtube_operational_key,
         )
 
         self.assertEqual(0.25, self.profile.transition_duration)
         self.assertEqual(0.50, youtube_profile.transition_duration)
 
     def test_transition_duration_fails_fast_when_missing_or_invalid(self):
-        raw = ProfileResolver().load(self.profile_key)
+        raw = ProfileResolver().load_operational(self.operational_key)
         invalid_values = (
             ("missing", None),
             ("zero", 0),
@@ -474,7 +486,7 @@ class StudioPhase1Test(unittest.TestCase):
             "profile_component": "studio",
             "profile_platform": "instagram",
             "profile_id": "studio_instagram",
-            "subtitle_config": "single_line",
+            "subtitle_config": "three_two_words",
             "voice_config": "",
             "music_category": None,
             "project_name": "",
@@ -499,7 +511,7 @@ class StudioPhase1Test(unittest.TestCase):
             self.assertEqual("studio", os.environ["MC_PIPELINE_MODE"])
 
         start.assert_called_once_with(
-            subtitle_style="single_line",
+            subtitle_style="three_two_words",
             studio_music_path=None,
             studio_input_mode="srt_video",
             studio_video_path="input/studio/srt_video/source.mp4",
@@ -512,7 +524,7 @@ class StudioPhase1Test(unittest.TestCase):
             "profile_component": "studio",
             "profile_platform": "instagram",
             "profile_id": "studio_instagram",
-            "subtitle_config": "single_line",
+            "subtitle_config": "three_two_words",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio project",
@@ -548,14 +560,14 @@ class StudioPhase1Test(unittest.TestCase):
             "app.core.start.ejecutar_studio"
         ) as render:
             iniciar(
-                subtitle_style="single_line",
+                subtitle_style="three_two_words",
                 studio_input_mode="srt_video",
                 studio_video_path="input/studio/srt_video/source.mp4",
                 studio_subtitle_path="input/studio/srt_video/source.srt",
             )
 
         render.assert_called_once_with(
-            subtitle_style="single_line",
+            subtitle_style="three_two_words",
             music_path=None,
             input_mode="srt_video",
             video_path="input/studio/srt_video/source.mp4",
@@ -584,14 +596,14 @@ class StudioPhase1Test(unittest.TestCase):
                 encoding="utf-8",
             )
             result = preparar_studio(
-                subtitle_style="single_line",
+                subtitle_style="three_two_words",
                 input_mode="srt_video",
                 input_preparation_service=StudioInputPreparationService(input_root),
             )
 
         self.assertEqual(video_path, result.video_path)
         self.assertEqual(subtitle_path, result.subtitle_path)
-        self.assertEqual("single_line", result.subtitle_profile.cue_policy["mode"])
+        self.assertEqual("three_two_words", result.subtitle_profile.cue_policy["mode"])
 
     def test_solo_video_requires_audio_before_whisper_or_render(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
@@ -630,7 +642,7 @@ class StudioPhase1Test(unittest.TestCase):
                 "no contiene una pista de audio",
             ):
                 ejecutar_studio(
-                    subtitle_style="single_line",
+                    subtitle_style="three_two_words",
                     input_mode="video",
                     preparation_service=prepare,
                     external_subtitle_preparation_service=subtitle_service,
@@ -666,7 +678,7 @@ class StudioPhase1Test(unittest.TestCase):
             )
 
             prepared = preparar_studio(
-                subtitle_style="single_line",
+                subtitle_style="three_two_words",
                 input_mode="video",
                 input_preparation_service=StudioInputPreparationService(
                     input_root
@@ -699,7 +711,7 @@ class StudioPhase1Test(unittest.TestCase):
             probe = Mock()
 
             prepared = preparar_studio(
-                subtitle_style="single_line",
+                subtitle_style="three_two_words",
                 input_mode="srt_video",
                 input_preparation_service=StudioInputPreparationService(
                     input_root

@@ -22,22 +22,38 @@ from app.modules.studio import (
     StudioRenderService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+def _operational_key(profile_key):
+    return OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
+
+
+def _load_studio_profile(profile_key):
+    operational_key = _operational_key(profile_key)
+    return StudioProfileLoader().load(
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
+    )
+
+
 class StudioPhase4Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
-        self.profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+        self.profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
         )
+        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
+        self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, "single_line")
+            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
         )
         self.source_info = MediaInfo(
             duration=6.2,
@@ -54,8 +70,8 @@ class StudioPhase4Test(unittest.TestCase):
     def test_music_contract_is_explicit_and_isolated_by_platform(self):
         for platform in ("instagram", "youtube"):
             key = ProfileKey.for_component("studio", platform)
-            raw_profile = ProfileResolver().load(key)
-            profile = StudioProfileLoader().load(raw_profile, key)
+            raw_profile = ProfileResolver().load_operational(_operational_key(key))
+            profile = StudioProfileLoader().load(raw_profile, _operational_key(key))
             self.assertEqual(
                 raw_profile["studio"]["music"]["volume"],
                 profile.music.volume,
@@ -64,7 +80,9 @@ class StudioPhase4Test(unittest.TestCase):
             self.assertEqual(0.95, profile.music.limiter_limit)
 
     def test_music_contract_fails_fast(self):
-        raw = ProfileResolver().load(self.profile_key)
+        raw = ProfileResolver().load_operational(
+            _operational_key(self.profile_key)
+        )
         cases = (
             ("volume", 0, "volume"),
             ("loop_shorter", False, "loop_shorter"),
@@ -514,11 +532,11 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
             return values[0]
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
-        profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+        self.profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
         )
+        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
+        profile = _load_studio_profile(self.profile_key)
         self.profile = replace(
             profile,
             width=320,
@@ -527,7 +545,7 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
             preset="ultrafast",
         )
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, "single_line")
+            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
         )
 
     @staticmethod

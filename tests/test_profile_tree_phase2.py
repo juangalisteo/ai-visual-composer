@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 
@@ -15,35 +15,35 @@ class ProfileTreePhase2Test(unittest.TestCase):
 
     COMPONENT_PATHS = {
         "guion_instagram": Path(
-            "config/profiles/guion/instagram/estandar/"
+            "config/profiles/guion/instagram/"
             "perfil_guion_instagram.json"
         ),
         "guion_youtube": Path(
-            "config/profiles/guion/youtube/estandar/"
+            "config/profiles/guion/youtube/"
             "perfil_guion_youtube.json"
         ),
         "imagen_instagram": Path(
-            "config/profiles/imagen/instagram/estandar/"
+            "config/profiles/imagen/instagram/"
             "perfil_imagen_instagram.json"
         ),
         "imagen_youtube": Path(
-            "config/profiles/imagen/youtube/estandar/"
+            "config/profiles/imagen/youtube/"
             "perfil_imagen_youtube.json"
         ),
         "video_instagram": Path(
-            "config/profiles/video/instagram/estandar/"
+            "config/profiles/video/instagram/"
             "perfil_video_instagram.json"
         ),
         "video_youtube": Path(
-            "config/profiles/video/youtube/estandar/"
+            "config/profiles/video/youtube/"
             "perfil_video_youtube.json"
         ),
         "studio_instagram": Path(
-            "config/profiles/studio/instagram/estandar/"
+            "config/profiles/studio/instagram/"
             "perfil_studio_instagram.json"
         ),
         "studio_youtube": Path(
-            "config/profiles/studio/youtube/estandar/"
+            "config/profiles/studio/youtube/"
             "perfil_studio_youtube.json"
         ),
     }
@@ -147,20 +147,25 @@ class ProfileTreePhase2Test(unittest.TestCase):
 
         for component in ProfileComponent:
             for platform in ("instagram", "youtube"):
-                profile_key = ProfileKey.for_component(component, platform)
+                profile_key = OperationalProfileKey(
+                    component,
+                    platform,
+                    f"{component.value}_{platform}",
+                )
                 with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
                         self.COMPONENT_PATHS[profile_key.profile_id],
-                        resolver.resolve(profile_key),
+                        resolver.resolve_operational(profile_key),
                     )
 
     def test_profile_resolver_uses_component_scoped_wan_paths(self):
         resolver = ProfileResolver()
 
         for platform, expected_path in self.WAN_PATHS.items():
-            profile_key = ProfileKey.for_component(
+            profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
                 platform,
+                f"video_{platform}",
             )
             with self.subTest(platform=platform):
                 self.assertEqual(

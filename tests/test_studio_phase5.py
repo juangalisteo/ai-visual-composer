@@ -25,22 +25,34 @@ from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
-from app.shared.profile_identity import ProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+def _load_studio_profile(profile_key):
+    operational_key = OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
+    return StudioProfileLoader().load(
+        ProfileResolver().load_operational(operational_key),
+        operational_key,
+    )
+
+
 class StudioPhase5Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
-        self.profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+        self.profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
         )
+        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
+        self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, "single_line")
+            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
         )
 
     @staticmethod
@@ -519,11 +531,11 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             return values[0]
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
-        profile = StudioProfileLoader().load(
-            ProfileResolver().load(self.profile_key),
-            self.profile_key,
+        self.profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
         )
+        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
+        profile = _load_studio_profile(self.profile_key)
         self.profile = replace(
             profile,
             width=320,
@@ -532,7 +544,7 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             preset="ultrafast",
         )
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, "single_line")
+            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
         )
 
     @staticmethod

@@ -7,8 +7,8 @@ from unittest.mock import patch
 from app.controllers.run_controller import RunController
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 
 
@@ -19,11 +19,11 @@ class ScriptComponentProfilesTest(
     def test_script_profiles_are_independent_component_files(self):
         script_profiles = (
             Path(
-                "config/profiles/guion/instagram/estandar/"
+                "config/profiles/guion/instagram/"
                 "perfil_guion_instagram.json"
             ),
             Path(
-                "config/profiles/guion/youtube/estandar/"
+                "config/profiles/guion/youtube/"
                 "perfil_guion_youtube.json"
             ),
         )
@@ -44,7 +44,7 @@ class ScriptComponentProfilesTest(
     def test_script_profiles_preserve_source_orientation(self):
         instagram = json.loads(
             Path(
-                "config/profiles/guion/instagram/estandar/"
+                "config/profiles/guion/instagram/"
                 "perfil_guion_instagram.json"
             ).read_text(
                 encoding="utf-8"
@@ -52,7 +52,7 @@ class ScriptComponentProfilesTest(
         )
         youtube = json.loads(
             Path(
-                "config/profiles/guion/youtube/estandar/"
+                "config/profiles/guion/youtube/"
                 "perfil_guion_youtube.json"
             ).read_text(
                 encoding="utf-8"
@@ -99,7 +99,7 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/guion/instagram/estandar/"
+                "config/profiles/guion/instagram/"
                 "perfil_guion_instagram.json"
             ),
             selected["path"]
@@ -137,7 +137,7 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/imagen/instagram/estandar/"
+                "config/profiles/imagen/instagram/"
                 "perfil_imagen_instagram.json"
             ),
             selected["path"]
@@ -157,9 +157,10 @@ class ScriptComponentProfilesTest(
         )
 
     def test_config_manager_loads_selected_script_profile_identity(self):
-        profile_key = ProfileKey.for_component(
+        profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
-            "youtube"
+            "youtube",
+            "guion_youtube",
         )
         with patch.dict(
             os.environ,

@@ -8,11 +8,20 @@ from app.core.start import _load_video_component_profile
 from app.modules.video.video_config import VideoConfigLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
+    OperationalProfileKey,
     ProfileComponent,
     ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+def _operational_key(profile_key):
+    return OperationalProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        profile_key.profile_id,
+    )
 
 
 class ProfileCharacterizationTest(unittest.TestCase):
@@ -65,8 +74,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         component,
                         platform
                     )
-                    profile = self.resolver.load(
-                        profile_key
+                    profile = self.resolver.load_operational(
+                        _operational_key(profile_key)
                     )
                     video_style = profile["video_style"]
                     environment = self._identity_environment(
@@ -156,15 +165,16 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         target_component,
                         platform
                     )
-                    path = self.resolver.resolve(
-                        profile_key
+                    operational_key = _operational_key(profile_key)
+                    path = self.resolver.resolve_operational(
+                        operational_key
                     )
-                    profile = self.resolver.load(
-                        profile_key
+                    profile = self.resolver.load_operational(
+                        operational_key
                     )
                     self.assertEqual(
-                        self.resolver.resolve(
-                            profile_key
+                        self.resolver.resolve_operational(
+                            operational_key
                         ),
                         path
                     )
@@ -206,9 +216,10 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
         for platform, dimensions in expected_by_platform.items():
             with self.subTest(platform=platform):
-                profile_key = ProfileKey.for_component(
+                profile_key = OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    platform
+                    platform,
+                    f"video_{platform}",
                 )
                 path = self.resolver.resolve_video_component(
                     profile_key
@@ -283,9 +294,10 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 )
 
     def test_structured_identity_controls_wan_profile_resolution(self):
-        instagram_key = ProfileKey.for_component(
+        instagram_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram"
+            "instagram",
+            "video_instagram",
         )
 
         self.assertEqual(
@@ -311,7 +323,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 legacy_profile=legacy_profile
             ), self.assertRaisesRegex(
                 TypeError,
-                "ProfileKey VIDEO explicito"
+                "identidad operacional VIDEO explicito"
             ):
                 _load_video_component_profile(
                     legacy_profile
@@ -320,15 +332,16 @@ class ProfileCharacterizationTest(unittest.TestCase):
     def test_wan_profile_rejects_missing_or_incompatible_identity(self):
         with self.assertRaisesRegex(
             TypeError,
-            "ProfileKey VIDEO explicito"
+            "identidad operacional VIDEO explicito"
         ):
             _load_video_component_profile(
                 None
             )
 
-        image_key = ProfileKey.for_component(
+        image_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram"
+            "instagram",
+            "imagen_instagram",
         )
         with self.assertRaisesRegex(
             ValueError,
@@ -363,7 +376,9 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     ).load()
 
                 self.assertEqual(
-                    self.resolver.load(profile_key),
+                    self.resolver.load_operational(
+                        _operational_key(profile_key)
+                    ),
                     identity_profile
                 )
                 self.assertEqual(
@@ -375,9 +390,11 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     identity_video.height
                 )
                 self.assertEqual(
-                    self.resolver.load_video_component(profile_key),
+                    self.resolver.load_video_component(
+                        _operational_key(profile_key)
+                    ),
                     _load_video_component_profile(
-                        profile_key
+                        _operational_key(profile_key)
                     )
                 )
 

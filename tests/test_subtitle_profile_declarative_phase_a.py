@@ -93,17 +93,17 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             by_id = {descriptor.profile_id: descriptor for descriptor in descriptors}
 
             self.assertEqual(2, len(descriptors))
-            self.assertEqual("single_line", by_id[custom_id].mode)
+            self.assertEqual("three_two_words", by_id[custom_id].mode)
             self.assertEqual(
                 "Mi subtítulo personalizado",
                 by_id[custom_id].display_name,
             )
             self.assertEqual(
-                "single_line",
+                "three_two_words",
                 by_id["subtitulo_studio_instagram_linea_unica"].mode,
             )
             with self.assertRaisesRegex(ValueError, "style/mode es ambigua"):
-                resolver.load_selection(profile_key, "single_line")
+                resolver.load_selection(profile_key, "three_two_words")
 
             controller = RunController(subtitle_profile_resolver=resolver)
             catalog_messages = []
@@ -142,7 +142,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
             self.assertEqual(custom_path, resolved.path)
             self.assertEqual(custom_id, resolved.key.profile_id)
-            self.assertEqual("single_line", resolved.cue_policy["mode"])
+            self.assertEqual("three_two_words", resolved.cue_policy["mode"])
             self.assertEqual("Mi subtítulo personalizado", resolved.display_name)
 
     def test_new_standard_profile_requires_display_name(self):
@@ -180,7 +180,9 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         )
 
     def test_original_remains_outside_the_declarative_catalog(self):
-        profile_key = ProfileKey.for_component("studio", "youtube")
+        profile_key = ProfileKey.for_component(
+            "studio", "youtube", family="design", profile_id="studio_youtube",
+        )
         resolver = SubtitleProfileResolver()
         profile_ids = {
             descriptor.profile_id
@@ -188,7 +190,10 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         }
 
         self.assertNotIn("original", profile_ids)
-        descriptor = resolver.discover_profiles(profile_key)[0]
+        descriptor = next(
+            item for item in resolver.discover_profiles(profile_key)
+            if item.profile_id == "modo_conciencia_youtube"
+        )
 
         controller = RunController(subtitle_profile_resolver=resolver)
         controller._print = Mock()
@@ -209,11 +214,16 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             profile_id="studio_instagram_design_modo_conciencia_reels",
         )
         resolver = SubtitleProfileResolver()
-        descriptor = resolver.discover_profiles(profile_key)[0]
+        descriptor = next(
+            item for item in resolver.discover_profiles(profile_key)
+            if item.profile_id == "modo_conciencia_reels"
+        )
 
         self.assertEqual("word_by_word", descriptor.mode)
         self.assertEqual("Modo Conciencia | Reels", descriptor.display_name)
         self.assertEqual(
             "word_by_word",
-            resolver.load_selection(profile_key, "word_by_word").cue_policy["mode"],
+            resolver.load_selection(
+                profile_key, "modo_conciencia_reels",
+            ).cue_policy["mode"],
         )
