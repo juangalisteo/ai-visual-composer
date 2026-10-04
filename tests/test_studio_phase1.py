@@ -27,6 +27,11 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID = (
+    "subtitulo_studio_instagram_dos_tres"
+)
+
+
 class StudioPhase1Test(unittest.TestCase):
 
     def setUp(self):
@@ -91,7 +96,7 @@ class StudioPhase1Test(unittest.TestCase):
                 resolved.append(profile.path)
                 self.assertEqual(profile_key.component, profile.key.component)
                 self.assertEqual(profile_key.platform, profile.key.platform)
-        self.assertEqual(4, len(set(resolved)))
+        self.assertEqual(len(resolved), len(set(resolved)))
 
     def test_studio_subtitle_discovery_rejects_an_unregistered_future_mode(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -404,9 +409,10 @@ class StudioPhase1Test(unittest.TestCase):
                 order.append("subtitle"),
                 setattr(
                     controller, "_active_studio_subtitle_key",
-                    SubtitleProfileResolver().discover_profiles(
+                    SubtitleProfileResolver().load_selection(
                         self.profile_key,
-                    )[0].key,
+                        "subtitulo_studio_instagram_linea_unica",
+                    ).key,
                 ),
                 setattr(controller, "_active_studio_subtitle_original", False),
                 (self.profile_key, self.profile),
@@ -596,7 +602,7 @@ class StudioPhase1Test(unittest.TestCase):
                 encoding="utf-8",
             )
             result = preparar_studio(
-                subtitle_style="three_two_words",
+                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
                 input_mode="srt_video",
                 input_preparation_service=StudioInputPreparationService(input_root),
             )
@@ -642,7 +648,7 @@ class StudioPhase1Test(unittest.TestCase):
                 "no contiene una pista de audio",
             ):
                 ejecutar_studio(
-                    subtitle_style="three_two_words",
+                    subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
                     input_mode="video",
                     preparation_service=prepare,
                     external_subtitle_preparation_service=subtitle_service,
@@ -678,7 +684,7 @@ class StudioPhase1Test(unittest.TestCase):
             )
 
             prepared = preparar_studio(
-                subtitle_style="three_two_words",
+                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
                 input_mode="video",
                 input_preparation_service=StudioInputPreparationService(
                     input_root
@@ -711,7 +717,7 @@ class StudioPhase1Test(unittest.TestCase):
             probe = Mock()
 
             prepared = preparar_studio(
-                subtitle_style="three_two_words",
+                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
                 input_mode="srt_video",
                 input_preparation_service=StudioInputPreparationService(
                     input_root

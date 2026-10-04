@@ -11,10 +11,142 @@ from app.modules.studio import StudioInputMode
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import ProfileComponent, ProfileKey
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
+
+    def test_instagram_standard_catalog_uses_the_final_visible_names(self):
+        resolver = SubtitleProfileResolver()
+        expected_names = [
+            "Doble línea",
+            "Dos palabras",
+            "Línea única",
+            "Palabra única",
+            "Tres palabras",
+        ]
+
+        for component in ProfileComponent:
+            with self.subTest(component=component.value):
+                descriptors = resolver.discover_profiles_for_family(
+                    component,
+                    "instagram",
+                    "estandar",
+                )
+                by_id = {
+                    descriptor.profile_id: descriptor
+                    for descriptor in descriptors
+                }
+
+                self.assertEqual(
+                    expected_names,
+                    [descriptor.display_name for descriptor in descriptors],
+                )
+                self.assertEqual(
+                    "word_by_word",
+                    by_id[
+                        f"subtitulo_{component.value}_instagram_"
+                        "palabra_por_palabra"
+                    ].mode,
+                )
+                self.assertEqual(
+                    "three_two_words",
+                    by_id[
+                        f"subtitulo_{component.value}_instagram_dos_tres"
+                    ].mode,
+                )
+
+    def test_instagram_standard_two_line_profiles_are_discovered_and_resolved(self):
+        resolver = SubtitleProfileResolver()
+
+        for component in ProfileComponent:
+            with self.subTest(component=component.value):
+                profile_id = (
+                    f"subtitulo_{component.value}_instagram_doble_linea"
+                )
+                key = SubtitleProfileKey(
+                    component=component,
+                    platform="instagram",
+                    family="estandar",
+                    profile_id=profile_id,
+                )
+                descriptors = resolver.discover_profiles_for_family(
+                    component,
+                    "instagram",
+                    "estandar",
+                )
+                descriptor = next(
+                    item for item in descriptors if item.key == key
+                )
+                resolved = resolver.load(key)
+
+                self.assertEqual("Doble línea", descriptor.display_name)
+                self.assertEqual("two_lines", descriptor.mode)
+                self.assertEqual(2, resolved.cue_policy["max_lines"])
+                self.assertEqual(
+                    0.75,
+                    resolved.cue_policy["balance_ratio_threshold"],
+                )
+                self.assertEqual(key, resolved.key)
+
+    def test_instagram_standard_two_word_profiles_are_discovered_and_resolved(self):
+        resolver = SubtitleProfileResolver()
+
+        for component in ProfileComponent:
+            with self.subTest(component=component.value):
+                profile_id = (
+                    f"subtitulo_{component.value}_instagram_dos_palabras"
+                )
+                key = SubtitleProfileKey(
+                    component=component,
+                    platform="instagram",
+                    family="estandar",
+                    profile_id=profile_id,
+                )
+                descriptors = resolver.discover_profiles_for_family(
+                    component,
+                    "instagram",
+                    "estandar",
+                )
+                descriptor = next(
+                    item for item in descriptors if item.key == key
+                )
+                resolved = resolver.load(key)
+
+                self.assertEqual("Dos palabras", descriptor.display_name)
+                self.assertEqual("three_two_words", descriptor.mode)
+                self.assertEqual(2, resolved.cue_policy["fixed_chunk_size"])
+                self.assertEqual(key, resolved.key)
+
+    def test_instagram_standard_two_three_profiles_use_the_default_rhythm(self):
+        resolver = SubtitleProfileResolver()
+
+        for component in ProfileComponent:
+            with self.subTest(component=component.value):
+                profile_id = (
+                    f"subtitulo_{component.value}_instagram_dos_tres"
+                )
+                key = SubtitleProfileKey(
+                    component=component,
+                    platform="instagram",
+                    family="estandar",
+                    profile_id=profile_id,
+                )
+                descriptors = resolver.discover_profiles_for_family(
+                    component,
+                    "instagram",
+                    "estandar",
+                )
+                descriptor = next(
+                    item for item in descriptors if item.key == key
+                )
+                resolved = resolver.load(key)
+
+                self.assertEqual("Tres palabras", descriptor.display_name)
+                self.assertEqual("three_two_words", descriptor.mode)
+                self.assertNotIn("fixed_chunk_size", resolved.cue_policy)
+                self.assertEqual(key, resolved.key)
 
     def test_all_standard_profiles_are_discovered_and_resolved_by_profile_id(self):
         resolver = SubtitleProfileResolver()
@@ -28,8 +160,13 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                     profile_key = ProfileKey.for_component(component, platform)
                     descriptors = resolver.discover_profiles(profile_key)
 
+                    word_by_word_name = (
+                        "Palabra única"
+                        if platform == "instagram"
+                        else "Palabra por palabra"
+                    )
                     self.assertTrue(
-                        {"Línea única", "Palabra por palabra"}.issubset(
+                        {"Línea única", word_by_word_name}.issubset(
                             {descriptor.display_name for descriptor in descriptors}
                         )
                     )

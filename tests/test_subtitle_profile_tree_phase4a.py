@@ -165,18 +165,14 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 self.assertEqual("estandar", profile["family"])
                 self.assertEqual(expected_id, profile["profile_id"])
                 self.assertEqual(
-                    (
-                        "Línea única"
-                        if mode == "single_line"
-                        else "Palabra por palabra"
-                    ),
+                    self._display_name_for(platform, mode),
                     profile["display_name"],
                 )
                 self.assertEqual(mode, profile["cue_policy"]["mode"])
                 self.assertNotIn(expected_id, profile_ids)
                 profile_ids.add(expected_id)
 
-        self.assertEqual(12, len(profile_ids))
+        self.assertEqual(len(self._expected_paths()), len(profile_ids))
 
     def test_profiles_preserve_the_final_cue_and_render_contract(self):
         for _, platform, _, mode, path in self._cases():
@@ -276,6 +272,12 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
     def _expected_paths(self):
         return {path for _, _, _, _, path in self._cases()}
+
+    @staticmethod
+    def _display_name_for(platform, mode):
+        if mode == "single_line":
+            return "Línea única"
+        return "Palabra única" if platform == "instagram" else "Palabra por palabra"
 
     def _load(self, path):
         return json.loads(Path(path).read_text(encoding="utf-8"))

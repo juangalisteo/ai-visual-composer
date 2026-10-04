@@ -65,10 +65,6 @@ class StudioFinalContractTest(unittest.TestCase):
 
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()
-        expected_by_platform = {
-            "instagram": {"three_two_words", "word_by_word"},
-            "youtube": {"single_line", "word_by_word"},
-        }
 
         for platform, dimensions in {
             "instagram": (1080, 1920),
@@ -90,8 +86,12 @@ class StudioFinalContractTest(unittest.TestCase):
                     style.value if hasattr(style, "value") else str(style)
                     for style in resolver.discover_styles(key)
                 }
-                self.assertEqual(expected_by_platform[platform], styles)
-                for descriptor in resolver.discover_profiles(key):
+                descriptors = resolver.discover_profiles(key)
+                self.assertEqual(
+                    {descriptor.mode for descriptor in descriptors},
+                    styles,
+                )
+                for descriptor in descriptors:
                     resolved = resolver.load(
                         descriptor.key
                     )

@@ -3,7 +3,7 @@
     "platform": "instagram",
     "family": "estandar",
     "profile_id": "subtitulo_guion_instagram_palabra_por_palabra",
-    "display_name": "Palabra por palabra",
+    "display_name": "Palabra única",
     "cue_policy": {
         "mode": "word_by_word",
         "min_duration": 0.30,

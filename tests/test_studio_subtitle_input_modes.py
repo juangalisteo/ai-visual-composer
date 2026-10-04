@@ -550,9 +550,16 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertIn("1. MODO CONCIENCIA", messages)
         self.assertIn("2. FORMATO ESTÁNDAR", messages)
         self.assertIn("2. Modo Conciencia | Reels", messages)
-        self.assertEqual(
-            {"Línea única", "Palabra por palabra"},
-            {descriptor.display_name for descriptor in standard},
+        self.assertTrue(
+            {
+                "Doble línea",
+                "Dos palabras",
+                "Tres palabras",
+                "Línea única",
+                "Palabra única",
+            }.issubset(
+                {descriptor.display_name for descriptor in standard}
+            )
         )
 
     def test_srt_video_selector_uses_real_profiles_and_activates_original_policy(self):
@@ -786,8 +793,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 )
 
         self.assertIn("\nSUBT\u00cdTULOS\n", messages)
-        self.assertIn("1. Línea única", messages)
-        self.assertIn("2. Palabra por palabra", messages)
+        for index, descriptor in enumerate(descriptors, start=1):
+            self.assertIn(f"{index}. {descriptor.display_name}", messages)
         self.assertNotIn("ORIGINAL", "\n".join(messages))
 
     def test_video_offers_only_transformed_subtitle_styles(self):
@@ -806,8 +813,11 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertEqual("subtitulo_studio_instagram_linea_unica", style)
         self.assertFalse(original)
         self.assertIn("\nSUBT\u00cdTULOS\n", messages)
-        self.assertIn("1. Línea única", messages)
-        self.assertIn("2. Palabra por palabra", messages)
+        descriptors = controller.subtitle_profile_resolver.discover_profiles(
+            self.profile_key
+        )
+        for index, descriptor in enumerate(descriptors, start=1):
+            self.assertIn(f"{index}. {descriptor.display_name}", messages)
         self.assertNotIn("ORIGINAL", "\n".join(messages))
 
     def test_design_srt_video_offers_only_its_real_profile(self):

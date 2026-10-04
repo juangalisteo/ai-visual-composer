@@ -2,6 +2,7 @@
 
 from app.modules.subtitles.modes.single_line import SingleLineModel
 from app.modules.subtitles.modes.three_two_words import ThreeTwoWordsModel
+from app.modules.subtitles.modes.two_lines import TwoLineModel
 from app.modules.subtitles.modes.word_by_word import WordByWordModel
 from app.shared.config_contract import require_text
 
@@ -19,6 +20,7 @@ class CueModelRegistry:
         return {
             "single_line": SingleLineModel,
             "three_two_words": ThreeTwoWordsModel,
+            "two_lines": TwoLineModel,
             "word_by_word": WordByWordModel,
         }
 

@@ -6,7 +6,7 @@ from app.shared.config_contract import require_float, require_int
 
 
 class ThreeTwoWordsModel(BaseSubtitleModel):
-    """Build one-line cues with a configurable 3/2-word visual rhythm."""
+    """Build one-line cues with a 3/2 rhythm or fixed word chunks."""
 
     _PATTERN = (3, 2)
 
@@ -43,6 +43,15 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
             "significant_gap_threshold",
             "cue_policy.significant_gap_threshold",
         )
+        self.fixed_chunk_size = (
+            require_int(
+                config,
+                "fixed_chunk_size",
+                "cue_policy.fixed_chunk_size",
+            )
+            if "fixed_chunk_size" in config
+            else None
+        )
 
         if self.max_chars_per_line <= 0:
             raise ValueError(
@@ -60,6 +69,10 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         if self.significant_gap_threshold <= 0:
             raise ValueError(
                 "cue_policy.significant_gap_threshold debe ser superior a cero."
+            )
+        if self.fixed_chunk_size is not None and self.fixed_chunk_size <= 0:
+            raise ValueError(
+                "cue_policy.fixed_chunk_size debe ser superior a cero."
             )
 
     def optimize(self, blocks, timing=None):
@@ -164,8 +177,8 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
 
     def _partition_regular_group(self, words):
         """
-        Apply the original 3/2 pattern, max-char limit and orphan correction
-        inside one regular linguistic group.
+        Apply either a fixed configured chunk size or the original 3/2 pattern,
+        always honoring the max-char limit inside one regular linguistic group.
 
         Hard boundaries are resolved before entering this method, so orphan
         correction can never merge across punctuation or an isolated -mente
@@ -180,9 +193,11 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         pattern_index = 0
 
         while cursor < len(words):
-            target_size = self._PATTERN[
-                pattern_index % len(self._PATTERN)
-            ]
+            target_size = (
+                self.fixed_chunk_size
+                if self.fixed_chunk_size is not None
+                else self._PATTERN[pattern_index % len(self._PATTERN)]
+            )
             chunk = []
 
             for word in words[cursor:cursor + target_size]:
@@ -201,6 +216,8 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
             cursor += len(chunk)
             pattern_index += 1
 
+        if self.fixed_chunk_size is not None:
+            return chunks
         return self._avoid_final_orphan(chunks)
 
     def _validate_single_word(self, word):
