@@ -1,0 +1,6 @@
+{
+  "component": "video", "platform": "instagram", "family": "minimalista",
+  "profile_id": "subtitulo_video_instagram_active_pill", "display_name": "Palabra en recuadro",
+  "cue_policy": {"mode": "single_line", "text_case": "uppercase", "uppercase": true, "max_chars_per_line": 28, "min_duration": 1.0, "max_duration": 3.5, "significant_gap_threshold": 0.35, "punctuation": {"remove_commas": true, "remove_periods": true, "remove_colons": true, "remove_semicolons": true, "remove_question_marks": false, "remove_exclamation_marks": false, "remove_ellipsis": true, "remove_hyphens": true, "remove_em_dashes": true, "remove_double_quotes": true, "remove_single_quotes": true, "remove_parentheses": true}},
+  "render_style": {"font": "unisans", "font_size": 10, "bold": false, "italic": false, "underline": false, "strikeout": false, "primary_colour": "&H00FFFFFF", "secondary_colour": "&H00FFFFFF", "outline_colour": "&H80000000", "back_colour": "&H00000000", "border_style": 1, "outline": 0, "shadow": 1, "alignment": 2, "margin_v": 55, "margin_l": 0, "margin_r": 0, "scale_x": 100.0, "scale_y": 100.0, "spacing": 0.0, "offset": 0.0, "dynamic": true, "cue_effect": "none", "word_effect": "active_pill", "pill_colour": "&H0000FFFF", "pill_padding": 6, "pill_radius": 4}
+}

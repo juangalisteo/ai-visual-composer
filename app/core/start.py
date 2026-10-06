@@ -1006,6 +1006,7 @@ def _render_prepared_studio(
             original=getattr(preparation, "subtitle_original", False),
         )
         render_options["subtitle_path"] = render_subtitle_path
+        render_options["subtitle_timing"] = subtitles.timing
         rendered = renderer.render(**render_options)
         return _with_studio_subtitle_artifacts(
             rendered,

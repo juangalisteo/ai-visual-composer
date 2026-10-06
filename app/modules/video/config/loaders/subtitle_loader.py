@@ -26,10 +26,18 @@ class SubtitleConfigLoader:
         "zoom": {"enabled", "in_ms", "from_scale", "to_scale"},
         "slide": {"enabled", "direction", "duration_ms"},
     }
+    DIRECT_CUE_EFFECTS = {"gravity_drop"}
     WORD_EFFECT_FIELDS = {
         "karaoke": {"enabled"},
         "highlight": {"enabled", "active_colour"},
         "progressive_reveal": {"enabled", "reveal_ms"},
+    }
+    IN_SENTENCE_WORD_EFFECTS = {
+        "highlight_in_sentence",
+        "active_pill",
+        "pop_in_sentence",
+        "typewriter",
+        "alpha_fade",
     }
 
     def load_render_style(
@@ -328,8 +336,17 @@ class SubtitleConfigLoader:
         return float(value)
 
     def _load_cue_effect(self, render_style, *, profile_path):
+        declared_effect = self._load_declared_cue_effect(
+            render_style,
+            profile_path=profile_path,
+        )
         if "effects" not in render_style:
-            return None
+            return declared_effect
+        if declared_effect is not None:
+            raise ValueError(
+                f"{self._context(profile_path)}cue_effect y effects no pueden "
+                "combinarse en la misma representacion."
+            )
         effects = render_style["effects"]
         if not isinstance(effects, dict):
             raise TypeError(
@@ -372,6 +389,57 @@ class SubtitleConfigLoader:
         parameters = self._effect_parameters(name, values, profile_path)
         return CueEffectConfig(name=name, parameters=parameters)
 
+    def _load_declared_cue_effect(self, render_style, *, profile_path):
+        declared_effect = render_style.get("cue_effect")
+        if declared_effect is None:
+            return None
+        if not isinstance(declared_effect, str):
+            raise TypeError(
+                f"{self._context(profile_path)}render_style.cue_effect "
+                "debe ser texto."
+            )
+        declared_effect = declared_effect.strip().lower()
+        if declared_effect == "none":
+            return None
+        if declared_effect not in self.DIRECT_CUE_EFFECTS:
+            raise ValueError(
+                f"{self._context(profile_path)}cue effect no soportado: "
+                f"{declared_effect!r}."
+            )
+        return CueEffectConfig(
+            name=declared_effect,
+            parameters=self._declared_cue_effect_parameters(
+                declared_effect,
+                render_style,
+                profile_path,
+            ),
+        )
+
+    def _declared_cue_effect_parameters(self, name, render_style, profile_path):
+        if name != "gravity_drop":
+            raise ValueError(f"Cue effect no soportado: {name!r}.")
+        height = render_style.get("drop_height_px", 100)
+        if isinstance(height, bool) or not isinstance(height, int) or height <= 0:
+            raise ValueError(
+                f"{self._context(profile_path)}render_style.drop_height_px "
+                "debe ser un entero > 0."
+            )
+        elasticity = render_style.get("bounce_elasticity", 0.30)
+        if (
+            isinstance(elasticity, bool)
+            or not isinstance(elasticity, (int, float))
+            or not math.isfinite(elasticity)
+            or not 0.0 <= elasticity <= 1.0
+        ):
+            raise ValueError(
+                f"{self._context(profile_path)}render_style.bounce_elasticity "
+                "debe ser un numero entre 0.0 y 1.0."
+            )
+        return {
+            "drop_height_px": height,
+            "bounce_elasticity": float(elasticity),
+        }
+
     def _effect_parameters(self, name, values, profile_path):
         required = self.EFFECT_FIELDS[name] - {"enabled"}
         missing = required - set(values)
@@ -409,8 +477,40 @@ class SubtitleConfigLoader:
         }
 
     def _load_word_effect(self, render_style, *, profile_path):
+        declared_effect = render_style.get("word_effect")
+        if declared_effect is not None:
+            if not isinstance(declared_effect, str):
+                raise TypeError(
+                    f"{self._context(profile_path)}render_style.word_effect "
+                    "debe ser texto."
+                )
+            declared_effect = declared_effect.strip().lower()
+            if declared_effect == "none":
+                declared_effect = None
+            elif declared_effect not in self.IN_SENTENCE_WORD_EFFECTS:
+                raise ValueError(
+                    f"{self._context(profile_path)}word effect no soportado: "
+                    f"{declared_effect!r}."
+                )
+
         if "word_effects" not in render_style:
-            return None
+            return (
+                WordEffectConfig(
+                    name=declared_effect,
+                    parameters=self._in_sentence_parameters(
+                        declared_effect,
+                        render_style,
+                        profile_path,
+                    ),
+                )
+                if declared_effect is not None
+                else None
+            )
+        if declared_effect is not None:
+            raise ValueError(
+                f"{self._context(profile_path)}word_effect y word_effects no "
+                "pueden combinarse en la misma representacion."
+            )
         effects = render_style["word_effects"]
         if not isinstance(effects, dict):
             raise TypeError(
@@ -474,6 +574,63 @@ class SubtitleConfigLoader:
                 )
             }
         return WordEffectConfig(name=name, parameters=parameters)
+
+    def _in_sentence_parameters(self, name, render_style, profile_path):
+        if name == "alpha_fade":
+            value = render_style.get("fade_duration_ms", 150)
+            return {
+                "fade_duration_ms": self._positive_ms(
+                    value,
+                    name,
+                    "fade_duration_ms",
+                    profile_path,
+                ),
+            }
+        if name == "typewriter":
+            cursor = self._optional_bool(
+                render_style,
+                "typewriter_cursor",
+                profile_path=profile_path,
+            )
+            cursor_char = render_style.get("cursor_char", "_")
+            if not isinstance(cursor_char, str) or len(cursor_char) != 1:
+                raise ValueError(
+                    f"{self._context(profile_path)}render_style.cursor_char "
+                    "debe contener un unico caracter."
+                )
+            return {
+                "typewriter_cursor": bool(cursor),
+                "cursor_char": cursor_char,
+            }
+        if name == "pop_in_sentence":
+            value = render_style.get("word_pop_scale", 125)
+            if isinstance(value, bool) or not isinstance(value, int) or not 100 <= value <= 300:
+                raise ValueError(
+                    f"{self._context(profile_path)}render_style.word_pop_scale "
+                    "debe ser un entero entre 100 y 300."
+                )
+            return {"word_pop_scale": value}
+        if name != "active_pill":
+            return {}
+        colour = render_style.get("pill_colour")
+        if not isinstance(colour, str) or not self.ASS_COLOUR_PATTERN.fullmatch(colour):
+            raise ValueError(
+                f"{self._context(profile_path)}render_style.pill_colour "
+                "debe usar el formato ASS &HAABBGGRR."
+            )
+        return {
+            "pill_colour": colour,
+            "pill_padding": self._optional_nonnegative_int(
+                render_style,
+                "pill_padding",
+                profile_path=profile_path,
+            ) if "pill_padding" in render_style else 6,
+            "pill_radius": self._optional_nonnegative_int(
+                render_style,
+                "pill_radius",
+                profile_path=profile_path,
+            ) if "pill_radius" in render_style else 4,
+        }
 
     def _nonnegative_ms(self, value, effect, field, profile_path):
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:

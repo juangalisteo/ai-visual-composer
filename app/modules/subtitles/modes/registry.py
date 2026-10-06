@@ -1,5 +1,7 @@
 """Central registry for executable subtitle cue capabilities."""
 
+from app.modules.subtitles.modes.acoustic_burst import AcousticBurstModel
+from app.modules.subtitles.modes.cumulative_line import CumulativeLineModel
 from app.modules.subtitles.modes.single_line import SingleLineModel
 from app.modules.subtitles.modes.three_two_words import ThreeTwoWordsModel
 from app.modules.subtitles.modes.two_lines import TwoLineModel
@@ -18,6 +20,8 @@ class CueModelRegistry:
     @staticmethod
     def default_factories():
         return {
+            "acoustic_burst": AcousticBurstModel,
+            "cumulative_line": CumulativeLineModel,
             "single_line": SingleLineModel,
             "three_two_words": ThreeTwoWordsModel,
             "two_lines": TwoLineModel,

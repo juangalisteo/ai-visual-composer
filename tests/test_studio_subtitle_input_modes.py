@@ -228,7 +228,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             )
             kwargs = renderer.render.call_args.kwargs
             self.assertEqual(persisted, kwargs["subtitle_path"])
-            self.assertNotIn("subtitle_timing", kwargs)
+            self.assertEqual("whisper", kwargs["subtitle_timing"].source)
             self.assertFalse(subtitle_service.subtitle_path.exists())
             self.assertFalse(subtitle_service.audio_path.exists())
             self.assertFalse(subtitle_service.subtitle_path.parent.exists())
@@ -617,7 +617,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertEqual(descriptor.key, selected)
         self.assertIn("1. MODO CONCIENCIA", messages)
         self.assertIn("2. FORMATO ESTÁNDAR", messages)
-        self.assertIn("3. PRIMADO NEGATIVO", messages)
+        self.assertIn("3. FORMATO MINIMALISTA", messages)
+        self.assertIn("4. PRIMADO NEGATIVO", messages)
 
     def test_srt_video_original_standard_profiles_preserve_human_structure(self):
         source = (

@@ -14,7 +14,15 @@ class SubtitleRenderPreparation:
         self.ass_builder = ass_builder or AssSubtitleBuilder()
         self.style_builder = style_builder or SubtitleStyleBuilder()
 
-    def prepare(self, subtitle_path, render_style, width, height, style_source):
+    def prepare(
+        self,
+        subtitle_path,
+        render_style,
+        width,
+        height,
+        style_source,
+        timing=None,
+    ):
         backend = self.backend_resolver.resolve(render_style)
         if backend is SubtitleRenderBackend.STATIC:
             return PreparedSubtitle(
@@ -27,6 +35,7 @@ class SubtitleRenderPreparation:
             render_style=render_style,
             width=width,
             height=height,
+            timing=timing,
         )
         return PreparedSubtitle(
             path=temporary_path,

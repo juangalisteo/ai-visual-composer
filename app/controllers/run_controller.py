@@ -466,6 +466,7 @@ class RunController:
         return {
             "design": "MODO CONCIENCIA",
             "estandar": "FORMATO ESTÁNDAR",
+            "minimalista": "FORMATO MINIMALISTA",
             "primado_negativo": "PRIMADO NEGATIVO",
         }.get(family, family.replace("_", " ").upper())
 

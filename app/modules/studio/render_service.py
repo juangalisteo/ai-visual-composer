@@ -183,6 +183,7 @@ class StudioRenderService:
         output_path=None,
         music_path=None,
         intro_outro_selection=None,
+        subtitle_timing=None,
     ):
         self._require_contract(
             video_path,
@@ -237,6 +238,7 @@ class StudioRenderService:
                 width=profile.width,
                 height=profile.height,
                 style_source=subtitle_profile.render_style,
+                timing=subtitle_timing,
             )
             subtitle_path = prepared_subtitle.path
             subtitle_style = prepared_subtitle.force_style

@@ -1,0 +1,31 @@
+{
+    "component": "studio",
+    "platform": "instagram",
+    "family": "minimalista",
+    "profile_id": "subtitulo_studio_instagram_cumulative_line",
+    "display_name": "Palabra por palabra",
+    "cue_policy": {
+        "mode": "cumulative_line", "text_case": "original", "uppercase": false,
+        "max_chars_per_line": 60, "min_duration": 0.8, "max_duration": 5.0,
+        "significant_gap_threshold": 0.35,
+        "punctuation": {
+            "remove_commas": false, "remove_periods": false, "remove_colons": false,
+            "remove_semicolons": false, "remove_question_marks": false,
+            "remove_exclamation_marks": false, "remove_ellipsis": false,
+            "remove_hyphens": false, "remove_em_dashes": false,
+            "remove_double_quotes": false, "remove_single_quotes": false,
+            "remove_parentheses": false
+        }
+    },
+    "render_style": {
+        "font": "unisans", "font_size": 10, "bold": false,
+        "italic": false, "underline": false, "strikeout": false,
+        "primary_colour": "&H00FFFFFF", "secondary_colour": "&H00000000",
+        "outline_colour": "&H80000000", "back_colour": "&H00000000",
+        "border_style": 1, "outline": 0, "shadow": 1, "alignment": 2,
+        "margin_v": 55, "margin_l": 50, "margin_r": 50,
+        "spacing": 0.0,
+        "offset": 0.0, "dynamic": false, "cue_effect": "none",
+        "word_effect": "none"
+    }
+}
