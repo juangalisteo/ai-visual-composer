@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from app.modules.subtitles.modes.registry import CueModelRegistry
+from app.modules.subtitles.nlp.syllabifier import SyllabifierPolicy
 from app.modules.subtitles.policies.text_case import TextCasePolicy
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.shared.profile_identity import (
@@ -408,10 +409,15 @@ class SubtitleProfileResolver:
                 raise TypeError(f"render_style invalido en {path}.")
             CueModelRegistry().resolve(CueModelRegistry.mode_from(cue_policy))
             TextCasePolicy.from_cue_policy(cue_policy)
-            SubtitleConfigLoader().load_render_style(
+            subtitle_style = SubtitleConfigLoader().load_render_style(
                 render_style,
                 profile_path=path,
             )
+            if (
+                subtitle_style.word_effect is not None
+                and subtitle_style.word_effect.name == "continuous_karaoke"
+            ):
+                SyllabifierPolicy.from_cue_policy(cue_policy)
         except (KeyError, TypeError, ValueError) as error:
             raise create_operational_error(
                 family="VALIDATION",

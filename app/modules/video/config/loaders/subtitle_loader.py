@@ -36,6 +36,7 @@ class SubtitleConfigLoader:
         "highlight_in_sentence",
         "active_pill",
         "pop_in_sentence",
+        "continuous_karaoke",
         "typewriter",
         "alpha_fade",
     }
@@ -210,6 +211,12 @@ class SubtitleConfigLoader:
             cue_effect=cue_effect,
 
             word_effect=word_effect,
+
+            scroll_duration_ms=self._optional_positive_int(
+                render_style,
+                "scroll_duration_ms",
+                profile_path=profile_path,
+            ),
         )
         self._validate_render_style(
             subtitle_config,
@@ -313,6 +320,19 @@ class SubtitleConfigLoader:
         if value < 0:
             raise ValueError(
                 f"{self._context(profile_path)}render_style.{field} debe ser >= 0. "
+                f"Valor recibido: {value!r}."
+            )
+        return value
+
+    def _optional_positive_int(self, render_style, field, *, profile_path):
+        value = self._optional_nonnegative_int(
+            render_style,
+            field,
+            profile_path=profile_path,
+        )
+        if value == 0:
+            raise ValueError(
+                f"{self._context(profile_path)}render_style.{field} debe ser > 0. "
                 f"Valor recibido: {value!r}."
             )
         return value

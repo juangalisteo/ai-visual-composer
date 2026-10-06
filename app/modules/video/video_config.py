@@ -66,6 +66,8 @@ class VideoConfig:
 
     movflags: str
 
+    subtitle_cue_policy: dict | None = None
+
     @property
     def subtitle_offset(
         self
@@ -335,5 +337,11 @@ class VideoConfigLoader:
                 video,
                 "movflags",
                 "video.movflags"
-            )
+            ),
+
+            subtitle_cue_policy=(
+                dict(self.subtitle_profile.cue_policy)
+                if render_subtitles and self.subtitle_profile is not None
+                else None
+            ),
         )

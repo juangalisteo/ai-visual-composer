@@ -8,6 +8,7 @@ import tempfile
 from app.managers.font_manager import FontManager
 from app.modules.subtitles.effects.physics import KineticPhysicsEngine
 from app.modules.subtitles.effects.typewriter import TypewriterInterpolator
+from app.modules.subtitles.nlp.syllabifier import SyllabifierPolicy
 from app.modules.subtitles.rendering.font_metrics import FontMetricsEngine
 
 
@@ -53,7 +54,9 @@ class AssSubtitleBuilder:
         self.typewriter = typewriter or TypewriterInterpolator()
         self.physics = physics or KineticPhysicsEngine()
 
-    def build_temporary(self, subtitle_path, render_style, width, height, timing=None):
+    def build_temporary(
+        self, subtitle_path, render_style, width, height, timing=None, cue_policy=None
+    ):
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
@@ -71,6 +74,7 @@ class AssSubtitleBuilder:
                 height=height,
                 output_path=target,
                 timing=timing,
+                cue_policy=cue_policy,
             )
         except Exception:
             if target.exists():
@@ -86,18 +90,26 @@ class AssSubtitleBuilder:
         height,
         output_path,
         timing=None,
+        cue_policy=None,
     ):
         subtitle_path = Path(subtitle_path)
         output_path = Path(output_path)
         cues = self._read_srt(subtitle_path)
         output_path.write_text(
-            self._document(cues, render_style, width, height, timing=timing),
+            self._document(
+                cues,
+                render_style,
+                width,
+                height,
+                timing=timing,
+                cue_policy=cue_policy,
+            ),
             encoding="utf-8",
             newline="\n",
         )
         return output_path
 
-    def _document(self, cues, style, width, height, timing=None):
+    def _document(self, cues, style, width, height, timing=None, cue_policy=None):
         if width <= 0 or height <= 0:
             raise ValueError("La resolucion ASS debe ser positiva.")
         font = self.font_manager.resolve_name(style.font)
@@ -141,6 +153,10 @@ class AssSubtitleBuilder:
             "[Events]",
             "Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text",
         ]
+        roll_up = self._roll_up_dialogues(cues, style, width, height, cue_policy)
+        if roll_up is not None:
+            lines.extend(roll_up)
+            return "\n".join(lines) + "\n"
         for start, end, text in cues:
             kinetic = self._kinetic_dialogues(
                 start,
@@ -161,6 +177,7 @@ class AssSubtitleBuilder:
                 timing,
                 width,
                 height,
+                cue_policy,
             )
             if in_sentence:
                 lines.extend(in_sentence)
@@ -173,6 +190,65 @@ class AssSubtitleBuilder:
                 f"{self._escape_text(text)}"
             )
         return "\n".join(lines) + "\n"
+
+    def _roll_up_dialogues(self, cues, style, width, height, cue_policy):
+        if not isinstance(cue_policy, dict):
+            return None
+        mode = cue_policy.get("mode")
+        if not isinstance(mode, str) or mode.strip().lower() != "roll_up":
+            return None
+        if style.scroll_duration_ms is None or len(cues) < 2:
+            # A single line has no vertical update; preserve the ordinary ASS
+            # dialogue as the declared fallback.
+            return None
+        visible_lines = cue_policy.get("visible_lines")
+        if isinstance(visible_lines, bool) or visible_lines not in (2, 3, 4):
+            raise ValueError("cue_policy.visible_lines debe ser 2, 3 o 4.")
+        threshold = cue_policy.get("significant_gap_threshold")
+        if (
+            isinstance(threshold, bool)
+            or not isinstance(threshold, (int, float))
+            or not math.isfinite(threshold)
+            or threshold <= 0
+        ):
+            raise ValueError(
+                "cue_policy.significant_gap_threshold debe ser superior a cero."
+            )
+        line_height = self.font_metrics.line_height(style)
+        base_x, base_y = self._base_position(style, width, height)
+        buffer = []
+        dialogues = []
+        for index, (start, end, text) in enumerate(cues):
+            if end <= start:
+                continue
+            if buffer and start - buffer[-1][1] >= threshold * 1_000:
+                buffer = []
+            buffer.append((start, end, text))
+            buffer = buffer[-visible_lines:]
+            following = cues[index + 1] if index + 1 < len(cues) else None
+            follows_after_pause = (
+                following is not None
+                and following[0] - end >= threshold * 1_000
+            )
+            state_end = end if follows_after_pause or following is None else following[0]
+            if state_end <= start:
+                state_end = end
+            if state_end <= start:
+                continue
+            duration = state_end - start
+            scroll = min(style.scroll_duration_ms, duration)
+            for line_index, (_, _, line_text) in enumerate(buffer):
+                target_y = base_y - line_height * (len(buffer) - line_index - 1)
+                source_y = target_y + line_height
+                dialogues.append(
+                    "Dialogue: 0,"
+                    f"{self._ass_time(start)},{self._ass_time(state_end)},"
+                    "Default,,0,0,0,,"
+                    f"{{\\move({self._number(base_x)},{self._number(source_y)},"
+                    f"{self._number(base_x)},{self._number(target_y)},0,{scroll})}}"
+                    f"{self._escape_text(line_text.replace(chr(10), ' '))}"
+                )
+        return tuple(dialogues)
 
     def _kinetic_dialogues(self, start, end, text, style, width, height):
         effect = style.cue_effect
@@ -196,12 +272,15 @@ class AssSubtitleBuilder:
             for segment in segments
         )
 
-    def _in_sentence_dialogues(self, start, end, text, style, timing, width, height):
+    def _in_sentence_dialogues(
+        self, start, end, text, style, timing, width, height, cue_policy
+    ):
         effect = style.word_effect
         if effect is None or effect.name not in {
             "highlight_in_sentence",
             "active_pill",
             "pop_in_sentence",
+            "continuous_karaoke",
             "typewriter",
             "alpha_fade",
         }:
@@ -216,6 +295,14 @@ class AssSubtitleBuilder:
                 start,
                 end,
                 effect.parameters,
+            )
+        if effect.name == "continuous_karaoke":
+            return self._continuous_karaoke_dialogues(
+                start,
+                end,
+                text,
+                words,
+                cue_policy,
             )
 
         boxes = (
@@ -277,6 +364,39 @@ class AssSubtitleBuilder:
                 f"{rendered_text}"
             )
         return tuple(dialogues)
+
+    def _continuous_karaoke_dialogues(self, start, end, text, words, cue_policy):
+        syllabifier = SyllabifierPolicy.from_cue_policy(cue_policy)
+        rendered_words = text.replace("\n", " ").split()
+        event_start_cs = start // 10
+        event_end_cs = end // 10
+        cursor_cs = 0
+        rendered = []
+        for index, (rendered_word, word) in enumerate(zip(rendered_words, words)):
+            word_start_cs = max(0, self._milliseconds_from_seconds(word.start) // 10 - event_start_cs)
+            word_end_cs = min(
+                event_end_cs - event_start_cs,
+                self._milliseconds_from_seconds(word.end) // 10 - event_start_cs,
+            )
+            if index:
+                gap = max(0, word_start_cs - cursor_cs)
+                if gap:
+                    rendered.append(f"{{\\k{gap}}}")
+                rendered.append(" ")
+            elif word_start_cs > cursor_cs:
+                rendered.append(f"{{\\k{word_start_cs - cursor_cs}}}")
+            duration = max(0, word_end_cs - word_start_cs)
+            for syllable in syllabifier.timed_syllables(rendered_word, duration):
+                rendered.append(
+                    f"{{\\kf{syllable.duration_centiseconds}}}"
+                    f"{self._escape_text(syllable.text)}"
+                )
+            cursor_cs = max(cursor_cs, word_end_cs)
+        return (
+            "Dialogue: 0,"
+            f"{self._ass_time(start)},{self._ass_time(end)},Default,,0,0,0,,"
+            f"{''.join(rendered)}",
+        )
 
     def _alpha_faded_text(self, text, words, interval_start, fade_duration):
         rendered = []
@@ -514,6 +634,7 @@ class AssSubtitleBuilder:
             "highlight_in_sentence",
             "active_pill",
             "pop_in_sentence",
+            "continuous_karaoke",
             "typewriter",
             "alpha_fade",
         }:

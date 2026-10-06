@@ -26,6 +26,7 @@ class VideoFilterContextFactory:
                 width=build_context.config.width,
                 height=build_context.config.height,
                 style_source=build_context.config.subtitle_style,
+                cue_policy=build_context.config.subtitle_cue_policy,
             )
 
         first_overlay_input = (

@@ -65,3 +65,5 @@ class SubtitleConfig:
     cue_effect: CueEffectConfig | None = None
 
     word_effect: WordEffectConfig | None = None
+
+    scroll_duration_ms: int | None = None

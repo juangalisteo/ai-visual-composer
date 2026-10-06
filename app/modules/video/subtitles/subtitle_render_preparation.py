@@ -22,6 +22,7 @@ class SubtitleRenderPreparation:
         height,
         style_source,
         timing=None,
+        cue_policy=None,
     ):
         backend = self.backend_resolver.resolve(render_style)
         if backend is SubtitleRenderBackend.STATIC:
@@ -36,6 +37,7 @@ class SubtitleRenderPreparation:
             width=width,
             height=height,
             timing=timing,
+            cue_policy=cue_policy,
         )
         return PreparedSubtitle(
             path=temporary_path,

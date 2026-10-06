@@ -617,8 +617,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertEqual(descriptor.key, selected)
         self.assertIn("1. MODO CONCIENCIA", messages)
         self.assertIn("2. FORMATO ESTÁNDAR", messages)
-        self.assertIn("3. FORMATO MINIMALISTA", messages)
-        self.assertIn("4. PRIMADO NEGATIVO", messages)
+        self.assertIn("3. MODO MINIMALISTA", messages)
+        self.assertIn("4. FORMATO KARAOKE", messages)
+        self.assertIn("5. PRIMADO NEGATIVO", messages)
 
     def test_srt_video_original_standard_profiles_preserve_human_structure(self):
         source = (

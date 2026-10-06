@@ -328,6 +328,7 @@ class StudioVideoAudioSrtService:
             width=profile.width,
             height=profile.height,
             style_source=subtitle_profile.render_style,
+            cue_policy=getattr(subtitle_profile, "cue_policy", None),
         )
 
     @staticmethod

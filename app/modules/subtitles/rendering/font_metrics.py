@@ -46,6 +46,15 @@ class FontMetricsEngine:
             x += word_width + space_width
         return tuple(boxes)
 
+    def line_height(self, style):
+        font = ImageFont.truetype(
+            str(self.font_manager.resolve_path(style.font)),
+            style.font_size,
+        )
+        scale_y = (style.scale_y if style.scale_y is not None else 100.0) / 100.0
+        ascent, descent = font.getmetrics()
+        return (ascent + descent) * scale_y
+
     @staticmethod
     def _text_width(font, text, scale_x, spacing):
         return font.getlength(text) * scale_x + max(0, len(text) - 1) * spacing

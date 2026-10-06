@@ -440,7 +440,9 @@ class RunController:
         if not select_subtitles:
             return selection
 
-        families = self.subtitle_profile_resolver.discover_families(component, platform)
+        families = self._presentation_families(
+            self.subtitle_profile_resolver.discover_families(component, platform),
+        )
         if not families:
             raise FileNotFoundError(
                 "No hay familias de subtitulos para la plataforma "
@@ -466,9 +468,31 @@ class RunController:
         return {
             "design": "MODO CONCIENCIA",
             "estandar": "FORMATO ESTÁNDAR",
-            "minimalista": "FORMATO MINIMALISTA",
+            "minimalista": "MODO MINIMALISTA",
+            "karaoke": "FORMATO KARAOKE",
             "primado_negativo": "PRIMADO NEGATIVO",
         }.get(family, family.replace("_", " ").upper())
+
+    @staticmethod
+    def _presentation_families(families):
+        """Order the known family labels while preserving unknown discovery order."""
+        presentation_order = {
+            "design": 0,
+            "estandar": 1,
+            "minimalista": 2,
+            "karaoke": 3,
+            "primado_negativo": 4,
+        }
+        return tuple(
+            family
+            for _, family in sorted(
+                enumerate(families),
+                key=lambda item: (
+                    presentation_order.get(item[1], len(presentation_order)),
+                    item[0],
+                ),
+            )
+        )
 
     def select_subtitle_config(self, profile_key=None):
         if profile_key is not None:
@@ -1291,7 +1315,9 @@ class RunController:
 
         self._print("\nSUBTÍTULOS\n")
         self._print("FAMILIA\n")
-        families = self.subtitle_profile_resolver.discover_families(component, platform)
+        families = self._presentation_families(
+            self.subtitle_profile_resolver.discover_families(component, platform),
+        )
         for index, family in enumerate(families, start=1):
             self._print(f"{index}. {self._family_label(family)}")
         family = self._select_from_list(families)
@@ -1313,9 +1339,11 @@ class RunController:
         component = ProfileComponent.STUDIO
         platform = profile_key.platform
         self._print("\nFAMILIA\n")
-        families = self.subtitle_profile_resolver.discover_families(
-            component,
-            platform,
+        families = self._presentation_families(
+            self.subtitle_profile_resolver.discover_families(
+                component,
+                platform,
+            ),
         )
         if not families:
             raise FileNotFoundError(

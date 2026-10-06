@@ -50,18 +50,18 @@ def _profile():
     )
 
 
-def _subtitle_profile(effect):
+def _subtitle_profile(effect, family="minimalista"):
     return SubtitleProfileResolver().load(
         SubtitleProfileKey(
             component=ProfileComponent.STUDIO,
             platform="instagram",
-            family="minimalista",
+            family=family,
             profile_id=f"subtitulo_studio_instagram_{effect}",
         )
     )
 
 
-def _render_ass(tmp_path, effect):
+def _render_ass(tmp_path, effect, family="minimalista"):
     source = tmp_path / "source.mp4"
     subtitles = tmp_path / "source.srt"
     output = tmp_path / "output.mp4"
@@ -102,7 +102,7 @@ def _render_ass(tmp_path, effect):
             profile_id="studio_instagram",
         ),
         profile=_profile(),
-        subtitle_profile=_subtitle_profile(effect),
+        subtitle_profile=_subtitle_profile(effect, family),
         subtitle_timing=_timing(),
         output_path=output,
     )
@@ -143,6 +143,18 @@ def test_studio_transports_word_timing_to_typewriter_character_progression(tmp_p
     assert dialogues[-1].endswith("HOLA MUNDO_")
 
 
+def test_studio_transports_timing_to_continuous_karaoke_syllabic_sweep(tmp_path):
+    ass = _render_ass(tmp_path, "continuous_karaoke", family="karaoke")
+
+    assert r"{\kf20}HO{\kf20}LA" in ass
+    assert r"{\kf30}MUN{\kf20}DO" in ass
+
+
 def test_minimalista_keeps_its_technical_family_and_uses_the_visible_label():
-    assert RunController._family_label("minimalista") == "FORMATO MINIMALISTA"
+    assert RunController._family_label("minimalista") == "MODO MINIMALISTA"
     assert _subtitle_profile("typewriter").key.family == "minimalista"
+
+
+def test_karaoke_keeps_its_technical_family_and_uses_the_visible_label():
+    assert RunController._family_label("karaoke") == "FORMATO KARAOKE"
+    assert _subtitle_profile("continuous_karaoke", family="karaoke").key.family == "karaoke"

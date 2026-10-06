@@ -239,6 +239,7 @@ class StudioRenderService:
                 height=profile.height,
                 style_source=subtitle_profile.render_style,
                 timing=subtitle_timing,
+                cue_policy=subtitle_profile.cue_policy,
             )
             subtitle_path = prepared_subtitle.path
             subtitle_style = prepared_subtitle.force_style
