@@ -27,12 +27,12 @@ PUNCTUATION = {
 
 
 STYLE = {
-    "font": "gotham", "font_size": 16, "bold": False,
+    "font": "gotham", "font_size": 10, "bold": False,
     "italic": False, "underline": False, "strikeout": False,
     "primary_colour": "&H00FFFFFF", "secondary_colour": "&H00000000",
     "outline_colour": "&H00000000", "back_colour": "&H00000000",
     "border_style": 1, "outline": 0, "shadow": 1, "alignment": 1,
-    "margin_v": 30, "margin_l": 50, "margin_r": 50,
+    "margin_v": 55, "margin_l": 50, "margin_r": 50,
     "scale_x": 100.0, "scale_y": 100.0, "spacing": 0.0,
     "offset": 0.0, "dynamic": True, "cue_effect": "none",
     "word_effect": "none", "scroll_duration_ms": 200,

@@ -147,7 +147,7 @@ def test_instagram_karaoke_rolling_window_profiles_resolve_declaratively():
         assert render_style.cue_effect is None
         assert render_style.word_effect is None
         assert profile.render_style == {
-            "font": "unisans", "font_size": 14, "bold": False,
+            "font": "unisans", "font_size": 10, "bold": False,
             "italic": False, "underline": False, "strikeout": False,
             "primary_colour": "&H00FFFFFF", "secondary_colour": "&H00000000",
             "outline_colour": "&H80000000", "back_colour": "&H00000000",

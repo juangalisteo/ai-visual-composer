@@ -65,13 +65,13 @@ def test_gravity_drop_emits_a_quadratic_fall_and_elastic_bounce_at_cue_timings(t
         }
         assert len(dialogues) == 4
         assert "0:00:00.00,0:00:00.35" in dialogues[0]
-        assert r"\move(540,1765,540,1790,0,350)" in dialogues[0]
+        assert r"\move(540,886,540,1052.75,0,350)" in dialogues[0]
         assert "0:00:00.35,0:00:00.70" in dialogues[1]
-        assert r"\move(540,1790,540,1865,0,350)" in dialogues[1]
+        assert r"\move(540,1052.75,540,1553,0,350)" in dialogues[1]
         assert "0:00:00.70,0:00:00.85" in dialogues[2]
-        assert r"\move(540,1865,540,1835,0,150)" in dialogues[2]
+        assert r"\move(540,1553,540,1352.9,0,150)" in dialogues[2]
         assert "0:00:00.85,0:00:01.00" in dialogues[3]
-        assert r"\move(540,1835,540,1865,0,150)" in dialogues[3]
+        assert r"\move(540,1352.9,540,1553,0,150)" in dialogues[3]
         assert all(dialogue.endswith("UNO") for dialogue in dialogues)
     finally:
         prepared.cleanup()

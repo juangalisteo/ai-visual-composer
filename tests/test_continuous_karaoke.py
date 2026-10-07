@@ -31,12 +31,12 @@ POLICY = {
 }
 
 STYLE = {
-    "font": "gotham", "font_size": 16, "bold": True,
+    "font": "gotham", "font_size": 10, "bold": True,
     "italic": False, "underline": False, "strikeout": False,
-    "primary_colour": "&H00FFFFFF", "secondary_colour": "&H0000FFFF",
+    "primary_colour": "&H0000FFFF", "secondary_colour": "&H00FFFFFF",
     "outline_colour": "&H00000000", "back_colour": "&H00000000",
     "border_style": 1, "outline": 0, "shadow": 1, "alignment": 2,
-    "margin_v": 25, "margin_l": 0, "margin_r": 0,
+    "margin_v": 55, "margin_l": 0, "margin_r": 0,
     "scale_x": 100.0, "scale_y": 100.0, "spacing": 0.0,
     "offset": 0.0, "dynamic": True, "cue_effect": "none",
     "word_effect": "continuous_karaoke",
@@ -102,6 +102,9 @@ def test_continuous_karaoke_emits_one_phrase_with_syllabic_kf_timing(tmp_path):
         assert len(dialogues) == 1
         assert "0:00:00.00,0:00:01.00" in dialogues[0]
         assert r"{\kf20}HO{\kf20}LA{\k10} {\kf30}MUN{\kf20}DO" in dialogues[0]
+        assert ",&H0000FFFF,&H00FFFFFF," in prepared.path.read_text(
+            encoding="utf-8"
+        )
     finally:
         prepared.cleanup()
 

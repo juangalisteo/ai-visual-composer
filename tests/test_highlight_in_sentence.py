@@ -16,7 +16,7 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 STYLE = {
     "font": "oswald", "font_size": 22, "bold": True,
-    "primary_colour": "&H00FFFFFF", "secondary_colour": "&H0000FFFF",
+    "primary_colour": "&H0000FFFF", "secondary_colour": "&H00FFFFFF",
     "outline_colour": "&H80000000", "back_colour": "&H00000000",
     "border_style": 1, "outline": 0, "shadow": 1, "alignment": 2,
     "margin_v": 55, "offset": 0.0, "dynamic": True,
@@ -65,9 +65,9 @@ def test_highlight_in_sentence_emits_one_full_phrase_per_active_word_interval(tm
         assert "0:00:00.00,0:00:00.40" in dialogues[0]
         assert "0:00:00.40,0:00:01.00" in dialogues[1]
         assert "0:00:01.00,0:00:01.50" in dialogues[2]
-        assert r"{\1c&H0000FFFF}{\1c&H00FFFFFF}UNO{\1c&H0000FFFF} DOS TRES" in dialogues[0]
-        assert r"{\1c&H0000FFFF}UNO {\1c&H00FFFFFF}DOS{\1c&H0000FFFF} TRES" in dialogues[1]
-        assert r"{\1c&H0000FFFF}UNO DOS {\1c&H00FFFFFF}TRES{\1c&H0000FFFF}" in dialogues[2]
+        assert r"{\1c&H00FFFFFF}{\1c&H0000FFFF}UNO{\1c&H00FFFFFF} DOS TRES" in dialogues[0]
+        assert r"{\1c&H00FFFFFF}UNO {\1c&H0000FFFF}DOS{\1c&H00FFFFFF} TRES" in dialogues[1]
+        assert r"{\1c&H00FFFFFF}UNO DOS {\1c&H0000FFFF}TRES{\1c&H00FFFFFF}" in dialogues[2]
     finally:
         prepared.cleanup()
 
@@ -106,4 +106,6 @@ def test_minimalista_highlight_profiles_resolve_declaratively():
         assert profile.display_name == "Palabra en color"
         assert profile.cue_policy["mode"] == "single_line"
         assert profile.render_style["word_effect"] == "highlight_in_sentence"
+        assert profile.render_style["primary_colour"] == "&H0000FFFF"
+        assert profile.render_style["secondary_colour"] == "&H00FFFFFF"
         assert render_style.word_effect.name == "highlight_in_sentence"

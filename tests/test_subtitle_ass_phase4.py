@@ -76,7 +76,7 @@ def test_absent_or_false_dynamic_keeps_the_static_backend(tmp_path):
     assert source.exists()
 
 
-def test_all_official_subtitle_profiles_keep_the_srt_backend():
+def test_official_static_subtitle_profiles_keep_the_srt_backend():
     profiles = tuple(Path("config/profiles").rglob("*.json"))
     subtitle_profiles = []
     for path in profiles:
@@ -85,8 +85,14 @@ def test_all_official_subtitle_profiles_keep_the_srt_backend():
         if "render_style" in payload:
             subtitle_profiles.append((path, payload["render_style"]))
 
-    assert subtitle_profiles
-    for path, style in subtitle_profiles:
+    static_profiles = [
+        (path, style)
+        for path, style in subtitle_profiles
+        if not style.get("dynamic", False)
+    ]
+
+    assert static_profiles
+    for path, style in static_profiles:
         config = SubtitleConfigLoader().load_render_style(style)
         assert config.dynamic is False, path
         assert SubtitleRenderBackendResolver().resolve(config) is SubtitleRenderBackend.STATIC, path
@@ -111,7 +117,7 @@ def test_true_dynamic_builds_temporary_ass_with_semantically_identical_events(tm
         content = prepared.path.read_text(encoding="utf-8")
         assert "PlayResX: 1080" in content
         assert "PlayResY: 1920" in content
-        assert "Style: Default,UniSansHeavyCAPS,14," in content
+        assert "Style: Default,UniSansHeavyCAPS,93," in content
         assert _events(prepared.path) == [
             r"0,0:00:00.00,0:00:01.23,Default,,0,0,0,,Primera \{linea\}\\texto",
             r"0,0:00:01.23,0:00:02.00,Default,,0,0,0,,Segunda\Nlinea",
