@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from app.controllers.interaction import labels
+from app.controllers.interaction.contracts import StudioProfileSelection
 from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
 from app.shared.profile_resolver import ProfileResolver
@@ -32,9 +34,10 @@ class StudioOperationalIdentityTest(unittest.TestCase):
                 side_effect=("test_platform", "test_family", descriptor),
             )
 
-            selected_operational, _ = controller._select_studio_profile(
+            selection = controller._select_studio_profile_selection(
                 StudioInputMode.SRT_VIDEO.value,
             )
+            selected_operational = selection.operational.operational_key
 
         self.assertEqual(
             OperationalProfileKey(
@@ -44,12 +47,14 @@ class StudioOperationalIdentityTest(unittest.TestCase):
             ),
             selected_operational,
         )
-        self.assertEqual(subtitle_key, controller._active_studio_subtitle_key)
+        self.assertEqual(subtitle_key, selection.subtitle.subtitle_key)
         self.assertNotEqual(
             selected_operational.profile_id,
-            controller._active_studio_subtitle_key.profile_id,
+            selection.subtitle.subtitle_key.profile_id,
         )
-        self.assertTrue(controller._active_studio_subtitle_original)
+        self.assertTrue(selection.subtitle.subtitle_original)
+        self.assertIsInstance(selection, StudioProfileSelection)
+        self.assertFalse(hasattr(controller, "_active_studio_subtitle_key"))
 
     def test_subtitle_selection_uses_operational_platform_as_discovery_context(self):
         controller = RunController()
@@ -71,7 +76,12 @@ class StudioOperationalIdentityTest(unittest.TestCase):
         self.assertTrue(original)
         self.assertNotIn("PLATAFORMA", "\n".join(messages))
         controller._select_from_list.assert_any_call(
-            SubtitleProfileResolver().discover_families("studio", "instagram"),
+            labels.presentation_families(
+                SubtitleProfileResolver().discover_families(
+                    "studio",
+                    "instagram",
+                ),
+            ),
         )
 
     @staticmethod

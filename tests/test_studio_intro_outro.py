@@ -46,7 +46,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             StudioInputMode.EXPORTAR_SRT.value,
         )
         for selection, mode in enumerate(expected, 1):
-            with self.subTest(selection=selection), patch("builtins.input", return_value=str(selection)), patch("app.controllers.run_controller.ProgressLogger.info") as logger:
+            with self.subTest(selection=selection), patch("builtins.input", return_value=str(selection)), patch("app.controllers.interaction.terminal.ProgressLogger.info") as logger:
                 self.assertEqual(mode, controller.select_studio_input_mode())
                 self.assertIn("3. INTRO / OUTRO", "\n".join(call.args[0] for call in logger.call_args_list))
 

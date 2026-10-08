@@ -8,6 +8,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import main
+from app.controllers.interaction.contracts import (
+    StudioOperationalSelection,
+    StudioProfileSelection,
+    StudioSubtitleSelection,
+)
 from app.controllers.run_controller import RunController
 from app.core.start import ejecutar_studio, preparar_studio, iniciar
 from app.modules.studio import (
@@ -404,18 +409,22 @@ class StudioPhase1Test(unittest.TestCase):
             return_value="studio",
         ), patch.object(
             controller,
-            "_select_studio_profile",
+            "_select_studio_profile_selection",
             side_effect=lambda *_: (
                 order.append("subtitle"),
-                setattr(
-                    controller, "_active_studio_subtitle_key",
-                    SubtitleProfileResolver().load_selection(
+                StudioProfileSelection(
+                    operational=StudioOperationalSelection(
                         self.profile_key,
-                        "subtitulo_studio_instagram_linea_unica",
-                    ).key,
+                        self.profile,
+                    ),
+                    subtitle=StudioSubtitleSelection(
+                        SubtitleProfileResolver().load_selection(
+                            self.profile_key,
+                            "subtitulo_studio_instagram_linea_unica",
+                        ).key,
+                        False,
+                    ),
                 ),
-                setattr(controller, "_active_studio_subtitle_original", False),
-                (self.profile_key, self.profile),
             )[-1],
         ), patch.object(
             controller,

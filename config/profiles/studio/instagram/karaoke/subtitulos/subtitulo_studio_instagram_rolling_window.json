@@ -7,7 +7,6 @@
   "cue_policy": {
     "mode": "rolling_window",
     "text_case": "original",
-    "uppercase": false,
     "min_duration": 0.2,
     "max_duration": 2.0,
     "significant_gap_threshold": 0.35,

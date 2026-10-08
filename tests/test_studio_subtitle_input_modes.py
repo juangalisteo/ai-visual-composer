@@ -8,6 +8,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from app.controllers.interaction.contracts import (
+    StudioOperationalSelection,
+    StudioProfileSelection,
+    StudioSubtitleSelection,
+)
 from app.controllers.run_controller import RunController
 from app.core.start import (
     _persist_studio_render_subtitle,
@@ -490,16 +495,19 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         controller = RunController()
         order = []
         with patch.object(
-            controller, "_select_studio_profile",
+            controller, "_select_studio_profile_selection",
             side_effect=lambda *_: (
                 order.append("subtitle"),
-                setattr(
-                    controller,
-                    "_active_studio_subtitle_key",
-                    self._subtitle_profile("single_line").key,
+                StudioProfileSelection(
+                    operational=StudioOperationalSelection(
+                        self.profile_key,
+                        self.profile,
+                    ),
+                    subtitle=StudioSubtitleSelection(
+                        self._subtitle_profile("single_line").key,
+                        False,
+                    ),
                 ),
-                setattr(controller, "_active_studio_subtitle_original", False),
-                (self.profile_key, self.profile),
             )[-1],
         ), patch.object(
             controller, "select_studio_input_mode",
@@ -706,13 +714,17 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 "_select_studio_operational_profile",
                 return_value=(operational_key, Mock()),
             ) as operational:
-                profile_key, _ = controller._select_studio_profile(
+                selection = controller._select_studio_profile_selection(
                     StudioInputMode.SRT_VIDEO.value,
                 )
-            selected = controller._studio_profile_options(profile_key)[
+            profile_key = selection.operational.operational_key
+            selected = controller._studio_profile_options(
+                profile_key,
+                selection.subtitle.subtitle_key,
+            )[
                 "subtitle_profile_key"
             ]
-            original = controller._active_studio_subtitle_original
+            original = selection.subtitle.subtitle_original
 
         self.assertEqual(operational_key, profile_key)
         self.assertEqual(selected_descriptor.key, selected)

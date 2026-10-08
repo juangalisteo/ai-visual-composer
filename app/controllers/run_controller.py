@@ -1,8 +1,35 @@
 import json
-from dataclasses import replace
-from pathlib import Path
 
-from app.shared.progress_logger import ProgressLogger
+from app.controllers.interaction import labels
+from app.controllers.interaction.common_options import CommonOptions
+from app.controllers.interaction.contracts import (
+    StudioOperationalSelection,
+    StudioProfileSelection,
+    StudioSubtitleSelection,
+)
+from app.controllers.interaction.intro_outro_selection import (
+    IntroOutroSelector,
+)
+from app.controllers.interaction.navigation import Navigation
+from app.controllers.interaction.profile_selection import ProfileSelection
+from app.controllers.interaction.resource_selection import ResourceSelection
+from app.controllers.interaction.subtitle_selection import SubtitleSelection
+from app.controllers.interaction.studio.export_selection import (
+    StudioExportSelection,
+)
+from app.controllers.interaction.studio.input_selection import (
+    StudioInputSelection,
+)
+from app.controllers.interaction.studio.intro_outro_selection import (
+    StudioIntroOutroRouteSelection,
+)
+from app.controllers.interaction.studio.montage_selection import (
+    StudioMontageSelection,
+)
+from app.controllers.interaction.studio.video_audio_srt_selection import (
+    StudioVideoAudioSrtSelection,
+)
+from app.controllers.interaction.terminal import Terminal
 from app.shared.error_context import (
     ErrorContext,
     ErrorSeverity,
@@ -18,18 +45,13 @@ from app.shared.subtitle_profile_resolver import (
 )
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.media_probe import MediaProbe
-from app.modules.video.intro_outro import (
-    IntroOutroCatalog,
-    IntroOutroPlan,
-    IntroOutroSelection,
-)
+from app.modules.video.intro_outro import IntroOutroCatalog
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.studio import (
     StudioInputMode,
     StudioInputPreparationService,
     StudioSubtitleExportInputService,
     StudioSubtitleExportMode,
-    StudioMontageInputError,
     StudioMontagePlanningService,
     StudioProfileLoader,
     StudioIntroOutroInputService,
@@ -52,6 +74,18 @@ class RunController:
         studio_video_audio_srt_input_service=None,
         studio_profile_loader=None,
         media_probe=None,
+        terminal=None,
+        navigation=None,
+        common_options=None,
+        resource_selection=None,
+        intro_outro_selection=None,
+        studio_export_selection=None,
+        studio_video_audio_srt_selection=None,
+        studio_montage_selection=None,
+        studio_intro_outro_route_selection=None,
+        studio_input_selection=None,
+        profile_selection=None,
+        subtitle_selection=None,
     ):
         self.profile_resolver = (
             profile_resolver
@@ -92,6 +126,64 @@ class RunController:
             or StudioMontagePlanningService(
                 self.studio_input_preparation_service
             )
+        )
+        self.terminal = terminal or Terminal()
+        self.navigation = navigation or Navigation(
+            self.terminal,
+            self._exit_application,
+        )
+        self.common_options = common_options or CommonOptions(
+            self.terminal,
+            self._exit_application,
+        )
+        self.resource_selection = resource_selection or ResourceSelection(
+            self.terminal,
+            self._exit_application,
+            self.studio_music_selector,
+        )
+        self.intro_outro_selection = intro_outro_selection or IntroOutroSelector(
+            self.terminal,
+            self._exit_application,
+            self.intro_outro_catalog,
+            self.resource_selection,
+        )
+        self.studio_export_selection = studio_export_selection or StudioExportSelection(
+            self.studio_subtitle_export_input_service,
+            self.resource_selection,
+        )
+        self.studio_video_audio_srt_selection = (
+            studio_video_audio_srt_selection or StudioVideoAudioSrtSelection(
+                self.studio_video_audio_srt_input_service,
+                self.resource_selection,
+                self.media_probe,
+                self.studio_music_selector,
+            )
+        )
+        self.studio_montage_selection = studio_montage_selection or StudioMontageSelection(
+            self.studio_montage_planning_service,
+            self.terminal,
+        )
+        self.studio_intro_outro_route_selection = (
+            studio_intro_outro_route_selection
+            or StudioIntroOutroRouteSelection(
+                self.studio_intro_outro_input_service,
+                self.resource_selection,
+            )
+        )
+        self.studio_input_selection = studio_input_selection or StudioInputSelection(
+            self.studio_input_preparation_service,
+            self.resource_selection,
+        )
+        self.profile_selection = profile_selection or ProfileSelection(
+            self.profile_resolver,
+            self.studio_profile_loader,
+            self.terminal,
+            self._exit_application,
+        )
+        self.subtitle_selection = subtitle_selection or SubtitleSelection(
+            self.subtitle_profile_resolver,
+            self.terminal,
+            self._exit_application,
         )
 
     def run(self):
@@ -204,178 +296,32 @@ class RunController:
         }
 
     def select_visual_pipeline(self):
-        pipelines = [
-            {
-                "name": "Guion",
-                "pipeline": "script"
-            },
-            {
-                "name": "Imagen",
-                "pipeline": "image"
-            },
-            {
-                "name": "Video",
-                "pipeline": "video"
-            },
-            {
-                "name": "Studio",
-                "pipeline": "studio"
-            }
-        ]
-
-        self._print("\nAI VISUAL COMPOSER\n")
-
-        for i, pipeline in enumerate(
-            pipelines,
-            start=1
-        ):
-            self._print(
-                f"{i}. {pipeline['name']}"
-            )
-
-        while True:
-            selected = self._select_from_list(
-                pipelines
-            )
-
-            if selected.get(
-                "available",
-                True
-            ):
-                return selected[
-                    "pipeline"
-                ]
-
-            self._print(
-                "\nNo disponible."
-            )
+        return self.navigation.select_visual_pipeline(
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_script_destination(self):
-        destinations = [
-            {
-                "name": "Imagen",
-                "pipeline": "image"
-            },
-            {
-                "name": "Video",
-                "pipeline": "video"
-            },
-            {
-                "name": "Diseño",
-                "pipeline": "design"
-            }
-        ]
-
-        self._print("\nDESTINO\n")
-
-        for i, destination in enumerate(
-            destinations,
-            start=1
-        ):
-            self._print(
-                f"{i}. {destination['name']}"
-            )
-
-        while True:
-            selected = self._select_from_list(
-                destinations
-            )
-
-            if selected.get(
-                "available",
-                True
-            ):
-                return selected[
-                    "pipeline"
-                ]
-
-            self._print(
-                "\nNo disponible."
-            )
+        return self.navigation.select_script_destination(
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_design_target(self):
-        targets = [
-            {
-                "name": "Imagen",
-                "pipeline": "image"
-            },
-            {
-                "name": "Video",
-                "pipeline": "video"
-            }
-        ]
-
-        while True:
-            self._print("\nDISEÑO\n")
-
-            for i, target in enumerate(
-                targets,
-                start=1
-            ):
-                self._print(
-                    f"{i}. {target['name']}"
-                )
-
-            selected = self._select_from_list(
-                targets
-            )
-
-            if selected.get(
-                "available",
-                True
-            ):
-                return selected[
-                    "pipeline"
-                ]
-
-            self._print(
-                "\nNo disponible."
-            )
+        return self.navigation.select_design_target(
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_pipeline_mode(
         self,
         include_full_without_subtitles=False,
     ):
-        modes = [
-            {
-                "name": "Proyecto completo",
-                "mode": "full"
-            },
-            {
-                "name": "Solo audio",
-                "mode": "audio"
-            },
-            {
-                "name": "Audio + subtítulos",
-                "mode": "subtitles"
-            },
-            {
-                "name": "Audio + subtítulos + storyboard",
-                "mode": "storyboard"
-            }
-        ]
-
-        if include_full_without_subtitles:
-            modes.append({
-                "name": "Proyecto completo sin subtítulos",
-                "mode": "full_without_subtitles",
-            })
-
-        self._print("\nMODO\n")
-
-        for i, mode in enumerate(
-            modes,
-            start=1
-        ):
-            self._print(
-                f"{i}. {mode['name']}"
-            )
-
-        selected = self._select_from_list(
-            modes
+        return self.navigation.select_pipeline_mode(
+            include_full_without_subtitles=include_full_without_subtitles,
+            writer=self._print,
+            selector=self._select_from_list,
         )
-
-        return selected["mode"]
 
     def select_profile(
         self,
@@ -401,192 +347,82 @@ class RunController:
         )
 
     def _select_profile_identity(self, component, select_subtitles=True):
-        profiles_by_platform = {}
-        for platform in self.profile_resolver.discover_platforms(component):
-            descriptors = self.profile_resolver.discover_operational_profiles(
-                component,
-                platform,
-            )
-            if descriptors:
-                profiles_by_platform[platform] = descriptors
-
-        self._print("\nPLATAFORMA\n")
-        platforms = tuple(sorted(profiles_by_platform))
-        if not platforms:
-            raise FileNotFoundError(
-                "No hay perfiles operacionales validos para el componente "
-                "seleccionado."
-            )
-        for index, platform in enumerate(platforms, start=1):
-            self._print(f"{index}. {self._label(platform)}")
-        platform = self._select_from_list(platforms)
-
-        operational_profiles = profiles_by_platform[platform]
-        if len(operational_profiles) == 1:
-            profile_key = operational_profiles[0].key
-        else:
-            self._print("\nPERFIL OPERACIONAL\n")
-            for index, descriptor in enumerate(
-                operational_profiles,
-                start=1,
-            ):
-                self._print(f"{index}. {descriptor.display_name}")
-            profile_key = self._select_from_list(operational_profiles).key
-
-        selection = {
-            "path": self.profile_resolver.resolve_operational(profile_key),
-            "profile_key": profile_key,
-        }
+        selection = self.profile_selection.select_profile_identity(
+            component,
+            writer=self._print,
+            selector=self._select_from_list,
+            label=self._label,
+        )
         if not select_subtitles:
             return selection
-
-        families = self._presentation_families(
-            self.subtitle_profile_resolver.discover_families(component, platform),
-        )
-        if not families:
-            raise FileNotFoundError(
-                "No hay familias de subtitulos para la plataforma "
-                f"{platform}."
+        profile_key = selection["profile_key"]
+        selection["subtitle_profile_key"] = (
+            self.subtitle_selection.select_profile_subtitle_profile(
+                component,
+                profile_key.platform,
+                writer=self._print,
+                selector=self._select_from_list,
+                family_label=self._family_label,
+                presentation_families=self._presentation_families,
             )
-        self._print("\nSUBTÍTULOS\n")
-        self._print("FAMILIA\n")
-        for index, family in enumerate(families, start=1):
-            self._print(f"{index}. {self._family_label(family)}")
-        family = self._select_from_list(families)
-        profiles = self.subtitle_profile_resolver.discover_profiles_for_family(
-            component, platform, family,
         )
-        self._print("\nPERFIL\n")
-        for index, descriptor in enumerate(profiles, start=1):
-            self._print(f"{index}. {descriptor.display_name}")
-        subtitle_key = self._select_from_list(profiles).key
-        selection["subtitle_profile_key"] = subtitle_key
         return selection
 
     @staticmethod
     def _family_label(family):
-        return {
-            "design": "MODO CONCIENCIA",
-            "estandar": "FORMATO ESTÁNDAR",
-            "minimalista": "MODO MINIMALISTA",
-            "karaoke": "FORMATO KARAOKE",
-            "primado_negativo": "PRIMADO NEGATIVO",
-        }.get(family, family.replace("_", " ").upper())
+        return labels.family_label(family)
 
     @staticmethod
     def _presentation_families(families):
-        """Order the known family labels while preserving unknown discovery order."""
-        presentation_order = {
-            "design": 0,
-            "estandar": 1,
-            "minimalista": 2,
-            "karaoke": 3,
-            "primado_negativo": 4,
-        }
-        return tuple(
-            family
-            for _, family in sorted(
-                enumerate(families),
-                key=lambda item: (
-                    presentation_order.get(item[1], len(presentation_order)),
-                    item[0],
-                ),
-            )
-        )
+        return labels.presentation_families(families)
 
     def select_subtitle_config(self, profile_key=None):
-        if profile_key is not None:
-            return self._select_subtitle_profile(
-                profile_key,
-                "\nSUBTÍTULOS\n",
-            )
-
-        configs = (
-            "single_line",
-            "word_by_word",
+        return self.subtitle_selection.select_subtitle_config(
+            profile_key,
+            writer=self._print,
+            selector=self._select_from_list,
+            subtitle_label=self._subtitle_label,
+            select_subtitle_profile=self._select_subtitle_profile,
         )
-
-        self._print(
-            "\nSUBTÍTULOS\n"
-        )
-
-        for i, config in enumerate(
-            configs,
-            start=1
-        ):
-            self._print(
-                f"{i}. "
-                f"{self._subtitle_label(config)}"
-            )
-
-        selected = self._select_from_list(
-            configs
-        )
-
-        return selected
 
     def _select_profile_subtitle_config(self, profile_key, subtitle_profile_key=None):
-        if subtitle_profile_key is not None:
-            return subtitle_profile_key
-        return self.select_subtitle_config(profile_key)
+        return self.subtitle_selection.select_profile_subtitle_config(
+            profile_key,
+            subtitle_profile_key,
+            select_subtitle_config=self.select_subtitle_config,
+        )
 
     def select_studio_subtitle_config(self, profile_key):
-        return self._select_subtitle_profile(
+        return self.subtitle_selection.select_studio_subtitle_config(
             profile_key,
-            "\nSUBTITULOS\n",
+            select_subtitle_profile=self._select_subtitle_profile,
         )
 
     def select_studio_subtitle_options(self, profile_key, input_mode):
-        if input_mode == StudioInputMode.SRT_VIDEO.value:
-            return self._select_studio_srt_video_subtitle_options(profile_key)
-
-        descriptors = self.subtitle_profile_resolver.discover_profiles(
-            profile_key
+        return self.subtitle_selection.select_studio_subtitle_options(
+            profile_key,
+            input_mode,
+            writer=self._print,
+            selector=self._select_from_list,
+            select_srt_video_subtitle_options=(
+                self._select_studio_srt_video_subtitle_options
+            ),
         )
-        selections = tuple(
-            descriptor.profile_id
-            for descriptor in descriptors
-        )
-        if input_mode == StudioInputMode.SRT_VIDEO.value:
-            selections = ("original", *selections)
-        self._print("\nSUBT\u00cdTULOS\n")
-        for index, selection in enumerate(selections, start=1):
-            label = "ORIGINAL"
-            if selection != "original":
-                label = next(
-                    descriptor.display_name
-                    for descriptor in descriptors
-                    if descriptor.profile_id == selection
-                )
-            self._print(f"{index}. {label}")
-        selection = self._select_from_list(selections)
-        if selection != "original":
-            return selection, False
-        return "single_line", True
 
     def _select_studio_srt_video_subtitle_options(self, profile_key):
-        descriptors = self.subtitle_profile_resolver.discover_profiles(
-            profile_key
+        return self.subtitle_selection.select_studio_srt_video_subtitle_options(
+            profile_key,
+            writer=self._print,
+            selector=self._select_from_list,
         )
-        selections = tuple(descriptors)
-        self._print("\nSUBTÍTULOS\n")
-        for index, descriptor in enumerate(descriptors, start=1):
-            self._print(f"{index}. {descriptor.display_name}")
-        selection = self._select_from_list(selections)
-        return selection.key, True
 
     def _select_subtitle_profile(self, profile_key, heading):
-        descriptors = self.subtitle_profile_resolver.discover_profiles(
-            profile_key
+        return self.subtitle_selection.select_subtitle_profile(
+            profile_key,
+            heading,
+            writer=self._print,
+            selector=self._select_from_list,
         )
-        selections = tuple(
-            descriptor.profile_id
-            for descriptor in descriptors
-        )
-        self._print(heading)
-        for index, descriptor in enumerate(descriptors, start=1):
-            self._print(f"{index}. {descriptor.display_name}")
-        return self._select_from_list(selections)
 
     def _studio_design_subtitle_key(self, profile_key):
         key = getattr(self, "_active_studio_design_subtitle_key", None)
@@ -599,73 +435,34 @@ class RunController:
         return None
 
     def select_studio_input_mode(self):
-        modes = (
-            StudioInputMode.VIDEO.value,
-            StudioInputMode.SRT_VIDEO.value,
-            StudioInputMode.INTRO_OUTRO.value,
-            StudioInputMode.MONTAJE_VIDEOS.value,
-            StudioInputMode.VIDEO_AUDIO_SRT.value,
-            StudioInputMode.EXPORTAR_SRT.value,
+        return self.navigation.select_studio_input_mode(
+            writer=self._print,
+            selector=self._select_from_list,
         )
-        self._print("\nENTRADA\n")
-        self._print("1. SOLO VIDEO")
-        self._print("2. SRT + VIDEO")
-        self._print("3. INTRO / OUTRO")
-        self._print("4. MONTAJE VÍDEOS")
-        self._print("5. VIDEO + AUDIO | SRT")
-        self._print("6. EXPORTAR SRT ➜  VIDEO")
-        return self._select_from_list(modes)
 
     def select_studio_subtitle_export_mode(self):
-        modes = (
-            StudioSubtitleExportMode.TRANSCRIBIR,
-            StudioSubtitleExportMode.CONVERTIR,
+        return self.navigation.select_studio_subtitle_export_mode(
+            writer=self._print,
+            selector=self._select_from_list,
         )
-        self._print("\nMODO\n")
-        self._print("1. TRANSCRIBIR")
-        self._print("2. CONVERTIR")
-        return self._select_from_list(modes)
 
     def select_studio_subtitle_export_plan(self, export_mode):
-        candidates = self.studio_subtitle_export_input_service.discover(
-            export_mode
-        )
-        label = (
-            "MEDIA"
-            if candidates.mode is StudioSubtitleExportMode.TRANSCRIBIR
-            else "SRT"
-        )
-        source_path = self._select_studio_input_candidate(
-            label,
-            candidates.sources,
-            direct=len(candidates.sources) == 1,
-        )
-        return self.studio_subtitle_export_input_service.prepare(
-            candidates.mode,
-            source_path=source_path,
+        return self.studio_export_selection.select_plan(
+            export_mode,
+            writer=self._print,
+            selector=self._select_from_list,
         )
 
     def select_studio_video_audio_srt_inputs(self):
-        candidates = self.studio_video_audio_srt_input_service.discover(False)
-        return (
-            self._select_studio_input_candidate(
-                "VIDEO",
-                candidates.videos,
-                direct=len(candidates.videos) == 1,
-            ),
-            self._select_studio_input_candidate(
-                "AUDIO",
-                candidates.audios,
-                direct=len(candidates.audios) == 1,
-            ),
+        return self.studio_video_audio_srt_selection.select_inputs(
+            writer=self._print,
+            selector=self._select_from_list,
         )
 
     def select_studio_video_audio_srt_subtitle(self):
-        candidates = self.studio_video_audio_srt_input_service.discover(True)
-        return self._select_studio_input_candidate(
-            "SRT",
-            candidates.subtitles,
-            direct=len(candidates.subtitles) == 1,
+        return self.studio_video_audio_srt_selection.select_subtitle(
+            writer=self._print,
+            selector=self._select_from_list,
         )
 
     def select_studio_video_audio_srt_plan(
@@ -675,392 +472,154 @@ class RunController:
         audio_path=None,
         subtitle_path=None,
     ):
-        if video_path is None or audio_path is None:
-            video_path, audio_path = self.select_studio_video_audio_srt_inputs()
-        if subtitles and subtitle_path is None:
-            subtitle_path = self.select_studio_video_audio_srt_subtitle()
-        return self.studio_video_audio_srt_input_service.create_plan(
+        return self.studio_video_audio_srt_selection.select_plan(
             subtitles,
             video_path=video_path,
             audio_path=audio_path,
             subtitle_path=subtitle_path,
+            select_inputs=self.select_studio_video_audio_srt_inputs,
+            select_subtitle=self.select_studio_video_audio_srt_subtitle,
         )
 
     def select_studio_video_audio_srt_audio_tail(self, plan):
-        video_duration = self.media_probe.inspect(plan.video_path).duration
-        audio_duration = self.media_probe.get_duration(plan.audio_path)
-        if audio_duration >= video_duration:
-            return replace(
-                plan,
-                video_duration=video_duration,
-                audio_duration=audio_duration,
-            )
-        self._print("\nAUDIO MÁS CORTO QUE EL VÍDEO\n")
-        self._print("1. SIN MÚSICA")
-        self._print("2. CON MÚSICA")
-        mode = self._select_from_list(("silence", "music"))
-        music_path = (
-            self.studio_music_selector.select("random")
-            if mode == "music"
-            else None
-        )
-        return replace(
+        return self.studio_video_audio_srt_selection.select_audio_tail(
             plan,
-            audio_tail_mode=mode,
-            music_path=music_path,
-            video_duration=video_duration,
-            audio_duration=audio_duration,
+            writer=self._print,
+            selector=self._select_from_list,
         )
 
     def select_studio_montage_plan(self, profile_key, profile):
-        candidates = self.studio_montage_planning_service.discover(profile)
-        self._print("\nVÍDEOS ENCONTRADOS\n")
-        for clip in candidates.clips:
-            self._print(f"[{clip.temporary_id}] {clip.original_name}")
-
-        clips = self._select_studio_montage_order(candidates)
-        transitions_enabled = self.select_studio_montage_transitions()
-        return self.studio_montage_planning_service.create_plan(
-            profile_key=profile_key,
-            transitions_enabled=transitions_enabled,
-            clips=clips,
+        return self.studio_montage_selection.select_plan(
+            profile_key,
+            profile,
+            select_order=self._select_studio_montage_order,
+            select_transitions=self.select_studio_montage_transitions,
+            writer=self._print,
         )
 
     def _select_studio_montage_order(self, candidates):
-        self._print("\nIntroduce el orden de montaje:")
-        while True:
-            try:
-                return self.studio_montage_planning_service.parse_order(
-                    input("\n> "),
-                    candidates,
-                )
-            except StudioMontageInputError as error:
-                self._print(f"\n{error}")
+        return self.studio_montage_selection.select_order(
+            candidates,
+            writer=self._print,
+        )
 
     def select_studio_montage_transitions(self):
-        self._print("\nTRANSICIONES\n")
-        self._print("1. Sí")
-        self._print("2. No")
-        return self._select_from_list((True, False))
+        return self.navigation.select_studio_montage_transitions(
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_studio_intro_outro_plan(self, profile_key):
-        source_paths = self.studio_intro_outro_input_service.discover_sources()
-        source_path = self._select_studio_input_candidate(
-            "VIDEO",
-            source_paths,
-            direct=len(source_paths) == 1,
-        )
-        modes = ("intro", "outro", "both")
-        self._print("\nINTRO / OUTRO\n")
-        self._print("1. SOLO INTRO")
-        self._print("2. SOLO OUTRO")
-        self._print("3. INTRO + OUTRO")
-        mode = self._select_from_list(modes)
-
-        intro = None
-        outro = None
-        if mode in {"intro", "both"}:
-            assets = self._require_intro_outro_assets(
-                profile_key.platform,
-                "intro",
-            )
-            intro = IntroOutroSelection(
-                self._select_intro_outro_asset(assets, "INTRO"),
-                "intro",
-            )
-        if mode in {"outro", "both"}:
-            assets = self._require_intro_outro_assets(
-                profile_key.platform,
-                "outro",
-            )
-            outro = IntroOutroSelection(
-                self._select_intro_outro_asset(assets, "OUTRO"),
-                "outro",
-            )
-        return self.studio_intro_outro_input_service.create_plan(
-            IntroOutroPlan(intro=intro, outro=outro),
-            source_path=source_path,
+        return self.studio_intro_outro_route_selection.select_plan(
+            profile_key,
+            require_assets=self._require_intro_outro_assets,
+            select_asset=self._select_intro_outro_asset,
+            writer=self._print,
+            selector=self._select_from_list,
         )
     def select_studio_input_files(self, profile, input_mode):
-        candidates = self.studio_input_preparation_service.discover(
+        return self.studio_input_selection.select_files(
             profile,
             input_mode,
-        )
-        if candidates.mode is StudioInputMode.VIDEO:
-            video_path = self._select_studio_input_candidate(
-                "VIDEO",
-                candidates.videos,
-                direct=len(candidates.videos) == 1,
-            )
-            return self.studio_input_preparation_service.prepare(
-                profile,
-                candidates.mode,
-                video_path=video_path,
-            )
-
-        direct = (
-            len(candidates.videos) == 1
-            and len(candidates.subtitles) == 1
-        )
-        video_path = self._select_studio_input_candidate(
-            "VIDEO",
-            candidates.videos,
-            direct=direct,
-        )
-        subtitle_path = self._select_studio_input_candidate(
-            "SRT",
-            candidates.subtitles,
-            direct=direct,
-        )
-        return self.studio_input_preparation_service.prepare(
-            profile,
-            candidates.mode,
-            video_path=video_path,
-            subtitle_path=subtitle_path,
+            writer=self._print,
+            selector=self._select_from_list,
         )
 
     def _select_studio_input_candidate(self, label, candidates, direct):
-        if direct:
-            return candidates[0]
-
-        self._print(f"\n{label}\n")
-        for index, candidate in enumerate(candidates, start=1):
-            self._print(f"{index}. {candidate.name}")
-        return self._select_from_list(candidates)
+        return self.resource_selection.select_studio_input_candidate(
+            label,
+            candidates,
+            direct,
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_studio_music(self):
-        self._print("\nMÚSICA\n")
-        self._print("1. Sí")
-        self._print("2. No")
-        enabled = self._select_from_list((True, False))
-        if not enabled:
-            return None
-
-        return self.studio_music_selector.select("random")
+        return self.resource_selection.select_studio_music(
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_studio_intro_outro(self, profile_key):
-        return self.select_intro_outro(profile_key.platform)
+        return self.intro_outro_selection.select_studio_intro_outro(
+            profile_key,
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_intro_outro(self, platform):
-        modes = ("none", "intro", "outro", "both")
-        self._print("\nINTRO / OUTRO\n")
-        self._print("1. NINGUNO")
-        self._print("2. SOLO INTRO")
-        self._print("3. SOLO OUTRO")
-        self._print("4. INTRO + OUTRO")
-        mode = self._select_from_list(modes)
-        if mode == "none":
-            return None
-
-        intro = None
-        outro = None
-        if mode in {"intro", "both"}:
-            assets = self._require_intro_outro_assets(platform, "intro")
-            intro = IntroOutroSelection(
-                self._select_intro_outro_asset(assets, "INTRO"),
-                "intro",
-            )
-        if mode in {"outro", "both"}:
-            assets = self._require_intro_outro_assets(platform, "outro")
-            outro = IntroOutroSelection(
-                self._select_intro_outro_asset(assets, "OUTRO"),
-                "outro",
-            )
-        return IntroOutroPlan(intro=intro, outro=outro)
+        return self.intro_outro_selection.select_intro_outro(
+            platform,
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def _require_intro_outro_assets(self, platform, position):
-        assets = self.intro_outro_catalog.discover(platform, position)
-        if not assets:
-            raise FileNotFoundError(
-                "No hay archivos MP4 disponibles para "
-                f"{position.upper()} en assets/videos/intro_outro/"
-                f"{platform}/{position}/."
-            )
-        return assets
+        return self.intro_outro_selection.require_assets(platform, position)
 
     def _select_intro_outro_asset(self, assets, position):
-        self._print(f"\nSELECCIONAR {position}\n")
-        for index, asset_path in enumerate(assets, start=1):
-            self._print(f"{index}. {asset_path.name}")
-        return self._select_from_list(assets)
+        return self.intro_outro_selection.select_asset(
+            assets,
+            position,
+            writer=self._print,
+            selector=self._select_from_list,
+        )
 
     def select_voice_config(self):
-        configs_path = Path(
-            "config/voice_configs"
+        return self.common_options.select_voice_config(
+            writer=self._print,
+            selector=self._select_from_list,
+            voice_label=self._voice_label,
         )
-
-        configs = sorted(
-            configs_path.glob("*.json")
-        )
-
-        if not configs:
-            raise FileNotFoundError(
-                "No se encontraron configuraciones en "
-                "config/voice_configs."
-            )
-
-        self._print(
-            "\nVOZ\n"
-        )
-
-        for i, config in enumerate(
-            configs,
-            start=1
-        ):
-            self._print(
-                f"{i}. "
-                f"{self._voice_label(config.stem)}"
-            )
-
-        selected = self._select_from_list(
-            configs
-        )
-
-        return selected.stem
 
     def select_music_category(self):
-        options = [
-            "random",
-            None,
-        ]
-
-        self._print("\nMÚSICA\n")
-        self._print("1. Aleatoria")
-        self._print("2. Sin música")
-
-        selected = self._select_from_list(
-            options
+        return self.common_options.select_music_category(
+            writer=self._print,
+            selector=self._select_from_list,
         )
-
-        return selected
 
     def select_overlays_mode(self):
-        options = [
-            "on",
-            "off"
-        ]
-
-        self._print("\nOVERLAYS\n")
-        self._print("1. Sí")
-        self._print("2. No")
-
-        selected = self._select_from_list(
-            options
+        return self.common_options.select_overlays_mode(
+            writer=self._print,
+            selector=self._select_from_list,
         )
-
-        return selected
 
     def ask_project_name(self):
-        self._print(
-            "\nPROYECTO\n"
+        return self.common_options.ask_project_name(
+            writer=self._print,
         )
-
-        while True:
-            name = input(
-                "Nombre: "
-            ).strip()
-
-            if name == "0":
-                self._exit_application()
-
-            if name:
-                return name
-
-            self._print(
-                "\nOpción no válida."
-            )
 
     def ask_clear_output(self):
-        self._print(
-            "\nELIMINAR OUTPUT\n"
+        return self.common_options.ask_clear_output(
+            writer=self._print,
         )
-
-        self._print("1. Sí")
-        self._print("2. No")
-
-        while True:
-            option = input(
-                "\n> "
-            ).strip()
-
-            if option == "0":
-                self._exit_application()
-
-            if option == "1":
-                return True
-
-            if option == "2":
-                return False
-
-            self._print(
-                "\nOpción no válida."
-            )
 
     def _select_from_list(
         self,
         items
     ):
-        while True:
-            option = input(
-                "\n> "
-            ).strip()
-
-            if option == "0":
-                self._exit_application()
-
-            if option.isdigit():
-                option = int(
-                    option
-                )
-
-                if 1 <= option <= len(items):
-                    return items[
-                        option - 1
-                    ]
-
-            self._print(
-                "\nOpción no válida."
-            )
+        return self.terminal.select_from_list(
+            items,
+            self._exit_application,
+        )
 
     def _label(
         self,
         value
     ):
-        return (
-            value.replace(
-                "_",
-                " "
-            )
-            .title()
-        )
+        return labels.label(value)
 
     def _voice_label(
         self,
         value
     ):
-        labels = {
-            "femenina": "Femenina",
-            "masculina": "Masculina"
-        }
-
-        return labels.get(
-            value,
-            self._label(value)
-        )
+        return labels.voice_label(value)
 
     def _subtitle_label(
         self,
         value
     ):
-        labels = {
-            "single_line": "Línea única",
-            "word_by_word": "Palabra por palabra"
-        }
-
-        return labels.get(
-            value,
-            self._label(value)
-        )
+        return labels.subtitle_label(value)
 
     def _profile_scope(
         self,
@@ -1172,9 +731,12 @@ class RunController:
             export_plan = self.select_studio_subtitle_export_plan(export_mode)
             subtitle_config = None
             profile_key = None
+            subtitle_key = None
             if export_mode is StudioSubtitleExportMode.CONVERTIR:
-                profile_key, _ = self._select_studio_profile()
-                subtitle_config = self._active_studio_subtitle_key.profile_id
+                studio_selection = self._select_studio_profile_selection()
+                profile_key = studio_selection.operational.operational_key
+                subtitle_key = studio_selection.subtitle.subtitle_key
+                subtitle_config = subtitle_key.profile_id
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
             return {
@@ -1189,15 +751,18 @@ class RunController:
                 "music_category": None,
                 "project_name": project_name,
                 "clear_output": clear_output,
-                **self._studio_profile_options(profile_key),
+                **self._studio_profile_options(profile_key, subtitle_key),
             }
-        profile_key, studio_profile = self._select_studio_profile(input_mode)
+        studio_selection = self._select_studio_profile_selection(input_mode)
+        profile_key = studio_selection.operational.operational_key
+        studio_profile = studio_selection.operational.studio_profile
+        subtitle_key = studio_selection.subtitle.subtitle_key
         prepared_input = self.select_studio_input_files(
             studio_profile,
             input_mode,
         )
-        subtitle_config = self._active_studio_subtitle_key.profile_id
-        subtitle_original = self._active_studio_subtitle_original
+        subtitle_config = subtitle_key.profile_id
+        subtitle_original = studio_selection.subtitle.subtitle_original
         music_path = self.select_studio_music()
         intro_outro_selection = self.select_studio_intro_outro(profile_key)
         project_name = self.ask_project_name()
@@ -1223,10 +788,10 @@ class RunController:
             "intro_outro_selection": intro_outro_selection,
             "project_name": project_name,
             "clear_output": clear_output,
-            **self._studio_profile_options(profile_key),
+            **self._studio_profile_options(profile_key, subtitle_key),
         }
 
-    def _select_studio_profile(self, input_mode=None):
+    def _select_studio_profile_selection(self, input_mode=None):
         profiles_by_platform = self._studio_operational_profiles_by_platform()
         platform = self._select_studio_operational_platform(
             profiles_by_platform,
@@ -1239,138 +804,74 @@ class RunController:
             input_mode,
             platform=platform,
         )
-        self._active_studio_subtitle_key = subtitle_key
-        self._active_studio_subtitle_original = subtitle_original
-        return profile_key, studio_profile
+        return StudioProfileSelection(
+            operational=StudioOperationalSelection(
+                operational_key=profile_key,
+                studio_profile=studio_profile,
+            ),
+            subtitle=StudioSubtitleSelection(
+                subtitle_key=subtitle_key,
+                subtitle_original=subtitle_original,
+            ),
+        )
+
+    def _select_studio_profile(self, input_mode=None):
+        selection = self._select_studio_profile_selection(input_mode)
+        return (
+            selection.operational.operational_key,
+            selection.operational.studio_profile,
+        )
 
     def _studio_operational_profiles_by_platform(self):
-        component = ProfileComponent.STUDIO
-        profiles_by_platform = {}
-        for platform in self.profile_resolver.discover_platforms(component):
-            descriptors = self.profile_resolver.discover_operational_profiles(
-                component,
-                platform,
-            )
-            if descriptors:
-                profiles_by_platform[platform] = descriptors
-        return profiles_by_platform
+        return self.profile_selection.studio_operational_profiles_by_platform()
 
     def _select_studio_operational_platform(self, profiles_by_platform):
-        platforms = tuple(sorted(profiles_by_platform))
-        if not platforms:
-            raise FileNotFoundError(
-                "No hay perfiles operacionales STUDIO disponibles."
-            )
-        self._print("\nPLATAFORMA\n")
-        for index, platform in enumerate(platforms, start=1):
-            self._print(f"{index}. {self._label(platform)}")
-        return self._select_from_list(platforms)
+        return self.profile_selection.select_studio_operational_platform(
+            profiles_by_platform,
+            writer=self._print,
+            selector=self._select_from_list,
+            label=self._label,
+        )
 
     def _select_studio_operational_profile(
         self,
         platform=None,
         profiles_by_platform=None,
     ):
-        profiles_by_platform = (
-            profiles_by_platform
-            if profiles_by_platform is not None
-            else self._studio_operational_profiles_by_platform()
-        )
-        if platform is None:
-            platform = self._select_studio_operational_platform(
-                profiles_by_platform,
-            )
-
-        if platform not in profiles_by_platform:
-            raise FileNotFoundError(
-                "No hay perfiles operacionales STUDIO para la plataforma "
-                f"{platform}."
-            )
-        descriptors = profiles_by_platform[platform]
-        if len(descriptors) == 1:
-            profile_key = descriptors[0].key
-        else:
-            self._print("\nPERFIL OPERACIONAL\n")
-            for index, descriptor in enumerate(descriptors, start=1):
-                self._print(f"{index}. {descriptor.display_name}")
-            profile_key = self._select_from_list(descriptors).key
-        return (
-            profile_key,
-            self.studio_profile_loader.load(
-                self.profile_resolver.load_operational(profile_key),
-                profile_key,
+        return self.profile_selection.select_studio_operational_profile(
+            platform=platform,
+            profiles_by_platform=profiles_by_platform,
+            profiles_by_platform_provider=(
+                self._studio_operational_profiles_by_platform
             ),
+            select_platform=self._select_studio_operational_platform,
+            writer=self._print,
+            selector=self._select_from_list,
         )
 
     def _select_studio_subtitle_profile(self, input_mode, platform=None):
-        component = ProfileComponent.STUDIO
-        if platform is None:
-            self._print("\nPLATAFORMA\n")
-            platforms = self.subtitle_profile_resolver.discover_platforms(component)
-            if not platforms:
-                raise FileNotFoundError("No hay perfiles de subtitulos STUDIO disponibles.")
-            for index, candidate in enumerate(platforms, start=1):
-                self._print(f"{index}. {self._label(candidate)}")
-            platform = self._select_from_list(platforms)
-
-        self._print("\nSUBTÍTULOS\n")
-        self._print("FAMILIA\n")
-        families = self._presentation_families(
-            self.subtitle_profile_resolver.discover_families(component, platform),
-        )
-        for index, family in enumerate(families, start=1):
-            self._print(f"{index}. {self._family_label(family)}")
-        family = self._select_from_list(families)
-        descriptors = self.subtitle_profile_resolver.discover_profiles_for_family(
-            component, platform, family,
-        )
-        selections = list(descriptors)
-        self._print("\nPERFIL\n")
-        for index, selection in enumerate(selections, start=1):
-            self._print(f"{index}. {selection.display_name}")
-        selection = self._select_from_list(tuple(selections))
-        return (
-            selection.key,
-            input_mode == StudioInputMode.SRT_VIDEO.value,
+        return self.subtitle_selection.select_studio_subtitle_profile(
+            input_mode,
+            platform=platform,
+            writer=self._print,
+            selector=self._select_from_list,
+            label=self._label,
+            family_label=self._family_label,
+            presentation_families=self._presentation_families,
         )
 
     def _select_studio_video_audio_srt_subtitle_profile(self, profile_key):
         """Select a real subtitle profile within the chosen STUDIO platform."""
-        component = ProfileComponent.STUDIO
-        platform = profile_key.platform
-        self._print("\nFAMILIA\n")
-        families = self._presentation_families(
-            self.subtitle_profile_resolver.discover_families(
-                component,
-                platform,
-            ),
+        return self.subtitle_selection.select_studio_video_audio_srt_subtitle_profile(
+            profile_key,
+            writer=self._print,
+            selector=self._select_from_list,
+            family_label=self._family_label,
+            presentation_families=self._presentation_families,
         )
-        if not families:
-            raise FileNotFoundError(
-                "No hay familias de subtitulos STUDIO para la plataforma "
-                f"{platform}."
-            )
-        for index, family in enumerate(families, start=1):
-            self._print(f"{index}. {self._family_label(family)}")
-        family = self._select_from_list(families)
-        descriptors = self.subtitle_profile_resolver.discover_profiles_for_family(
-            component,
-            platform,
-            family,
-        )
-        if not descriptors:
-            raise FileNotFoundError(
-                "No hay perfiles de subtitulos STUDIO para la familia "
-                f"{family}."
-            )
-        self._print("\nPERFIL\n")
-        for index, descriptor in enumerate(descriptors, start=1):
-            self._print(f"{index}. {descriptor.display_name}")
-        return self._select_from_list(descriptors).key
 
-    def _studio_profile_options(self, profile_key):
+    def _studio_profile_options(self, profile_key, subtitle_key=None):
         options = self._studio_operational_profile_options(profile_key)
-        subtitle_key = getattr(self, "_active_studio_subtitle_key", None)
         if subtitle_key is not None:
             options["subtitle_profile_key"] = subtitle_key
         return options
@@ -1400,6 +901,4 @@ class RunController:
         self,
         message
     ):
-        ProgressLogger.info(
-            message
-        )
+        self.terminal.write(message)

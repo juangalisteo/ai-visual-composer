@@ -5,7 +5,7 @@
     "profile_id": "subtitulo_imagen_instagram_cumulative_line",
     "display_name": "Palabra por palabra",
     "cue_policy": {
-        "mode": "cumulative_line", "text_case": "original", "uppercase": false,
+        "mode": "cumulative_line", "text_case": "original",
         "max_chars_per_line": 60, "min_duration": 0.8, "max_duration": 5.0,
         "significant_gap_threshold": 0.35,
         "punctuation": {

@@ -45,7 +45,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
     def test_fourth_studio_input_mode_is_montage_videos(self):
         controller = RunController()
         with patch("builtins.input", return_value="4"), patch(
-            "app.controllers.run_controller.ProgressLogger.info"
+            "app.controllers.interaction.terminal.ProgressLogger.info"
         ) as logger:
             selected = controller.select_studio_input_mode()
 
@@ -197,7 +197,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 "builtins.input",
                 side_effect=("1 3 2", "1"),
             ), patch(
-                "app.controllers.run_controller.ProgressLogger.info"
+                "app.controllers.interaction.terminal.ProgressLogger.info"
             ) as logger:
                 plan = controller.select_studio_montage_plan(
                     self.profile_key,

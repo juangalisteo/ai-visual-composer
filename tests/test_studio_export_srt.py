@@ -7,6 +7,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import main
+from app.controllers.interaction.contracts import (
+    StudioOperationalSelection,
+    StudioProfileSelection,
+    StudioSubtitleSelection,
+)
 from app.controllers.run_controller import RunController
 from app.core.start import ejecutar_studio_exportar_srt
 from app.managers.project_manager import ProjectManager
@@ -38,6 +43,16 @@ SRT_CONTENT = (
     "00:00:03,000 --> 00:00:05,000\n"
     "La conciencia observa.\n"
 )
+
+
+def _studio_selection(profile_key, subtitle_key, studio_profile=None):
+    return StudioProfileSelection(
+        operational=StudioOperationalSelection(
+            profile_key,
+            studio_profile or Mock(),
+        ),
+        subtitle=StudioSubtitleSelection(subtitle_key, False),
+    )
 
 
 class _WhisperBuilder:
@@ -396,10 +411,9 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         subtitle_key = SubtitleProfileResolver().discover_profiles_for_family(
             "studio", "instagram", "estandar",
         )[0].key
-        controller._active_studio_subtitle_key = subtitle_key
-        with patch.object(controller, "_select_studio_profile", return_value=(
+        with patch.object(controller, "_select_studio_profile_selection", return_value=_studio_selection(
             profile_key,
-            Mock(),
+            subtitle_key,
         )), patch.object(controller, "select_studio_input_mode", return_value="exportar_srt"), patch.object(
             controller, "select_studio_subtitle_export_mode",
             return_value=StudioSubtitleExportMode.CONVERTIR,
@@ -446,12 +460,11 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     if resolver.load(item.key).cue_policy["mode"] == expected_mode
                 )
                 controller = RunController()
-                controller._active_studio_subtitle_key = descriptor.key
                 profile_key = ProfileKey.for_component("studio", platform)
                 with patch.object(
                     controller,
-                    "_select_studio_profile",
-                    return_value=(profile_key, Mock()),
+                    "_select_studio_profile_selection",
+                    return_value=_studio_selection(profile_key, descriptor.key),
                 ), patch.object(
                     controller,
                     "select_studio_input_mode",
@@ -517,14 +530,13 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             )[0]
             mode = resolver.load(descriptor.key).cue_policy["mode"]
             controller = RunController(subtitle_profile_resolver=resolver)
-            controller._active_studio_subtitle_key = descriptor.key
             profile_key = ProfileKey(
                 "studio", "test_platform", "test_operational", "test_family",
             )
             with patch.object(
                 controller,
-                "_select_studio_profile",
-                return_value=(profile_key, Mock()),
+                "_select_studio_profile_selection",
+                return_value=_studio_selection(profile_key, descriptor.key),
             ), patch.object(
                 controller,
                 "select_studio_input_mode",

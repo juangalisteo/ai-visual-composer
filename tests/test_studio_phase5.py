@@ -10,6 +10,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import main
+from app.controllers.interaction.contracts import (
+    StudioOperationalSelection,
+    StudioProfileSelection,
+    StudioSubtitleSelection,
+)
 from app.controllers.run_controller import RunController
 from app.core.start import ejecutar_studio, iniciar
 from app.modules.studio import (
@@ -77,18 +82,21 @@ class StudioPhase5Test(unittest.TestCase):
 
     def test_none_keeps_phase_four_controller_contract(self):
         controller = RunController()
-        controller._active_studio_subtitle_key = (
-            controller.subtitle_profile_resolver.discover_profiles_for_family(
-                "studio", "instagram", "estandar",
-            )[0].key
-        )
-        controller._active_studio_subtitle_original = False
+        subtitle_key = controller.subtitle_profile_resolver.discover_profiles_for_family(
+            "studio", "instagram", "estandar",
+        )[0].key
         with patch.object(
             controller, "select_visual_pipeline", return_value="studio"
         ), patch.object(
             controller,
-            "_select_studio_profile",
-            return_value=(self.profile_key, self.profile),
+            "_select_studio_profile_selection",
+            return_value=StudioProfileSelection(
+                operational=StudioOperationalSelection(
+                    self.profile_key,
+                    self.profile,
+                ),
+                subtitle=StudioSubtitleSelection(subtitle_key, False),
+            ),
         ), patch.object(
             controller,
             "select_studio_input_mode",
