@@ -38,8 +38,8 @@ class SubtitlePunctuationTest(unittest.TestCase):
         "remove_parentheses": False,
     }
 
-    def test_single_line_restores_canonical_punctuation_from_edge_and_whisper(self):
-        for source in ("edge_tts", "whisper"):
+    def test_single_line_restores_canonical_punctuation_from_tts_and_whisper(self):
+        for source in ("tts", "whisper"):
             with self.subTest(source=source):
                 rendered = self._transform("single_line", timing=self._timing(source))
                 text = self._cue_text(rendered)
@@ -56,7 +56,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
 
     def test_word_by_word_preserves_every_sign_except_comma_and_period(self):
         policy = {**self.PUNCTUATION, "remove_commas": True, "remove_periods": True}
-        for timing in (self._timing("edge_tts"), None):
+        for timing in (self._timing("tts"), None):
             with self.subTest(timing=timing is not None):
                 text = self._cue_text(
                     self._transform("word_by_word", timing=timing, punctuation=policy)
@@ -184,7 +184,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
                 self.assertIn(sign, text)
 
     @staticmethod
-    def _timing_from_words(words, source="edge_tts"):
+    def _timing_from_words(words, source="tts"):
         timed_words = tuple(
             WordTiming(
                 text=word,
@@ -332,7 +332,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
             for index, token in enumerate(phrase.split())
         )
         return SubtitleTiming(
-            source="edge_tts",
+            source="tts",
             segments=(
                 SpeechSegment(start=0, end=words[-1].end, words=words),
             ),

@@ -825,12 +825,35 @@ Responsibilities include:
 
 - voice synthesis;
 - voice artifact persistence;
-- timing metadata capture;
+- neutral timing adaptation when a backend provides real word timings;
 - music integration when enabled;
 - audio preparation;
 - final audio mixing.
 
-Edge TTS provides both synthesized voice and WordBoundary timing metadata used by the subtitle timing system.
+Voice synthesis follows the technical boundary:
+
+```text
+Declarative voice configuration
+        ↓
+backend_key
+        ↓
+TtsBackendRegistry
+        ↓
+Provider / TtsBackend
+        ↓
+VoiceBuilder.build(text, output_path=None) -> Path
+```
+
+The registry resolves exact technical keys and does not select a backend from a
+display name, label, component, or controller. Piper ONNX is the current
+declarative provider. The shared voice documents resolve
+`backend_key="piper_onnx"` to Davefx and Carlfm technical identities.
+GUIÓN, IMAGEN, and VIDEO depend only on the VoiceBuilder facade, not on the
+provider implementation.
+
+Piper currently returns no real word-level alignment. `TtsWordTiming` remains
+the neutral seconds-based contract for a backend that can provide it, while the
+active subtitle route is Whisper usable timing or `None`.
 
 Audio generation remains logically separated from subtitle presentation.
 
@@ -844,29 +867,29 @@ The subtitle layer is implemented under:
 app/modules/subtitles/
 ```
 
-AI Visual Composer V2.0 uses a provider-neutral timing architecture designed to use real word timing whenever available.
+AI Visual Composer uses a provider-neutral timing architecture designed to use
+real word timing whenever a backend provides it.
 
-## Timing Priority
+## Active Timing Resolution
 
 ```text
-Edge TTS WordBoundary
-        ↓
 Whisper JSON Word Timestamps
         ↓
-Whisper SRT Segment Timing
+None
 ```
 
-The system therefore prefers the most precise available timing evidence while maintaining compatibility when richer timing data is unavailable.
+`SubtitleTimingResolver` uses usable Whisper word timestamps. When no usable
+Whisper metadata exists, it returns `None`; no provider-specific WordBoundary
+codec, ticks, or `*_word_boundaries.jsonl` sidecar participates in the active
+route.
 
 ## Responsibilities
 
 The subtitle layer can:
 
 - generate subtitle files from real audio;
-- consume Edge TTS WordBoundary metadata;
 - request and preserve Whisper word timestamps;
-- resolve the best available timing source;
-- preserve legacy timing fallback;
+- resolve usable Whisper timing or a clean absence of timing;
 - render single-line subtitles;
 - render word-by-word subtitles;
 - detect extremely short subtitle cues;
@@ -879,7 +902,6 @@ SubtitleBuilder
 SrtOptimizer
 SubtitleTiming
 SubtitleTimingResolver
-EdgeWordBoundaryParser
 WhisperTimingParser
 SingleLineModel
 WordByWordModel
@@ -891,12 +913,12 @@ MicroCuePolicy
 The timing resolver follows:
 
 ```text
-1. Edge WordBoundary
-2. Whisper word timestamps
-3. Legacy SRT timing
+1. Whisper word timestamps, when usable
+2. None
 ```
 
-This allows the subtitle models to use real timing information when available without breaking compatibility with previous subtitle sources.
+This allows subtitle models to use real timing evidence without introducing a
+provider-specific timing format into runtime.
 
 ## Micro-Cue Policy
 
@@ -1413,12 +1435,14 @@ Used for:
 - final audiovisual composition.
 - Studio rendering and optional INTRO/OUTRO stream-copy composition.
 
-## Edge TTS
+## Piper ONNX
 
 Used for:
 
-- voice synthesis;
-- WordBoundary timing metadata.
+- local declarative voice synthesis through the neutral TTS registry.
+
+The current shared voice catalog resolves Davefx and Carlfm through
+`backend_key="piper_onnx"`. Piper does not fabricate word timings.
 
 ## OpenAI Whisper
 

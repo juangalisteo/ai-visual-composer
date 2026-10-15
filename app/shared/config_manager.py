@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 
+from app.modules.audio.voice_configuration import load_tts_voice_configuration
 from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import create_operational_error
@@ -72,11 +73,17 @@ class ConfigManager:
     def get_ai_config(self):
         return self.load_json(self.config_path / "ai.json")
 
-    def get_voice_config(self):
+    def get_tts_voice_configuration(self):
+        """Load the canonical, backend-neutral configuration of one voice."""
+        return load_tts_voice_configuration(
+            self._voice_config_document()
+        )
+
+    def _voice_config_document(self):
         selected_voice_config = os.environ.get("MC_VOICE_CONFIG")
 
         if not selected_voice_config:
-            selected_voice_config = "masculina"
+            selected_voice_config = "piper_davefx"
 
         voice_config_path = (
             self.config_path

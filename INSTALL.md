@@ -43,7 +43,7 @@ Python
 FFmpeg
 Ollama
 ComfyUI
-Edge TTS
+Piper ONNX
 OpenAI Whisper
 Flux models
 Wan I2V models
@@ -292,18 +292,30 @@ Real integration should be validated through AI Visual Composer.
 
 ---
 
-## 10. Edge TTS
+## 10. Piper ONNX
 
-AI Visual Composer uses Edge TTS for voice synthesis.
+AI Visual Composer uses Piper ONNX as the current declarative local voice
+provider. It is installed through `requirements.txt` as `piper-tts==1.8.0`.
 
-The current subtitle architecture can also use Edge TTS `WordBoundary` metadata as its preferred source of real word timing.
+The provider requires the following explicitly provisioned local resources:
 
-Edge TTS is installed through the project Python dependencies.
+```text
+models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx
+models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx
+```
 
-Verify that the package is available:
+The runtime validates their existence and integrity before loading the backend;
+it does not download them during synthesis. The shared catalog currently offers
+Davefx and Carlfm through `backend_key="piper_onnx"`.
 
-```powershell
-python -c "import edge_tts; print('Edge TTS OK')"
+Voice synthesis is resolved by the technical boundary:
+
+```text
+Declarative voice configuration
+→ backend_key
+→ TtsBackendRegistry
+→ Piper provider
+→ VoiceBuilder
 ```
 
 Voice generation should ultimately be validated through a real AI Visual Composer execution.
@@ -312,17 +324,19 @@ Voice generation should ultimately be validated through a real AI Visual Compose
 
 ## 11. OpenAI Whisper
 
-AI Visual Composer uses OpenAI Whisper for transcription and subtitle timing fallback.
+AI Visual Composer uses OpenAI Whisper for transcription and subtitle timing.
 
-The current subtitle timing priority is:
+The active resolver path is:
 
 ```text
-Edge TTS WordBoundary
-        ↓
 Whisper Word Timestamps
         ↓
-Whisper SRT Timing
+None
 ```
+
+`TtsWordTiming` remains a provider-neutral contract in seconds, but the current
+Piper provider does not invent word timings. There is no active public
+WordBoundary codec or `*_word_boundaries.jsonl` sidecar.
 
 Whisper must therefore be available in the Python environment used by AI Visual Composer.
 
@@ -631,7 +645,7 @@ Ollama
    ↓
 Script Processing
    ↓
-Edge TTS
+Piper ONNX VoiceBuilder
    ↓
 Whisper / Subtitle Timing
    ↓
@@ -698,7 +712,7 @@ Before considering the local installation ready:
 [ ] Flux requirements available in ComfyUI
 [ ] Wan I2V requirements available in ComfyUI
 [ ] Required ComfyUI workflows compatible
-[ ] Edge TTS available
+[ ] Piper voice resources provisioned under models/audio/piper/
 [ ] Whisper available
 [ ] Official project assets present
 [ ] Project configuration reviewed

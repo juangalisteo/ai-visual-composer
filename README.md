@@ -274,23 +274,21 @@ Motion can be applied to both still images and generated I2V material.
 
 AI Visual Composer includes a subtitle timing architecture designed to use real timing information whenever it is available.
 
-Timing resolution follows the hierarchy:
+Timing resolution follows the active runtime path:
 
 ```text
-EDGE TTS WORDBOUNDARY
-        ↓
 WHISPER WORD TIMESTAMPS
         ↓
-LEGACY SRT TIMING
+NONE
 ```
 
 The system supports:
 
-- real word timing;
+- backend-neutral `TtsWordTiming` in seconds when a future backend can supply it;
 - word-by-word subtitles;
 - single-line subtitles;
-- Whisper timing fallback;
-- legacy timing compatibility;
+- Whisper timing when usable;
+- a clean absence of timing when Whisper metadata is unavailable;
 - micro-cue handling for extremely short subtitle events.
 
 The micro-cue system operates exclusively on subtitle presentation and does not modify the original spoken content.
@@ -307,7 +305,25 @@ The audiovisual pipeline includes dedicated processing for:
 - final audio mixing;
 - subtitle timing sources.
 
-Voice generation and subtitle timing remain coordinated while preserving their responsibilities as separate parts of the system.
+Voice generation is resolved through the neutral technical boundary:
+
+```text
+Declarative voice configuration
+        ↓
+backend_key
+        ↓
+TtsBackendRegistry
+        ↓
+Interchangeable provider/backend
+        ↓
+VoiceBuilder
+```
+
+The current declarative provider is Piper ONNX. The shared voice catalog offers
+`Davefx` and `Carlfm`, both through `backend_key="piper_onnx"`.
+GUIÓN, IMAGEN, and VIDEO do not select a backend by name. Piper currently
+does not invent word timings; subtitle timing therefore follows the Whisper or
+`None` path described above.
 
 ---
 
@@ -346,7 +362,7 @@ Its current ecosystem uses:
 - Ollama
 - ComfyUI
 - FFmpeg
-- Edge TTS
+- Piper ONNX
 - OpenAI Whisper
 - Flux
 - Wan

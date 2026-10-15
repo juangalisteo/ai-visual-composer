@@ -112,7 +112,7 @@ def test_three_two_words_uses_terminal_punctuation_as_hard_boundaries():
 def test_three_two_words_uses_word_timing_and_preserves_significant_pause():
     model = ThreeTwoWordsModel(_config())
     timing = SubtitleTiming(
-        source="edge_tts",
+        source="tts",
         segments=(
             SpeechSegment(
                 start=0.0,
@@ -172,7 +172,7 @@ def test_three_two_words_uses_fixed_chunk_size_without_orphan_redistribution():
 def test_three_two_words_uses_fixed_chunk_size_with_word_timings():
     model = ThreeTwoWordsModel(_config(fixed_chunk_size=2))
     timing = SubtitleTiming(
-        source="edge_tts",
+        source="tts",
         segments=(
             SpeechSegment(
                 start=0.0,

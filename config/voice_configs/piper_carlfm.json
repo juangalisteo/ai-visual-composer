@@ -1,0 +1,17 @@
+{
+  "kind": "tts_voice",
+  "voice_id": "piper_voice_carlfm",
+  "display_name": "Carlfm",
+  "backend_key": "piper_onnx",
+  "language": "es-ES",
+  "prosody": {
+    "speaking_rate": 1.0,
+    "volume_gain_db": 0.0
+  },
+  "backend_options": {
+    "model": {
+      "onnx_path": "models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx"
+    },
+    "synthesis": {}
+  }
+}

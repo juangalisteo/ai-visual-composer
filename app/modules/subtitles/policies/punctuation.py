@@ -149,7 +149,7 @@ def _canonical_tokens(content):
             tokens.append(prefix + token)
             prefix = ""
         elif tokens:
-            # Edge does not emit a separate WordBoundary for isolated marks.
+            # Timed-word sources may not emit a separate token for isolated marks.
             tokens[-1] += token
         else:
             prefix += token

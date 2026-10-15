@@ -569,7 +569,6 @@ class RunController:
         return self.common_options.select_voice_config(
             writer=self._print,
             selector=self._select_from_list,
-            voice_label=self._voice_label,
         )
 
     def select_music_category(self):

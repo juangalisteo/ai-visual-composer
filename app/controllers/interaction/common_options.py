@@ -1,8 +1,9 @@
 """Opciones comunes reutilizables para los flujos de ejecución."""
 
+import json
 from pathlib import Path
 
-from app.controllers.interaction import labels
+from app.modules.audio.voice_configuration import load_tts_voice_configuration
 
 
 class CommonOptions:
@@ -26,7 +27,7 @@ class CommonOptions:
             return selector(items)
         return self._terminal.select_from_list(items, self._on_cancel)
 
-    def select_voice_config(self, writer=None, selector=None, voice_label=None):
+    def select_voice_config(self, writer=None, selector=None):
         configs = sorted(self._voice_configs_path.glob("*.json"))
         if not configs:
             raise FileNotFoundError(
@@ -34,11 +35,21 @@ class CommonOptions:
                 "config/voice_configs."
             )
 
-        voice_label = voice_label or labels.voice_label
+        options = tuple(
+            (config, self._voice_display_name(config))
+            for config in configs
+        )
         self._write("\nVOZ\n", writer)
-        for index, config in enumerate(configs, start=1):
-            self._write(f"{index}. {voice_label(config.stem)}", writer)
-        return self._select(configs, selector).stem
+        for index, (_, display_name) in enumerate(options, start=1):
+            self._write(f"{index}. {display_name}", writer)
+        return self._select(tuple(config for config, _ in options), selector).stem
+
+    @staticmethod
+    def _voice_display_name(config: Path) -> str:
+        """Read presentation data from the canonical neutral voice document."""
+        with config.open(encoding="utf-8") as voice_config_file:
+            document = json.load(voice_config_file)
+        return load_tts_voice_configuration(document).display_name
 
     def select_music_category(self, writer=None, selector=None):
         options = ["random", None]

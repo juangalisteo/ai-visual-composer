@@ -6,11 +6,7 @@ def label(value):
 
 
 def voice_label(value):
-    labels = {
-        "femenina": "Femenina",
-        "masculina": "Masculina",
-    }
-    return labels.get(value, label(value))
+    return label(value)
 
 
 def subtitle_label(value):

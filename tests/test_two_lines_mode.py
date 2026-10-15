@@ -73,7 +73,7 @@ def test_two_lines_balances_a_cue_within_the_configured_line_limit():
 
 def test_two_lines_preserves_word_timing_for_the_balanced_cue():
     timing = SubtitleTiming(
-        source="edge_tts",
+        source="tts",
         segments=(
             SpeechSegment(
                 start=0.0,

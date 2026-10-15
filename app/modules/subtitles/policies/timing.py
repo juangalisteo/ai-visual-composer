@@ -7,9 +7,6 @@ import re
 from typing import Any
 
 
-EDGE_TTS_TICKS_PER_SECOND = 10_000_000
-
-
 @dataclass(frozen=True)
 class WordTiming:
     text: str
@@ -144,17 +141,6 @@ class SubtitleTiming:
         return self.word_count > 0
 
 
-def edge_word_boundaries_path(
-    audio_path
-) -> Path:
-    audio_path = Path(
-        audio_path
-    )
-    return audio_path.with_name(
-        f"{audio_path.stem}_word_boundaries.jsonl"
-    )
-
-
 def whisper_timing_path(
     subtitle_path
 ) -> Path:
@@ -164,99 +150,6 @@ def whisper_timing_path(
     return subtitle_path.with_name(
         f"{subtitle_path.stem}_whisper.json"
     )
-
-
-class EdgeWordBoundaryParser:
-
-    def parse(
-        self,
-        path
-    ) -> SubtitleTiming:
-        path = Path(
-            path
-        )
-
-        if not path.exists():
-            raise FileNotFoundError(
-                f"No existe metadata Edge TTS: {path}"
-            )
-
-        words: list[WordTiming] = []
-
-        for line in path.read_text(
-            encoding="utf-8"
-        ).splitlines():
-            if not line.strip():
-                continue
-
-            try:
-                item = json.loads(
-                    line
-                )
-            except json.JSONDecodeError as error:
-                raise ValueError(
-                    "Metadata Edge TTS inválida."
-                ) from error
-
-            if item.get("type") != "WordBoundary":
-                continue
-
-            text = item.get(
-                "text",
-                ""
-            )
-            offset = item.get(
-                "offset"
-            )
-            duration = item.get(
-                "duration"
-            )
-
-            if offset is None or duration is None:
-                raise ValueError(
-                    "WordBoundary sin offset o duration."
-                )
-
-            start = (
-                float(offset)
-                / EDGE_TTS_TICKS_PER_SECOND
-            )
-            end = (
-                start
-                + float(duration)
-                / EDGE_TTS_TICKS_PER_SECOND
-            )
-
-            words.append(
-                WordTiming(
-                    text=text,
-                    start=start,
-                    end=end,
-                    source="edge_tts"
-                )
-            )
-
-        _validate_temporal_order(
-            tuple(words)
-        )
-
-        if not words:
-            raise ValueError(
-                "Metadata Edge TTS sin WordBoundary usable."
-            )
-
-        return SubtitleTiming(
-            source="edge_tts",
-            segments=(
-                SpeechSegment(
-                    start=words[0].start,
-                    end=words[-1].end,
-                    words=tuple(words)
-                ),
-            ),
-            duration=words[-1].end,
-            reliability="primary"
-        )
 
 
 class WhisperTimingParser:
@@ -410,70 +303,17 @@ class SubtitleTimingResolver:
         subtitle_path,
         audio_path=None
     ) -> SubtitleTiming | None:
-        candidates: list[tuple[str, Path, object]] = []
+        del audio_path
+        path = whisper_timing_path(subtitle_path)
+        if not path.exists():
+            return None
 
-        if audio_path is not None:
-            candidates.append(
-                (
-                    "edge_tts",
-                    edge_word_boundaries_path(
-                        audio_path
-                    ),
-                    EdgeWordBoundaryParser()
-                )
-            )
+        try:
+            timing = WhisperTimingParser().parse(path)
+        except (OSError, ValueError):
+            return None
 
-        candidates.append(
-            (
-                "whisper",
-                whisper_timing_path(
-                    subtitle_path
-                ),
-                WhisperTimingParser()
-            )
-        )
-
-        fallback_reasons = []
-
-        for source, path, parser in candidates:
-            if not path.exists():
-                fallback_reasons.append(
-                    f"{source}:missing"
-                )
-                continue
-
-            try:
-                timing = parser.parse(
-                    path
-                )
-            except (
-                OSError,
-                ValueError
-            ) as error:
-                fallback_reasons.append(
-                    f"{source}:{error}"
-                )
-                continue
-
-            if timing.is_usable():
-                if fallback_reasons:
-                    return SubtitleTiming(
-                        source=timing.source,
-                        segments=timing.segments,
-                        duration=timing.duration,
-                        reliability=timing.reliability,
-                        fallback_reason="; ".join(
-                            fallback_reasons
-                        )
-                    )
-
-                return timing
-
-            fallback_reasons.append(
-                f"{source}:empty"
-            )
-
-        return None
+        return timing if timing.is_usable() else None
 
 
 def parse_srt_blocks(

@@ -1,65 +1,23 @@
-import asyncio
 import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.modules.audio.voice_builder import VoiceBuilder
 from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
 from app.modules.subtitles.modes.single_line import SingleLineModel
 from app.modules.subtitles.modes.word_by_word import WordByWordModel
 from app.modules.subtitles.policies.timing import (
-    EDGE_TTS_TICKS_PER_SECOND,
-    EdgeWordBoundaryParser,
     SpeechSegment,
     SubtitleTiming,
     SubtitleTimingResolver,
     WhisperTimingParser,
     WordTiming,
-    edge_word_boundaries_path,
     whisper_timing_path,
 )
 
 
 class SubtitleRealTimingTest(unittest.TestCase):
-
-    def test_edge_word_boundary_parser_converts_ticks_to_seconds(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            metadata_path = Path(temp_dir) / "voz_word_boundaries.jsonl"
-            metadata_path.write_text(
-                "\n".join(
-                    [
-                        json.dumps(
-                            {
-                                "type": "WordBoundary",
-                                "offset": 0,
-                                "duration": EDGE_TTS_TICKS_PER_SECOND // 2,
-                                "text": "Hola",
-                            }
-                        ),
-                        json.dumps(
-                            {
-                                "type": "WordBoundary",
-                                "offset": EDGE_TTS_TICKS_PER_SECOND,
-                                "duration": EDGE_TTS_TICKS_PER_SECOND // 4,
-                                "text": "mundo",
-                            }
-                        ),
-                    ]
-                ),
-                encoding="utf-8",
-            )
-
-            timing = EdgeWordBoundaryParser().parse(metadata_path)
-
-        self.assertEqual(timing.source, "edge_tts")
-        self.assertEqual(timing.reliability, "primary")
-        self.assertEqual(timing.word_count, 2)
-        self.assertEqual(timing.words[0].start, 0.0)
-        self.assertEqual(timing.words[0].end, 0.5)
-        self.assertEqual(timing.words[1].start, 1.0)
-        self.assertEqual(timing.words[1].end, 1.25)
 
     def test_whisper_timing_parser_reads_word_timestamps(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -110,53 +68,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
                 ),
             )
 
-    def test_resolver_prefers_edge_over_whisper(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            audio_path = temp_path / "voz.mp3"
-            subtitle_path = temp_path / "subtitulos.srt"
-            audio_path.write_bytes(b"audio")
-            subtitle_path.write_text("", encoding="utf-8")
-
-            edge_word_boundaries_path(audio_path).write_text(
-                json.dumps(
-                    {
-                        "type": "WordBoundary",
-                        "offset": 0,
-                        "duration": EDGE_TTS_TICKS_PER_SECOND,
-                        "text": "Edge",
-                    }
-                ),
-                encoding="utf-8",
-            )
-            whisper_timing_path(subtitle_path).write_text(
-                json.dumps(
-                    {
-                        "segments": [
-                            {
-                                "words": [
-                                    {
-                                        "word": "Whisper",
-                                        "start": 0.0,
-                                        "end": 1.0,
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-
-            timing = SubtitleTimingResolver().resolve(
-                subtitle_path=subtitle_path,
-                audio_path=audio_path,
-            )
-
-        self.assertEqual(timing.source, "edge_tts")
-        self.assertEqual(timing.words[0].text, "Edge")
-
-    def test_resolver_falls_back_to_whisper_when_edge_is_missing(self):
+    def test_resolver_uses_whisper_when_usable(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             audio_path = temp_path / "voz.mp3"
@@ -189,9 +101,9 @@ class SubtitleRealTimingTest(unittest.TestCase):
             )
 
         self.assertEqual(timing.source, "whisper")
-        self.assertIn("edge_tts:missing", timing.fallback_reason)
+        self.assertIsNone(timing.fallback_reason)
 
-    def test_resolver_falls_back_to_whisper_when_edge_metadata_is_invalid(self):
+    def test_resolver_returns_none_when_whisper_metadata_is_invalid(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             audio_path = temp_path / "voz.mp3"
@@ -199,36 +111,17 @@ class SubtitleRealTimingTest(unittest.TestCase):
             audio_path.write_bytes(b"audio")
             subtitle_path.write_text("", encoding="utf-8")
 
-            edge_word_boundaries_path(audio_path).write_text(
+            whisper_timing_path(subtitle_path).write_text(
                 "{invalid",
                 encoding="utf-8",
             )
-            whisper_timing_path(subtitle_path).write_text(
-                json.dumps(
-                    {
-                        "segments": [
-                            {
-                                "words": [
-                                    {
-                                        "word": "Whisper",
-                                        "start": 0.0,
-                                        "end": 1.0,
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
 
             timing = SubtitleTimingResolver().resolve(
                 subtitle_path=subtitle_path,
                 audio_path=audio_path,
             )
 
-        self.assertEqual(timing.source, "whisper")
-        self.assertIn("edge_tts:Metadata Edge TTS inválida.", timing.fallback_reason)
+        self.assertIsNone(timing)
 
     def test_resolver_returns_none_when_no_timing_sidecar_exists(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -246,7 +139,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
             fps=30
         )
         timing = SubtitleTiming(
-            source="edge_tts",
+            source="tts",
             segments=(
                 SpeechSegment(
                     start=0.0,
@@ -323,7 +216,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
             }
         )
         timing = SubtitleTiming(
-            source="edge_tts",
+            source="tts",
             segments=(
                 SpeechSegment(
                     start=0.0,
@@ -417,58 +310,10 @@ class SubtitleRealTimingTest(unittest.TestCase):
             self.assertTrue(output_path.exists())
             self.assertTrue(whisper_timing_path(output_path).exists())
 
-    def test_voice_builder_requests_edge_word_boundaries_sidecar(self):
-        calls = []
-
-        class FakeCommunicate:
-
-            def __init__(self, **kwargs):
-                calls.append(("init", kwargs))
-
-            async def save(self, audio_path, metadata_path=None):
-                calls.append(
-                    (
-                        "save",
-                        audio_path,
-                        metadata_path,
-                    )
-                )
-                Path(audio_path).write_bytes(b"audio")
-                Path(metadata_path).write_text(
-                    "",
-                    encoding="utf-8",
-                )
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output_path = Path(temp_dir) / "voz.mp3"
-            builder = object.__new__(
-                VoiceBuilder
-            )
-            builder.voice = "es-ES-AlvaroNeural"
-            builder.rate = "+0%"
-            builder.volume = "+0%"
-
-            with patch(
-                "app.modules.audio.voice_builder.edge_tts.Communicate",
-                FakeCommunicate,
-            ):
-                asyncio.run(
-                    builder._generate_audio(
-                        text="Hola mundo",
-                        output_path=output_path,
-                    )
-                )
-
-        self.assertEqual(calls[0][1]["boundary"], "WordBoundary")
-        self.assertEqual(
-            calls[1][2],
-            str(edge_word_boundaries_path(output_path)),
-        )
-
     def test_real_micro_cue_merges_with_next_word(self):
         original_words = (
-            WordTiming("y", 9.063, 9.089, source="edge_tts"),
-            WordTiming("la", 9.103, 9.208, source="edge_tts"),
+            WordTiming("y", 9.063, 9.089, source="tts"),
+            WordTiming("la", 9.103, 9.208, source="tts"),
         )
         model = self._word_by_word_model(
             fps=30
@@ -675,7 +520,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
         self.assertIn("00:00:01,000 --> 00:00:01,030", blocks[0])
         self.assertEqual(model.last_micro_cue_stats.detected, 0)
 
-    def test_micro_cue_policy_applies_to_edge_timing(self):
+    def test_micro_cue_policy_applies_to_neutral_timing(self):
         model = self._word_by_word_model(
             fps=30
         )
@@ -683,14 +528,14 @@ class SubtitleRealTimingTest(unittest.TestCase):
         blocks = model.optimize(
             [],
             timing=SubtitleTiming(
-                source="edge_tts",
+                source="tts",
                 segments=(
                     SpeechSegment(
                         start=1.0,
                         end=1.2,
                         words=(
-                            WordTiming("y", 1.0, 1.026, source="edge_tts"),
-                            WordTiming("la", 1.04, 1.2, source="edge_tts"),
+                            WordTiming("y", 1.0, 1.026, source="tts"),
+                            WordTiming("la", 1.04, 1.2, source="tts"),
                         ),
                     ),
                 ),
@@ -803,7 +648,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
     def _timing(
         self,
         words,
-        source="edge_tts"
+        source="tts"
     ):
         return SubtitleTiming(
             source=source,

@@ -21,10 +21,8 @@ def test_run_controller_delegates_all_phase_three_responsibilities():
     )
     writer = Mock()
     selector = Mock()
-    voice_label = Mock(return_value="Femenina")
     controller._print = writer
     controller._select_from_list = selector
-    controller._voice_label = voice_label
 
     assert controller.select_voice_config() == "femenina"
     assert controller.select_music_category() is None
@@ -39,7 +37,6 @@ def test_run_controller_delegates_all_phase_three_responsibilities():
     common_options.select_voice_config.assert_called_once_with(
         writer=writer,
         selector=selector,
-        voice_label=voice_label,
     )
     common_options.select_music_category.assert_called_once_with(
         writer=writer,

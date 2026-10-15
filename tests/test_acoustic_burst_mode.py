@@ -41,7 +41,7 @@ def _config(**changes):
 
 def _timing(*words):
     return SubtitleTiming(
-        source="edge_tts",
+        source="tts",
         segments=(
             SpeechSegment(start=words[0].start, end=words[-1].end, words=words),
         ),
