@@ -2,8 +2,19 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
-from app.modules.subtitles.policies.timing import SubtitleTimingResolver
+from app.modules.subtitles.io.whisper_diagnostics import (
+    WhisperDiagnosticsParser,
+    WhisperTranscriptionDiagnostics,
+)
+from app.modules.subtitles.io.whisper_diagnostics_writer import (
+    WhisperDiagnosticsWriter,
+)
+from app.modules.subtitles.policies.timing import (
+    SubtitleTimingResolver,
+    whisper_timing_path,
+)
 from app.modules.video.ffmpeg.runner import Runner
+from app.shared.operational_error import create_operational_error
 
 
 @dataclass(frozen=True)
@@ -11,6 +22,7 @@ class PreparedExternalMediaSubtitles:
     audio_path: Path
     subtitle_path: Path
     timing: object
+    diagnostics: WhisperTranscriptionDiagnostics | None = None
 
 
 class ExternalMediaSubtitlePreparationService:
@@ -21,16 +33,27 @@ class ExternalMediaSubtitlePreparationService:
         runner=None,
         subtitle_builder=None,
         timing_resolver=None,
+        diagnostics_parser=None,
+        diagnostics_writer=None,
     ):
         self.runner = runner or Runner()
         self.subtitle_builder = subtitle_builder or SubtitleBuilder()
         self.timing_resolver = timing_resolver or SubtitleTimingResolver()
+        self.diagnostics_parser = (
+            diagnostics_parser
+            or WhisperDiagnosticsParser()
+        )
+        self.diagnostics_writer = (
+            diagnostics_writer
+            or WhisperDiagnosticsWriter()
+        )
 
     def prepare(
         self,
         video_path=None,
         working_directory=None,
         media_path=None,
+        diagnostics_output_path=None,
     ):
         if media_path is not None and video_path is not None:
             raise ValueError(
@@ -89,8 +112,54 @@ class ExternalMediaSubtitlePreparationService:
             raise RuntimeError(
                 "Whisper no produjo word timestamps utilizables."
             )
+        diagnostics = self._resolve_diagnostics(subtitle_path)
+        self._write_diagnostics(
+            diagnostics,
+            diagnostics_output_path,
+        )
         return PreparedExternalMediaSubtitles(
             audio_path=audio_path,
             subtitle_path=subtitle_path,
             timing=timing,
+            diagnostics=diagnostics,
         )
+
+    def _resolve_diagnostics(self, subtitle_path):
+        transcription_config = getattr(
+            self.subtitle_builder,
+            "transcription_config",
+            None,
+        )
+        if transcription_config is None:
+            return None
+        try:
+            return self.diagnostics_parser.parse(
+                whisper_timing_path(subtitle_path),
+                transcription_config,
+            )
+        except (OSError, TypeError, ValueError):
+            return None
+
+    def _write_diagnostics(self, diagnostics, output_path):
+        if diagnostics is None or output_path is None:
+            return
+        try:
+            self.diagnostics_writer.write(
+                diagnostics,
+                output_path,
+            )
+        except OSError as error:
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message=(
+                    "No se pudo guardar el diagnostico Whisper solicitado."
+                ),
+                recommended_action=(
+                    "Comprueba la ruta elegida para el diagnostico."
+                ),
+                operation="Guardar diagnostico Whisper",
+                resource=str(output_path),
+                technical_metadata={
+                    "phase": "whisper_diagnostics",
+                },
+            ) from error

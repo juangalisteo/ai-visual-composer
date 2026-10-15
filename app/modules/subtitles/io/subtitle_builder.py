@@ -5,6 +5,9 @@ import tempfile
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.subtitles.io.whisper_transcription_config import (
+    WhisperTranscriptionConfig,
+)
 from app.modules.subtitles.policies.timing import whisper_timing_path
 from app.shared.progress_logger import ProgressLogger
 from app.shared.operational_error import create_operational_error
@@ -13,11 +16,14 @@ from app.shared.operational_error import create_operational_error
 class SubtitleBuilder:
 
     def __init__(
-        self
+        self,
+        transcription_config: WhisperTranscriptionConfig | None = None,
     ):
-        self.model = "medium"
-        self.language = "Spanish"
-        self.device = "cuda"
+        self.transcription_config = (
+            transcription_config
+            if transcription_config is not None
+            else WhisperTranscriptionConfig()
+        )
 
     def build(
         self,
@@ -74,18 +80,7 @@ class SubtitleBuilder:
                 "-m",
                 "whisper",
                 str(audio_path),
-                "--model",
-                self.model,
-                "--task",
-                "transcribe",
-                "--language",
-                self.language,
-                "--word_timestamps",
-                "True",
-                "--output_format",
-                "all",
-                "--device",
-                self.device,
+                *self.transcription_config.cli_arguments(),
                 "--output_dir",
                 str(temp_output_dir)
             ]
@@ -102,7 +97,7 @@ class SubtitleBuilder:
                     technical_metadata={
                         "command": tuple(map(str, error.cmd or command)),
                         "returncode": error.returncode,
-                        "model": self.model,
+                        "model": self.transcription_config.model,
                         "phase": "transcription",
                         "expected_output": str(temp_output_dir),
                     },
