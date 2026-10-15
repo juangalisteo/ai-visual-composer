@@ -17,6 +17,13 @@ from app.modules.video_component.models import (
     VideoPreparationResult,
     VideoPromptPlan,
 )
+from app.modules.video_component.contracts import (
+    WanArtifactOwnership,
+    WanArtifactRetention,
+    WanIntermediateOutput,
+    WanLosslessCapturePlan,
+    WanLosslessFrameSequence,
+)
 from app.modules.video_component.video_design_models import (
     PreparedVideoDesign,
 )
@@ -57,4 +64,9 @@ __all__ = (
     "VideoPreparationResult",
     "VideoPromptPlan",
     "VideoPromptTranslator",
+    "WanArtifactOwnership",
+    "WanArtifactRetention",
+    "WanIntermediateOutput",
+    "WanLosslessCapturePlan",
+    "WanLosslessFrameSequence",
 )

@@ -20,15 +20,6 @@ class OperationalProfileDescriptor:
 
 
 class ProfileResolver:
-    _VIDEO_COMPONENT_PATHS = {
-        "instagram": Path(
-            "video/instagram/wan_i2v_instagram.json"
-        ),
-        "youtube": Path(
-            "video/youtube/wan_i2v_youtube.json"
-        ),
-    }
-
     def __init__(
         self,
         profiles_root=Path("config/profiles")
@@ -253,13 +244,211 @@ class ProfileResolver:
                 "La configuración técnica Wan solo pertenece "
                 "al componente video."
             )
-        relative_path = self._VIDEO_COMPONENT_PATHS.get(profile_key.platform)
-        if relative_path is None:
-            raise FileNotFoundError(
-                "No existe configuración Wan para la plataforma: "
-                f"{profile_key.platform}"
+        declarative_matches = self._declarative_video_component_matches(
+            profile_key
+        )
+        if len(declarative_matches) == 1:
+            return declarative_matches[0]
+        if len(declarative_matches) > 1:
+            self._raise_ambiguous_video_component_documents(
+                profile_key,
+                declarative_matches,
             )
-        return self._existing_path(relative_path)
+        self._raise_missing_declarative_video_component_document(profile_key)
+
+    def _declarative_video_component_matches(
+        self,
+        profile_key,
+    ):
+        directory = (
+            self.profiles_root
+            / ProfileComponent.VIDEO.value
+            / profile_key.platform
+        )
+        self._ensure_within_profiles_root(directory)
+        if not directory.is_dir():
+            return ()
+
+        matches = []
+        for path in sorted(
+            directory.glob("*.json"),
+            key=lambda item: item.name.casefold(),
+        ):
+            self._ensure_within_profiles_root(path)
+            data = self._load_profile_json(path)
+            if not self._is_declarative_video_component_document(data):
+                continue
+            document = self._validate_declarative_video_component_document(
+                data,
+                path,
+                profile_key,
+            )
+            if document.operational_profile.profile_id == profile_key.profile_id:
+                matches.append(path)
+        return tuple(matches)
+
+    @staticmethod
+    def _is_declarative_video_component_document(data):
+        return isinstance(data, dict) and (
+            data.get("kind") == "video_component"
+            or "operational_profile_id" in data
+        )
+
+    def _validate_declarative_video_component_document(
+        self,
+        data,
+        path,
+        requested_key,
+    ):
+        # Import deferred: the video-component package currently imports
+        # configuration consumers which import this resolver. Declarative WAN
+        # validation occurs only after ProfileResolver is fully initialized.
+        from app.modules.video_component.contracts import (
+            WanDeliveryParameters,
+            WanGenerationParameters,
+            WanSamplingParameters,
+            WanVideoComponentDocument,
+        )
+
+        try:
+            if data.get("kind") != "video_component":
+                raise ValueError("kind must be video_component.")
+            declared_platform = data["platform"]
+            if declared_platform != requested_key.platform:
+                raise ValueError(
+                    "platform must match the requested directory exactly."
+                )
+            operational_key = OperationalProfileKey(
+                ProfileComponent.VIDEO,
+                declared_platform,
+                data["operational_profile_id"],
+            )
+            component = data["video_component"]
+            generation = component["generation"]
+            target = component["target"]
+            try:
+                delivery = component["delivery"]
+            except KeyError as error:
+                raise ValueError(
+                    "video_component.delivery is required."
+                ) from error
+            if not isinstance(delivery, dict):
+                raise ValueError("video_component.delivery must be an object.")
+            try:
+                intermediate_output = delivery["intermediate_output"]
+            except KeyError as error:
+                raise ValueError(
+                    "video_component.delivery.intermediate_output is required."
+                ) from error
+            sampling = component["sampling"]
+            return WanVideoComponentDocument(
+                kind=data["kind"],
+                operational_profile=operational_key,
+                platform=declared_platform,
+                generation=WanGenerationParameters(
+                    width=generation["width"],
+                    height=generation["height"],
+                    frames=component["frames"],
+                    fps=component["fps"],
+                    seed_mode=component["seed_mode"],
+                    seed=component.get("seed"),
+                ),
+                delivery=WanDeliveryParameters(
+                    width=target["width"],
+                    height=target["height"],
+                    intermediate_output=intermediate_output,
+                ),
+                sampling=WanSamplingParameters(
+                    steps=sampling["steps"],
+                    cfg=sampling["cfg"],
+                    sampler=sampling["sampler"],
+                    scheduler=sampling["scheduler"],
+                ),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise self._invalid_video_component_document(
+                path,
+                requested_key,
+                error,
+            ) from error
+
+    def _invalid_video_component_document(
+        self,
+        path,
+        profile_key,
+        error,
+    ):
+        return create_operational_error(
+            family="CONFIG",
+            user_message=(
+                "El documento declarativo de componente Wan no es valido."
+            ),
+            recommended_action=(
+                "Revise kind, operational_profile_id, platform y video_component."
+            ),
+            operation="Validar componente Wan declarativo",
+            resource=str(path),
+            technical_metadata={
+                "requested_profile": self._operational_resource(profile_key),
+                "validation_error": str(error),
+            },
+        )
+
+    def _raise_ambiguous_video_component_documents(
+        self,
+        profile_key,
+        paths,
+    ):
+        error = ValueError(
+            "operational_profile_id Wan duplicado: "
+            f"{profile_key.profile_id}"
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                "La identidad operacional coincide con varios componentes Wan."
+            ),
+            recommended_action=(
+                "Elimine o corrija los documentos Wan declarativos duplicados."
+            ),
+            operation="Resolver componente Wan declarativo",
+            resource=self._operational_resource(profile_key),
+            technical_metadata={
+                "candidates": [str(path) for path in paths],
+            },
+        ) from error
+
+    def _raise_missing_declarative_video_component_document(
+        self,
+        profile_key,
+    ):
+        directory = (
+            self.profiles_root
+            / ProfileComponent.VIDEO.value
+            / profile_key.platform
+        )
+        error = FileNotFoundError(
+            "No existe un documento Wan declarativo para la identidad solicitada."
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                "No existe un componente Wan declarativo para el perfil solicitado."
+            ),
+            recommended_action=(
+                "Cree exactamente un documento video_component valido en el "
+                "directorio de la plataforma solicitada."
+            ),
+            operation="Resolver componente Wan declarativo",
+            resource=str(directory),
+            technical_metadata={
+                "component": ProfileComponent.VIDEO.value,
+                "platform": profile_key.platform,
+                "profile_id": profile_key.profile_id,
+                "requested_profile": self._operational_resource(profile_key),
+                "discovery_root": str(directory),
+            },
+        ) from error
 
     def load_video_component(
         self,

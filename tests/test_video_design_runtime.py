@@ -260,6 +260,39 @@ class FakeVideoDesignInterpreter:
 
 class VideoDesignRuntimeTest(unittest.TestCase):
 
+    def test_design_clip_identity_accepts_non_mp4_extension(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clip = root / "scene_001.mkv"
+            clip.write_bytes(b"video")
+            manifest_path = root / "video_clips_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [{"scene": 1, "output_clip": str(clip)}]
+                ),
+                encoding="utf-8",
+            )
+
+            result = start._ensure_single_video_design_clip(manifest_path)
+
+        self.assertEqual(clip, result)
+
+    def test_design_clip_identity_rejects_wrong_scene_stem(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clip = root / "scene_002.mkv"
+            clip.write_bytes(b"video")
+            manifest_path = root / "video_clips_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [{"scene": 1, "output_clip": str(clip)}]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "scene_001"):
+                start._ensure_single_video_design_clip(manifest_path)
+
     def test_video_design_preparation_reads_only_guion_video(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -608,7 +641,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 ), patch(
                     "app.core.start.ConfigManager"
                 ) as config_manager_mock, patch(
-                    "app.core.start.ProfileResolver",
+                    "app.modules.video_component.profile_parameters.ProfileResolver",
                     return_value=profile_resolver
                 ):
                     config_manager_mock.return_value.get_profile_config.return_value = (

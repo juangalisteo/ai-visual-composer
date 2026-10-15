@@ -91,9 +91,12 @@ def test_m3_studio_loader_and_guion_video_bridge_transport_operational_keys():
 
 
 def test_m3_wan_loader_remains_dedicated_but_accepts_operational_identity():
+    key = OperationalProfileKey("video", "instagram", "video_instagram")
     document = ProfileResolver().load_video_component(
-        OperationalProfileKey("video", "instagram", "video_instagram"),
+        key,
     )
 
-    assert document["platform"] == "video"
+    assert document["kind"] == "video_component"
+    assert document["operational_profile_id"] == key.profile_id
+    assert document["platform"] == key.platform
     assert "video_component" in document

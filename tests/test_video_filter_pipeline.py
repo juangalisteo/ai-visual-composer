@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from app.modules.video.ffmpeg.filter_builder import FilterBuilder
 from app.modules.video.ffmpeg.filter_pipeline import FilterPipeline
@@ -288,7 +289,7 @@ class FilterPipelineTest(
         )
         self.assertEqual("[vout]", stages[-1].output_stream)
 
-    def test_motion_graph_does_not_rebuild_pingpong_for_normalized_clips(
+    def test_motion_graph_applies_i2v_transform_to_raw_video_clips(
         self
     ):
         class MotionBuilderSpy:
@@ -355,11 +356,16 @@ class FilterPipelineTest(
 
         motion_builder = MotionBuilderSpy()
 
-        result = MotionGraphBuilder(
-            motion_builder
-        ).build(
-            graph
-        )
+        with patch(
+            "app.modules.video.ffmpeg.graphs.motion_graph_builder"
+            ".MediaProbe.get_video_frame_count",
+            return_value=48,
+        ):
+            result = MotionGraphBuilder(
+                motion_builder
+            ).build(
+                graph
+            )
 
         self.assertEqual(
             result.video_streams,
@@ -367,22 +373,13 @@ class FilterPipelineTest(
                 "[v0]",
             )
         )
-        self.assertIn(
-            "trim=duration=4.000000",
-            result.parts[0]
-        )
+        self.assertIn("trim=duration=4.000000", result.parts[0])
         self.assertIn(
             "fps=24,format=yuv420p",
             result.parts[0]
         )
-        self.assertNotIn(
-            "reverse",
-            result.parts[0]
-        )
-        self.assertNotIn(
-            "loop=",
-            result.parts[0]
-        )
+        self.assertIn("reverse", result.parts[0])
+        self.assertIn("loop=loop=-1:size=94:start=0", result.parts[0])
         self.assertNotIn(
             "zoompan",
             result.parts[0]

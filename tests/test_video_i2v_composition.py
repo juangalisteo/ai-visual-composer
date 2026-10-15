@@ -8,11 +8,9 @@ import unittest
 from unittest.mock import patch
 
 from app.modules.video.ffmpeg.diagnostics import FFmpegDiagnostics
-from app.modules.video.ffmpeg.i2v_normalizer import I2VClipNormalizer
-from app.modules.video.media.media_loader import VideoMedia
+from app.modules.video.ffmpeg.i2v_normalizer import I2VClipTransform
 from app.modules.video.video_build_context import (
     VideoBuildArtifacts,
-    VideoBuildContext,
 )
 from app.modules.video.video_render_service import VideoRenderService
 from app.modules.video.video_validator import VideoValidator
@@ -91,13 +89,16 @@ class I2VCompositionTest(unittest.TestCase):
         )
 
     def test_pingpong_happens_before_delivery_scale_and_fps(self):
-        graph = I2VClipNormalizer().build_filter(
+        graph = I2VClipTransform().build_filter(
             source_frame_count=48,
             duration=4.4,
             width=1080,
             height=1920,
             fps=30,
             pixel_format="yuv420p",
+            input_stream="[0:v]",
+            output_stream="[vout]",
+            label_prefix="i2v_0",
         )
 
         self.assertIn(
@@ -121,104 +122,104 @@ class I2VCompositionTest(unittest.TestCase):
             graph,
         )
 
-    def test_normalizer_command_preserves_instagram_contract(self):
-        command = I2VClipNormalizer().build_command(
-            source_path=Path("wan.mp4"),
-            output_path=Path("scene_001.mp4"),
+    def test_transform_preserves_instagram_contract(self):
+        graph = I2VClipTransform().build_filter(
             source_frame_count=48,
             duration=4.4,
-            config=self.make_config(),
+            width=1080,
+            height=1920,
+            fps=30,
+            pixel_format="yuv420p",
+            input_stream="[0:v]",
+            output_stream="[v0]",
+            label_prefix="i2v_0",
         )
 
-        graph = command[command.index("-filter_complex") + 1]
         self.assertIn("scale=1080:1920", graph)
         self.assertIn("fps=30", graph)
         self.assertIn("format=yuv420p", graph)
-        self.assertEqual(command[-1], "scene_001.mp4")
+        self.assertTrue(graph.endswith("[v0]"))
 
-    def test_normalizer_command_preserves_youtube_contract(self):
-        command = I2VClipNormalizer().build_command(
-            source_path=Path("wan.mp4"),
-            output_path=Path("scene_001.mp4"),
+    def test_transform_preserves_youtube_contract(self):
+        graph = I2VClipTransform().build_filter(
             source_frame_count=48,
             duration=4.4,
-            config=self.make_config(
-                width=1920,
-                height=1080,
-            ),
+            width=1920,
+            height=1080,
+            fps=30,
+            pixel_format="yuv420p",
+            input_stream="[0:v]",
+            output_stream="[v0]",
+            label_prefix="i2v_0",
         )
 
-        graph = command[command.index("-filter_complex") + 1]
         self.assertIn("scale=1920:1080", graph)
         self.assertIn("fps=30", graph)
         self.assertIn("format=yuv420p", graph)
 
-    def test_normalizer_processes_each_i2v_scene_into_project_temporaries(self):
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
-            first_source = root / "wan_001.mp4"
-            second_source = root / "wan_002.mp4"
-            first_source.write_bytes(b"source")
-            second_source.write_bytes(b"source")
-            final_path = root / "video" / "final.mp4"
-            context = VideoBuildContext(
-                config=self.make_config(),
-                media=VideoMedia(
-                    audio_path=root / "audio.mp3",
-                    subtitle_path=root / "subtitles.srt",
-                    images_manifest_path=root / "clips.json",
-                    output_path=final_path,
-                    image_paths=(first_source, second_source),
-                    media_types=("video", "video"),
-                    media_durations=(4.0, 4.0),
-                ),
-                timeline=SimpleNamespace(
-                    image_duration=4.0,
-                ),
+    def test_transform_is_pure_and_does_not_encode_an_intermediate_mp4(self):
+        graph = I2VClipTransform().build_filter(
+            source_frame_count=48,
+            duration=4.4,
+            width=1080,
+            height=1920,
+            fps=30,
+            pixel_format="yuv420p",
+            input_stream="[0:v]",
+            output_stream="[v0]",
+            label_prefix="i2v_0",
+        )
+
+        self.assertIn("[0:v]trim=start_frame=0:end_frame=48", graph)
+        self.assertNotIn(".mp4", graph)
+
+    def test_final_command_consumes_raw_i2v_input_without_normalized_path(self):
+        raw_path = Path("wan_raw.mp4")
+        context = SimpleNamespace(
+            media=SimpleNamespace(
+                image_paths=(raw_path,),
+                audio_path=Path("audio.mp3"),
+                output_path=Path("final.mp4"),
+                media_types=("video",),
+            ),
+            timeline=SimpleNamespace(audio_duration=4.0),
+            config=SimpleNamespace(
+                codec="libx264",
+                preset="slow",
+                crf=16,
+                fps=30,
+                pixel_format="yuv420p",
+                audio_codec="aac",
+                audio_bitrate="192k",
+                movflags="+faststart",
+                transitions=SimpleNamespace(duration=0.4),
+                overlays=SimpleNamespace(loop_file=True),
+                visual_effects=SimpleNamespace(loop_file=True),
+            ),
+        )
+        filter_context = SimpleNamespace(render_subtitles=False)
+        components = SimpleNamespace(
+            motion_builder=object(),
+            transition_builder=object(),
+            overlay_builder=SimpleNamespace(inputs=()),
+            visual_effect_builder=SimpleNamespace(inputs=()),
+        )
+
+        with patch(
+            "app.modules.video.video_render_service.FilterBuilder"
+        ) as filter_builder_class:
+            filter_builder_class.return_value.build.return_value = (
+                "[0:v]trim=start_frame=0:end_frame=49[vout]"
             )
-            diagnostics = FFmpegDiagnostics(
-                output_path=final_path,
-                scene_count=2,
+            artifacts = VideoRenderService().build_artifacts(
+                build_context=context,
+                filter_context=filter_context,
+                components=components,
             )
 
-            def render_clip(command):
-                Path(command[-1]).write_bytes(b"normalized")
-                return SimpleNamespace(stderr="")
-
-            with patch(
-                "app.modules.video.ffmpeg.i2v_normalizer"
-                ".MediaProbe.get_video_frame_count",
-                return_value=48,
-            ), patch(
-                "app.modules.video.ffmpeg.i2v_normalizer.Runner"
-            ) as runner_class, patch(
-                "app.modules.video.ffmpeg.i2v_normalizer.VideoValidator"
-            ) as validator_class:
-                runner_class.return_value.run.side_effect = render_clip
-                normalized = I2VClipNormalizer().normalize(
-                    build_context=context,
-                    diagnostics=diagnostics,
-                )
-
-            self.assertEqual(
-                normalized.media.image_paths,
-                (
-                    root / "video" / "i2v_normalized" / "scene_001.mp4",
-                    root / "video" / "i2v_normalized" / "scene_002.mp4",
-                ),
-            )
-            self.assertEqual(
-                normalized.media.media_durations,
-                (4.4, 4.0),
-            )
-            self.assertEqual(
-                runner_class.return_value.run.call_count,
-                2,
-            )
-            self.assertEqual(
-                validator_class.return_value.validate.call_count,
-                2,
-            )
+        self.assertIn(str(raw_path), artifacts.command)
+        self.assertNotIn("i2v_normalized", " ".join(artifacts.command))
+        self.assertEqual(1, artifacts.command.count("-c:v"))
 
     def test_failed_render_keeps_final_path_unpublished(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -273,43 +274,6 @@ class I2VCompositionTest(unittest.TestCase):
                 '"status": "FAILED"',
                 diagnostics.path.read_text(encoding="utf-8"),
             )
-
-    def test_failed_i2v_normalization_keeps_diagnostic_reference(self):
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
-            source_path = root / "wan.mp4"
-            source_path.write_bytes(b"source")
-            final_path = root / "video" / "final.mp4"
-            context = VideoBuildContext(
-                config=self.make_config(),
-                media=VideoMedia(
-                    audio_path=root / "audio.mp3",
-                    subtitle_path=root / "subtitles.srt",
-                    images_manifest_path=root / "clips.json",
-                    output_path=final_path,
-                    image_paths=(source_path,),
-                    media_types=("video",),
-                    media_durations=(4.0,),
-                ),
-                timeline=SimpleNamespace(image_duration=4.0),
-            )
-            diagnostics = FFmpegDiagnostics(output_path=final_path, scene_count=1)
-            failure = subprocess.CalledProcessError(
-                8, ["ffmpeg", "-i", str(source_path)], stderr="normalize failed"
-            )
-            with patch(
-                "app.modules.video.ffmpeg.i2v_normalizer.MediaProbe.get_video_frame_count",
-                return_value=48,
-            ), patch("app.modules.video.ffmpeg.i2v_normalizer.Runner") as runner_class, self.assertRaises(OperationalError) as caught:
-                runner_class.return_value.run.side_effect = failure
-                I2VClipNormalizer().normalize(context, diagnostics)
-
-            self.assertEqual("FFMPEG", caught.exception.context.family)
-            self.assertEqual(str(diagnostics.path), caught.exception.context.diagnostic_reference)
-            self.assertIs(caught.exception.__cause__, failure)
-            diagnostic = diagnostics.path.read_text(encoding="utf-8")
-            self.assertIn("normalize failed", diagnostic)
-            self.assertIn('"FAILED"', diagnostic)
 
     def test_successful_render_promotes_validated_temporary_file(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

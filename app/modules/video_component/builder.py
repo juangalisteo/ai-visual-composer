@@ -101,9 +101,7 @@ class VideoComponentBuilder:
             preparation,
             **backend_prompt_overrides
         )
-        workflow = self.backend_video_adapter.adapt(
-            backend_prompt
-        )
+        workflow = self.backend_video_adapter.adapt(backend_prompt)
         return self.video_backend.generate(
             workflow,
             output_dir=(

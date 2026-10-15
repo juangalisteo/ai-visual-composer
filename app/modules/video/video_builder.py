@@ -17,9 +17,6 @@ from app.modules.video.video_render_service import (
 from app.modules.video.ffmpeg.diagnostics import (
     FFmpegDiagnostics
 )
-from app.modules.video.ffmpeg.i2v_normalizer import (
-    I2VClipNormalizer
-)
 from app.shared.operational_error import OperationalError, create_operational_error
 
 
@@ -87,11 +84,6 @@ class VideoBuilder:
 
         filter_context = None
         try:
-            build_context = I2VClipNormalizer().normalize(
-                build_context=build_context,
-                diagnostics=diagnostics,
-            )
-
             components = (
                 VideoComponentFactory().create(
                     build_context.config

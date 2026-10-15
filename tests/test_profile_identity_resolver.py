@@ -379,11 +379,14 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 "video_instagram",
             )
 
-            with self.assertRaisesRegex(
-                FileNotFoundError,
-                "No existe el perfil esperado"
-            ):
+            with self.assertRaises(OperationalError) as caught:
                 resolver.resolve_video_component(profile_key)
+
+        self.assertEqual("CONFIG", caught.exception.context.family)
+        self.assertEqual(
+            str(Path(directory) / "video" / "instagram"),
+            caught.exception.context.resource,
+        )
 
     def test_platform_resolution_never_crosses_platforms(self):
         for component in ProfileComponent:

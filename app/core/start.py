@@ -3,7 +3,7 @@ import os
 import secrets
 import shutil
 import time
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -36,6 +36,14 @@ from app.modules.video_component import (
     VideoComponentBuilder,
     VideoDesignPreparationService,
     VideoDesignVisualTruthAdapter,
+)
+from app.modules.video_component.profile_parameters import (
+    build_video_backend_overrides,
+    load_video_component_parameters,
+)
+from app.modules.video_component.direct_i2v import (
+    DirectI2VGenerationService,
+    DirectI2VRequest,
 )
 from app.modules.studio import (
     StudioInputPreparationService,
@@ -72,6 +80,79 @@ from app.shared.profile_identity import (
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+
+
+@dataclass(frozen=True)
+class _I2VArtifactLease:
+    """Private ownership of lossless clips from one published I2V manifest."""
+
+    manifest_path: Path
+    owned_lossless_paths: tuple[Path, ...]
+
+    @classmethod
+    def from_manifest(cls, manifest_path):
+        manifest_path = Path(manifest_path)
+        if not manifest_path.is_file():
+            return cls(manifest_path, ())
+
+        try:
+            entries = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return cls(manifest_path, ())
+
+        if not isinstance(entries, list):
+            return cls(manifest_path, ())
+
+        manifest_directory = manifest_path.parent.resolve()
+        owned_paths = []
+        seen_paths = set()
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            output_clip = entry.get("output_clip")
+            if not output_clip:
+                continue
+            candidate = Path(output_clip)
+            if candidate.suffix.lower() != ".mkv":
+                continue
+            if candidate.parent.resolve() != manifest_directory:
+                continue
+            if not candidate.is_file():
+                continue
+            resolved_candidate = candidate.resolve()
+            if resolved_candidate in seen_paths:
+                continue
+            seen_paths.add(resolved_candidate)
+            owned_paths.append(candidate)
+
+        return cls(manifest_path, tuple(owned_paths))
+
+    def cleanup_after_successful_public_render(self, output_path):
+        output_path = Path(output_path)
+        if (
+            output_path.suffix.lower() != ".mp4"
+            or not output_path.is_file()
+        ):
+            return ()
+
+        manifest_directory = self.manifest_path.parent.resolve()
+        failures = []
+        for owned_path in self.owned_lossless_paths:
+            if (
+                owned_path.suffix.lower() != ".mkv"
+                or owned_path.parent.resolve() != manifest_directory
+            ):
+                continue
+            try:
+                owned_path.unlink(missing_ok=True)
+            except OSError as error:
+                failures.append((owned_path, error))
+                ProgressLogger.info(
+                    "No se pudo limpiar el FFV1 WAN poseido tras el render: "
+                    f"{owned_path} ({error})"
+                )
+
+        return tuple(failures)
 
 
 def iniciar(
@@ -182,13 +263,6 @@ def iniciar(
 
     ai_config = config.get_ai_config()
     profile = config.get_profile_config()
-
-    if pipeline_mode == "video_i2v":
-        return ejecutar_video_i2v(
-            pipeline_start=pipeline_start,
-            project=project,
-            profile_key=config.get_operational_profile_key()
-        )
 
     builders = _required_builders(
         profile
@@ -470,9 +544,10 @@ def iniciar(
 
         video_path, video_elapsed = (
             _measure_stage(
-                VideoBuilder(
+                _build_i2v_public_video,
+                video_builder=VideoBuilder(
                     **video_builder_options
-                ).build,
+                ),
                 video_clips_manifest_path=(
                     video_clips_manifest_path
                 )
@@ -1353,10 +1428,6 @@ def ejecutar_video_i2v(
 
     project.setup()
 
-    video_profile = _load_video_component_profile(
-        profile_key
-    )
-
     video_builder = (
         video_builder
         or VideoComponentBuilder()
@@ -1367,23 +1438,28 @@ def ejecutar_video_i2v(
         / "video_clips"
     )
 
-    result, video_elapsed = _measure_stage(
-        video_builder.generate_clip,
-        source_path=(
+    service = DirectI2VGenerationService(
+        video_builder=video_builder
+    )
+    request = DirectI2VRequest(
+        source_image=(
             source_path
             or Path("tests/fixtures/video/source.png")
         ),
+        profile_key=profile_key,
         output_dir=output_dir,
-        **_video_i2v_overrides(
-            video_profile
-        )
+        output_stem="clip_001",
+    )
+    result, video_elapsed = _measure_stage(
+        service.generate,
+        request,
     )
 
     summary = PipelineSummary(
         project.project_name
     )
     summary.set_media_duration(
-        result.duration_seconds
+        result.generation.duration_seconds
     )
     summary.add_stage(
         "Video I2V",
@@ -1395,7 +1471,7 @@ def ejecutar_video_i2v(
     )
     summary.print()
 
-    return result.output_clip
+    return result.generation.output_clip
 
 
 def generar_video_clips_i2v(
@@ -1410,7 +1486,7 @@ def generar_video_clips_i2v(
         or ProjectManager()
     )
 
-    video_profile = _load_video_component_profile(
+    video_profile = load_video_component_parameters(
         profile_key
     )
 
@@ -1484,13 +1560,14 @@ def generar_video_clips_i2v(
                 default_scene_number=scene_number
             )
         )
+        scene_identity = _scene_clip_identity(scene_number)
 
         result = video_builder.generate_clip(
             source_path=source_image,
             output_dir=output_dir,
-            output_name=f"scene_{scene_number:03d}.mp4",
+            output_name=f"{scene_identity}.mp4",
             storyboard_scene=storyboard_scene,
-            **_video_i2v_overrides(
+            **build_video_backend_overrides(
                 video_profile
             )
         )
@@ -1503,20 +1580,61 @@ def generar_video_clips_i2v(
             )
         )
 
-    manifest_path = (
-        output_dir
-        / "video_clips_manifest.json"
-    )
-    manifest_path.write_text(
-        json.dumps(
-            clip_entries,
-            ensure_ascii=False,
-            indent=4
-        ),
-        encoding="utf-8"
+    return _publish_video_clips_manifest_atomically(
+        output_dir=output_dir,
+        clip_entries=clip_entries,
     )
 
+
+def _publish_video_clips_manifest_atomically(
+    *,
+    output_dir,
+    clip_entries,
+):
+    manifest_path = (
+        Path(output_dir)
+        / "video_clips_manifest.json"
+    )
+    temporary_path = manifest_path.with_name(
+        f".{manifest_path.name}.{secrets.token_hex(16)}.tmp"
+    )
+
+    try:
+        temporary_path.write_text(
+            json.dumps(
+                clip_entries,
+                ensure_ascii=False,
+                indent=4,
+            ),
+            encoding="utf-8",
+        )
+        os.replace(
+            temporary_path,
+            manifest_path,
+        )
+    except Exception:
+        try:
+            temporary_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
     return manifest_path
+
+
+def _build_i2v_public_video(
+    *,
+    video_builder,
+    video_clips_manifest_path,
+):
+    lease = _I2VArtifactLease.from_manifest(
+        video_clips_manifest_path
+    )
+    output_path = video_builder.build(
+        video_clips_manifest_path=video_clips_manifest_path
+    )
+    lease.cleanup_after_successful_public_render(output_path)
+    return output_path
 
 
 def _load_storyboard_scenes(
@@ -1585,29 +1703,6 @@ def _required_manifest_scene_number(
         raise ValueError(
             "Cada imagen base de Video debe declarar scene."
         ) from error
-
-
-def _load_video_component_profile(
-    profile_key
-):
-    if not isinstance(
-        profile_key,
-        OperationalProfileKey
-    ):
-        raise TypeError(
-            "La configuracion Wan requiere una identidad operacional "
-            "VIDEO explicito."
-        )
-
-    if profile_key.component is not ProfileComponent.VIDEO:
-        raise ValueError(
-            "La configuracion Wan requiere identidad del "
-            "componente video."
-        )
-
-    return ProfileResolver().load_video_component(
-        profile_key
-    )
 
 
 def _build_video_clip_manifest_entry(
@@ -1688,225 +1783,6 @@ def preparar_guion(
         input_topic_path=input_topic_path,
         output_script_path=output_script_path
     )
-
-
-def _video_i2v_overrides(
-    profile
-):
-    video_component = profile.get(
-        "video_component",
-        {}
-    )
-
-    if not video_component:
-        raise ValueError(
-            "El perfil de Video debe definir video_component."
-        )
-
-    generation = video_component.get(
-        "generation",
-        {}
-    )
-    target = video_component.get(
-        "target",
-        {}
-    )
-    sampling = video_component.get(
-        "sampling",
-        {}
-    )
-
-    return {
-        "profile_name": str(
-            video_component.get(
-                "profile",
-                profile.get(
-                    "platform",
-                    ""
-                )
-            )
-        ),
-        "generation_width": _required_int(
-            generation,
-            "width",
-            "generation.width"
-        ),
-        "generation_height": _required_int(
-            generation,
-            "height",
-            "generation.height"
-        ),
-        "target_width": _required_int(
-            target,
-            "width",
-            "target.width"
-        ),
-        "target_height": _required_int(
-            target,
-            "height",
-            "target.height"
-        ),
-        "frames": _required_int(
-            video_component,
-            "frames",
-            "frames"
-        ),
-        "fps": _required_float(
-            video_component,
-            "fps",
-            "fps"
-        ),
-        "seed": _resolve_video_seed(
-            video_component
-        ),
-        "steps": _required_int(
-            sampling,
-            "steps",
-            "sampling.steps"
-        ),
-        "cfg": _required_float(
-            sampling,
-            "cfg",
-            "sampling.cfg"
-        ),
-        "sampler": _required_text(
-            sampling,
-            "sampler",
-            "sampling.sampler"
-        ),
-        "scheduler": _required_text(
-            sampling,
-            "scheduler",
-            "sampling.scheduler"
-        ),
-    }
-
-
-def _resolve_video_seed(
-    video_component
-):
-    seed_mode = str(
-        video_component.get(
-            "seed_mode",
-            ""
-        )
-    ).strip().lower()
-
-    if seed_mode == "random":
-        return _random_video_seed()
-
-    if seed_mode == "fixed":
-        return _required_seed(
-            video_component
-        )
-
-    raise ValueError(
-        "Parámetro de vídeo inválido: seed_mode."
-    )
-
-
-def _random_video_seed():
-    return secrets.randbelow(
-        2 ** 63
-    )
-
-
-def _required_seed(
-    video_component
-):
-    try:
-        seed = int(
-            video_component[
-                "seed"
-            ]
-        )
-    except (
-        KeyError,
-        TypeError,
-        ValueError
-    ) as error:
-        raise ValueError(
-            "Parámetro de vídeo inválido: seed."
-        ) from error
-
-    if seed < 0:
-        raise ValueError(
-            "Parámetro de vídeo inválido: seed."
-        )
-
-    return seed
-
-
-def _required_int(
-    data,
-    key,
-    label
-):
-    try:
-        value = int(
-            data[key]
-        )
-    except (
-        KeyError,
-        TypeError,
-        ValueError
-    ) as error:
-        raise ValueError(
-            f"Parámetro de vídeo inválido: {label}."
-        ) from error
-
-    if value <= 0:
-        raise ValueError(
-            f"Parámetro de vídeo inválido: {label}."
-        )
-
-    return value
-
-
-def _required_float(
-    data,
-    key,
-    label
-):
-    try:
-        value = float(
-            data[key]
-        )
-    except (
-        KeyError,
-        TypeError,
-        ValueError
-    ) as error:
-        raise ValueError(
-            f"Parámetro de vídeo inválido: {label}."
-        ) from error
-
-    if value <= 0:
-        raise ValueError(
-            f"Parámetro de vídeo inválido: {label}."
-        )
-
-    return value
-
-
-def _required_text(
-    data,
-    key,
-    label
-):
-    value = str(
-        data.get(
-            key,
-            ""
-        )
-    ).strip()
-
-    if not value:
-        raise ValueError(
-            f"Parámetro de vídeo inválido: {label}."
-        )
-
-    return value
 
 
 def _required_builders(profile):
@@ -2124,10 +2000,11 @@ def _ensure_single_video_design_clip(
         )
     )
 
-    if output_clip.name != "scene_001.mp4":
+    expected_identity = _scene_clip_identity(scene_number)
+    if output_clip.stem != expected_identity:
         raise ValueError(
             "El clip de diseño de vídeo debe corresponder "
-            "a scene_001.mp4."
+            f"a {expected_identity}."
         )
 
     if not output_clip.exists():
@@ -2137,6 +2014,12 @@ def _ensure_single_video_design_clip(
         )
 
     return output_clip
+
+
+def _scene_clip_identity(
+    scene_number
+):
+    return f"scene_{int(scene_number):03d}"
 
 
 def _complete_summary(

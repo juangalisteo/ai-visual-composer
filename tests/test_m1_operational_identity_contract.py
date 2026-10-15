@@ -140,7 +140,9 @@ def test_m1_wan_i2v_remains_outside_operational_profile_contract():
     video_key = OperationalProfileKey("video", "instagram", "video_instagram")
     document = ProfileResolver().load_video_component(video_key)
 
-    assert document["platform"] == "video"
+    assert document["kind"] == "video_component"
+    assert document["operational_profile_id"] == video_key.profile_id
+    assert document["platform"] == video_key.platform
     assert "video_component" in document
     assert "component" not in document
     assert "family" not in document

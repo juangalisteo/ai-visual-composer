@@ -4,7 +4,10 @@ import unittest
 from pathlib import Path
 
 from app.domain import StoryboardScene
-from app.modules.video_component import VideoComponentBuilder
+from app.modules.video_component import (
+    VideoComponentBuilder,
+    WanIntermediateOutput,
+)
 from app.modules.video_component.models import (
     MinimalVisualContext,
     MotionIntent,
@@ -213,6 +216,72 @@ class VideoComponentBuilderTest(unittest.TestCase):
             storyboard_scene,
             motion_builder.storyboard_scene
         )
+
+    def test_generation_uses_prompt_intermediate_output_without_caller_flag(self):
+        class FakeAnalyzer:
+            def analyze(self, source_path):
+                return MinimalVisualContext(
+                    source_path=Path(source_path),
+                    width=320,
+                    height=320,
+                    aspect_ratio="1:1",
+                    orientation="square",
+                    image_format="PNG",
+                )
+
+        class FakeMotionBuilder:
+            def build(self, visual_context, storyboard_scene=None):
+                return MotionIntent(
+                    source="test",
+                    camera_motion="still",
+                    motion_intensity="subtle",
+                    stability="high",
+                    temporal_rhythm="steady",
+                )
+
+        class FakeTranslator:
+            def translate(self, motion_intent):
+                return VideoPromptPlan(
+                    prompt="prompt",
+                    negative_prompt="",
+                    motion_summary="still",
+                )
+
+        class FakeAdapter:
+            def __init__(self):
+                self.backend_prompt = None
+
+            def adapt(self, backend_prompt):
+                self.backend_prompt = backend_prompt
+                return "workflow"
+
+        class FakeBackend:
+            def generate(self, workflow, output_dir, output_name):
+                return (workflow, Path(output_dir), output_name)
+
+        adapter = FakeAdapter()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_path = Path(temp_dir) / "source.png"
+            source_path.write_bytes(b"png")
+            result = VideoComponentBuilder(
+                source_image_analyzer=FakeAnalyzer(),
+                motion_intent_builder=FakeMotionBuilder(),
+                video_prompt_translator=FakeTranslator(),
+                backend_video_adapter=adapter,
+                video_backend=FakeBackend(),
+            ).generate_clip(
+                source_path=source_path,
+                output_dir=Path(temp_dir) / "output",
+                output_name="scene_001.mp4",
+                intermediate_output="lossless_ffv1",
+            )
+
+        self.assertEqual(
+            WanIntermediateOutput.LOSSLESS_FFV1,
+            adapter.backend_prompt.intermediate_output,
+        )
+        self.assertEqual("workflow", result[0])
+        self.assertEqual("scene_001.mp4", result[2])
 
 
 if __name__ == "__main__":

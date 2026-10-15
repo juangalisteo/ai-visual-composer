@@ -4,6 +4,10 @@ from app.modules.video.ffmpeg.graphs.base_graph_builder import (
     BaseGraphBuilder
 )
 from app.modules.video.ffmpeg.graphs.graph_result import GraphResult
+from app.modules.video.ffmpeg.i2v_normalizer import (
+    I2VClipTransform,
+)
+from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
 
 
@@ -13,9 +17,14 @@ class MotionGraphBuilder(
 
     def __init__(
         self,
-        motion_builder
+        motion_builder,
+        i2v_transform=None,
     ):
         self.motion_builder = motion_builder
+        self.i2v_transform = (
+            i2v_transform
+            or I2VClipTransform()
+        )
 
     def build(
         self,
@@ -190,15 +199,20 @@ class MotionGraphBuilder(
         pixel_format,
         stream_name
     ):
-        return (
-            f"[{index}:v]"
-            f"trim=duration={duration:.6f},"
-            f"fps={fps},"
-            f"format={pixel_format},"
-            "setsar=1,"
-            "settb=AVTB,"
-            "setpts=PTS-STARTPTS"
-            f"[{stream_name}]"
+        return self.i2v_transform.build_filter(
+            source_frame_count=(
+                MediaProbe.get_video_frame_count(
+                    image_path
+                )
+            ),
+            duration=duration,
+            width=width,
+            height=height,
+            fps=fps,
+            pixel_format=pixel_format,
+            input_stream=f"[{index}:v]",
+            output_stream=f"[{stream_name}]",
+            label_prefix=f"i2v_{index}",
         )
 
     def _media_type(

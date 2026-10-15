@@ -4,7 +4,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.core.start import _load_video_component_profile
+from app.modules.video_component.profile_parameters import (
+    load_video_component_parameters,
+)
 from app.modules.video.video_config import VideoConfigLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
@@ -302,7 +304,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
         self.assertEqual(
             self.resolver.load_video_component(instagram_key),
-            _load_video_component_profile(
+            load_video_component_parameters(
                 instagram_key
             )
         )
@@ -325,7 +327,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 TypeError,
                 "identidad operacional VIDEO explicito"
             ):
-                _load_video_component_profile(
+                load_video_component_parameters(
                     legacy_profile
                 )
 
@@ -334,7 +336,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             TypeError,
             "identidad operacional VIDEO explicito"
         ):
-            _load_video_component_profile(
+            load_video_component_parameters(
                 None
             )
 
@@ -347,7 +349,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             ValueError,
             "componente video"
         ):
-            _load_video_component_profile(
+            load_video_component_parameters(
                 image_key
             )
 
@@ -393,7 +395,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     self.resolver.load_video_component(
                         _operational_key(profile_key)
                     ),
-                    _load_video_component_profile(
+                    load_video_component_parameters(
                         _operational_key(profile_key)
                     )
                 )

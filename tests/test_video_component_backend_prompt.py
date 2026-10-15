@@ -7,6 +7,7 @@ from app.modules.video_component import (
     MotionIntent,
     VideoPreparationResult,
     VideoPromptPlan,
+    WanIntermediateOutput,
 )
 
 
@@ -66,6 +67,7 @@ class BackendVideoPromptTest(unittest.TestCase):
             cfg=5.0,
             sampler="uni_pc",
             scheduler="simple",
+            intermediate_output="lossless_ffv1",
             profile_name="Instagram",
         )
 
@@ -120,6 +122,10 @@ class BackendVideoPromptTest(unittest.TestCase):
         self.assertEqual(
             "simple",
             prompt.scheduler
+        )
+        self.assertEqual(
+            WanIntermediateOutput.LOSSLESS_FFV1,
+            prompt.intermediate_output,
         )
         self.assertEqual(
             "Instagram",
@@ -182,6 +188,19 @@ class BackendVideoPromptTest(unittest.TestCase):
                 motion_summary="motion",
                 frames=0,
             )
+
+    def test_defaults_to_legacy_savevideo_h264_intermediate_output(self):
+        prompt = BackendVideoPrompt(
+            source_image=Path("source.png"),
+            positive_prompt="Prompt",
+            negative_prompt="",
+            motion_summary="motion",
+        )
+
+        self.assertEqual(
+            WanIntermediateOutput.SAVEVIDEO_H264,
+            prompt.intermediate_output,
+        )
 
 
 if __name__ == "__main__":

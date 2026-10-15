@@ -1,6 +1,11 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from app.modules.video_component.contracts import (
+    WanIntermediateOutput,
+    WanLosslessCapturePlan,
+)
+
 
 class SourceImageAnalysisError(ValueError):
     pass
@@ -253,6 +258,9 @@ class BackendVideoPrompt:
     cfg: float = 5.0
     sampler: str = "uni_pc"
     scheduler: str = "simple"
+    intermediate_output: WanIntermediateOutput = (
+        WanIntermediateOutput.SAVEVIDEO_H264
+    )
     profile_name: str = ""
     backend: str = "ComfyUI"
     model: str = "wan2.2_ti2v_5B_fp16.safetensors"
@@ -328,6 +336,15 @@ class BackendVideoPrompt:
                 "Scheduler is required."
             )
 
+        try:
+            intermediate_output = WanIntermediateOutput(
+                self.intermediate_output
+            )
+        except ValueError as error:
+            raise ValueError(
+                "intermediate_output must be lossless_ffv1 or savevideo_h264."
+            ) from error
+
         object.__setattr__(
             self,
             "source_image",
@@ -362,6 +379,11 @@ class BackendVideoPrompt:
             self,
             "scheduler",
             self.scheduler.strip()
+        )
+        object.__setattr__(
+            self,
+            "intermediate_output",
+            intermediate_output,
         )
         object.__setattr__(
             self,
@@ -412,6 +434,7 @@ class ComfyUIVideoWorkflow:
     backend_prompt: BackendVideoPrompt
     source_image_name: str
     output_prefix: str
+    lossless_capture: WanLosslessCapturePlan | None = None
 
     def __post_init__(
         self

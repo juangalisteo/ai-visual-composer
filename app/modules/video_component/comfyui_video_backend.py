@@ -1,6 +1,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import shutil
 import time
 import urllib.parse
@@ -11,6 +12,16 @@ from app.modules.video_component.models import (
     ComfyUIVideoBackendError,
     ComfyUIVideoWorkflow,
     VideoClipGenerationResult,
+)
+from app.modules.video_component.contracts import (
+    ComfyUIInputRetention,
+    StagedComfyInput,
+    WanArtifactRetention,
+    WanIntermediateOutput,
+)
+from app.modules.video_component.lossless_frame_output import (
+    LosslessWanFrameOutput,
+    LosslessWanFrameOutputError,
 )
 from app.shared.operational_error import (
     OperationalError,
@@ -24,7 +35,10 @@ class ComfyUIVideoBackend:
         self,
         comfyui_url="http://127.0.0.1:8188",
         comfyui_input_dir="ComfyUI/ComfyUI/input",
+        comfyui_output_dir="ComfyUI/ComfyUI/output",
         poll_interval_seconds=2,
+        staging_retention=ComfyUIInputRetention.CLEANUP_ON_SUCCESS,
+        lossless_frame_output=None,
     ):
         self.comfyui_url = comfyui_url.rstrip(
             "/"
@@ -32,7 +46,15 @@ class ComfyUIVideoBackend:
         self.comfyui_input_dir = Path(
             comfyui_input_dir
         )
+        self.comfyui_output_dir = Path(comfyui_output_dir)
         self.poll_interval_seconds = poll_interval_seconds
+        self.staging_retention = ComfyUIInputRetention(
+            staging_retention
+        )
+        self.lossless_frame_output = (
+            lossless_frame_output
+            or LosslessWanFrameOutput()
+        )
 
     def generate(
         self,
@@ -53,8 +75,100 @@ class ComfyUIVideoBackend:
                 error,
                 prepared_workflow=prepared_workflow,
             ) from error
+        except LosslessWanFrameOutputError as error:
+            backend_error = ComfyUIVideoBackendError(
+                str(error),
+                category="EXECUTION_ERROR",
+            )
+            raise _operational_video_backend_error(
+                backend_error,
+                prepared_workflow=prepared_workflow,
+            ) from error
 
     def _generate(
+        self,
+        *,
+        prepared_workflow,
+        output_dir,
+        output_name,
+    ) -> VideoClipGenerationResult:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        staged_input = self._stage_source_image(prepared_workflow)
+        completed = False
+        try:
+            intermediate_output = (
+                prepared_workflow.backend_prompt.intermediate_output
+            )
+            if intermediate_output is WanIntermediateOutput.LOSSLESS_FFV1:
+                if prepared_workflow.lossless_capture is None:
+                    raise ComfyUIVideoBackendError(
+                        "La salida lossless_ffv1 requiere captura PNG del workflow.",
+                        category="INPUT_VALIDATION_ERROR",
+                    )
+                result = self._generate_lossless_staged(
+                    prepared_workflow=prepared_workflow,
+                    output_dir=output_dir,
+                    output_name=output_name,
+                )
+            elif intermediate_output is WanIntermediateOutput.SAVEVIDEO_H264:
+                if prepared_workflow.lossless_capture is not None:
+                    raise ComfyUIVideoBackendError(
+                        "savevideo_h264 no admite captura lossless del workflow.",
+                        category="INPUT_VALIDATION_ERROR",
+                    )
+                result = self._generate_staged(
+                    prepared_workflow=prepared_workflow,
+                    output_dir=output_dir,
+                    output_name=output_name,
+                )
+            else:
+                raise ComfyUIVideoBackendError(
+                    "Salida intermedia WAN no admitida.",
+                    category="INPUT_VALIDATION_ERROR",
+                )
+                result = self._generate_lossless_staged(
+                    prepared_workflow=prepared_workflow,
+                    output_dir=output_dir,
+                    output_name=output_name,
+                )
+            completed = True
+            return result
+        finally:
+            if completed:
+                self._cleanup_after_success(staged_input)
+
+    def _generate_lossless_staged(
+        self,
+        *,
+        prepared_workflow,
+        output_dir,
+        output_name,
+    ):
+        plan = prepared_workflow.lossless_capture
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        prompt_id = self.queue_prompt(prepared_workflow.workflow, str(uuid.uuid4()))
+        sequence = self.lossless_frame_output.capture(
+            history_item=self.wait_for_lossless_capture(prompt_id, plan),
+            plan=plan,
+            prompt_id=prompt_id,
+            destination_root=output_dir,
+            download=self.download_output_file,
+        )
+        lossless_clip = self.lossless_frame_output.materialize_ffv1(
+            sequence,
+            output_dir / Path(output_name).with_suffix(".mkv").name,
+        )
+        self._cleanup_remote_lossless_output(plan)
+        self.lossless_frame_output.cleanup_after_success(sequence)
+        return self._result_from_output(
+            prepared_workflow=prepared_workflow,
+            output_clip=lossless_clip,
+            prompt_id=prompt_id,
+        )
+
+    def _generate_staged(
         self,
         *,
         prepared_workflow,
@@ -67,10 +181,6 @@ class ComfyUIVideoBackend:
         output_dir.mkdir(
             parents=True,
             exist_ok=True
-        )
-
-        self._stage_source_image(
-            prepared_workflow
         )
 
         client_id = str(
@@ -88,18 +198,20 @@ class ComfyUIVideoBackend:
             output_dir=output_dir,
             output_name=output_name
         )
-        manifest_path = self.write_manifest(
+
+        return self._result_from_output(
             prepared_workflow=prepared_workflow,
-            prompt_id=prompt_id,
             output_clip=output_clip,
-            output_dir=output_dir,
+            prompt_id=prompt_id,
         )
 
+    @staticmethod
+    def _result_from_output(*, prepared_workflow, output_clip, prompt_id):
         backend_prompt = prepared_workflow.backend_prompt
         return VideoClipGenerationResult(
             source_image=backend_prompt.source_image,
             output_clip=output_clip,
-            manifest_path=manifest_path,
+            manifest_path=None,
             prompt_id=prompt_id,
             backend=backend_prompt.backend,
             model=backend_prompt.model,
@@ -243,22 +355,98 @@ class ComfyUIVideoBackend:
                 self.poll_interval_seconds
             )
 
+    def wait_for_lossless_capture(self, prompt_id, plan):
+        """Wait for the semantic SaveImage PNG batch of one lossless prompt.
+
+        ``lossless_ffv1`` completes when the same ``prompt_id`` exposes the
+        expected PNG batch at its semantic capture node. This path does not
+        depend on SaveVideo and does not call ``wait_for_video()`` or
+        ``download_video()``. ``savevideo_h264`` keeps its separate H.264
+        wait/download route.
+        """
+        while True:
+            history = self._history(prompt_id)
+            if not isinstance(history, dict):
+                raise ComfyUIVideoBackendError(
+                    "ComfyUI devolvio un history incompatible para la captura lossless WAN.",
+                    category="EXECUTION_ERROR",
+                    prompt_id=prompt_id,
+                )
+            if prompt_id in history:
+                history_item = history[prompt_id]
+                if not isinstance(history_item, dict):
+                    raise ComfyUIVideoBackendError(
+                        "ComfyUI devolvio un item de history incompatible para la captura lossless WAN.",
+                        category="EXECUTION_ERROR",
+                        prompt_id=prompt_id,
+                    )
+                status = history_item.get("status", {})
+                if not isinstance(status, dict):
+                    raise ComfyUIVideoBackendError(
+                        "ComfyUI devolvio un estado incompatible para la captura lossless WAN.",
+                        category="EXECUTION_ERROR",
+                        prompt_id=prompt_id,
+                    )
+                if status.get("status_str") == "error":
+                    self._raise_history_execution_error(history_item, prompt_id)
+
+                outputs = history_item.get("outputs", {})
+                if not isinstance(outputs, dict):
+                    raise ComfyUIVideoBackendError(
+                        "ComfyUI devolvio outputs incompatibles para la captura lossless WAN.",
+                        category="EXECUTION_ERROR",
+                        prompt_id=prompt_id,
+                    )
+                capture_output = outputs.get(plan.capture_node_id)
+                if capture_output is not None:
+                    if not isinstance(capture_output, dict):
+                        raise ComfyUIVideoBackendError(
+                            "ComfyUI devolvio una captura lossless WAN incompatible.",
+                            category="EXECUTION_ERROR",
+                            prompt_id=prompt_id,
+                            node_id=plan.capture_node_id,
+                        )
+                    images = capture_output.get("images")
+                    if not isinstance(images, list):
+                        raise ComfyUIVideoBackendError(
+                            "ComfyUI no devolvio un batch PNG valido para la captura lossless WAN.",
+                            category="EXECUTION_ERROR",
+                            prompt_id=prompt_id,
+                            node_id=plan.capture_node_id,
+                        )
+                    if len(images) == plan.expected_frame_count:
+                        return history_item
+
+                if status.get("status_str") == "success":
+                    raise ComfyUIVideoBackendError(
+                        "ComfyUI termino sin el batch PNG lossless esperado.",
+                        category="EXECUTION_ERROR",
+                        prompt_id=prompt_id,
+                        node_id=plan.capture_node_id,
+                        status="success",
+                    )
+
+            time.sleep(self.poll_interval_seconds)
+
     def download_video(
         self,
         video_info,
         output_dir,
         output_name
     ):
-        output_path = Path(
-            output_dir
-        ) / output_name
+        output_path = Path(output_dir) / output_name
+        return self.download_output_file(video_info, output_path)
+
+    def download_output_file(self, output_info, output_path):
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         params = urllib.parse.urlencode({
-            "filename": video_info["filename"],
-            "subfolder": video_info.get(
+            "filename": output_info["filename"],
+            "subfolder": output_info.get(
                 "subfolder",
                 ""
             ),
-            "type": video_info.get(
+            "type": output_info.get(
                 "type",
                 "output"
             ),
@@ -302,84 +490,58 @@ class ComfyUIVideoBackend:
 
         return output_path
 
-    def write_manifest(
-        self,
-        prepared_workflow,
-        prompt_id,
-        output_clip,
-        output_dir
-    ):
-        backend_prompt = prepared_workflow.backend_prompt
-        manifest_path = (
-            Path(
-                output_dir
+    def _history_item(self, prompt_id):
+        history = self._history(prompt_id)
+        if prompt_id not in history:
+            raise ComfyUIVideoBackendError(
+                "ComfyUI no devolvio el history final del prompt de video.",
+                category="EXECUTION_ERROR",
+                prompt_id=prompt_id,
             )
-            / "video_clips_manifest.json"
+        return history[prompt_id]
+
+    @staticmethod
+    def _raise_history_execution_error(history_item, prompt_id):
+        status = history_item.get("status", {})
+        detail = _extract_error_detail(history_item, prompt_id)
+        raise ComfyUIVideoBackendError(
+            "ComfyUI devolvio un error durante la generacion de video: "
+            f"{detail['category']}. {detail['exception_message']}",
+            category=detail["category"],
+            prompt_id=prompt_id,
+            node_id=detail["node_id"],
+            node_type=detail["node_type"],
+            exception_type=detail["exception_type"],
+            exception_message=detail["exception_message"],
+            status=status.get("status_str", ""),
         )
-        data = {
-            "source_image": str(
-                backend_prompt.source_image
-            ),
-            "output_clip": str(
-                output_clip
-            ),
-            "motion_summary": backend_prompt.motion_summary,
-            "positive_prompt": backend_prompt.positive_prompt,
-            "negative_prompt": backend_prompt.negative_prompt,
-            "camera_motion": backend_prompt.camera_motion,
-            "motion_intensity": backend_prompt.motion_intensity,
-            "stability": backend_prompt.stability,
-            "temporal_rhythm": backend_prompt.temporal_rhythm,
-            "motion_level": backend_prompt.motion_level,
-            "preservation_constraints": list(
-                backend_prompt.preservation_constraints
-            ),
-            "avoidance_constraints": list(
-                backend_prompt.avoidance_constraints
-            ),
-            "source_trace": list(
-                backend_prompt.source_trace
-            ),
-            "profile": backend_prompt.profile_name,
-            "backend": backend_prompt.backend,
-            "model": backend_prompt.model,
-            "workflow": backend_prompt.workflow,
-            "prompt_id": prompt_id,
-            "seed": backend_prompt.seed,
-            "frames": backend_prompt.frames,
-            "fps": backend_prompt.fps,
-            "generation_width": (
-                backend_prompt.generation_width
-            ),
-            "generation_height": (
-                backend_prompt.generation_height
-            ),
-            "target_width": (
-                backend_prompt.target_width
-            ),
-            "target_height": (
-                backend_prompt.target_height
-            ),
-            "steps": backend_prompt.steps,
-            "cfg": backend_prompt.cfg,
-            "sampler": backend_prompt.sampler,
-            "scheduler": backend_prompt.scheduler,
-            "duration_seconds": (
-                backend_prompt.frames / backend_prompt.fps
-            ),
-            "fingerprint": _file_sha256(
-                output_clip
-            ),
-        }
-        manifest_path.write_text(
-            json.dumps(
-                data,
-                indent=2,
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
-        )
-        return manifest_path
+
+    def _cleanup_remote_lossless_output(self, plan):
+        if plan.retention is WanArtifactRetention.PRESERVE_ALWAYS:
+            return
+        output_root = self.comfyui_output_dir.resolve()
+        capture_directory = (
+            output_root / Path(plan.output_prefix).parent
+        ).resolve()
+        if (
+            output_root not in capture_directory.parents
+            or capture_directory.name != plan.job_id
+            or capture_directory.parent.name != "aivc_wan_lossless"
+        ):
+            raise ComfyUIVideoBackendError(
+                "La limpieza remota lossless WAN no posee ese output.",
+                category="INPUT_VALIDATION_ERROR",
+            )
+        try:
+            if capture_directory.exists():
+                shutil.rmtree(capture_directory)
+        except OSError as error:
+            raise ComfyUIVideoBackendError(
+                "No se pudo limpiar el output lossless WAN poseido.",
+                category="FILESYSTEM_ERROR",
+                exception_type=type(error).__name__,
+                exception_message=str(error),
+            ) from error
 
     def _history(
         self,
@@ -418,18 +580,87 @@ class ComfyUIVideoBackend:
                 f"{source_image}"
             )
 
-        self.comfyui_input_dir.mkdir(
-            parents=True,
-            exist_ok=True
+        job_id = uuid.uuid4().hex
+        relative_input_name = (
+            Path("wan_i2v")
+            / job_id
+            / _safe_staged_basename(source_image)
+        ).as_posix()
+        staged_input = StagedComfyInput(
+            job_id=job_id,
+            source_path=source_image,
+            relative_input_name=relative_input_name,
+            staged_path=(
+                self.comfyui_input_dir / relative_input_name
+            ),
+            retention=self.staging_retention,
         )
-        destination = (
-            self.comfyui_input_dir
-            / prepared_workflow.source_image_name
+        staged_input.staged_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
         )
         shutil.copy2(
             source_image,
-            destination
+            staged_input.staged_path,
         )
+        self._inject_staged_input_name(
+            prepared_workflow.workflow,
+            staged_input.relative_input_name,
+        )
+        return staged_input
+
+    def _inject_staged_input_name(self, workflow, relative_input_name):
+        load_image_nodes = [
+            node
+            for node in workflow.values()
+            if isinstance(node, dict)
+            and node.get("class_type") == "LoadImage"
+        ]
+        if len(load_image_nodes) == 1:
+            load_image_nodes[0].setdefault("inputs", {})["image"] = (
+                relative_input_name
+            )
+
+    def _cleanup_after_success(self, staged_input):
+        if staged_input.retention is ComfyUIInputRetention.PRESERVE_ALWAYS:
+            return
+
+        staged_path = self._owned_staged_path(staged_input)
+        try:
+            staged_path.unlink(missing_ok=True)
+        except OSError as error:
+            raise ComfyUIVideoBackendError(
+                "No se pudo limpiar el input staged de ComfyUI.",
+                category="FILESYSTEM_ERROR",
+                exception_type=type(error).__name__,
+                exception_message=str(error),
+            ) from error
+
+    def _owned_staged_path(self, staged_input):
+        input_root = self.comfyui_input_dir.resolve()
+        staged_path = staged_input.staged_path.resolve()
+        if input_root not in staged_path.parents:
+            raise ComfyUIVideoBackendError(
+                "El input staged queda fuera del directorio ComfyUI poseido.",
+                category="INPUT_VALIDATION_ERROR",
+            )
+        if staged_path == staged_input.source_path.resolve():
+            raise ComfyUIVideoBackendError(
+                "El backend no puede limpiar la imagen fuente original.",
+                category="INPUT_VALIDATION_ERROR",
+            )
+        return staged_path
+
+
+def _safe_staged_basename(source_image):
+    source_path = Path(source_image)
+    stem = re.sub(
+        r"[^A-Za-z0-9_.-]+",
+        "_",
+        source_path.stem,
+    ).strip("._")
+    suffix = source_path.suffix.lower() or ".png"
+    return f"{stem or 'source'}{suffix}"
 
 
 def _find_video_output(

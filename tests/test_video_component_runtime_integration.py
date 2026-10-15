@@ -1,8 +1,12 @@
+import ast
 import json
+import os
+import inspect
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import ANY, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock, patch
 
 from app.core import start
 from app.shared.profile_identity import (
@@ -12,6 +16,18 @@ from app.shared.profile_identity import (
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from app.modules.video_component import (
+    BackendVideoPrompt,
+    MinimalVisualContext,
+    MotionIntent,
+    VideoPreparationResult,
+    VideoPromptPlan,
+    VideoClipGenerationResult,
+    WanIntermediateOutput,
+)
+from app.modules.video_component.profile_parameters import (
+    build_video_backend_overrides,
+)
 
 
 class FakeProject:
@@ -70,59 +86,46 @@ class FakeProject:
         return self.base_path / "video" / "video-runtime.mp4"
 
 
-class FakeResult:
-    def __init__(
-        self,
-        output_clip,
-        source_image=None,
-        profile_name="Instagram",
-        seed=123
-    ):
-        self.source_image = Path(
-            source_image
-            or output_clip
-        )
-        self.output_clip = Path(
-            output_clip
-        )
-        self.manifest_path = None
-        self.prompt_id = "prompt-id"
-        self.backend = "ComfyUI"
-        self.model = "wan2.2_ti2v_5B_fp16.safetensors"
-        self.workflow = (
-            "config/comfyui_wan22_ti2v_i2v_workflow_api.json"
-        )
-        self.seed = seed
-        self.frames = 49
-        self.fps = 12.0
-        self.generation_width = 384
-        self.generation_height = 672
-        self.target_width = 1080
-        self.target_height = 1920
-        self.steps = 12
-        self.cfg = 5.0
-        self.sampler = "uni_pc"
-        self.scheduler = "simple"
-        self.profile_name = profile_name
-        self.duration_seconds = 4.083333333333333
-        self.fingerprint = "fake-fingerprint"
-        self.positive_prompt = "exact positive prompt"
-        self.negative_prompt = "exact negative prompt"
-        self.motion_summary = "subtle motion, high stability"
-        self.camera_motion = "slow stable drift"
-        self.motion_intensity = "subtle"
-        self.stability = "high"
-        self.temporal_rhythm = "slow and steady"
-        self.motion_level = "subtle"
-        self.preservation_constraints = (
-            "preserve source composition",
-        )
-        self.avoidance_constraints = (
-            "avoid abrupt motion",
-        )
-        self.source_trace = (
-            "VisualTruth.visible_subject",
-        )
+def FakeResult(
+    output_clip,
+    source_image=None,
+    profile_name="Instagram",
+    seed=123,
+):
+    return VideoClipGenerationResult(
+        source_image=Path(source_image or output_clip),
+        output_clip=Path(output_clip),
+        manifest_path=None,
+        prompt_id="prompt-id",
+        backend="ComfyUI",
+        model="wan2.2_ti2v_5B_fp16.safetensors",
+        workflow="config/comfyui_wan22_ti2v_i2v_workflow_api.json",
+        seed=seed,
+        frames=49,
+        fps=12.0,
+        generation_width=384,
+        generation_height=672,
+        target_width=1080,
+        target_height=1920,
+        steps=12,
+        cfg=5.0,
+        sampler="uni_pc",
+        scheduler="simple",
+        profile_name=profile_name,
+        duration_seconds=4.083333333333333,
+        fingerprint="fake-fingerprint",
+        positive_prompt="exact positive prompt",
+        negative_prompt="exact negative prompt",
+        motion_summary="subtle motion, high stability",
+        camera_motion="slow stable drift",
+        motion_intensity="subtle",
+        stability="high",
+        temporal_rhythm="slow and steady",
+        motion_level="subtle",
+        preservation_constraints=("preserve source composition",),
+        avoidance_constraints=("avoid abrupt motion",),
+        source_trace=("VisualTruth.visible_subject",),
+    )
 
 
 class FakeVideoComponentBuilder:
@@ -183,6 +186,18 @@ class FakeVideoComponentBuilder:
 
 class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
+    def test_video_i2v_legacy_adapter_keeps_public_signature(self):
+        self.assertEqual(
+            (
+                "pipeline_start",
+                "project",
+                "profile_key",
+                "source_path",
+                "video_builder",
+            ),
+            tuple(inspect.signature(start.ejecutar_video_i2v).parameters),
+        )
+
     def test_video_i2v_runtime_dispatches_to_video_component(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -201,7 +216,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with patch(
-                "app.core.start._random_video_seed",
+                "app.modules.video_component.profile_parameters._random_video_seed",
                 return_value=847291635
             ):
                 result = start.ejecutar_video_i2v(
@@ -282,95 +297,100 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             call["overrides"]["scheduler"]
         )
         self.assertEqual(
+            "lossless_ffv1",
+            call["overrides"]["intermediate_output"]
+        )
+        self.assertEqual(
             847291635,
             call["overrides"]["seed"]
         )
 
-    def test_iniciar_dispatches_video_i2v_without_script_pipeline(self):
+    def test_video_i2v_legacy_adapter_delegates_to_direct_service(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(
-                temp_dir
+            root = Path(temp_dir)
+            project = FakeProject(root / "output" / "video-runtime")
+            builder = FakeVideoComponentBuilder(root / "unused.mp4")
+            output_clip = project.base_path / "video_clips" / "clip_001.mkv"
+            service = MagicMock()
+            service.generate.return_value = SimpleNamespace(
+                generation=SimpleNamespace(
+                    output_clip=output_clip,
+                    duration_seconds=4.0,
+                )
             )
-            project = FakeProject(
-                root / "output" / "runtime"
+            profile_key = OperationalProfileKey(
+                ProfileComponent.VIDEO,
+                "instagram",
+                "video_instagram",
             )
-            output_clip = (
-                project.base_path
-                / "video_clips"
-                / "clip_001.mp4"
-            )
-            builder = FakeVideoComponentBuilder(
-                output_clip
-            )
+            source_path = root / "source.png"
 
-            class FakeConfig:
-                def get_ai_config(
-                    self
-                ):
-                    return {}
+            with patch(
+                "app.core.start.DirectI2VGenerationService",
+                return_value=service,
+            ) as service_type:
+                result = start.ejecutar_video_i2v(
+                    pipeline_start=0,
+                    project=project,
+                    profile_key=profile_key,
+                    source_path=source_path,
+                    video_builder=builder,
+                )
 
-                def get_profile_key(
-                    self
-                ):
-                    return ProfileKey.for_component(
-                        ProfileComponent.VIDEO,
-                        "youtube"
-                    )
+        self.assertEqual(output_clip, result)
+        self.assertTrue(project.setup_called)
+        service_type.assert_called_once_with(video_builder=builder)
+        service.generate.assert_called_once()
+        request = service.generate.call_args.args[0]
+        self.assertEqual(source_path, request.source_image)
+        self.assertIs(profile_key, request.profile_key)
+        self.assertEqual(project.base_path / "video_clips", request.output_dir)
+        self.assertEqual("clip_001", request.output_stem)
 
-                def get_operational_profile_key(self):
-                    return OperationalProfileKey(
-                        ProfileComponent.VIDEO,
-                        "youtube",
-                        "video_youtube",
-                    )
+    def test_video_i2v_legacy_adapter_propagates_service_error(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            service = MagicMock()
+            service.generate.side_effect = RuntimeError("direct service failure")
 
-                def get_profile_config(
-                    self
-                ):
-                    return _video_profile(
-                        "YouTube"
-                    )
-
-            with patch.dict(
-                "os.environ",
-                {
-                    "MC_PIPELINE_MODE": "video_i2v",
-                },
-                clear=False,
-            ), patch(
-                "app.core.start.ProjectManager",
-                return_value=project
-            ), patch(
-                "app.core.start.ConfigManager",
-                return_value=FakeConfig()
-            ), patch(
-                "app.core.start.VideoComponentBuilder",
-                return_value=builder
-            ), patch(
-                "app.core.start.ejecutar_guion"
-            ) as script_mock, patch(
-                "app.core.start._random_video_seed",
-                return_value=998877
+            with patch(
+                "app.core.start.DirectI2VGenerationService",
+                return_value=service,
             ):
-                result = start.iniciar()
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "direct service failure",
+                ):
+                    start.ejecutar_video_i2v(
+                        project=FakeProject(root / "output"),
+                        profile_key=OperationalProfileKey(
+                            ProfileComponent.VIDEO,
+                            "instagram",
+                            "video_instagram",
+                        ),
+                        source_path=root / "source.png",
+                        video_builder=FakeVideoComponentBuilder(
+                            root / "unused.mp4"
+                        ),
+                    )
 
-        script_mock.assert_not_called()
-        self.assertEqual(
-            output_clip,
-            result
-        )
-        self.assertEqual(
-            800,
-            builder.calls[0]["overrides"]["generation_width"]
-        )
-        self.assertEqual(
-            448,
-            builder.calls[0]["overrides"]["generation_height"]
-        )
-        self.assertEqual(
-            998877,
-            builder.calls[0]["overrides"]["seed"]
-        )
+    def test_iniciar_has_no_video_i2v_special_dispatch(self):
+        iniciar_tree = ast.parse(inspect.getsource(start.iniciar))
+        mode_literals = {
+            node.value
+            for node in ast.walk(iniciar_tree)
+            if isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+        }
+        called_names = {
+            node.func.id
+            for node in ast.walk(iniciar_tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+        }
+
+        self.assertNotIn("video_i2v", mode_literals)
+        self.assertNotIn("ejecutar_video_i2v", called_names)
 
     def test_video_i2v_missing_source_path_fails_cleanly(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -528,18 +548,18 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         )
 
         with patch(
-            "app.core.start._random_video_seed",
+            "app.modules.video_component.profile_parameters._random_video_seed",
             return_value=111
         ):
-            first = start._video_i2v_overrides(
+            first = build_video_backend_overrides(
                 profile
             )
 
         with patch(
-            "app.core.start._random_video_seed",
+            "app.modules.video_component.profile_parameters._random_video_seed",
             return_value=222
         ):
-            second = start._video_i2v_overrides(
+            second = build_video_backend_overrides(
                 profile
             )
 
@@ -570,9 +590,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         )
 
         with patch(
-            "app.core.start._random_video_seed"
+            "app.modules.video_component.profile_parameters._random_video_seed"
         ) as random_mock:
-            overrides = start._video_i2v_overrides(
+            overrides = build_video_backend_overrides(
                 profile
             )
 
@@ -581,6 +601,76 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             123456789,
             overrides["seed"]
         )
+
+    def test_i2v_overrides_transport_intermediate_output_to_backend_prompt(
+        self,
+    ):
+        preparation = VideoPreparationResult(
+            visual_context=MinimalVisualContext(
+                source_path=Path("source.png"),
+                width=320,
+                height=320,
+                aspect_ratio="1:1",
+                orientation="square",
+                image_format="PNG",
+            ),
+            motion_intent=MotionIntent(
+                source="test",
+                camera_motion="still",
+                motion_intensity="subtle",
+                stability="high",
+                temporal_rhythm="steady",
+            ),
+            prompt_plan=VideoPromptPlan(
+                prompt="Prompt",
+                negative_prompt="",
+                motion_summary="still",
+            ),
+        )
+
+        for intermediate_output, expected in (
+            ("lossless_ffv1", WanIntermediateOutput.LOSSLESS_FFV1),
+            ("savevideo_h264", WanIntermediateOutput.SAVEVIDEO_H264),
+        ):
+            with self.subTest(intermediate_output=intermediate_output):
+                profile = _video_profile("Instagram")
+                profile["video_component"]["delivery"] = {
+                    "intermediate_output": intermediate_output,
+                }
+
+                with patch(
+                    "app.modules.video_component.profile_parameters._random_video_seed",
+                    return_value=123,
+                ):
+                    overrides = build_video_backend_overrides(profile)
+
+                prompt = BackendVideoPrompt.from_preparation(
+                    preparation,
+                    **overrides,
+                )
+
+                self.assertEqual(expected, prompt.intermediate_output)
+                self.assertEqual(384, prompt.generation_width)
+                self.assertEqual(672, prompt.generation_height)
+                self.assertEqual(1080, prompt.target_width)
+                self.assertEqual(1920, prompt.target_height)
+                self.assertEqual(49, prompt.frames)
+                self.assertEqual(12.0, prompt.fps)
+                self.assertEqual(12, prompt.steps)
+                self.assertEqual(5.0, prompt.cfg)
+                self.assertEqual("uni_pc", prompt.sampler)
+                self.assertEqual("simple", prompt.scheduler)
+
+    def test_i2v_overrides_preserve_legacy_intermediate_output_default(self):
+        profile = _video_profile("Instagram")
+
+        with patch(
+            "app.modules.video_component.profile_parameters._random_video_seed",
+            return_value=123,
+        ):
+            overrides = build_video_backend_overrides(profile)
+
+        self.assertEqual("savevideo_h264", overrides["intermediate_output"])
 
     def test_iniciar_video_product_composes_final_video_from_i2v_clips(
         self
@@ -975,25 +1065,36 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with patch(
-                "app.core.start._random_video_seed",
-                return_value=847291635
-            ):
-                manifest_path = start.generar_video_clips_i2v(
-                    storyboard_path=storyboard_path,
-                    images_manifest_path=images_manifest_path,
-                    project=project,
-                    video_builder=builder,
-                    profile_key=OperationalProfileKey(
-                        ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
-                    ),
-                )
-                manifest = json.loads(
-                    manifest_path.read_text(
-                        encoding="utf-8"
+                "app.core.start.os.replace",
+                wraps=os.replace,
+            ) as replace_file:
+                with patch(
+                    "app.modules.video_component.profile_parameters._random_video_seed",
+                    return_value=847291635
+                ):
+                    manifest_path = start.generar_video_clips_i2v(
+                        storyboard_path=storyboard_path,
+                        images_manifest_path=images_manifest_path,
+                        project=project,
+                        video_builder=builder,
+                        profile_key=OperationalProfileKey(
+                            ProfileComponent.VIDEO,
+                            "instagram",
+                            "video_instagram",
+                        ),
                     )
-                )
+                    manifest = json.loads(
+                        manifest_path.read_text(
+                            encoding="utf-8"
+                        )
+                    )
+
+                replace_file.assert_called_once()
+                temporary_path, published_path = replace_file.call_args.args
+                self.assertEqual(manifest_path, published_path)
+                self.assertEqual(manifest_path.parent, temporary_path.parent)
+                self.assertNotEqual(manifest_path, temporary_path)
+                self.assertFalse(temporary_path.exists())
 
         self.assertEqual(
             project.base_path
@@ -1091,6 +1192,265 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ["VisualTruth.visible_subject"],
             manifest[0]["source_trace"]
         )
+
+    def test_failed_scene_keeps_existing_manifest_and_does_not_publish_partial_list(
+        self
+    ):
+        class FailingSecondSceneBuilder(FakeVideoComponentBuilder):
+            def generate_clip(self, *args, **kwargs):
+                if self.calls:
+                    raise RuntimeError("middle scene generation failed")
+                return super().generate_clip(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            project = FakeProject(root / "output" / "video-product")
+            project.setup()
+            images_dir = root / "images"
+            images_dir.mkdir()
+            first_image = images_dir / "scene_001.png"
+            second_image = images_dir / "scene_002.png"
+            first_image.write_bytes(b"png1")
+            second_image.write_bytes(b"png2")
+            storyboard_path = root / "storyboard.json"
+            storyboard_path.write_text(
+                json.dumps(
+                    [
+                        _storyboard_scene(1, "subject one", "moves"),
+                        _storyboard_scene(2, "subject two", "moves"),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            images_manifest_path = root / "images_manifest.json"
+            images_manifest_path.write_text(
+                json.dumps(
+                    [
+                        {"scene": 1, "image": str(first_image)},
+                        {"scene": 2, "image": str(second_image)},
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            output_dir = project.base_path / "video_clips"
+            output_dir.mkdir()
+            manifest_path = output_dir / "video_clips_manifest.json"
+            previous_manifest = b'[{"scene": 77, "published": true}]'
+            manifest_path.write_bytes(previous_manifest)
+            builder = FailingSecondSceneBuilder(output_dir / "unused.mp4")
+
+            with patch(
+                "app.core.start._publish_video_clips_manifest_atomically",
+            ) as publish_manifest:
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "middle scene generation failed",
+                ):
+                    start.generar_video_clips_i2v(
+                        storyboard_path=storyboard_path,
+                        images_manifest_path=images_manifest_path,
+                        project=project,
+                        video_builder=builder,
+                        profile_key=OperationalProfileKey(
+                            ProfileComponent.VIDEO,
+                            "instagram",
+                            "video_instagram",
+                        ),
+                    )
+
+            publish_manifest.assert_not_called()
+            self.assertEqual(previous_manifest, manifest_path.read_bytes())
+            self.assertTrue((output_dir / "scene_001.mp4").exists())
+            self.assertEqual(
+                [],
+                list(output_dir.glob(".video_clips_manifest.json.*.tmp")),
+            )
+
+    def test_i2v_artifact_lease_cleans_only_owned_lossless_clips_after_public_render(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            clips_dir = root / "video_clips"
+            clips_dir.mkdir()
+            owned_lossless = clips_dir / "scene_001.mkv"
+            h264_clip = clips_dir / "scene_002.mp4"
+            external_lossless = root / "external.mkv"
+            manifest_path = clips_dir / "video_clips_manifest.json"
+            final_output = root / "video" / "final.mp4"
+            owned_lossless.write_bytes(b"ffv1")
+            h264_clip.write_bytes(b"h264")
+            external_lossless.write_bytes(b"external")
+            manifest_path.write_text(
+                json.dumps(
+                    [
+                        {"scene": 1, "output_clip": str(owned_lossless)},
+                        {"scene": 2, "output_clip": str(h264_clip)},
+                        {"scene": 3, "output_clip": str(external_lossless)},
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            final_output.parent.mkdir()
+            final_output.write_bytes(b"public-final")
+
+            lease = start._I2VArtifactLease.from_manifest(manifest_path)
+            failures = lease.cleanup_after_successful_public_render(final_output)
+
+            self.assertEqual((owned_lossless,), lease.owned_lossless_paths)
+            self.assertEqual((), failures)
+            self.assertFalse(owned_lossless.exists())
+            self.assertTrue(h264_clip.exists())
+            self.assertTrue(external_lossless.exists())
+            self.assertTrue(manifest_path.exists())
+            self.assertTrue(final_output.exists())
+
+    def test_i2v_artifact_lease_preserves_lossless_clip_without_confirmed_public_render(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            clips_dir = root / "video_clips"
+            clips_dir.mkdir()
+            owned_lossless = clips_dir / "scene_001.mkv"
+            manifest_path = clips_dir / "video_clips_manifest.json"
+            owned_lossless.write_bytes(b"ffv1")
+            manifest_path.write_text(
+                json.dumps([
+                    {"scene": 1, "output_clip": str(owned_lossless)},
+                ]),
+                encoding="utf-8",
+            )
+
+            lease = start._I2VArtifactLease.from_manifest(manifest_path)
+            failures = lease.cleanup_after_successful_public_render(
+                root / "video" / "missing-final.mp4"
+            )
+
+            self.assertEqual((), failures)
+            self.assertTrue(owned_lossless.exists())
+            self.assertTrue(manifest_path.exists())
+
+    def test_i2v_final_render_failure_preserves_lossless_clip_and_manifest(self):
+        class FailingVideoBuilder:
+            def build(self, **kwargs):
+                raise RuntimeError("final render failed")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            clips_dir = root / "video_clips"
+            clips_dir.mkdir()
+            owned_lossless = clips_dir / "scene_001.mkv"
+            manifest_path = clips_dir / "video_clips_manifest.json"
+            owned_lossless.write_bytes(b"ffv1")
+            manifest_path.write_text(
+                json.dumps([
+                    {"scene": 1, "output_clip": str(owned_lossless)},
+                ]),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "final render failed"):
+                start._build_i2v_public_video(
+                    video_builder=FailingVideoBuilder(),
+                    video_clips_manifest_path=manifest_path,
+                )
+
+            self.assertTrue(owned_lossless.exists())
+            self.assertTrue(manifest_path.exists())
+
+    def test_i2v_cleanup_failure_keeps_public_render_result(self):
+        class SuccessfulVideoBuilder:
+            def __init__(self, output_path):
+                self.output_path = output_path
+
+            def build(self, **kwargs):
+                self.output_path.parent.mkdir(exist_ok=True)
+                self.output_path.write_bytes(b"public-final")
+                return self.output_path
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            clips_dir = root / "video_clips"
+            clips_dir.mkdir()
+            owned_lossless = clips_dir / "scene_001.mkv"
+            manifest_path = clips_dir / "video_clips_manifest.json"
+            output_path = root / "video" / "final.mp4"
+            owned_lossless.write_bytes(b"ffv1")
+            manifest_path.write_text(
+                json.dumps([
+                    {"scene": 1, "output_clip": str(owned_lossless)},
+                ]),
+                encoding="utf-8",
+            )
+
+            with patch.object(Path, "unlink", side_effect=OSError("locked")):
+                result = start._build_i2v_public_video(
+                    video_builder=SuccessfulVideoBuilder(output_path),
+                    video_clips_manifest_path=manifest_path,
+                )
+
+            self.assertEqual(output_path, result)
+            self.assertTrue(output_path.exists())
+            self.assertTrue(owned_lossless.exists())
+            self.assertTrue(manifest_path.exists())
+
+    def test_direct_i2v_generation_does_not_consume_lossless_clip_lease(self):
+        class LosslessBuilder(FakeVideoComponentBuilder):
+            def generate_clip(
+                self,
+                source_path=None,
+                output_dir=None,
+                output_name="clip_001.mp4",
+                storyboard_scene=None,
+                **overrides,
+            ):
+                output_clip = Path(output_dir) / Path(output_name).with_suffix(".mkv")
+                output_clip.parent.mkdir(parents=True, exist_ok=True)
+                output_clip.write_bytes(b"ffv1")
+                self.calls.append({
+                    "source_path": Path(source_path),
+                    "output_dir": Path(output_dir),
+                    "output_name": output_name,
+                    "storyboard_scene": storyboard_scene,
+                    "overrides": overrides,
+                })
+                return FakeResult(output_clip, source_image=source_path)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            project = FakeProject(root / "output" / "video-product")
+            project.setup()
+            image_path = root / "images" / "scene_001.png"
+            image_path.parent.mkdir()
+            image_path.write_bytes(b"png")
+            storyboard_path = root / "storyboard.json"
+            storyboard_path.write_text(
+                json.dumps([_storyboard_scene(1, "subject", "moves")]),
+                encoding="utf-8",
+            )
+            images_manifest_path = root / "images_manifest.json"
+            images_manifest_path.write_text(
+                json.dumps([{"scene": 1, "image": str(image_path)}]),
+                encoding="utf-8",
+            )
+
+            manifest_path = start.generar_video_clips_i2v(
+                storyboard_path=storyboard_path,
+                images_manifest_path=images_manifest_path,
+                project=project,
+                video_builder=LosslessBuilder(root / "unused.mkv"),
+                profile_key=OperationalProfileKey(
+                    ProfileComponent.VIDEO,
+                    "instagram",
+                    "video_instagram",
+                ),
+            )
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            output_clip = Path(manifest[0]["output_clip"])
+
+            self.assertEqual(".mkv", output_clip.suffix)
+            self.assertTrue(output_clip.exists())
 
 
 def _video_profile(
