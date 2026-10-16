@@ -147,23 +147,22 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertEqual("PROFILE", caught.exception.context.family)
         self.assertIsInstance(caught.exception.__cause__, FileNotFoundError)
 
-    def test_each_design_profile_resolves_word_by_word_from_its_own_contract(self):
+    def test_each_design_profile_resolves_its_declared_mode_from_its_own_contract(self):
         for component in ProfileComponent:
-            main_key = ProfileKey.for_component(
-                component,
-                "instagram",
-                family="design",
-                profile_id=(
-                    f"{component.value}_instagram_design_"
-                    "modo_conciencia_reels"
-                ),
+            descriptors = self.subtitle_resolver.discover_profiles_for_family(
+                component, "instagram", "design",
             )
-            with self.subTest(component=component.value):
-                descriptor = self.subtitle_resolver.discover_profiles_for_family(
-                    component, "instagram", "design",
-                )[0]
-                subtitle = self.subtitle_resolver.load(descriptor.key)
-                self.assertEqual("word_by_word", subtitle.cue_policy["mode"])
+            self.assertTrue(descriptors)
+            for descriptor in descriptors:
+                with self.subTest(
+                    component=component.value,
+                    profile_id=descriptor.key.profile_id,
+                ):
+                    subtitle = self.subtitle_resolver.load(descriptor.key)
+                    self.assertEqual(descriptor.key, subtitle.key)
+                    self.assertEqual(component, subtitle.key.component)
+                    self.assertEqual("design", subtitle.key.family)
+                    self.assertEqual(descriptor.mode, subtitle.cue_policy["mode"])
 
     def test_system_keeps_the_generic_subtitle_style_selector(self):
         controller = RunController()

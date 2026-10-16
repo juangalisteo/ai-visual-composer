@@ -152,25 +152,26 @@ def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
     )
     assert descriptors
 
-    descriptor = descriptors[0]
-    resolved = subtitle_resolver.load(descriptor.key)
-    raw = json.loads(resolved.path.read_text(encoding="utf-8"))
+    for descriptor in descriptors:
+        resolved = subtitle_resolver.load(descriptor.key)
+        raw = json.loads(resolved.path.read_text(encoding="utf-8"))
 
-    assert resolved.path.parts[-3:-1] == ("design", "subtitulos")
-    assert raw.keys() == {
-        "component",
-        "platform",
-        "family",
-        "profile_id",
-        "display_name",
-        "cue_policy",
-        "render_style",
-    }
-    assert not (set(raw) & GLOBAL_SUBTITLE_FORBIDDEN_KEYS)
-    assert descriptor.mode == "word_by_word"
-    assert resolved.cue_policy == raw["cue_policy"]
-    assert resolved.render_style == raw["render_style"]
-    assert SubtitleConfigLoader().load_render_style(resolved.render_style)
+        assert resolved.key == descriptor.key
+        assert resolved.path.parts[-3:-1] == ("design", "subtitulos")
+        assert raw.keys() == {
+            "component",
+            "platform",
+            "family",
+            "profile_id",
+            "display_name",
+            "cue_policy",
+            "render_style",
+        }
+        assert not (set(raw) & GLOBAL_SUBTITLE_FORBIDDEN_KEYS)
+        assert descriptor.mode == raw["cue_policy"]["mode"]
+        assert resolved.cue_policy == raw["cue_policy"]
+        assert resolved.render_style == raw["render_style"]
+        assert SubtitleConfigLoader().load_render_style(resolved.render_style)
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
@@ -233,23 +234,26 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
     assert original.render_style == design.render_style
 
 
-def test_phase3_design_and_standard_share_capability_without_profile_dependency():
+def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():
     system_key = ProfileKey.for_component("studio", "instagram")
     resolver = SubtitleProfileResolver()
-    standard = resolver.load_selection(system_key, "word_by_word")
-    design_subtitle_key = resolver.discover_profiles_for_family(
+    descriptors = resolver.discover_profiles_for_family(
         "studio", "instagram", "design",
-    )[0].key
-    design = resolver.load(design_subtitle_key)
+    )
+    assert descriptors
 
     with pytest.MonkeyPatch.context() as context:
         for name, value in _environment(system_key).items():
             context.setenv(name, value)
-        selected = ConfigManager().get_subtitle_profile(design_subtitle_key)
+        manager = ConfigManager()
+        for descriptor in descriptors:
+            design = resolver.load(descriptor.key)
+            selected = manager.get_subtitle_profile(descriptor.key)
 
-    assert selected.key == design_subtitle_key
-    assert selected.cue_policy["mode"] == standard.cue_policy["mode"] == "word_by_word"
-    assert selected.render_style == design.render_style
+            assert selected.key == descriptor.key
+            assert selected.cue_policy["mode"] == descriptor.mode
+            assert selected.cue_policy == design.cue_policy
+            assert selected.render_style == design.render_style
 
 
 def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():

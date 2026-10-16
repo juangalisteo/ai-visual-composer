@@ -731,22 +731,33 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertNotEqual(descriptors[0].key, selected)
         self.assertTrue(original)
 
-    def test_design_and_standard_word_by_word_profiles_are_independent(self):
+    def test_design_and_standard_profiles_are_independent_by_identity(self):
         resolver = SubtitleProfileResolver()
         design = resolver.discover_profiles_for_family(
             "studio", "instagram", "design",
-        )[0]
-        standard = next(
-            descriptor for descriptor in resolver.discover_profiles_for_family(
-                "studio", "instagram", "estandar",
-            )
-            if descriptor.mode == "word_by_word"
+        )
+        standard = resolver.discover_profiles_for_family(
+            "studio", "instagram", "estandar",
         )
 
-        self.assertNotEqual(design.key.profile_id, standard.key.profile_id)
-        self.assertEqual("word_by_word", design.mode)
-        self.assertEqual("word_by_word", standard.mode)
-        self.assertNotEqual(design.key.family, standard.key.family)
+        self.assertTrue(design)
+        self.assertTrue(standard)
+        self.assertTrue(
+            {descriptor.key for descriptor in design}.isdisjoint(
+                {descriptor.key for descriptor in standard},
+            )
+        )
+        for descriptor in (*design, *standard):
+            with self.subTest(
+                family=descriptor.key.family,
+                profile_id=descriptor.key.profile_id,
+            ):
+                resolved = resolver.load(descriptor.key)
+                self.assertEqual(descriptor.key, resolved.key)
+                self.assertEqual(
+                    descriptor.mode,
+                    resolved.cue_policy["mode"],
+                )
 
     def test_future_family_is_discovered_from_subtitles_without_root_profile(self):
         with tempfile.TemporaryDirectory() as directory:

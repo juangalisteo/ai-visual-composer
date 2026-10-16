@@ -44,31 +44,50 @@ def test_registry_extension_requires_one_factory_registration():
     assert isinstance(transformer.model, _FakeCueModel)
 
 
-def test_two_profiles_can_share_one_mode_without_sharing_identity():
-    resolver = SubtitleProfileResolver()
-    first = resolver.discover_profiles_for_family(
-        "studio", "instagram", "estandar",
-    )[0]
-    design = resolver.discover_profiles_for_family(
-        "studio", "instagram", "design",
-    )[0]
-
-    first_profile = resolver.load(first.key)
-    design_profile = resolver.load(design.key)
-
-    assert first.key != design.key
-    assert first.key.profile_id != design.key.profile_id
-    standard_word = next(
-        descriptor
-        for descriptor in resolver.discover_profiles_for_family(
-            "studio", "instagram", "estandar",
-        )
-        if descriptor.mode == "word_by_word"
+def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
+    source = (
+        Path("config/profiles/studio/instagram/estandar/subtitulos/")
+        / "subtitulo_studio_instagram_linea_unica.json"
     )
-    standard_profile = resolver.load(standard_word.key)
+    template = json.loads(source.read_text(encoding="utf-8"))
+    template.update(
+        component="studio",
+        platform="test_platform",
+        family="test_family",
+    )
+    template["cue_policy"] = dict(template["cue_policy"])
+    template["cue_policy"]["mode"] = "word_by_word"
 
-    assert standard_word.key != design.key
-    assert standard_profile.cue_policy["mode"] == design_profile.cue_policy["mode"]
+    profiles = (
+        ("test_profile_alpha", "Fixture alpha"),
+        ("test_profile_beta", "Fixture beta"),
+    )
+    for profile_id, display_name in profiles:
+        data = dict(template)
+        data.update(profile_id=profile_id, display_name=display_name)
+        target = (
+            tmp_path
+            / "studio/test_platform/test_family/subtitulos"
+            / f"{profile_id}.json"
+        )
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(data), encoding="utf-8")
+
+    resolver = SubtitleProfileResolver(tmp_path)
+    descriptors = resolver.discover_profiles_for_family(
+        "studio", "test_platform", "test_family",
+    )
+
+    assert {descriptor.key.profile_id for descriptor in descriptors} == {
+        profile_id for profile_id, _ in profiles
+    }
+    assert len({descriptor.key for descriptor in descriptors}) == 2
+    assert {descriptor.mode for descriptor in descriptors} == {"word_by_word"}
+    for descriptor in descriptors:
+        resolved = resolver.load(descriptor.key)
+        assert resolved.key == descriptor.key
+        assert resolved.cue_policy["mode"] == descriptor.mode
+        assert CueModelRegistry().resolve(descriptor.mode) is WordByWordModel
 
 
 def test_new_profile_with_existing_mode_is_discovered_without_style_field(tmp_path):

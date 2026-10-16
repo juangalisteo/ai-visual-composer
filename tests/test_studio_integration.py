@@ -51,16 +51,21 @@ class StudioFinalContractTest(unittest.TestCase):
         )
 
         self.assertEqual(1080, profile.width)
+        self.assertTrue(descriptors)
         self.assertEqual(
-            {"word_by_word"},
-            {descriptor.mode for descriptor in descriptors},
+            len(descriptors),
+            len({descriptor.key for descriptor in descriptors}),
         )
         for descriptor in descriptors:
-            subtitle = SubtitleProfileResolver().load(
-                descriptor.key
-            )
-            self.assertEqual("design", subtitle.key.family)
-            self.assertIn("design", subtitle.path.parts)
+            with self.subTest(profile_id=descriptor.key.profile_id):
+                subtitle = SubtitleProfileResolver().load(descriptor.key)
+                self.assertEqual(descriptor.key, subtitle.key)
+                self.assertEqual("design", subtitle.key.family)
+                self.assertEqual(
+                    descriptor.mode,
+                    subtitle.cue_policy["mode"],
+                )
+                self.assertIn("design", subtitle.path.parts)
 
 
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
