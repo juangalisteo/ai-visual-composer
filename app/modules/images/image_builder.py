@@ -994,14 +994,6 @@ class ImageBuilder:
             ),
         }
 
-    def _dedupe_prompt_parts(
-        self,
-        parts
-    ):
-        return self.prompt_system.dedupe_prompt_parts(
-            parts
-        )
-
     def _generate_image(
         self,
         prompt,
@@ -1016,56 +1008,4 @@ class ImageBuilder:
             output_dir=output_dir,
             width=width,
             height=height
-        )
-
-    def _inject_dimensions(
-        self,
-        workflow,
-        width,
-        height
-    ):
-        return self.backend.inject_dimensions(
-            workflow=workflow,
-            width=width,
-            height=height
-        )
-
-    def _queue_prompt(
-        self,
-        workflow,
-        client_id
-    ):
-        return self.backend.queue_prompt(
-            workflow=workflow,
-            client_id=client_id
-        )
-
-    def _wait_for_image(
-        self,
-        prompt_id
-    ):
-        return self.backend.wait_for_image(
-            prompt_id
-        )
-
-    def _download_image(
-        self,
-        image_info,
-        scene_number,
-        output_dir
-    ):
-        return self.backend.download_image(
-            image_info=image_info,
-            scene_number=scene_number,
-            output_dir=output_dir
-        )
-
-    def _inject_prompt(
-        self,
-        workflow,
-        prompt
-    ):
-        return self.backend.inject_prompt(
-            workflow=workflow,
-            prompt=prompt
         )

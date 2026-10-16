@@ -145,19 +145,6 @@ class MediaLoader:
                 f"{images_manifest_path}"
             )
 
-    def _load_image_paths(
-        self,
-        images_manifest_path
-    ):
-        return [
-            image_path
-            for _, image_path in (
-                self._load_image_entries(
-                    images_manifest_path
-                )
-            )
-        ]
-
     def _load_image_entries(
         self,
         images_manifest_path

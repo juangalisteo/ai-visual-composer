@@ -576,16 +576,6 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
             "-c:a", "pcm_s16le", str(path),
         ])
 
-    def _leak(self, path, duration=1.0):
-        self._run([
-            "ffmpeg", "-y", "-f", "lavfi", "-i",
-            f"color=c=white:s=320x568:r=12:d={duration}",
-            "-f", "lavfi", "-i",
-            f"sine=frequency=1760:sample_rate=48000:duration={duration}",
-            "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", str(path),
-        ])
-
     @staticmethod
     def _srt(path):
         path.write_text(

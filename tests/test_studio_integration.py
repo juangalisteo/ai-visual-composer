@@ -238,14 +238,6 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
             "-c:a", "pcm_s16le", str(path),
         ])
 
-    def _leaks(self, root):
-        root.mkdir(parents=True, exist_ok=True)
-        first = root / "Leak A (01).mp4"
-        second = root / "Leak B-área.mp4"
-        self._video(first, 0.45, "white", frequency=1760)
-        self._video(second, 0.45, "yellow", frequency=1760)
-        return first, second
-
     @staticmethod
     def _hashes(paths):
         return {
