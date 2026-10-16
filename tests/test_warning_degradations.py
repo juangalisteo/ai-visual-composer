@@ -5,7 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.core.start import _count_json_items, _resolve_media_duration
+from app.core.pipeline_telemetry import (
+    PipelineTelemetry,
+    PipelineTelemetryArtifacts,
+)
 from app.managers.pipeline_summary import PipelineSummary
 from app.modules.video.overlays.overlay_folder_resolver import (
     OverlayCategoryResolution,
@@ -42,18 +45,6 @@ class _AsciiStdout:
 
     def getvalue(self):
         return self.buffer.getvalue()
-
-
-class _ProjectWithMedia:
-
-    def __init__(self, media_path):
-        self._media_path = Path(media_path)
-
-    def final_audio_path(self):
-        return self._media_path
-
-    def audio_path(self):
-        return self._media_path
 
 
 class WarningDegradationsTest(unittest.TestCase):
@@ -100,7 +91,7 @@ class WarningDegradationsTest(unittest.TestCase):
             manifest.write_text("{broken", encoding="utf-8")
             summary = PipelineSummary("warnings")
 
-            count = _count_json_items(
+            count = PipelineTelemetry()._count_json_items(
                 manifest,
                 warnings=summary.warnings,
                 metric_name="escenas",
@@ -119,7 +110,7 @@ class WarningDegradationsTest(unittest.TestCase):
             manifest.write_text(json.dumps([]), encoding="utf-8")
             warnings = OperationWarnings()
 
-            count = _count_json_items(
+            count = PipelineTelemetry()._count_json_items(
                 manifest,
                 warnings=warnings,
                 metric_name="im\u00e1genes",
@@ -134,11 +125,16 @@ class WarningDegradationsTest(unittest.TestCase):
             media_path.touch()
             summary = PipelineSummary("warnings")
             with patch(
-                "app.core.start.MediaProbe.get_duration",
+                "app.core.pipeline_telemetry.MediaProbe.get_duration",
                 side_effect=RuntimeError("probe unavailable"),
             ):
-                duration = _resolve_media_duration(
-                    _ProjectWithMedia(media_path),
+                duration = PipelineTelemetry()._resolve_media_duration(
+                    PipelineTelemetryArtifacts(
+                        storyboard_path=media_path,
+                        images_manifest_path=media_path,
+                        final_audio_path=media_path,
+                        audio_path=media_path,
+                    ),
                     warnings=summary.warnings,
                 )
 

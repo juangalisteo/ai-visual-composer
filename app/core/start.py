@@ -7,6 +7,10 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from app.core.pipeline_telemetry import (
+    PipelineTelemetry,
+    PipelineTelemetryArtifacts,
+)
 from app.managers.pipeline_summary import PipelineSummary
 from app.managers.project_manager import ProjectManager
 
@@ -72,7 +76,6 @@ from app.shared.config_contract import (
 )
 from app.shared.config_manager import ConfigManager
 from app.shared.media_probe import MediaProbe
-from app.shared.operation_warnings import OperationWarning, OperationWarnings
 from app.shared.progress_logger import ProgressLogger
 from app.shared.profile_identity import (
     OperationalProfileKey,
@@ -80,6 +83,9 @@ from app.shared.profile_identity import (
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+
+
+_PIPELINE_TELEMETRY = PipelineTelemetry()
 
 
 @dataclass(frozen=True)
@@ -308,6 +314,9 @@ def iniciar(
     summary = PipelineSummary(
         project.project_name
     )
+    telemetry_artifacts = _pipeline_telemetry_artifacts(
+        project
+    )
     if not render_subtitles:
         summary.add_detail(
             "Modo",
@@ -316,7 +325,7 @@ def iniciar(
 
     stage_times = {}
 
-    prepared_script, script_elapsed = _measure_stage(
+    prepared_script, script_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         ejecutar_guion,
         builders=builders,
         ai_config=ai_config,
@@ -335,11 +344,11 @@ def iniciar(
     )
 
     if pipeline_mode == "script":
-        _complete_summary(
+        _PIPELINE_TELEMETRY.complete(
             summary=summary,
             stage_times=stage_times,
-            project=project,
-            pipeline_start=pipeline_start
+            pipeline_start=pipeline_start,
+            artifacts=telemetry_artifacts,
         )
 
         return final_result
@@ -348,7 +357,7 @@ def iniciar(
         "voice",
         False
     ):
-        voice_path, voice_elapsed = _measure_stage(
+        voice_path, voice_elapsed = _PIPELINE_TELEMETRY.measure_stage(
             VoiceBuilder().build,
             prepared_script.text
         )
@@ -389,11 +398,11 @@ def iniciar(
         final_result = final_audio_path
 
     if pipeline_mode == "audio":
-        _complete_summary(
+        _PIPELINE_TELEMETRY.complete(
             summary=summary,
             stage_times=stage_times,
-            project=project,
-            pipeline_start=pipeline_start
+            pipeline_start=pipeline_start,
+            artifacts=telemetry_artifacts,
         )
 
         return final_result
@@ -435,11 +444,11 @@ def iniciar(
         )
 
     if pipeline_mode == "subtitles":
-        _complete_summary(
+        _PIPELINE_TELEMETRY.complete(
             summary=summary,
             stage_times=stage_times,
-            project=project,
-            pipeline_start=pipeline_start
+            pipeline_start=pipeline_start,
+            artifacts=telemetry_artifacts,
         )
 
         return final_result
@@ -449,7 +458,7 @@ def iniciar(
         False
     ):
         storyboard_path, storyboard_elapsed = (
-            _measure_stage(
+            _PIPELINE_TELEMETRY.measure_stage(
                 StoryboardBuilder().build
             )
         )
@@ -461,11 +470,11 @@ def iniciar(
         final_result = storyboard_path
 
     if pipeline_mode == "storyboard":
-        _complete_summary(
+        _PIPELINE_TELEMETRY.complete(
             summary=summary,
             stage_times=stage_times,
-            project=project,
-            pipeline_start=pipeline_start
+            pipeline_start=pipeline_start,
+            artifacts=telemetry_artifacts,
         )
 
         return final_result
@@ -475,7 +484,7 @@ def iniciar(
         False
     ):
         images_manifest_path, images_elapsed = (
-            _measure_stage(
+            _PIPELINE_TELEMETRY.measure_stage(
                 ImageBuilder().build
             )
         )
@@ -519,7 +528,7 @@ def iniciar(
                 profile_key.platform,
             )
         video_clips_manifest_path, video_i2v_elapsed = (
-            _measure_stage(
+            _PIPELINE_TELEMETRY.measure_stage(
                 generar_video_clips_i2v,
                 storyboard_path=(
                     storyboard_path
@@ -543,7 +552,7 @@ def iniciar(
         )
 
         video_path, video_elapsed = (
-            _measure_stage(
+            _PIPELINE_TELEMETRY.measure_stage(
                 _build_i2v_public_video,
                 video_builder=VideoBuilder(
                     **video_builder_options
@@ -568,7 +577,7 @@ def iniciar(
         )
     ):
         video_path, video_elapsed = (
-            _measure_stage(
+            _PIPELINE_TELEMETRY.measure_stage(
                 VideoBuilder(
                     **video_builder_options
                 ).build
@@ -581,11 +590,11 @@ def iniciar(
 
         final_result = video_path
 
-    _complete_summary(
+    _PIPELINE_TELEMETRY.complete(
         summary=summary,
         stage_times=stage_times,
-        project=project,
-        pipeline_start=pipeline_start
+        pipeline_start=pipeline_start,
+        artifacts=telemetry_artifacts,
     )
 
     return final_result
@@ -1277,7 +1286,7 @@ def ejecutar_diseno_imagen(
         encoding="utf-8"
     )
 
-    images_manifest_path, images_elapsed = _measure_stage(
+    images_manifest_path, images_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         image_builder.build,
         storyboard_path=storyboard_path,
         output_dir=project.images_dir()
@@ -1287,13 +1296,15 @@ def ejecutar_diseno_imagen(
         images_manifest_path
     )
 
-    _complete_summary(
+    _PIPELINE_TELEMETRY.complete(
         summary=summary,
         stage_times={
             "Imágenes": images_elapsed
         },
-        project=project,
-        pipeline_start=pipeline_start
+        pipeline_start=pipeline_start,
+        artifacts=_pipeline_telemetry_artifacts(
+            project
+        ),
     )
 
     return images_manifest_path
@@ -1375,7 +1386,7 @@ def ejecutar_diseno_video(
         encoding="utf-8"
     )
 
-    images_manifest_path, images_elapsed = _measure_stage(
+    images_manifest_path, images_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         image_builder.build,
         storyboard_path=storyboard_path,
         output_dir=project.images_dir()
@@ -1385,7 +1396,7 @@ def ejecutar_diseno_video(
         images_manifest_path
     )
 
-    video_clips_manifest_path, video_elapsed = _measure_stage(
+    video_clips_manifest_path, video_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         generar_video_clips_i2v,
         storyboard_path=storyboard_path,
         images_manifest_path=images_manifest_path,
@@ -1398,14 +1409,16 @@ def ejecutar_diseno_video(
         video_clips_manifest_path
     )
 
-    _complete_summary(
+    _PIPELINE_TELEMETRY.complete(
         summary=summary,
         stage_times={
             "Imágenes": images_elapsed,
             "Video I2V": video_elapsed
         },
-        project=project,
-        pipeline_start=pipeline_start
+        pipeline_start=pipeline_start,
+        artifacts=_pipeline_telemetry_artifacts(
+            project
+        ),
     )
 
     return output_clip
@@ -1450,7 +1463,7 @@ def ejecutar_video_i2v(
         output_dir=output_dir,
         output_stem="clip_001",
     )
-    result, video_elapsed = _measure_stage(
+    result, video_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         service.generate,
         request,
     )
@@ -1461,15 +1474,13 @@ def ejecutar_video_i2v(
     summary.set_media_duration(
         result.generation.duration_seconds
     )
-    summary.add_stage(
-        "Video I2V",
-        video_elapsed
+    _PIPELINE_TELEMETRY.complete(
+        summary=summary,
+        stage_times={
+            "Video I2V": video_elapsed,
+        },
+        pipeline_start=pipeline_start,
     )
-    summary.set_total_time(
-        time.perf_counter()
-        - pipeline_start
-    )
-    summary.print()
 
     return result.generation.output_clip
 
@@ -1828,26 +1839,6 @@ def _required_render_fps(profile):
     return fps
 
 
-def _measure_stage(
-    function,
-    *args,
-    **kwargs
-):
-    start = time.perf_counter()
-
-    result = function(
-        *args,
-        **kwargs
-    )
-
-    elapsed = (
-        time.perf_counter()
-        - start
-    )
-
-    return result, elapsed
-
-
 def _ensure_single_design_scene(
     scenes
 ):
@@ -2022,173 +2013,12 @@ def _scene_clip_identity(
     return f"scene_{int(scene_number):03d}"
 
 
-def _complete_summary(
-    summary,
-    stage_times,
+def _pipeline_telemetry_artifacts(
     project,
-    pipeline_start
 ):
-    scene_count = _count_json_items(
-        project.storyboard_path(),
-        warnings=summary.warnings,
-        metric_name="escenas",
-    )
-
-    image_count = _count_json_items(
-        project.images_manifest_path(),
-        warnings=summary.warnings,
-        metric_name="im\u00e1genes",
-    )
-
-    media_duration = _resolve_media_duration(
-        project,
-        warnings=summary.warnings,
-    )
-
-    summary.set_scene_count(
-        scene_count
-    )
-
-    summary.set_image_count(
-        image_count
-    )
-
-    summary.set_media_duration(
-        media_duration
-    )
-
-    stage_order = (
-        "Script",
-        "Storyboard",
-        "Imágenes",
-        "Video I2V",
-        "Voces",
-        "Subtítulos",
-        "Audio",
-        "Vídeo"
-    )
-
-    for stage_name in stage_order:
-        if stage_name in stage_times:
-            summary.add_stage(
-                stage_name,
-                stage_times[stage_name]
-            )
-
-    measured_total = (
-        time.perf_counter()
-        - pipeline_start
-    )
-
-    recorded_total = (
-        summary.total_time()
-    )
-
-    if measured_total > recorded_total:
-        summary.set_total_time(
-            measured_total
-        )
-
-    summary.print()
-
-
-def _count_json_items(json_path, warnings=None, metric_name=None):
-    json_path = Path(
-        json_path
-    )
-
-    if not json_path.exists():
-        return 0
-
-    try:
-        data = json.loads(
-            json_path.read_text(
-                encoding="utf-8"
-            )
-        )
-
-    except (
-        json.JSONDecodeError,
-        OSError
-    ) as error:
-        _record_summary_degradation(
-            warnings=warnings,
-            metric_name=metric_name or "elementos",
-            resource=json_path,
-            error=error,
-        )
-        return None
-
-    if not isinstance(
-        data,
-        list
-    ):
-        _record_summary_degradation(
-            warnings=warnings,
-            metric_name=metric_name or "elementos",
-            resource=json_path,
-            error=TypeError("El manifiesto no contiene una lista."),
-        )
-        return None
-
-    return len(
-        data
-    )
-
-
-def _resolve_media_duration(project, warnings=None):
-    candidate_paths = (
-        project.final_audio_path(),
-        project.audio_path()
-    )
-
-    for media_path in candidate_paths:
-        if media_path.exists():
-            try:
-                return MediaProbe.get_duration(
-                    media_path
-                )
-            except (
-                OSError,
-                RuntimeError,
-                ValueError
-            ) as error:
-                _record_summary_degradation(
-                    warnings=warnings,
-                    metric_name="duraci\u00f3n del medio",
-                    resource=media_path,
-                    error=error,
-                )
-                return None
-
-    return None
-
-
-def _record_summary_degradation(
-    warnings,
-    metric_name,
-    resource,
-    error,
-):
-    """Record unavailable telemetry without changing pipeline continuity."""
-    if not isinstance(warnings, OperationWarnings):
-        return
-    warnings.add(
-        OperationWarning(
-            family="DEGRADATION",
-            user_message=(
-                f"No se pudo obtener la m\u00e9trica de {metric_name}; "
-                "se muestra como no disponible."
-            ),
-            recommended_action=(
-                "Revisa el recurso generado si necesitas esa m\u00e9trica."
-            ),
-            operation="Resumen del pipeline",
-            resource=str(resource),
-            technical_metadata={
-                "cause_type": type(error).__name__,
-                "metric": str(metric_name),
-                "source": "pipeline_summary",
-            },
-        )
+    return PipelineTelemetryArtifacts(
+        storyboard_path=project.storyboard_path(),
+        images_manifest_path=project.images_manifest_path(),
+        final_audio_path=project.final_audio_path(),
+        audio_path=project.audio_path(),
     )
