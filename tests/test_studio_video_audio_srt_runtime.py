@@ -576,7 +576,7 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
             service=renderer,
         )
         with patch("app.core.start.ExternalMediaSubtitlePreparationService") as whisper, patch(
-            "app.core.start.SubtitleCueTransformer"
+            "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
         ) as transformer:
                 result = ejecutar_studio_video_audio_srt(
                     StudioVideoAudioSrtPlan(video, audio, subtitle),
@@ -627,7 +627,9 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
         resolver_output = Mock()
         resolver_output.resolve.return_value = output
 
-        with patch("app.core.start.SubtitleCueTransformer") as transformer:
+        with patch(
+            "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
+        ) as transformer:
             result = ejecutar_studio_video_audio_srt(
                 StudioVideoAudioSrtPlan(video, audio, subtitle),
                 subtitle_profile_key=subtitle_profile.key,

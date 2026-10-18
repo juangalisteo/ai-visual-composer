@@ -196,10 +196,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             resolver = Mock(resolve=Mock(return_value=output_path))
 
             with patch(
-                "app.core.start.time.perf_counter",
+                "app.modules.studio.execution_coordinator.time.perf_counter",
                 side_effect=(10.0, 12.5),
             ), patch(
-                "app.core.start.ProgressLogger"
+                "app.modules.studio.execution_coordinator.ProgressLogger"
             ) as progress_logger:
                 result = ejecutar_studio(
                     subtitle_style="word_by_word",
@@ -302,7 +302,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             renderer.render.return_value = "rendered"
             output_path = root / "demo" / "video" / "demo.mp4"
 
-            with patch("app.core.start.SubtitleCueTransformer") as transformer:
+            with patch(
+                "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
+            ) as transformer:
                 ejecutar_studio(
                     subtitle_style="word_by_word",
                     input_mode="srt_video",
@@ -347,7 +349,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 self._design_subtitle_key(), original=True,
             )
 
-            with patch("app.core.start.SubtitleCueTransformer") as transformer:
+            with patch(
+                "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
+            ) as transformer:
                 rendered_path = _persist_studio_render_subtitle(
                     base_subtitle_path=base,
                     output_path=root / "demo" / "video" / "demo.mp4",
@@ -416,7 +420,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 },
             )
 
-            with patch("app.core.start.SubtitleCueTransformer") as transformer:
+            with patch(
+                "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
+            ) as transformer:
                 rendered_path = _persist_studio_render_subtitle(
                     base_subtitle_path=base,
                     output_path=root / "demo" / "video" / "demo.mp4",
@@ -473,7 +479,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 renderer.render.return_value = "rendered"
                 output_path = root / "demo" / "video" / "demo.mp4"
 
-                with patch("app.core.start.SubtitleCueTransformer") as transformer:
+                with patch(
+                    "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
+                ) as transformer:
                     ejecutar_studio(
                         subtitle_style="word_by_word",
                         input_mode="srt_video",
@@ -649,7 +657,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             base.write_text(source, encoding="utf-8")
             for descriptor in descriptors:
                 with self.subTest(profile_id=descriptor.profile_id), patch(
-                    "app.core.start.SubtitleCueTransformer"
+                    "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
                 ) as transformer:
                     rendered_path = _persist_studio_render_subtitle(
                         base_subtitle_path=base,
