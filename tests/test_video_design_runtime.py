@@ -639,7 +639,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                     "app.core.start.MediaProbe.get_duration",
                     return_value=None
                 ), patch(
-                    "app.core.start.ConfigManager"
+                    "app.modules.design.execution_coordinator.ConfigManager"
                 ) as config_manager_mock, patch(
                     "app.modules.video_component.profile_parameters.ProfileResolver",
                     return_value=profile_resolver

@@ -16,10 +16,7 @@ from app.modules.audio.audio_mixer import AudioMixer
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.audio.voice_builder import VoiceBuilder
 from app.modules.images.image_builder import ImageBuilder
-from app.modules.images import (
-    ImageDesignPreparationService,
-    ImageDesignVisualTruthAdapter,
-)
+from app.modules.design import DesignExecutionCoordinator
 from app.modules.script import (
     ScriptOperation,
     ScriptPreparationService,
@@ -34,8 +31,6 @@ from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
 from app.modules.video.video_builder import VideoBuilder
 from app.modules.video_component import (
     VideoComponentBuilder,
-    VideoDesignPreparationService,
-    VideoDesignVisualTruthAdapter,
 )
 from app.modules.video_component.profile_parameters import (
     build_video_backend_overrides,
@@ -79,6 +74,9 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 _PIPELINE_TELEMETRY = PipelineTelemetry()
 _STUDIO_EXECUTION_COORDINATOR = StudioExecutionCoordinator()
+_DESIGN_EXECUTION_COORDINATOR = DesignExecutionCoordinator(
+    pipeline_telemetry=_PIPELINE_TELEMETRY,
+)
 
 
 @dataclass(frozen=True)
@@ -907,84 +905,14 @@ def ejecutar_diseno_imagen(
     visual_truth_adapter=None,
     image_builder=None
 ):
-    if pipeline_start is None:
-        pipeline_start = time.perf_counter()
-
-    project = (
-        project
-        or ProjectManager()
-    )
-
-    summary = PipelineSummary(
-        project.project_name
-    )
-
-    preparation_service = (
-        preparation_service
-        or ImageDesignPreparationService()
-    )
-    visual_truth_adapter = (
-        visual_truth_adapter
-        or ImageDesignVisualTruthAdapter()
-    )
-    image_builder = (
-        image_builder
-        or ImageBuilder()
-    )
-
-    prepared_design = preparation_service.prepare(
-        input_path=(
-            input_design_path
-            or Path("input/guion_imagen.txt")
-        )
-    )
-
-    scenes = visual_truth_adapter.adapt(
-        prepared_design
-    )
-
-    _ensure_single_design_scene(
-        scenes
-    )
-
-    storyboard_path = (
-        project.storyboard_path()
-    )
-    storyboard_path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-    storyboard_path.write_text(
-        json.dumps(
-            scenes,
-            ensure_ascii=False,
-            indent=4
-        ),
-        encoding="utf-8"
-    )
-
-    images_manifest_path, images_elapsed = _PIPELINE_TELEMETRY.measure_stage(
-        image_builder.build,
-        storyboard_path=storyboard_path,
-        output_dir=project.images_dir()
-    )
-
-    _ensure_single_design_image(
-        images_manifest_path
-    )
-
-    _PIPELINE_TELEMETRY.complete(
-        summary=summary,
-        stage_times={
-            "Imágenes": images_elapsed
-        },
+    return _DESIGN_EXECUTION_COORDINATOR.run_image(
         pipeline_start=pipeline_start,
-        artifacts=_pipeline_telemetry_artifacts(
-            project
-        ),
+        project=project,
+        input_design_path=input_design_path,
+        preparation_service=preparation_service,
+        visual_truth_adapter=visual_truth_adapter,
+        image_builder=image_builder,
     )
-
-    return images_manifest_path
 
 
 def ejecutar_diseno_video(
@@ -998,107 +926,19 @@ def ejecutar_diseno_video(
     profile=None,
     profile_key=None
 ):
-    if pipeline_start is None:
-        pipeline_start = time.perf_counter()
-
-    project = (
-        project
-        or ProjectManager()
-    )
-
-    summary = PipelineSummary(
-        project.project_name
-    )
-
-    preparation_service = (
-        preparation_service
-        or VideoDesignPreparationService()
-    )
-    visual_truth_adapter = (
-        visual_truth_adapter
-        or VideoDesignVisualTruthAdapter()
-    )
-    image_builder = (
-        image_builder
-        or ImageBuilder()
-    )
-    video_builder = (
-        video_builder
-        or VideoComponentBuilder()
-    )
-    if profile is None:
-        config = ConfigManager()
-        profile = config.get_profile_config()
-        if profile_key is None:
-            profile_key = config.get_operational_profile_key()
-
-    prepared_design = preparation_service.prepare(
-        input_path=(
-            input_design_path
-            or Path("input/guion_video.txt")
-        )
-    )
-
-    scenes = visual_truth_adapter.adapt(
-        prepared_design
-    )
-
-    _ensure_single_video_design_scene(
-        scenes
-    )
-
-    storyboard_path = (
-        project.storyboard_path()
-    )
-    storyboard_path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-    storyboard_path.write_text(
-        json.dumps(
-            scenes,
-            ensure_ascii=False,
-            indent=4
-        ),
-        encoding="utf-8"
-    )
-
-    images_manifest_path, images_elapsed = _PIPELINE_TELEMETRY.measure_stage(
-        image_builder.build,
-        storyboard_path=storyboard_path,
-        output_dir=project.images_dir()
-    )
-
-    _ensure_single_design_image(
-        images_manifest_path
-    )
-
-    video_clips_manifest_path, video_elapsed = _PIPELINE_TELEMETRY.measure_stage(
-        generar_video_clips_i2v,
-        storyboard_path=storyboard_path,
-        images_manifest_path=images_manifest_path,
-        project=project,
-        video_builder=video_builder,
-        profile_key=profile_key
-    )
-
-    output_clip = _ensure_single_video_design_clip(
-        video_clips_manifest_path
-    )
-
-    _PIPELINE_TELEMETRY.complete(
-        summary=summary,
-        stage_times={
-            "Imágenes": images_elapsed,
-            "Video I2V": video_elapsed
-        },
+    return _DESIGN_EXECUTION_COORDINATOR.run_video(
         pipeline_start=pipeline_start,
-        artifacts=_pipeline_telemetry_artifacts(
-            project
-        ),
+        project=project,
+        input_design_path=input_design_path,
+        preparation_service=preparation_service,
+        visual_truth_adapter=visual_truth_adapter,
+        image_builder=image_builder,
+        video_builder=video_builder,
+        profile=profile,
+        profile_key=profile_key,
+        generate_i2v_batch=generar_video_clips_i2v,
+        scene_clip_identity=_scene_clip_identity,
     )
-
-    return output_clip
 
 
 def ejecutar_video_i2v(
@@ -1519,169 +1359,34 @@ def _required_render_fps(profile):
 def _ensure_single_design_scene(
     scenes
 ):
-    if not isinstance(
-        scenes,
-        list
-    ):
-        raise ValueError(
-            "El diseño visual debe producir una lista "
-            "de escenas."
-        )
-
-    if len(
+    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_design_scene(
         scenes
-    ) != 1:
-        raise ValueError(
-            "El diseño visual debe producir exactamente "
-            "una escena."
-        )
+    )
 
 
 def _ensure_single_design_image(
     images_manifest_path
 ):
-    manifest_path = Path(
+    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_design_image(
         images_manifest_path
     )
-    manifest = json.loads(
-        manifest_path.read_text(
-            encoding="utf-8"
-        )
-    )
-
-    if not isinstance(
-        manifest,
-        list
-    ):
-        raise ValueError(
-            "El manifiesto de diseño debe contener "
-            "una lista de imágenes."
-        )
-
-    if len(
-        manifest
-    ) != 1:
-        raise ValueError(
-            "El diseño visual debe generar exactamente "
-            "una imagen."
-        )
-
-    image_name = Path(
-        str(
-            manifest[0].get(
-                "image",
-                ""
-            )
-        )
-    ).name
-
-    if image_name != "scene_001.png":
-        raise ValueError(
-            "La imagen de diseño debe corresponder a "
-            "scene_001.png."
-        )
 
 
 def _ensure_single_video_design_scene(
     scenes
 ):
-    _ensure_single_design_scene(
+    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_video_design_scene(
         scenes
     )
-
-    scene = scenes[0]
-    if not isinstance(
-        scene,
-        dict
-    ):
-        raise ValueError(
-            "El diseño de vídeo debe producir una escena válida."
-        )
-
-    if int(
-        scene.get(
-            "scene",
-            0
-        )
-    ) != 1:
-        raise ValueError(
-            "El diseño de vídeo debe producir scene 1."
-        )
 
 
 def _ensure_single_video_design_clip(
     video_clips_manifest_path
 ):
-    manifest_path = Path(
-        video_clips_manifest_path
+    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_video_design_clip(
+        video_clips_manifest_path,
+        scene_clip_identity=_scene_clip_identity,
     )
-    manifest = json.loads(
-        manifest_path.read_text(
-            encoding="utf-8"
-        )
-    )
-
-    if not isinstance(
-        manifest,
-        list
-    ):
-        raise ValueError(
-            "El manifiesto de diseño de vídeo debe "
-            "contener una lista de clips."
-        )
-
-    if len(
-        manifest
-    ) != 1:
-        raise ValueError(
-            "El diseño de vídeo debe generar exactamente "
-            "un clip."
-        )
-
-    try:
-        scene_number = int(
-            manifest[0][
-                "scene"
-            ]
-        )
-    except (
-        KeyError,
-        TypeError,
-        ValueError
-    ) as error:
-        raise ValueError(
-            "El clip de diseño de vídeo debe declarar scene 1."
-        ) from error
-
-    if scene_number != 1:
-        raise ValueError(
-            "El clip de diseño de vídeo debe corresponder "
-            "a scene 1."
-        )
-
-    output_clip = Path(
-        str(
-            manifest[0].get(
-                "output_clip",
-                ""
-            )
-        )
-    )
-
-    expected_identity = _scene_clip_identity(scene_number)
-    if output_clip.stem != expected_identity:
-        raise ValueError(
-            "El clip de diseño de vídeo debe corresponder "
-            f"a {expected_identity}."
-        )
-
-    if not output_clip.exists():
-        raise FileNotFoundError(
-            "No existe el clip de diseño de vídeo: "
-            f"{output_clip}"
-        )
-
-    return output_clip
 
 
 def _scene_clip_identity(

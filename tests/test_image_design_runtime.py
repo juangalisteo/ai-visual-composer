@@ -130,12 +130,12 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                         "ConfigManager must not run before design route"
                     )
                 ), patch(
-                    "app.core.start.ImageDesignPreparationService",
+                    "app.modules.design.execution_coordinator.ImageDesignPreparationService",
                     return_value=ImageDesignPreparationService(
                         visual_interpreter=FakeVisualDesignInterpreter()
                     )
                 ), patch(
-                    "app.core.start.ImageBuilder",
+                    "app.modules.design.execution_coordinator.ImageBuilder",
                     return_value=fake_image_builder
                 ), patch(
                     "app.core.start.MediaProbe.get_duration",
