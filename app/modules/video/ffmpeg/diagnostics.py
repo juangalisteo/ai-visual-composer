@@ -10,9 +10,11 @@ class FFmpegDiagnostics:
         self,
         output_path,
         scene_count,
+        config_manager=None,
     ):
         output_path = Path(output_path)
         self.path = output_path.parent / "ffmpeg_diagnostics.json"
+        self._config_manager = config_manager
         self.data = {
             "profile": self._profile_metadata(),
             "scene_count": scene_count,
@@ -37,7 +39,7 @@ class FFmpegDiagnostics:
         self._persist()
 
     def _profile_metadata(self):
-        config = ConfigManager()
+        config = self._config_manager or ConfigManager()
         profile_key = config.get_operational_profile_key()
         if profile_key is None:
             return None

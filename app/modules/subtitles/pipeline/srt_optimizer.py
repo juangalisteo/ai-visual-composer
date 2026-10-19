@@ -21,7 +21,8 @@ class SrtOptimizer:
     def __init__(
         self,
         subtitle_profile,
-        render_fps=None
+        render_fps=None,
+        project=None,
     ):
         config = ConfigManager()
 
@@ -43,6 +44,7 @@ class SrtOptimizer:
             render_fps=render_fps,
         )
         self.model = self.transformer.model
+        self.project = project
 
     def optimize(
         self,
@@ -56,7 +58,7 @@ class SrtOptimizer:
 
         start = time.perf_counter()
 
-        project = ProjectManager()
+        project = self.project or ProjectManager()
 
         if input_path is None:
             input_path = (

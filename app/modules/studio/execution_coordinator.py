@@ -152,6 +152,7 @@ class StudioExecutionCoordinator:
         video_path=None,
         subtitle_path=None,
         subtitle_original=False,
+        config_manager=None,
         subtitle_profile_key_normalizer=None,
         persist_subtitle_base=None,
         persist_render_subtitle=None,
@@ -181,6 +182,7 @@ class StudioExecutionCoordinator:
         if preparation_service is None:
             preparation = self.prepare_standard(
                 **preparation_options,
+                config_manager=config_manager,
                 subtitle_profile_key_normalizer=(
                     subtitle_profile_key_normalizer
                 ),

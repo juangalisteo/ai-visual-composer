@@ -190,6 +190,10 @@ class VideoBuilderOrchestrationTest(
             video_clips_manifest_path=None,
             output_path="final.mp4"
         )
+        self.assertNotIn(
+            "overlays_mode",
+            context_factory_class.call_args.kwargs,
+        )
         filter_context.cleanup_temporary_subtitle.assert_called_once_with()
 
     def test_build_accepts_video_clips_manifest_without_changing_api(
@@ -257,6 +261,35 @@ class VideoBuilderOrchestrationTest(
             output_path="final.mp4"
         )
         filter_context.cleanup_temporary_subtitle.assert_called_once_with()
+
+    def test_build_transports_explicit_overlay_mode_to_context_factory(self):
+        context = self.make_context("final.mp4")
+
+        with patch(
+            "app.modules.video.video_builder.VideoBuildContextFactory"
+        ) as context_factory_class, patch(
+            "app.modules.video.video_builder.VideoComponentFactory"
+        ) as component_factory_class, patch(
+            "app.modules.video.video_builder.VideoFilterContextFactory"
+        ), patch(
+            "app.modules.video.video_builder.VideoRenderService"
+        ) as render_service_class, patch(
+            "app.modules.video.video_builder.FFmpegDiagnostics"
+        ):
+            context_factory_class.return_value.build.return_value = context
+            component_factory_class.return_value.create.return_value = (
+                self.make_components()
+            )
+            render_service_class.return_value.build_artifacts.return_value = (
+                VideoBuildArtifacts(filter_complex="[vout]", command=["ffmpeg"])
+            )
+
+            VideoBuilder(overlays_mode="smart").build()
+
+        self.assertEqual(
+            "smart",
+            context_factory_class.call_args.kwargs["overlays_mode"],
+        )
 
     def test_build_transports_explicit_disabled_subtitle_rendering(self):
         context = self.make_context("final.mp4")

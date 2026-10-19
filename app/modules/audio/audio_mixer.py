@@ -33,7 +33,8 @@ class AudioMixer:
         self,
         voice_path=None,
         music_path=None,
-        output_path=None
+        output_path=None,
+        project=None,
     ):
         ProgressLogger.start(
             "GENERANDO AUDIO"
@@ -41,7 +42,8 @@ class AudioMixer:
 
         start = time.perf_counter()
 
-        project = ProjectManager()
+        if voice_path is None or output_path is None:
+            project = project or ProjectManager()
 
         if voice_path is None:
             voice_path = project.audio_path()

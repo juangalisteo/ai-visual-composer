@@ -358,7 +358,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 result = main.main()
 
         self.assertEqual(0, result)
-        self.assertIs(plan, start.call_args.kwargs["studio_montage_plan"])
+        self.assertIs(plan, start.call_args.kwargs["request"].route.plan)
         reset.assert_called_once_with()
         summary.assert_not_called()
         montage_summary.assert_called_once()

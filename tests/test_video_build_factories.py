@@ -206,6 +206,99 @@ class VideoBuildFactoriesTest(
             subtitle_offset=0.25
         )
 
+    def test_context_factory_transports_injected_config_manager_to_loader(self):
+        config_manager = object()
+        project = SimpleNamespace(
+            subtitle_path=lambda: Path("project.srt"),
+            storyboard_path=lambda: Path("project_storyboard.json"),
+            images_manifest_path=lambda: Path("project_images.json"),
+            video_path=lambda: Path("project.mp4"),
+        )
+        config = SimpleNamespace(
+            subtitle_offset=0.0,
+            transitions=SimpleNamespace(duration=0.4),
+            width=640,
+            height=360,
+            fps=24,
+        )
+        media = SimpleNamespace(
+            audio_path=Path("audio.mp3"),
+            subtitle_path=Path("subtitles.srt"),
+            output_path=Path("out.mp4"),
+            image_paths=(Path("one.png"),),
+        )
+        timeline = SimpleNamespace(audio_duration=1.0, image_duration=1.0)
+
+        with patch(
+            "app.modules.video.video_build_context_factory.ProjectManager",
+            return_value=project,
+        ), patch(
+            "app.modules.video.video_build_context_factory.AudioResolver"
+        ) as audio_resolver_class, patch(
+            "app.modules.video.video_build_context_factory.VideoConfigLoader"
+        ) as config_loader_class, patch(
+            "app.modules.video.video_build_context_factory.MediaLoader"
+        ) as media_loader_class, patch(
+            "app.modules.video.video_build_context_factory.TimelineBuilder"
+        ) as timeline_builder_class:
+            audio_resolver_class.return_value.resolve.return_value = Path("audio.mp3")
+            config_loader_class.return_value.load.return_value = config
+            media_loader_class.return_value.load.return_value = media
+            timeline_builder_class.return_value.build.return_value = timeline
+
+            VideoBuildContextFactory(config_manager=config_manager).build()
+
+        config_loader_class.assert_called_once_with(
+            subtitle_profile=None,
+            config_manager=config_manager,
+        )
+
+    def test_context_factory_uses_injected_project_without_environment_lookup(self):
+        project = SimpleNamespace(
+            subtitle_path=lambda: Path("project.srt"),
+            storyboard_path=lambda: Path("project_storyboard.json"),
+            images_manifest_path=lambda: Path("project_images.json"),
+            video_path=lambda: Path("project.mp4"),
+        )
+        config = SimpleNamespace(
+            subtitle_offset=0.0,
+            transitions=SimpleNamespace(duration=0.4),
+            width=640,
+            height=360,
+            fps=24,
+        )
+        media = SimpleNamespace(
+            audio_path=Path("audio.mp3"),
+            subtitle_path=Path("subtitles.srt"),
+            output_path=Path("out.mp4"),
+            image_paths=(Path("one.png"),),
+        )
+        timeline = SimpleNamespace(audio_duration=1.0, image_duration=1.0)
+
+        with patch(
+            "app.modules.video.video_build_context_factory.ProjectManager",
+            side_effect=AssertionError("No debe consultar MC_PROJECT_NAME."),
+        ), patch(
+            "app.modules.video.video_build_context_factory.AudioResolver"
+        ) as audio_resolver_class, patch(
+            "app.modules.video.video_build_context_factory.VideoConfigLoader"
+        ) as config_loader_class, patch(
+            "app.modules.video.video_build_context_factory.MediaLoader"
+        ) as media_loader_class, patch(
+            "app.modules.video.video_build_context_factory.TimelineBuilder"
+        ) as timeline_builder_class:
+            audio_resolver_class.return_value.resolve.return_value = Path("audio.mp3")
+            config_loader_class.return_value.load.return_value = config
+            media_loader_class.return_value.load.return_value = media
+            timeline_builder_class.return_value.build.return_value = timeline
+
+            VideoBuildContextFactory(project=project).build()
+
+        audio_resolver_class.return_value.resolve.assert_called_once_with(
+            project=project,
+            audio_path=None,
+        )
+
     def test_context_factory_loads_video_clip_manifest_as_video_media(
         self
     ):
@@ -719,6 +812,52 @@ class VideoBuildFactoriesTest(
         self.assertTrue(
             config.overlays.enabled
         )
+
+    def test_explicit_overlay_mode_overrides_conflicting_environment(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(
+                enabled=True,
+                folders=(
+                    "Electricity",
+                ),
+            )
+        )
+
+        with patch.dict(
+            "os.environ",
+            {"MC_OVERLAYS_MODE": "smart"},
+            clear=False,
+        ), patch(
+            "app.modules.video.video_build_context_factory"
+            ".OverlayFolderResolver"
+        ) as resolver_class:
+            result = VideoBuildContextFactory(
+                overlays_mode="off",
+            )._apply_overlay_mode(config)
+
+        self.assertFalse(result.overlays.enabled)
+        self.assertEqual(("Electricity",), result.overlays.folders)
+        resolver_class.assert_not_called()
+
+    def test_explicit_absence_of_overlay_mode_ignores_environment(
+        self
+    ):
+        config = video_config(
+            overlays=overlay_config(enabled=True)
+        )
+
+        with patch.dict(
+            "os.environ",
+            {"MC_OVERLAYS_MODE": "off"},
+            clear=False,
+        ):
+            result = VideoBuildContextFactory(
+                overlays_mode=None,
+            )._apply_overlay_mode(config)
+
+        self.assertTrue(result.overlays.enabled)
 
     def test_overlay_mode_on_overrides_a_disabled_profile(self):
         config = video_config(

@@ -195,7 +195,11 @@ class MainErrorHandlingTest(unittest.TestCase):
                 result = main.main()
 
             self.assertEqual(130, result)
-            iniciar_mock.assert_called_once_with()
+            iniciar_mock.assert_called_once()
+            self.assertEqual(
+                "design_video",
+                iniciar_mock.call_args.kwargs["request"].route.mode,
+            )
             self.assertTrue(os.path.exists(artifact))
             output = print_mock.call_args.args[0]
             self.assertTrue(output.startswith("CANCELADO\n"))
@@ -247,8 +251,10 @@ class MainErrorHandlingTest(unittest.TestCase):
                 ), patch("builtins.print") as print_mock:
                     options = self.design_options()
                     options.update(
+                        profile_component="studio",
+                        profile_id="studio_instagram",
                         pipeline_mode="studio",
-                        studio_input_mode="montaje_videos",
+                        studio_input_mode="srt_video",
                     )
                     controller_mock.return_value.run.return_value = options
                     result = main.main()
@@ -323,7 +329,12 @@ class MainErrorHandlingTest(unittest.TestCase):
                 side_effect=error,
             ), patch("builtins.print") as print_mock:
                 options = self.design_options()
-                options["pipeline_mode"] = "studio"
+                options.update(
+                    profile_component="studio",
+                    profile_id="studio_instagram",
+                    pipeline_mode="studio",
+                    studio_input_mode="srt_video",
+                )
                 controller_mock.return_value.run.return_value = options
 
                 result = main.main()
@@ -473,7 +484,11 @@ class MainErrorHandlingTest(unittest.TestCase):
 
         self.assertEqual(0, result)
         output_manager.return_value.reset.assert_called_once_with()
-        iniciar_mock.assert_called_once_with()
+        iniciar_mock.assert_called_once()
+        self.assertEqual(
+            "design_video",
+            iniciar_mock.call_args.kwargs["request"].route.mode,
+        )
 
 
 if __name__ == "__main__":

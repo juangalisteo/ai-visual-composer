@@ -4,7 +4,11 @@ from app.controllers.run_controller import RunController
 from app.core.start import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
 from app.shared.config_manager import ConfigManager
-from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
+from app.shared.profile_identity import (
+    OperationalProfileKey,
+    ProfileComponent,
+    ProfileKey,
+)
 from app.shared.profile_resolver import (
     OperationalProfileDescriptor,
     ProfileResolver,
@@ -53,6 +57,67 @@ def test_m3_config_manager_loads_operational_profile_without_subtitle_family():
     ):
         assert manager.get_operational_profile_key() == key
         assert manager.get_profile_config() == resolver.load_operational(key)
+
+
+def test_explicit_operational_key_wins_over_conflicting_legacy_environment(
+    monkeypatch,
+):
+    resolver = ProfileResolver()
+    explicit_key = OperationalProfileKey(
+        "guion",
+        "instagram",
+        "guion_instagram",
+    )
+    monkeypatch.setenv("MC_PROFILE_COMPONENT", "video")
+    monkeypatch.setenv("MC_PROFILE_PLATFORM", "youtube")
+    monkeypatch.setenv("MC_PROFILE_ID", "video_youtube")
+
+    manager = ConfigManager(
+        profile_resolver=resolver,
+        operational_profile_key=explicit_key,
+    )
+
+    assert manager.get_operational_profile_key() is explicit_key
+    assert manager.get_profile_config() == resolver.load_operational(explicit_key)
+
+
+def test_config_manager_without_explicit_key_keeps_legacy_environment_fallback(
+    monkeypatch,
+):
+    legacy_key = OperationalProfileKey(
+        "video",
+        "youtube",
+        "video_youtube",
+    )
+    monkeypatch.setenv("MC_PROFILE_COMPONENT", legacy_key.component.value)
+    monkeypatch.setenv("MC_PROFILE_PLATFORM", legacy_key.platform)
+    monkeypatch.setenv("MC_PROFILE_ID", legacy_key.profile_id)
+
+    assert ConfigManager().get_operational_profile_key() == legacy_key
+
+
+def test_explicit_key_adapts_legacy_subtitle_parent_without_identity_environment(
+    monkeypatch,
+):
+    explicit_key = OperationalProfileKey(
+        "guion",
+        "instagram",
+        "guion_instagram",
+    )
+    monkeypatch.setenv("MC_PROFILE_COMPONENT", "video")
+    monkeypatch.setenv("MC_PROFILE_PLATFORM", "youtube")
+    monkeypatch.setenv("MC_PROFILE_ID", "video_youtube")
+
+    parent = ConfigManager(
+        operational_profile_key=explicit_key,
+    )._get_legacy_subtitle_parent_key()
+
+    assert parent == ProfileKey(
+        component=explicit_key.component,
+        platform=explicit_key.platform,
+        profile_id=explicit_key.profile_id,
+        family="estandar",
+    )
 
 
 def test_m3_run_controller_selects_operational_key_without_family():

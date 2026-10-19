@@ -504,7 +504,7 @@ class StudioPhase1Test(unittest.TestCase):
             "subtitle_config": "three_two_words",
             "voice_config": "",
             "music_category": None,
-            "project_name": "",
+            "project_name": "studio transport",
             "visual_pipeline": "studio",
             "script_source": "external",
             "design_target": "",
@@ -522,15 +522,25 @@ class StudioPhase1Test(unittest.TestCase):
         ) as output_manager:
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
-            self.assertEqual("studio", os.environ["MC_PROFILE_COMPONENT"])
-            self.assertEqual("studio", os.environ["MC_PIPELINE_MODE"])
+            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
+            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
+            self.assertNotIn("MC_PROFILE_ID", os.environ)
+            self.assertNotIn("MC_PIPELINE_MODE", os.environ)
 
-        start.assert_called_once_with(
-            subtitle_style="three_two_words",
-            studio_music_path=None,
-            studio_input_mode="srt_video",
-            studio_video_path="input/studio/srt_video/source.mp4",
-            studio_subtitle_path="input/studio/srt_video/source.srt",
+        start.assert_called_once()
+        request = start.call_args.kwargs["request"]
+        self.assertEqual("srt_video", request.route.input_mode.value)
+        self.assertEqual(
+            Path("input/studio/srt_video/source.mp4"),
+            request.route.video_path,
+        )
+        self.assertEqual(
+            Path("input/studio/srt_video/source.srt"),
+            request.route.subtitle_path,
+        )
+        self.assertEqual(
+            "three_two_words",
+            start.call_args.kwargs["subtitle_style"],
         )
         output_manager.assert_not_called()
 
@@ -558,7 +568,7 @@ class StudioPhase1Test(unittest.TestCase):
         ) as output_manager:
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
-            self.assertEqual("studio project", os.environ["MC_PROJECT_NAME"])
+            self.assertNotIn("MC_PROJECT_NAME", os.environ)
         output_manager.return_value.reset.assert_called_once_with()
 
     def test_start_routes_studio_without_initializing_project(self):

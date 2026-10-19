@@ -61,7 +61,8 @@ class ImageBuilder:
         backend_adapter=None,
         image_quality_flow=None,
         evidence_writer=None,
-        profile=None
+        profile=None,
+        project=None,
     ):
         self.comfyui_url = comfyui_url
 
@@ -96,6 +97,7 @@ class ImageBuilder:
         self.image_quality_flow = image_quality_flow
         self.evidence_writer = evidence_writer
         self.profile = profile
+        self.project = project
 
     def build(
         self,
@@ -108,7 +110,7 @@ class ImageBuilder:
             "GENERANDO IMÁGENES"
         )
 
-        project = ProjectManager()
+        project = self.project or ProjectManager()
 
         profile = (
             self.profile

@@ -142,7 +142,7 @@ class StudioPhase4Test(unittest.TestCase):
             "subtitle_config": "single_line",
             "voice_config": "",
             "music_category": None,
-            "project_name": "",
+            "project_name": "studio music",
             "visual_pipeline": "studio",
             "script_source": "external",
             "design_target": "",
@@ -170,11 +170,12 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertIn("STUDIO COMPLETADO", printed)
         self.assertIn("Video final", printed)
         self.assertIn(str(final_output), printed)
-        start.assert_called_once_with(
-            subtitle_style="single_line",
-            studio_music_path=str(selected),
-            studio_input_mode="srt_video",
-        )
+        start.assert_called_once()
+        request = start.call_args.kwargs["request"]
+        self.assertEqual("studio music", request.project_name)
+        self.assertEqual(selected, request.route.music_path)
+        self.assertEqual("srt_video", request.route.input_mode.value)
+        self.assertEqual("single_line", start.call_args.kwargs["subtitle_style"])
 
         with patch.dict("os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True), patch(
             "app.core.start.ejecutar_studio"

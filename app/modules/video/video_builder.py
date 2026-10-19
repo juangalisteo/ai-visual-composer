@@ -20,6 +20,9 @@ from app.modules.video.ffmpeg.diagnostics import (
 from app.shared.operational_error import OperationalError, create_operational_error
 
 
+_OVERLAYS_MODE_UNSET = object()
+
+
 class VideoBuilder:
 
     def __init__(
@@ -28,6 +31,9 @@ class VideoBuilder:
         intro_outro_selection=None,
         render_subtitles=True,
         warnings=None,
+        config_manager=None,
+        project=None,
+        overlays_mode=_OVERLAYS_MODE_UNSET,
     ):
         self.subtitle_profile = subtitle_profile
         self.intro_outro_selection = (
@@ -35,6 +41,9 @@ class VideoBuilder:
         )
         self.render_subtitles = bool(render_subtitles)
         self.warnings = warnings
+        self.config_manager = config_manager
+        self.project = project
+        self._overlays_mode = overlays_mode
 
     def build(
         self,
@@ -60,12 +69,18 @@ class VideoBuilder:
         if not self.render_subtitles:
             context_options["render_subtitles"] = False
 
-        build_context = (
-            VideoBuildContextFactory(
-                subtitle_profile=self.subtitle_profile,
-                warnings=self.warnings,
-            ).build(**context_options)
-        )
+        context_factory_options = {
+            "subtitle_profile": self.subtitle_profile,
+            "warnings": self.warnings,
+            "config_manager": self.config_manager,
+            "project": self.project,
+        }
+        if self._overlays_mode is not _OVERLAYS_MODE_UNSET:
+            context_factory_options["overlays_mode"] = self._overlays_mode
+
+        build_context = VideoBuildContextFactory(
+            **context_factory_options,
+        ).build(**context_options)
 
         if self.intro_outro_selection is None:
             render_service = VideoRenderService()
@@ -80,6 +95,7 @@ class VideoBuilder:
             scene_count=len(
                 build_context.media.image_paths
             ),
+            config_manager=self.config_manager,
         )
 
         filter_context = None

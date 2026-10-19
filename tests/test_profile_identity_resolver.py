@@ -945,18 +945,9 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
-            self.assertEqual(
-                "video",
-                os.environ["MC_PROFILE_COMPONENT"]
-            )
-            self.assertEqual(
-                "instagram",
-                os.environ["MC_PROFILE_PLATFORM"]
-            )
-            self.assertEqual(
-                "video_instagram",
-                os.environ["MC_PROFILE_ID"]
-            )
+            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
+            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
+            self.assertNotIn("MC_PROFILE_ID", os.environ)
             self.assertNotIn("MC_PROFILE_FAMILY", os.environ)
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
@@ -965,15 +956,18 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             )
             self.assertEqual(
                 self.resolver.load_operational(profile_key),
-                ConfigManager().get_profile_config()
+                ConfigManager(
+                    operational_profile_key=profile_key,
+                ).get_profile_config()
             )
             self.assertNotIn(
                 "MC_SUBTITLE_CONFIG",
                 os.environ
             )
-            iniciar_mock.assert_called_once_with(
-                subtitle_style="word_by_word"
-            )
+            iniciar_mock.assert_called_once()
+            request = iniciar_mock.call_args.kwargs["request"]
+            self.assertEqual(profile_key, request.operational_profile_key)
+            self.assertEqual("word_by_word", iniciar_mock.call_args.kwargs["subtitle_style"])
 
     def test_main_transports_design_subtitle_identity_without_a_profile_path(self):
         subtitle_profile_key = SubtitleProfileKey("imagen", "instagram", "modo_conciencia_reels", "design",
@@ -1002,14 +996,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROFILE_FAMILY", os.environ)
-            self.assertEqual(
-                "imagen_instagram",
-                os.environ["MC_PROFILE_ID"],
-            )
+            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
+            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
+            self.assertNotIn("MC_PROFILE_ID", os.environ)
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
-        iniciar_mock.assert_called_once_with(
-            subtitle_profile_key=subtitle_profile_key,
-        )
+        iniciar_mock.assert_called_once()
+        request = iniciar_mock.call_args.kwargs["request"]
+        self.assertIs(subtitle_profile_key, request.subtitle_profile_key)
 
     def test_productive_runtime_has_no_profile_path_environment_contract(self):
         paths = (

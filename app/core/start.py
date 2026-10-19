@@ -9,6 +9,12 @@ from app.core.pipeline_telemetry import (
     PipelineTelemetry,
     PipelineTelemetryArtifacts,
 )
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+    StandardExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.managers.pipeline_summary import PipelineSummary
 from app.managers.project_manager import ProjectManager
 
@@ -165,95 +171,149 @@ def iniciar(
     studio_intro_outro_plan=None,
     studio_video_audio_srt_plan=None,
     studio_subtitle_original=False,
+    request=None,
 ):
     pipeline_start = time.perf_counter()
 
-    pipeline_mode = os.environ.get(
-        "MC_PIPELINE_MODE",
-        "full"
-    ).strip().lower()
+    if request is not None:
+        if not isinstance(request, ApplicationExecutionRequest):
+            raise TypeError(
+                "request debe ser ApplicationExecutionRequest o None."
+            )
+        route = request.route
+        if isinstance(route, StudioExecutionRequest):
+            return _iniciar_studio_request(
+                route=route,
+                subtitle_profile_key=request.subtitle_profile_key,
+                legacy_subtitle_style=subtitle_style,
+                operational_profile_key=request.operational_profile_key,
+                project_name=request.project_name,
+            )
 
-    if pipeline_mode == "studio":
-        if studio_video_audio_srt_plan is not None:
-            video_audio_options = {}
+        project = ProjectManager(project_name=request.project_name)
+        if isinstance(route, DesignExecutionRequest):
+            design_config = _config_manager_for_operational_key(
+                request.operational_profile_key
+            )
+            if route.mode == "design_image":
+                return ejecutar_diseno_imagen(
+                    pipeline_start=pipeline_start,
+                    project=project,
+                    profile=design_config.get_profile_config(),
+                    ai_config=design_config.get_ai_config(),
+                )
+            return ejecutar_diseno_video(
+                pipeline_start=pipeline_start,
+                project=project,
+                profile_key=request.operational_profile_key,
+                config_manager=design_config,
+            )
+
+        if not isinstance(route, StandardExecutionRequest):
+            raise TypeError("request contiene una ruta de ejecución no soportada.")
+        pipeline_mode = route.pipeline_mode
+        visual_pipeline = route.visual_pipeline
+        script_source = route.script_source
+        music_category = route.music_category
+        voice_config_id = route.voice_config_id
+        overlays_mode = route.overlays_mode
+        intro_outro_selection = route.intro_outro_plan
+        subtitle_profile_key = request.subtitle_profile_key
+        operational_profile_key = request.operational_profile_key
+    else:
+        pipeline_mode = os.environ.get(
+            "MC_PIPELINE_MODE",
+            "full"
+        ).strip().lower()
+
+        if pipeline_mode == "studio":
+            if studio_video_audio_srt_plan is not None:
+                video_audio_options = {}
+                if subtitle_profile_key is not None:
+                    video_audio_options["subtitle_profile_key"] = (
+                        subtitle_profile_key
+                    )
+                elif subtitle_style is not None:
+                    video_audio_options["subtitle_style"] = subtitle_style
+                return ejecutar_studio_video_audio_srt(
+                    studio_video_audio_srt_plan,
+                    **video_audio_options,
+                )
+            if studio_intro_outro_plan is not None:
+                return ejecutar_studio_intro_outro(studio_intro_outro_plan)
+            if studio_subtitle_export_plan is not None:
+                export_options = {}
+                if subtitle_profile_key is not None:
+                    export_options["subtitle_profile_key"] = (
+                        subtitle_profile_key
+                    )
+                elif subtitle_style is not None:
+                    export_options["subtitle_style"] = subtitle_style
+                return ejecutar_studio_exportar_srt(
+                    studio_subtitle_export_plan,
+                    **export_options,
+                )
+            if studio_montage_plan is not None:
+                montage_options = {}
+                if studio_music_path is not None:
+                    montage_options["music_path"] = studio_music_path
+                if intro_outro_selection is not None:
+                    montage_options["intro_outro_selection"] = (
+                        intro_outro_selection
+                    )
+                return ejecutar_studio_montaje(
+                    studio_montage_plan,
+                    **montage_options,
+                )
+            studio_options = {
+                "music_path": studio_music_path,
+                "input_mode": studio_input_mode,
+            }
             if subtitle_profile_key is not None:
-                video_audio_options["subtitle_profile_key"] = (
+                studio_options["subtitle_profile_key"] = (
                     subtitle_profile_key
                 )
             elif subtitle_style is not None:
-                video_audio_options["subtitle_style"] = subtitle_style
-            return ejecutar_studio_video_audio_srt(
-                studio_video_audio_srt_plan,
-                **video_audio_options,
-            )
-        if studio_intro_outro_plan is not None:
-            return ejecutar_studio_intro_outro(studio_intro_outro_plan)
-        if studio_subtitle_export_plan is not None:
-            export_options = {}
-            if subtitle_profile_key is not None:
-                export_options["subtitle_profile_key"] = (
-                    subtitle_profile_key
-                )
-            elif subtitle_style is not None:
-                export_options["subtitle_style"] = subtitle_style
-            return ejecutar_studio_exportar_srt(
-                studio_subtitle_export_plan,
-                **export_options,
-            )
-        if studio_montage_plan is not None:
-            montage_options = {}
-            if studio_music_path is not None:
-                montage_options["music_path"] = studio_music_path
+                studio_options["subtitle_style"] = subtitle_style
+            if studio_subtitle_original:
+                studio_options["subtitle_original"] = True
             if intro_outro_selection is not None:
-                montage_options["intro_outro_selection"] = (
-                    intro_outro_selection
-                )
-            return ejecutar_studio_montaje(
-                studio_montage_plan,
-                **montage_options,
+                studio_options["intro_outro_selection"] = intro_outro_selection
+            if studio_video_path is not None:
+                studio_options["video_path"] = studio_video_path
+            if studio_subtitle_path is not None:
+                studio_options["subtitle_path"] = studio_subtitle_path
+            return ejecutar_studio(
+                **studio_options
             )
-        studio_options = {
-            "music_path": studio_music_path,
-            "input_mode": studio_input_mode,
-        }
-        if subtitle_profile_key is not None:
-            studio_options["subtitle_profile_key"] = (
-                subtitle_profile_key
+
+        project = ProjectManager()
+        visual_pipeline = os.environ.get(
+            "MC_VISUAL_PIPELINE",
+            "image"
+        ).strip().lower()
+        script_source = None
+        music_category = None
+        operational_profile_key = None
+        voice_config_id = None
+        overlays_mode = None
+
+        if pipeline_mode == "design_image":
+            return ejecutar_diseno_imagen(
+                pipeline_start=pipeline_start,
+                project=project
             )
-        elif subtitle_style is not None:
-            studio_options["subtitle_style"] = subtitle_style
-        if studio_subtitle_original:
-            studio_options["subtitle_original"] = True
-        if intro_outro_selection is not None:
-            studio_options["intro_outro_selection"] = intro_outro_selection
-        if studio_video_path is not None:
-            studio_options["video_path"] = studio_video_path
-        if studio_subtitle_path is not None:
-            studio_options["subtitle_path"] = studio_subtitle_path
-        return ejecutar_studio(
-            **studio_options
-        )
 
-    project = ProjectManager()
+        if pipeline_mode == "design_video":
+            return ejecutar_diseno_video(
+                pipeline_start=pipeline_start,
+                project=project
+            )
 
-    visual_pipeline = os.environ.get(
-        "MC_VISUAL_PIPELINE",
-        "image"
-    ).strip().lower()
-
-    if pipeline_mode == "design_image":
-        return ejecutar_diseno_imagen(
-            pipeline_start=pipeline_start,
-            project=project
-        )
-
-    if pipeline_mode == "design_video":
-        return ejecutar_diseno_video(
-            pipeline_start=pipeline_start,
-            project=project
-        )
-
-    config = ConfigManager()
+    config = _config_manager_for_operational_key(
+        operational_profile_key if request is not None else None,
+        voice_config_id=voice_config_id if request is not None else None,
+    )
 
     if pipeline_mode != "script":
         project.setup()
@@ -316,14 +376,19 @@ def iniciar(
 
     stage_times = {}
 
+    script_options = {
+        "builders": builders,
+        "ai_config": ai_config,
+        "profile": profile,
+        "input_script_path": input_script_path,
+        "input_topic_path": input_topic_path,
+        "output_script_path": output_script_path,
+    }
+    if request is not None:
+        script_options["script_source"] = script_source
     prepared_script, script_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         ejecutar_guion,
-        builders=builders,
-        ai_config=ai_config,
-        profile=profile,
-        input_script_path=input_script_path,
-        input_topic_path=input_topic_path,
-        output_script_path=output_script_path
+        **script_options,
     )
 
     stage_times["Script"] = (
@@ -348,9 +413,22 @@ def iniciar(
         "voice",
         False
     ):
+        if request is not None and voice_config_id is None:
+            raise ValueError(
+                "La ruta moderna requiere voice_config_id para generar voz."
+            )
+        voice_options = {}
+        if request is not None:
+            voice_options["output_path"] = project.audio_path()
+        voice_builder = (
+            VoiceBuilder(config_manager=config)
+            if request is not None
+            else VoiceBuilder()
+        )
         voice_path, voice_elapsed = _PIPELINE_TELEMETRY.measure_stage(
-            VoiceBuilder().build,
-            prepared_script.text
+            voice_builder.build,
+            prepared_script.text,
+            **voice_options,
         )
 
         stage_times["Voces"] = (
@@ -359,10 +437,11 @@ def iniciar(
 
         final_result = voice_path
 
-        music_category = os.environ.get(
-            "MC_MUSIC_CATEGORY",
-            ""
-        ).strip()
+        if request is None:
+            music_category = os.environ.get(
+                "MC_MUSIC_CATEGORY",
+                ""
+            ).strip()
 
         audio_start = time.perf_counter()
 
@@ -375,11 +454,14 @@ def iniciar(
         else:
             music_path = None
 
-        final_audio_path = (
-            AudioMixer().build(
-                music_path=music_path
+        audio_options = {"music_path": music_path}
+        if request is not None:
+            audio_options.update(
+                voice_path=voice_path,
+                output_path=project.final_audio_path(),
+                project=project,
             )
-        )
+        final_audio_path = AudioMixer().build(**audio_options)
 
         stage_times["Audio"] = (
             time.perf_counter()
@@ -409,17 +491,22 @@ def iniciar(
             time.perf_counter()
         )
 
-        subtitle_path = (
-            SubtitleBuilder().build()
-        )
+        subtitle_options = {}
+        if request is not None:
+            subtitle_options.update(
+                audio_path=project.audio_path(),
+                output_path=project.subtitle_path(),
+            )
+        subtitle_path = SubtitleBuilder().build(**subtitle_options)
 
+        optimizer_options = {
+            "subtitle_profile": subtitle_profile,
+            "render_fps": _required_render_fps(profile),
+        }
+        if request is not None:
+            optimizer_options["project"] = project
         optimized_subtitle_path = (
-            SrtOptimizer(
-                subtitle_profile=subtitle_profile,
-                render_fps=_required_render_fps(
-                    profile
-                )
-            ).optimize(
+            SrtOptimizer(**optimizer_options).optimize(
                 canonical_content=prepared_script.text,
             )
         )
@@ -448,9 +535,17 @@ def iniciar(
         "storyboard",
         False
     ):
+        storyboard_builder = (
+            StoryboardBuilder(
+                config_manager=config,
+                project=project,
+            )
+            if request is not None
+            else StoryboardBuilder()
+        )
         storyboard_path, storyboard_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
-                StoryboardBuilder().build
+                storyboard_builder.build
             )
         )
 
@@ -474,9 +569,17 @@ def iniciar(
         "images",
         False
     ):
+        image_builder = (
+            ImageBuilder(
+                profile=profile,
+                project=project,
+            )
+            if request is not None
+            else ImageBuilder()
+        )
         images_manifest_path, images_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
-                ImageBuilder().build
+                image_builder.build
             )
         )
 
@@ -492,6 +595,8 @@ def iniciar(
         "subtitle_profile": subtitle_profile,
         "warnings": summary.warnings,
     }
+    if request is not None:
+        video_builder_options["overlays_mode"] = overlays_mode
     if not render_subtitles:
         video_builder_options["render_subtitles"] = False
     if intro_outro_selection is not None:
@@ -506,7 +611,14 @@ def iniciar(
             "full_without_subtitles",
         }
     ):
-        profile_key = config.get_operational_profile_key()
+        profile_key = (
+            operational_profile_key
+            if (
+                request is not None
+                and operational_profile_key is not None
+            )
+            else config.get_operational_profile_key()
+        )
         if (
             isinstance(
                 profile_key,
@@ -545,8 +657,14 @@ def iniciar(
         video_path, video_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
                 _build_i2v_public_video,
-                video_builder=VideoBuilder(
-                    **video_builder_options
+                video_builder=(
+                    VideoBuilder(
+                        **video_builder_options,
+                        config_manager=config,
+                        project=project,
+                    )
+                    if request is not None
+                    else VideoBuilder(**video_builder_options)
                 ),
                 video_clips_manifest_path=(
                     video_clips_manifest_path
@@ -569,8 +687,14 @@ def iniciar(
     ):
         video_path, video_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
-                VideoBuilder(
-                    **video_builder_options
+                (
+                    VideoBuilder(
+                        **video_builder_options,
+                        config_manager=config,
+                        project=project,
+                    )
+                    if request is not None
+                    else VideoBuilder(**video_builder_options)
                 ).build
             )
         )
@@ -589,6 +713,101 @@ def iniciar(
     )
 
     return final_result
+
+
+def _iniciar_studio_request(
+    *,
+    route,
+    subtitle_profile_key,
+    legacy_subtitle_style,
+    operational_profile_key,
+    project_name,
+):
+    """Dispatch a typed STUDIO route without reconstructing its plan."""
+    config_manager = _config_manager_for_operational_key(
+        operational_profile_key
+    )
+    project = ProjectManager(project_name=project_name)
+    if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT:
+        video_audio_options = _typed_subtitle_options(
+            subtitle_profile_key,
+            legacy_subtitle_style,
+        )
+        return ejecutar_studio_video_audio_srt(
+            route.plan,
+            config_manager=config_manager,
+            project=project,
+            **video_audio_options,
+        )
+    if route.input_mode is StudioInputMode.INTRO_OUTRO:
+        return ejecutar_studio_intro_outro(
+            route.plan,
+            config_manager=config_manager,
+            project=project,
+        )
+    if route.input_mode is StudioInputMode.EXPORTAR_SRT:
+        export_options = _typed_subtitle_options(
+            subtitle_profile_key,
+            legacy_subtitle_style,
+        )
+        return ejecutar_studio_exportar_srt(
+            route.plan,
+            config_manager=config_manager,
+            project=project,
+            **export_options,
+        )
+    if route.input_mode is StudioInputMode.MONTAJE_VIDEOS:
+        montage_options = {}
+        if route.music_path is not None:
+            montage_options["music_path"] = route.music_path
+        if route.intro_outro_plan is not None:
+            montage_options["intro_outro_selection"] = route.intro_outro_plan
+        montage_options["project"] = project
+        return ejecutar_studio_montaje(route.plan, **montage_options)
+
+    studio_options = {
+        "music_path": route.music_path,
+        "input_mode": route.input_mode.value,
+    }
+    studio_options.update(
+        _typed_subtitle_options(
+            subtitle_profile_key,
+            legacy_subtitle_style,
+        )
+    )
+    if route.subtitle_original:
+        studio_options["subtitle_original"] = True
+    if route.intro_outro_plan is not None:
+        studio_options["intro_outro_selection"] = route.intro_outro_plan
+    if route.video_path is not None:
+        studio_options["video_path"] = route.video_path
+    if route.subtitle_path is not None:
+        studio_options["subtitle_path"] = route.subtitle_path
+    studio_options["config_manager"] = config_manager
+    project.setup()
+    studio_options["project"] = project
+    return ejecutar_studio(**studio_options)
+
+
+def _config_manager_for_operational_key(
+    operational_profile_key,
+    *,
+    voice_config_id=None,
+):
+    options = {}
+    if operational_profile_key is not None:
+        options["operational_profile_key"] = operational_profile_key
+    if voice_config_id is not None:
+        options["voice_config_id"] = voice_config_id
+    return ConfigManager(**options)
+
+
+def _typed_subtitle_options(subtitle_profile_key, legacy_subtitle_style):
+    if subtitle_profile_key is not None:
+        return {"subtitle_profile_key": subtitle_profile_key}
+    if legacy_subtitle_style is not None:
+        return {"subtitle_style": legacy_subtitle_style}
+    return {}
 
 
 def _normalise_subtitle_profile_key(
@@ -764,7 +983,15 @@ def ejecutar_studio(
     video_path=None,
     subtitle_path=None,
     subtitle_original=False,
+    config_manager=None,
 ):
+    if preparation_service is None and config_manager is not None:
+        def preparation_service(**options):
+            return preparar_studio(
+                config_manager=config_manager,
+                **options,
+            )
+
     return _STUDIO_EXECUTION_COORDINATOR.run_standard(
         subtitle_style=subtitle_style,
         input_mode=input_mode,
@@ -782,6 +1009,7 @@ def ejecutar_studio(
         video_path=video_path,
         subtitle_path=subtitle_path,
         subtitle_original=subtitle_original,
+        config_manager=config_manager,
         subtitle_profile_key_normalizer=_normalise_subtitle_profile_key,
         persist_subtitle_base=_persist_studio_subtitle_base,
         persist_render_subtitle=_persist_studio_render_subtitle,
@@ -879,12 +1107,15 @@ def ejecutar_guion(
     profile,
     input_script_path,
     input_topic_path,
-    output_script_path
+    output_script_path,
+    script_source=None,
 ):
-    source_mode = os.environ.get(
-        "MC_SCRIPT_SOURCE",
-        "generated"
-    ).strip().lower()
+    source_mode = script_source
+    if source_mode is None:
+        source_mode = os.environ.get(
+            "MC_SCRIPT_SOURCE",
+            "generated"
+        ).strip().lower()
 
     return ScriptOperation().execute(
         builders=builders,
@@ -903,7 +1134,9 @@ def ejecutar_diseno_imagen(
     input_design_path=None,
     preparation_service=None,
     visual_truth_adapter=None,
-    image_builder=None
+    image_builder=None,
+    profile=None,
+    ai_config=None,
 ):
     return _DESIGN_EXECUTION_COORDINATOR.run_image(
         pipeline_start=pipeline_start,
@@ -912,6 +1145,8 @@ def ejecutar_diseno_imagen(
         preparation_service=preparation_service,
         visual_truth_adapter=visual_truth_adapter,
         image_builder=image_builder,
+        profile=profile,
+        ai_config=ai_config,
     )
 
 
@@ -924,7 +1159,9 @@ def ejecutar_diseno_video(
     image_builder=None,
     video_builder=None,
     profile=None,
-    profile_key=None
+    profile_key=None,
+    config_manager=None,
+    ai_config=None,
 ):
     return _DESIGN_EXECUTION_COORDINATOR.run_video(
         pipeline_start=pipeline_start,
@@ -936,6 +1173,8 @@ def ejecutar_diseno_video(
         video_builder=video_builder,
         profile=profile,
         profile_key=profile_key,
+        config_manager=config_manager,
+        ai_config=ai_config,
         generate_i2v_batch=generar_video_clips_i2v,
         scene_clip_identity=_scene_clip_identity,
     )

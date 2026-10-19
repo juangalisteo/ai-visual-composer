@@ -31,6 +31,10 @@ from app.modules.storyboard.storyboard_validator import (
 
 class StoryboardBuilder:
 
+    def __init__(self, config_manager=None, project=None):
+        self.config_manager = config_manager
+        self.project = project
+
     def build(
         self,
         script_path=None,
@@ -43,7 +47,7 @@ class StoryboardBuilder:
             "GENERANDO STORYBOARD"
         )
 
-        project = ProjectManager()
+        project = self.project or ProjectManager()
 
         script_path = Path(
             script_path
@@ -59,7 +63,7 @@ class StoryboardBuilder:
             project
         )
 
-        config = ConfigManager()
+        config = self.config_manager or ConfigManager()
 
         ai_config = (
             config.get_ai_config()

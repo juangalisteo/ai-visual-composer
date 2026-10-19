@@ -14,6 +14,7 @@ from app.modules.video.intro_outro import (
     IntroOutroComposition,
     IntroOutroMediaInfo,
     IntroOutroMediaProbe,
+    IntroOutroPlan,
     IntroOutroSelection,
 )
 from app.modules.video.video_build_context import VideoBuildArtifacts
@@ -243,6 +244,7 @@ class IntroOutroTest(unittest.TestCase):
             Path("assets/videos/intro_outro/instagram/intro/custom.mp4"),
             "intro",
         )
+        plan = IntroOutroPlan(intro=selection)
         options = {
             "profile_component": "video",
             "profile_platform": "instagram",
@@ -256,7 +258,7 @@ class IntroOutroTest(unittest.TestCase):
             "script_source": "generated",
             "design_target": "",
             "pipeline_mode": "full",
-            "intro_outro_selection": selection,
+            "intro_outro_selection": plan,
             "clear_output": False,
         }
 
@@ -272,10 +274,10 @@ class IntroOutroTest(unittest.TestCase):
             controller_class.return_value.run.return_value = options
             app_main.main()
 
-        iniciar_mock.assert_called_once_with(
-            subtitle_style="single_line",
-            intro_outro_selection=selection,
-        )
+        iniciar_mock.assert_called_once()
+        request = iniciar_mock.call_args.kwargs["request"]
+        self.assertIs(plan, request.route.intro_outro_plan)
+        self.assertEqual("single_line", iniciar_mock.call_args.kwargs["subtitle_style"])
 
     def test_compatible_asset_uses_stream_copy_and_intro_is_first(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

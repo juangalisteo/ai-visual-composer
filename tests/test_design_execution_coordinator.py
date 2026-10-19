@@ -110,6 +110,23 @@ class _ImageBuilder:
         return manifest_path
 
 
+class _Config:
+
+    def __init__(self, profile, profile_key, ai_config):
+        self.profile = profile
+        self.profile_key = profile_key
+        self.ai_config = ai_config
+
+    def get_profile_config(self):
+        return self.profile
+
+    def get_operational_profile_key(self):
+        return self.profile_key
+
+    def get_ai_config(self):
+        return self.ai_config
+
+
 class _I2VBatch:
 
     def __init__(
@@ -365,6 +382,26 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
         self.assertIs(video_builder, i2v_call["video_builder"])
         self.assertIs(profile_key, i2v_call["profile_key"])
         self.assertEqual(project.images_manifest_path(), i2v_call["images_manifest_path"])
+
+    def test_run_video_uses_injected_config_for_profile_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = {"profile": "explicit"}
+            profile_key = object()
+            config = _Config(profile, profile_key, {"ai": "explicit"})
+            i2v_batch = _I2VBatch()
+
+            self._coordinator(_Telemetry()).run_video(
+                project=_Project(directory),
+                preparation_service=_PreparationService(object()),
+                visual_truth_adapter=_VisualTruthAdapter([{"scene": 1}]),
+                image_builder=_ImageBuilder(),
+                video_builder=object(),
+                config_manager=config,
+                generate_i2v_batch=i2v_batch,
+                scene_clip_identity=lambda scene: f"scene_{int(scene):03d}",
+            )
+
+        assert i2v_batch.calls[0]["profile_key"] is profile_key
 
     def test_run_video_rejects_a_scene_other_than_one_before_image_generation(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -17,9 +17,26 @@ class ConfigManager:
     def __init__(
         self,
         profile_resolver=None,
-        subtitle_profile_resolver=None
+        subtitle_profile_resolver=None,
+        operational_profile_key: OperationalProfileKey | None = None,
+        voice_config_id: str | None = None,
     ):
+        if (
+            operational_profile_key is not None
+            and not isinstance(operational_profile_key, OperationalProfileKey)
+        ):
+            raise TypeError(
+                "operational_profile_key debe ser OperationalProfileKey o None."
+            )
+        if voice_config_id is not None:
+            if not isinstance(voice_config_id, str):
+                raise TypeError("voice_config_id debe ser texto o None.")
+            voice_config_id = voice_config_id.strip()
+            if not voice_config_id:
+                raise ValueError("voice_config_id no puede estar vacio.")
         self.config_path = Path("config")
+        self._operational_profile_key = operational_profile_key
+        self._voice_config_id = voice_config_id
         self.profile_resolver = (
             profile_resolver
             or ProfileResolver(
@@ -80,10 +97,12 @@ class ConfigManager:
         )
 
     def _voice_config_document(self):
-        selected_voice_config = os.environ.get("MC_VOICE_CONFIG")
+        selected_voice_config = self._voice_config_id
+        if selected_voice_config is None:
+            selected_voice_config = os.environ.get("MC_VOICE_CONFIG")
 
-        if not selected_voice_config:
-            selected_voice_config = "piper_davefx"
+            if not selected_voice_config:
+                selected_voice_config = "piper_davefx"
 
         voice_config_path = (
             self.config_path
@@ -110,6 +129,9 @@ class ConfigManager:
 
     def get_operational_profile_key(self):
         """Read canonical operational identity without subtitle family."""
+        if self._operational_profile_key is not None:
+            return self._operational_profile_key
+
         values = (
             os.environ.get("MC_PROFILE_COMPONENT", "").strip(),
             os.environ.get("MC_PROFILE_PLATFORM", "").strip(),
@@ -153,6 +175,23 @@ class ConfigManager:
         because old subtitle-selection inputs do not transport a complete
         `SubtitleProfileKey` yet.
         """
+        if self._operational_profile_key is not None:
+            family = (
+                os.environ.get("MC_PROFILE_FAMILY", "estandar").strip()
+                or "estandar"
+            )
+            # LEGACY_ADAPTER: only the historic subtitle-style input still
+            # needs a family-bearing parent key. Its operational identity is
+            # the explicit injected value, never the MC_PROFILE_* bridge.
+            if family.casefold() == "system":
+                family = "estandar"
+            return ProfileKey(
+                component=self._operational_profile_key.component,
+                platform=self._operational_profile_key.platform,
+                profile_id=self._operational_profile_key.profile_id,
+                family=family,
+            )
+
         values = (
             os.environ.get(
                 "MC_PROFILE_COMPONENT",

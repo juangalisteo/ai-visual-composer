@@ -748,14 +748,14 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         ):
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
-            self.assertEqual("", os.environ["MC_PROFILE_COMPONENT"])
-            self.assertEqual("", os.environ["MC_PROFILE_PLATFORM"])
-            self.assertEqual("", os.environ["MC_PROFILE_ID"])
-        iniciar_mock.assert_called_once_with(
-            studio_music_path=None,
-            studio_input_mode="exportar_srt",
-            studio_subtitle_export_plan=plan,
-        )
+            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
+            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
+            self.assertNotIn("MC_PROFILE_ID", os.environ)
+        iniciar_mock.assert_called_once()
+        request = iniciar_mock.call_args.kwargs["request"]
+        self.assertIs(plan, request.route.plan)
+        self.assertEqual("exportar_srt", request.route.input_mode.value)
+        self.assertIsNone(request.operational_profile_key)
 
 
 class StudioSubtitleExportSummaryTest(unittest.TestCase):

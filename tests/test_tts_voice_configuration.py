@@ -233,6 +233,34 @@ def test_current_terminal_selection_loads_the_same_neutral_voice_document(
     assert configuration.voice.backend_key == expected_backend_key
 
 
+def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
+    monkeypatch,
+    tmp_path,
+):
+    voice_configs = tmp_path / "voice_configs"
+    voice_configs.mkdir()
+    selected_document = _document()
+    selected_document["voice_id"] = "technical_voice_selected"
+    conflicting_document = _document()
+    conflicting_document["voice_id"] = "technical_voice_conflict"
+    (voice_configs / "test_voice_selected.json").write_text(
+        json.dumps(selected_document),
+        encoding="utf-8",
+    )
+    (voice_configs / "test_voice_conflict.json").write_text(
+        json.dumps(conflicting_document),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MC_VOICE_CONFIG", "test_voice_conflict")
+
+    manager = ConfigManager(voice_config_id="test_voice_selected")
+    manager.config_path = tmp_path
+    configuration = manager.get_tts_voice_configuration()
+
+    assert configuration.voice.voice_id == "technical_voice_selected"
+    assert configuration.voice.backend_key == "piper_onnx"
+
+
 def test_default_voice_configuration_is_the_approved_piper_davefx_baseline():
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop("MC_VOICE_CONFIG", None)

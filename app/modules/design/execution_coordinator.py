@@ -21,6 +21,7 @@ from app.modules.video_component import (
     VideoDesignVisualTruthAdapter,
 )
 from app.shared.config_manager import ConfigManager
+from app.modules.visual_design import VisualDesignInterpreter
 
 
 class DesignExecutionCoordinator:
@@ -53,6 +54,8 @@ class DesignExecutionCoordinator:
         preparation_service=None,
         visual_truth_adapter=None,
         image_builder=None,
+        profile=None,
+        ai_config=None,
     ):
         if pipeline_start is None:
             pipeline_start = time.perf_counter()
@@ -65,17 +68,20 @@ class DesignExecutionCoordinator:
             project.project_name
         )
 
-        preparation_service = (
-            preparation_service
-            or ImageDesignPreparationService()
-        )
+        if preparation_service is None:
+            preparation_service = ImageDesignPreparationService(
+                visual_interpreter=VisualDesignInterpreter(
+                    ai_config=ai_config,
+                    profile=profile,
+                )
+            )
         visual_truth_adapter = (
             visual_truth_adapter
             or ImageDesignVisualTruthAdapter()
         )
-        image_builder = (
-            image_builder
-            or ImageBuilder()
+        image_builder = image_builder or ImageBuilder(
+            profile=profile,
+            project=project,
         )
 
         prepared_design = preparation_service.prepare(
@@ -132,6 +138,8 @@ class DesignExecutionCoordinator:
         video_builder=None,
         profile=None,
         profile_key=None,
+        config_manager=None,
+        ai_config=None,
         generate_i2v_batch=None,
         scene_clip_identity=None,
     ):
@@ -146,28 +154,33 @@ class DesignExecutionCoordinator:
             project.project_name
         )
 
-        preparation_service = (
-            preparation_service
-            or VideoDesignPreparationService()
-        )
+        if profile is None:
+            config = config_manager or ConfigManager()
+            profile = config.get_profile_config()
+            if profile_key is None:
+                profile_key = config.get_operational_profile_key()
+            if ai_config is None:
+                ai_config = config.get_ai_config()
+
+        if preparation_service is None:
+            preparation_service = VideoDesignPreparationService(
+                visual_interpreter=VisualDesignInterpreter(
+                    ai_config=ai_config,
+                    profile=profile,
+                )
+            )
         visual_truth_adapter = (
             visual_truth_adapter
             or VideoDesignVisualTruthAdapter()
         )
-        image_builder = (
-            image_builder
-            or ImageBuilder()
+        image_builder = image_builder or ImageBuilder(
+            profile=profile,
+            project=project,
         )
         video_builder = (
             video_builder
             or VideoComponentBuilder()
         )
-        if profile is None:
-            config = ConfigManager()
-            profile = config.get_profile_config()
-            if profile_key is None:
-                profile_key = config.get_operational_profile_key()
-
         prepared_design = preparation_service.prepare(
             input_path=(
                 input_design_path

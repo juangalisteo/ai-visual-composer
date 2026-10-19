@@ -8,6 +8,10 @@ import main as app_main
 
 from app.core import start
 from app.modules.script import PreparedScript
+from app.modules.video.intro_outro import (
+    IntroOutroPlan,
+    IntroOutroSelection,
+)
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -49,13 +53,24 @@ class FakeConfigManager:
         profile_id="test_profile",
     )
 
+    def __init__(
+        self,
+        operational_profile_key=None,
+        voice_config_id=None,
+    ):
+        self._operational_profile_key = operational_profile_key
+        self._voice_config_id = voice_config_id
+
     def get_profile_key(
         self
     ):
         return self.script_profile_key
 
     def get_operational_profile_key(self):
-        return self.script_operational_key
+        return (
+            self._operational_profile_key
+            or self.script_operational_key
+        )
 
     def get_ai_config(
         self
@@ -159,14 +174,18 @@ class FakeScriptBuilder:
 class FakeVoiceBuilder:
     received_scripts = []
 
+    def __init__(self, config_manager=None):
+        self.config_manager = config_manager
+
     def build(
         self,
-        script
+        script,
+        output_path=None,
     ):
         self.received_scripts.append(
             script
         )
-        return Path(
+        return Path(output_path) if output_path is not None else Path(
             "output/full test/audio/voz.mp3"
         )
 
@@ -441,7 +460,12 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 )
 
                 FakeVoiceBuilder.received_scripts = []
-                intro_outro_selection = object()
+                intro_outro_selection = IntroOutroPlan(
+                    intro=IntroOutroSelection(
+                        Path("assets/videos/intro.mp4"),
+                        "intro",
+                    )
+                )
 
                 with patch(
                     "main.RunController"
@@ -549,10 +573,21 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     FakeVoiceBuilder.received_scripts
                 )
                 video_builder.return_value.build.assert_called_once()
-                video_builder.assert_called_once_with(
-                    subtitle_profile=FakeConfigManager.subtitle_profile,
-                    warnings=ANY,
-                    intro_outro_selection=intro_outro_selection,
+                video_builder.assert_called_once()
+                self.assertIs(
+                    FakeConfigManager.subtitle_profile,
+                    video_builder.call_args.kwargs["subtitle_profile"],
+                )
+                self.assertIsNotNone(
+                    video_builder.call_args.kwargs["warnings"]
+                )
+                self.assertEqual(
+                    intro_outro_selection,
+                    video_builder.call_args.kwargs["intro_outro_selection"],
+                )
+                self.assertIsInstance(
+                    video_builder.call_args.kwargs["config_manager"],
+                    FakeConfigManager,
                 )
                 image_builder.return_value.build.assert_called_once()
                 storyboard_builder.return_value.build.assert_called_once()

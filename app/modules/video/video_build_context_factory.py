@@ -15,15 +15,24 @@ from app.modules.video.video_build_context import VideoBuildContext
 from app.modules.video.video_config import VideoConfigLoader
 
 
+_OVERLAYS_MODE_UNSET = object()
+
+
 class VideoBuildContextFactory:
 
     def __init__(
         self,
         subtitle_profile=None,
         warnings=None,
+        config_manager=None,
+        project=None,
+        overlays_mode=_OVERLAYS_MODE_UNSET,
     ):
         self.subtitle_profile = subtitle_profile
         self.warnings = warnings
+        self.config_manager = config_manager
+        self.project = project
+        self._overlays_mode = overlays_mode
 
     def build(
         self,
@@ -34,7 +43,7 @@ class VideoBuildContextFactory:
         video_clips_manifest_path=None,
         render_subtitles=True,
     ):
-        project = ProjectManager()
+        project = self.project or ProjectManager()
 
         resolved_audio_path = (
             AudioResolver().resolve(
@@ -71,7 +80,8 @@ class VideoBuildContextFactory:
         )
 
         config_loader = VideoConfigLoader(
-            subtitle_profile=self.subtitle_profile
+            subtitle_profile=self.subtitle_profile,
+            config_manager=self.config_manager,
         )
         video_config = (
             config_loader.load()
@@ -165,14 +175,14 @@ class VideoBuildContextFactory:
         self,
         video_config
     ):
-        overlays_mode = (
-            os.environ.get(
+        if self._overlays_mode is _OVERLAYS_MODE_UNSET:
+            overlays_mode = os.environ.get(
                 "MC_OVERLAYS_MODE",
-                ""
+                "",
             )
-            .strip()
-            .lower()
-        )
+        else:
+            overlays_mode = self._overlays_mode or ""
+        overlays_mode = overlays_mode.strip().lower()
 
         if not overlays_mode:
             return video_config

@@ -5,6 +5,10 @@ from pathlib import Path
 
 from app.cli.error_presenter import ErrorPresenter
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    StudioExecutionRequest,
+    adapt_legacy_run_options,
+)
 from app.core.start import iniciar
 from app.managers.output_manager import (
     OutputManager,
@@ -66,97 +70,56 @@ def _run_main():
         print(f"ERROR: {error}")
         return 1
 
-    os.environ["MC_PROFILE_COMPONENT"] = options.get(
-        "profile_component",
-        ""
-    )
-    os.environ["MC_PROFILE_PLATFORM"] = options.get(
-        "profile_platform",
-        ""
-    )
-    os.environ["MC_PROFILE_ID"] = options.get(
-        "profile_id",
-        ""
-    )
-    # Operational identity is component/platform/profile_id only. Subtitle
-    # family travels in SubtitleProfileKey and is never persisted here.
-    os.environ.pop("MC_PROFILE_FAMILY", None)
-    os.environ["MC_VOICE_CONFIG"] = options["voice_config"]
-    os.environ["MC_MUSIC_CATEGORY"] = options["music_category"] or ""
-    if "overlays_mode" in options:
-        os.environ["MC_OVERLAYS_MODE"] = options["overlays_mode"]
-    else:
-        os.environ.pop("MC_OVERLAYS_MODE", None)
-    os.environ["MC_PROJECT_NAME"] = options["project_name"]
-    os.environ["MC_VISUAL_PIPELINE"] = options["visual_pipeline"]
-    os.environ["MC_SCRIPT_SOURCE"] = options["script_source"]
-    os.environ["MC_DESIGN_TARGET"] = options.get("design_target", "")
-    os.environ["MC_PIPELINE_MODE"] = options["pipeline_mode"]
+    request = adapt_legacy_run_options(options)
 
+    # Operational identity travels in ApplicationExecutionRequest. Remove any
+    # stale legacy bridge values so the modern path cannot consult them.
+    os.environ.pop("MC_PROFILE_COMPONENT", None)
+    os.environ.pop("MC_PROFILE_PLATFORM", None)
+    os.environ.pop("MC_PROFILE_ID", None)
+    # Subtitle family travels in SubtitleProfileKey and is never persisted here.
+    os.environ.pop("MC_PROFILE_FAMILY", None)
+    # Voice selection travels in StandardExecutionRequest. Remove any stale
+    # legacy value so the modern path cannot resolve a contradictory voice.
+    os.environ.pop("MC_VOICE_CONFIG", None)
+    # Overlay mode travels in StandardExecutionRequest. Remove any stale
+    # legacy value so the modern path cannot resolve a contradictory mode.
+    os.environ.pop("MC_OVERLAYS_MODE", None)
+    # Project identity is carried by ApplicationExecutionRequest. Remove any
+    # stale legacy value so the modern path cannot recreate its project from
+    # process environment.
+    os.environ.pop("MC_PROJECT_NAME", None)
+
+    studio_route = (
+        request.route
+        if isinstance(request.route, StudioExecutionRequest)
+        else None
+    )
     is_studio_montage = (
-        options.get("pipeline_mode") == "studio"
-        and options.get("studio_input_mode") == "montaje_videos"
+        studio_route is not None
+        and studio_route.input_mode.value == "montaje_videos"
     )
     is_studio_intro_outro = (
-        options.get("pipeline_mode") == "studio"
-        and options.get("studio_input_mode") == "intro_outro"
+        studio_route is not None
+        and studio_route.input_mode.value == "intro_outro"
     )
     is_studio_subtitle_export = (
-        options.get("pipeline_mode") == "studio"
-        and options.get("studio_input_mode") == "exportar_srt"
+        studio_route is not None
+        and studio_route.input_mode.value == "exportar_srt"
     )
-    if options["clear_output"]:
+    if request.clear_output:
         try:
             OutputManager().reset()
         except OutputResetBlockedError as error:
             print(f"ERROR: {error}")
             return 1
 
-    start_options = {}
-    if options.get("subtitle_profile_key") is not None:
-        start_options["subtitle_profile_key"] = options[
-            "subtitle_profile_key"
-        ]
-    elif options["subtitle_config"]:
+    start_options = {"request": request}
+    if (
+        request.subtitle_profile_key is None
+        and options.get("subtitle_config")
+    ):
         start_options["subtitle_style"] = options["subtitle_config"]
-    intro_outro_selection = options.get(
-        "intro_outro_selection"
-    )
-    if intro_outro_selection is not None:
-        start_options["intro_outro_selection"] = (
-            intro_outro_selection
-        )
-    if options.get("pipeline_mode") == "studio":
-        start_options["studio_music_path"] = options.get(
-            "studio_music_path"
-        )
-        start_options["studio_input_mode"] = options.get(
-            "studio_input_mode"
-        )
-        if options.get("studio_video_path") is not None:
-            start_options["studio_video_path"] = options[
-                "studio_video_path"
-            ]
-        if options.get("studio_subtitle_path") is not None:
-            start_options["studio_subtitle_path"] = options[
-                "studio_subtitle_path"
-            ]
-        if options.get("studio_montage_plan") is not None:
-            start_options["studio_montage_plan"] = options[
-                "studio_montage_plan"
-            ]
-        if options.get("studio_video_audio_srt_plan") is not None:
-            start_options["studio_video_audio_srt_plan"] = options["studio_video_audio_srt_plan"]
-        if options.get("studio_intro_outro_plan") is not None:
-            start_options["studio_intro_outro_plan"] = options[
-                "studio_intro_outro_plan"
-            ]
-        if options.get("studio_subtitle_export_plan") is not None:
-            start_options["studio_subtitle_export_plan"] = options[
-                "studio_subtitle_export_plan"
-            ]
-        if options.get("studio_subtitle_original"):
-            start_options["studio_subtitle_original"] = True
 
     studio_start = time.perf_counter()
     try:
@@ -168,15 +131,19 @@ def _run_main():
     ) as error:
         if (
             isinstance(error, ValueError)
-            and options.get("pipeline_mode") != "studio"
+            and studio_route is None
         ):
             raise
         raise adapt_legacy_studio_error(
             error,
-            mode=options.get("studio_input_mode"),
+            mode=(
+                studio_route.input_mode.value
+                if studio_route is not None
+                else None
+            ),
         ) from error
 
-    if options.get("pipeline_mode") == "studio":
+    if studio_route is not None:
         if is_studio_intro_outro:
             _print_studio_intro_outro_summary(
                 options, result, time.perf_counter() - studio_start,
