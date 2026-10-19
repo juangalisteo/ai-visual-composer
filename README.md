@@ -1,536 +1,317 @@
 # AI Visual Composer
 
-**Professional AI Visual Generation Platform**
+**AI Visual Composer is a modular artificial intelligence-assisted system for audiovisual production, developed on a data/config-driven architecture.**
 
-AI Visual Composer is a local audiovisual generation platform designed to transform scripts, ideas, and visual concepts into structured multimedia content through artificial intelligence.
+**Version:** `3.0`  
+**Architecture:** `Data/Config-Driven`
 
-The system integrates text processing, voice generation, audio, subtitles, storyboard construction, image generation, image-to-video generation, visual intelligence, motion, transitions, overlays, visual effects, and final video composition within a unified workflow.
+AI Visual Composer is a modular artificial intelligence-assisted system for audiovisual production, developed on a data/config-driven architecture. Artificial intelligence is an essential part of its operation and participates in the different stages of generation, interpretation, and processing that make it possible to turn scripts, ideas, and topics into complete audiovisual projects. This architecture establishes a clear separation between the technical capabilities implemented by the system and the entities defined through configuration, promoting extensibility, reuse, and the structured evolution of the system as a whole.
 
-AI Visual Composer is designed around a modular, profile-driven architecture that keeps each stage of the generation process structured, traceable, configurable, and independently evolvable.
-
-AI Visual Composer follows a data/config-driven architecture. The code implements generic capabilities, while the configuration structure determines which components, families, profiles, and variants exist. Technical IDs transport identity, while human-readable names are used exclusively for presentation and do not participate in functional decisions.
-
-A new profile or family that uses capabilities already supported by the system must not require changes to Python code.
-
-**Current stable version:** `V2.0`
+Conceived as an integrated production system, AI Visual Composer brings together within a single configurable environment the processes required to create, adapt, process, and finalize audiovisual content. Its architecture makes it possible to centralize tasks that would normally require separate tools and workflows, incorporating artificial intelligence-based generation, audiovisual processing, subtitling, translation, composition, and content adaptation. The system is particularly oriented toward the automation of production workflows for social media, with the goal of reducing manual intervention, reusing capabilities across different formats and platforms, and keeping the entire audiovisual production process within a unified operational structure.
 
 ---
 
-## Overview
+## Architecture
 
-AI Visual Composer brings the main stages of AI-assisted audiovisual production into a single local system.
+AI Visual Composer follows a **data/config-driven architecture** based on a strict separation between technical implementation and configurable entities.
 
-Instead of treating image generation, video generation, subtitles, audio, and composition as isolated tools, the platform connects them through a structured production architecture.
-
-The system can process existing scripts, develop content from an idea or topic, generate visual scenes, transform images into video, create synchronized subtitles, and assemble the resulting assets into complete audiovisual projects.
-
-Its architecture is built around four main product components:
+The architecture follows this principle:
 
 ```text
-AI VISUAL COMPOSER
+CODE
+│
+├── Generic technical capabilities
+├── Fixed application components
+├── Algorithms
+├── Parsers
+├── Loaders
+├── Engines
+├── Runtime services
+└── Technical contracts
 
-1. GUION
-2. IMAGEN
-3. VIDEO
-4. STUDIO
+CONFIGURATION
+│
+├── Platforms
+├── Families
+├── Profiles
+├── Variants
+└── Values
 ```
 
-These components define the core product architecture.
+### Code Responsibilities
 
----
+Python implements the technical capabilities required by the system.
 
-## Guion
+These capabilities contain the reusable logic needed for content processing, artificial intelligence integration, voice generation, subtitle processing, visual generation, audiovisual composition, configuration loading, routing, validation, and runtime execution.
 
-**Guion** is the script-centered component.
-
-It allows an existing text or complete script supplied by the user to become the source of an audiovisual generation process.
-
-From Guion, the system can process the supplied content toward different visual destinations while preserving the original textual source.
-
-Its purpose is to provide a controlled workflow when the content already exists and the system's role is to transform that content into audiovisual material.
-
----
-
-## Imagen
-
-**Imagen** is the image-centered component.
-
-It combines content preparation, storyboard generation, structured visual interpretation, prompt translation, and AI image generation.
-
-The visual pipeline is designed to preserve narrative intent while progressively translating it into information suitable for the generation backend.
-
-At a high level:
-
-```text
-CONTENT
-   ↓
-STORYBOARD
-   ↓
-VISUAL TRUTH
-   ↓
-VISUAL INTELLIGENCE
-   ↓
-CINEMATIC DIRECTION
-   ↓
-PROMPT TRANSLATION
-   ↓
-IMAGE GENERATION
-```
-
-This architecture separates narrative information from backend-specific generation instructions and provides greater control over the visual generation process.
-
----
-
-## Video
-
-**Video** extends the visual generation architecture into complete audiovisual production.
-
-The system can generate source images, transform them into image-to-video clips, process temporal behavior, and integrate those assets into the final composition.
-
-At a high level:
-
-```text
-CONTENT
-   ↓
-STORYBOARD
-   ↓
-IMAGE GENERATION
-   ↓
-IMAGE-TO-VIDEO
-   ↓
-MOTION
-   ↓
-COMPOSITION
-   ↓
-FINAL VIDEO
-```
-
-The video architecture supports both generated I2V material and still-image based audiovisual composition.
-
----
-
-## Studio
-
-**Studio** is the finishing component for externally supplied media. Its current
-modes are `SOLO VIDEO`, `SRT + VIDEO`, `INTRO / OUTRO`, `MONTAJE VÍDEOS`,
-`VIDEO + AUDIO SRT`, and `EXPORTAR SRT VIDEO`.
-
-`SRT + VIDEO` preserves the supplied human SRT as textual authority. `SOLO
-VIDEO` and `EXPORTAR SRT VIDEO` may use Whisper where their mode requires a
-transcription. `VIDEO + AUDIO SRT` never retranscribes a supplied SRT and uses
-the new audio as the final temporal and audio authority; it does not mix music.
-
-Studio uses FFmpeg locally. INTRO and OUTRO assets use the shared catalog
-selected by operational platform:
-`assets/videos/intro_outro/<platform>/intro/` and
-`assets/videos/intro_outro/<platform>/outro/`.
-
----
-
-## Integrated Design Capability
-
-AI Visual Composer also includes **Diseño** as an integrated visual generation capability.
-
-Diseño is not a fifth main product component.
-
-Instead, it provides a direct path for transforming visual descriptions or design intentions into:
-
-- standalone images;
-- standalone video clips.
-
-This capability reuses the existing image and video generation infrastructure while preserving the four-component architecture:
+Python also implements the fixed application components that define the main structural areas of AI Visual Composer:
 
 ```text
 GUION
 IMAGEN
 VIDEO
 STUDIO
+TRADUCTOR
 ```
 
-Diseño therefore acts as an additional input and scalability path rather than an independent product pipeline.
+A component is therefore a structural capability of the application, not a configurable label. Introducing a genuinely new component or a new technical capability requires implementation because the system must first acquire that behavior.
 
----
+### Configuration Responsibilities
 
-## Visual Truth
+Configuration determines how existing technical capabilities are organized, selected, combined, and adapted to different production contexts.
 
-Visual Truth is the structured visual contract used by the image generation architecture.
-
-Its purpose is to preserve the information that must survive between narrative interpretation and visual generation, including elements such as:
-
-- visible subjects;
-- actions;
-- environments;
-- objects;
-- spatial relationships;
-- continuity;
-- visual constraints;
-- filmable interpretation.
-
-Visual Truth remains independent from the specific generation backend.
-
----
-
-## Visual Intelligence
-
-Visual Intelligence is the reasoning layer responsible for interpreting structured visual information before prompt translation.
-
-Its architecture follows three principal stages:
+Depending on the configuration domain, the structure can define:
 
 ```text
-VISUAL ANALYSIS
-      ↓
-VISUAL REASONING
-      ↓
-VISUAL SYNTHESIS
+platform
+   ↓
+family
+   ↓
+profile_id
+   ↓
+variants
+   ↓
+values
 ```
 
-The resulting information is consolidated into an `EffectiveVisualBrief`.
+This allows the system to reuse the same technical capabilities across different platforms, families, profiles, formats, orientations, resolutions, subtitle configurations, and production requirements without duplicating the underlying Python implementation.
 
-This allows the system to reason about visual intent, priorities, continuity, conflicts, composition, and generation strategy before communicating with the image backend.
+Not every configuration domain must use every level of this hierarchy. Each domain uses only the levels that belong to its own technical contract.
 
----
+### Fixed Components and Configurable Entities
 
-## Prompt Translation
+AI Visual Composer distinguishes clearly between **application structure** and **configuration structure**.
 
-Prompt Translation converts the structured visual representation into generation instructions suitable for the selected backend.
-
-Its responsibilities include:
-
-- selecting relevant visual information;
-- prioritizing prompt content;
-- removing unnecessary duplication;
-- respecting backend prompt budgets;
-- preserving visual intent;
-- maintaining generation traceability.
-
-This keeps narrative interpretation separated from backend-specific prompt construction.
-
----
-
-## Image Generation
-
-AI Visual Composer uses a local ComfyUI-based image generation runtime.
-
-The current image architecture supports:
-
-- structured storyboard interpretation;
-- Visual Truth;
-- Visual Intelligence;
-- cinematic direction;
-- backend-neutral prompt translation;
-- generation manifests;
-- visual evidence;
-- profile-driven output.
-
-The generation backend and its models remain replaceable components of the wider architecture.
-
----
-
-## Image-to-Video
-
-AI Visual Composer includes an Image-to-Video generation layer for transforming generated images into temporal visual assets.
-
-The I2V architecture supports:
-
-- source-image analysis;
-- motion intent;
-- video prompt translation;
-- ComfyUI integration;
-- Wan I2V generation;
-- clip manifests;
-- generated video assets.
-
-Generated clips remain available as independent project artifacts before final composition.
-
----
-
-## Video Composition
-
-Final audiovisual composition is performed through a modular FFmpeg-based video engine.
-
-The composition pipeline supports:
+The application structure defines the fixed components:
 
 ```text
-MOTION
-   ↓
-TRANSITIONS
-   ↓
-OVERLAYS
-   ↓
-VISUAL EFFECTS
-   ↓
-FADE
-   ↓
-SUBTITLES
+GUION
+IMAGEN
+VIDEO
+STUDIO
+TRADUCTOR
 ```
 
-The video engine also supports temporal preparation of generated I2V clips, including forward/reverse ping-pong looping when a generated clip must cover a longer scene duration.
+The configuration structure defines the entities and values that can vary without redefining the application itself.
 
-Motion can be applied to both still images and generated I2V material.
+This distinction prevents configurable entities from becoming hardcoded catalogs inside Python and keeps the system extensible without sacrificing architectural control.
 
----
+### Technical Identity
 
-## Subtitle System
+Functional identity is transported through technical IDs.
 
-AI Visual Composer includes a subtitle timing architecture designed to use real timing information whenever it is available.
+Technical IDs are used to identify components, platforms, profiles, families, voices, subtitle profiles, and other configurable entities wherever identity must be preserved across the runtime.
 
-Timing resolution follows the active runtime path:
+Human-readable names do not define system behavior.
 
 ```text
-WHISPER WORD TIMESTAMPS
+TECHNICAL ID
+     ↓
+FUNCTIONAL IDENTITY
+
+display_name / label
+     ↓
+PRESENTATION ONLY
+```
+
+Fields such as `display_name` and other visible labels exist exclusively to present understandable names to the user. They must not participate in functional decisions, routing, backend selection, or profile resolution.
+
+### Discovery and Resolution
+
+Configurable entities are discovered and resolved from configuration instead of being duplicated as nominal catalogs in Python.
+
+The system reads the available configuration, transports its technical identity, and applies the capabilities already implemented by the code.
+
+This means that configuration determines **which configured entity is used and with which values**, while Python determines **what the system is technically capable of doing**.
+
+### Extensibility
+
+The central extensibility rule is:
+
+> A new platform, family, profile, variant, or value that uses capabilities already supported by AI Visual Composer must not require changes to Python code.
+
+Configuration should be sufficient whenever the requested behavior can already be expressed through existing technical capabilities.
+
+Python changes are justified when a genuinely new technical capability, algorithm, execution contract, backend integration, or application component must be introduced.
+
+This keeps the system extensible without turning configuration into executable architecture or Python into a catalog of configurable names.
+
+### Operational Profiles and Subtitle Profiles
+
+Operational profiles and subtitle profiles are separate configuration domains.
+
+Operational profiles identify the production behavior of a component for a specific platform and profile:
+
+```text
+OperationalProfileKey
+(component, platform, profile_id)
+```
+
+Subtitle profiles identify subtitle behavior and additionally include their family:
+
+```text
+SubtitleProfileKey
+(component, platform, family, profile_id)
+```
+
+The subtitle family therefore belongs to subtitle profile identity and does not redefine the identity of the operational profile.
+
+This separation allows audiovisual production behavior and subtitle presentation behavior to evolve independently while remaining connected through explicit technical identities.
+
+### Architectural Summary
+
+The complete data/config-driven model can be summarized as:
+
+```text
+APPLICATION
+│
+├── GUION
+├── IMAGEN
+├── VIDEO
+├── STUDIO
+└── TRADUCTOR
+        │
         ↓
-NONE
+GENERIC TECHNICAL CAPABILITIES
+        │
+        ↓
+CONFIGURATION
+├── Platforms
+├── Families
+├── Profiles
+├── Variants
+└── Values
+        │
+        ↓
+TECHNICAL IDS
+        │
+        ↓
+RUNTIME EXECUTION
+        │
+        ↓
+AUDIOVISUAL OUTPUT
 ```
 
-The system supports:
+The architecture therefore preserves a clear rule:
 
-- backend-neutral `TtsWordTiming` in seconds when a future backend can supply it;
-- word-by-word subtitles;
-- single-line subtitles;
-- Whisper timing when usable;
-- a clean absence of timing when Whisper metadata is unavailable;
-- micro-cue handling for extremely short subtitle events.
+```text
+CODE DEFINES CAPABILITIES
+CONFIGURATION DEFINES ENTITIES AND VALUES
+TECHNICAL IDS DEFINE IDENTITY
+HUMAN-READABLE NAMES DEFINE PRESENTATION
+```
 
-The micro-cue system operates exclusively on subtitle presentation and does not modify the original spoken content.
+For a deeper description of the internal architecture, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ---
 
-## Audio
+## Components
 
-The audiovisual pipeline includes dedicated processing for:
+### GUION
 
+**GUION** is the script-centered component.
+
+It works from complete written content supplied by the user and preserves that source as the basis of the audiovisual workflow.
+
+Its purpose is to prepare existing textual content and process it through the production capabilities required by the selected output.
+
+### IMAGEN
+
+**IMAGEN** is the image-centered production component.
+
+It can develop a topic, idea, description, or brief text into a structured audiovisual project based on image generation.
+
+Its workflow can combine content preparation, voice, audio, subtitles, storyboard construction, visual interpretation, image generation, manifests, and final audiovisual composition.
+
+### VIDEO
+
+**VIDEO** is the video-centered production component.
+
+It extends the visual pipeline with Image-to-Video generation and temporal processing, allowing generated imagery to become audiovisual sequences before final composition.
+
+Its workflow can combine image generation, I2V generation, motion, transitions, overlays, visual effects, subtitles, audio, and final video composition.
+
+### STUDIO
+
+**STUDIO** is the component dedicated to externally supplied audiovisual material.
+
+It provides production and finishing workflows for video, audio, subtitles, montage, intro/outro composition, transcription, subtitle conversion, and final media preparation.
+
+Its current operating modes are:
+
+```text
+SOLO VIDEO
+SRT + VIDEO
+INTRO / OUTRO
+MONTAJE VÍDEOS
+VIDEO + AUDIO SRT
+EXPORTAR SRT VIDEO
+```
+
+### TRADUCTOR
+
+**TRADUCTOR** is the multilingual translation and content-adaptation component of AI Visual Composer.
+
+Its purpose is to integrate translation into the same audiovisual production environment so that content can be adapted for different languages, audiences, formats, and social-media destinations while preserving the architecture and reusable capabilities of the system.
+
+---
+
+## Main Capabilities
+
+AI Visual Composer brings together the main capabilities required for an integrated audiovisual production workflow:
+
+- script and topic-based content processing;
+- artificial intelligence-assisted content generation and interpretation;
+- local language-model processing;
 - voice generation;
-- audio preparation;
-- music;
-- final audio mixing;
-- subtitle timing sources.
-
-Voice generation is resolved through the neutral technical boundary:
-
-```text
-Declarative voice configuration
-        ↓
-backend_key
-        ↓
-TtsBackendRegistry
-        ↓
-Interchangeable provider/backend
-        ↓
-VoiceBuilder
-```
-
-The current declarative provider is Piper ONNX. The shared voice catalog offers
-`Davefx` and `Carlfm`, both through `backend_key="piper_onnx"`.
-GUIÓN, IMAGEN, and VIDEO do not select a backend by name. Piper currently
-does not invent word timings; subtitle timing therefore follows the Whisper or
-`None` path described above.
-
----
-
-## Profiles
-
-AI Visual Composer uses a profile-driven architecture.
-
-Validated output targets currently include:
-
-- Instagram
-- YouTube
-
-Profiles allow generation and composition behavior to be adapted according to the target platform, orientation, resolution, subtitle configuration, motion behavior, and audiovisual requirements.
-
-Each component/platform discovers `ESTÁNDAR` and `DISEÑO` dynamically when
-their filesystem paths exist:
-
-```text
-config/profiles/<component>/<platform>/estandar/
-config/profiles/<component>/<platform>/design/
-```
-
-DISEÑO is not a fifth component: one design is one self-contained JSON in its
-component's `design/` directory. An empty `design/` directory, as on YouTube,
-does not expose DISEÑO.
-
----
-
-## Local Architecture
-
-AI Visual Composer is designed to operate locally.
-
-Its current ecosystem uses:
-
-- Python
-- Ollama
-- ComfyUI
-- FFmpeg
-- Piper ONNX
-- OpenAI Whisper
-- Flux
-- Wan
-
-Large AI models, external runtimes, generated content, temporary files, and private development resources remain outside the public source repository.
-
----
-
-## Validation
-
-AI Visual Composer preserves the V2.0 real-execution baseline while V3 remains
-open pending the owner's final manual validation.
-
-The baseline contains:
-
-```text
-GUION   20 real executions
-IMAGEN   8 real executions
-VIDEO    8 real executions
-────────────────────────
-TOTAL   36 real executions
-```
-
-Validation evidence is preserved under:
-
-```text
-validation/01_VALIDACION_2026-08-24/
-```
-
-with dedicated evidence for:
-
-```text
-validation/01_VALIDACION_2026-08-24/guion/
-validation/01_VALIDACION_2026-08-24/imagen/
-validation/01_VALIDACION_2026-08-24/video/
-```
-
-The validation system preserves representative artifacts such as:
-
-- reports;
-- metrics;
-- inventories;
-- manifests;
-- storyboards;
-- source images;
-- I2V clips;
-- final videos;
-- representative samples.
-
-This provides a permanent behavioral reference for future development, regression analysis, and restoration.
-
----
-
-## Current Capabilities
-
-AI Visual Composer V2.0 includes:
-
-- script-based audiovisual processing;
-- topic-driven content generation;
-- voice generation;
-- audio processing and mixing;
-- subtitle generation;
-- real subtitle word timing;
-- word-by-word subtitle presentation;
-- micro-cue handling;
+- audio preparation and mixing;
+- transcription;
+- subtitle generation and processing;
+- configurable subtitle profiles;
 - storyboard generation;
-- Visual Truth;
-- Visual Intelligence;
-- Visual Analysis;
-- Visual Reasoning;
-- Visual Synthesis;
-- Effective Visual Brief;
-- Cinematic Direction;
-- Prompt Translation;
-- ComfyUI image generation;
-- Flux support;
-- ComfyUI Image-to-Video generation;
-- Wan I2V support;
-- Motion;
-- ping-pong I2V looping;
+- structured visual interpretation;
+- cinematic direction;
+- prompt translation;
+- AI image generation;
+- Image-to-Video generation;
+- motion and temporal preparation;
 - transitions;
 - overlays;
 - visual effects;
-- fades;
-- FFmpeg final composition;
-- Studio rendering from an external MP4 and authoritative SRT;
-- optional Studio music and INTRO/OUTRO composition;
-- Instagram profiles;
-- YouTube profiles;
-- generation manifests;
-- visual evidence;
-- permanent validation baselines.
+- audiovisual composition;
+- external-media processing through STUDIO;
+- multilingual translation and content adaptation through TRADUCTOR;
+- platform-oriented profiles and configuration;
+- reusable production capabilities across different formats and destinations.
 
 ---
 
-## Project Documentation
+## Technologies
 
-Official project documentation is separated by responsibility:
+AI Visual Composer uses a local technical ecosystem built around:
 
-```text
-README.md
-```
+- **Python** — application logic and orchestration;
+- **Ollama** — local language-model execution;
+- **ComfyUI** — local visual generation runtime;
+- **Flux** — image generation;
+- **Wan** — Image-to-Video generation;
+- **Piper ONNX** — local text-to-speech;
+- **OpenAI Whisper** — transcription and subtitle timing;
+- **FFmpeg / FFprobe** — audiovisual processing, inspection, and final composition.
 
-General product overview.
-
-```text
-ARCHITECTURE.md
-```
-
-Internal system architecture and component relationships.
-
-```text
-INSTALL.md
-```
-
-Initial installation and environment requirements.
-
-```text
-START.md
-```
-
-Normal startup and shutdown procedure.
-
-```text
-ROADMAP.md
-```
-
-Current development state and future evolution.
-
-```text
-CHANGELOG.md
-```
-
-Historical record of relevant product changes.
-
-```text
-validation/
-```
-
-Permanent validation evidence and historical behavioral baselines.
+The system is designed so that these technical capabilities remain separated from the configurable entities that determine how they are used.
 
 ---
 
-## Repository Boundaries
+## Audiovisual Production for Social Media
 
-The public repository contains the elements required to describe, understand, validate, and develop AI Visual Composer.
+AI Visual Composer is especially oriented toward the automation of audiovisual production workflows for social media.
 
-This may include:
+The objective is to centralize within the same system tasks that would normally require multiple independent tools, reduce repetitive manual intervention, and reuse the same technical capabilities across different platforms, formats, profiles, and production requirements.
 
-- source code;
-- configuration;
-- official documentation;
-- official assets;
-- tests;
-- validation baselines;
-- technical references.
+The data/config-driven architecture allows production behavior to be adapted through configuration while preserving a common technical foundation.
 
-Local or private resources are intentionally kept outside the public distribution, including:
-
-- generated runtime output;
-- temporary files;
-- local input content;
-- local logs;
-- secrets and credentials;
-- local ComfyUI installation;
-- downloaded AI models and checkpoints;
-- private development memory;
-- private agent workspaces.
+This makes it possible to evolve the system toward increasingly complete workflows for content creation, adaptation, translation, processing, and finalization without fragmenting the production environment.
 
 ---
 
@@ -558,14 +339,6 @@ See **[LICENSE](LICENSE)** for the complete license terms.
 
 ---
 
-## Copyright
-
-Copyright © 2026 **Juan Bautista Galisteo Marqués**
-
-All copyright notices and license notices must be preserved in copies or substantial portions of the software in accordance with the MIT License.
-
----
-
 ## Author
 
 **Juan Bautista Galisteo Marqués**
@@ -574,6 +347,8 @@ Creator and maintainer of **AI Visual Composer**.
 
 ---
 
-AI Visual Composer  
-Professional AI Visual Generation Platform  
-© 2026 Juan Bautista Galisteo Marqués
+## Copyright
+
+Copyright © 2026 **Juan Bautista Galisteo Marqués**
+
+All copyright notices and license notices must be preserved in copies or substantial portions of the software in accordance with the MIT License.
