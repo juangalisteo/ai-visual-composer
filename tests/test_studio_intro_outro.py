@@ -131,7 +131,6 @@ class StudioIntroOutroTest(unittest.TestCase):
                 side_effect=lambda key: selection_order.append("intro_outro")
                 or plan,
             )
-            controller._select_studio_profile = Mock()
             controller.ask_project_name = Mock(return_value="demo")
             controller.ask_clear_output = Mock(return_value=False)
             messages = []
@@ -146,7 +145,6 @@ class StudioIntroOutroTest(unittest.TestCase):
         self.assertEqual(profile_key.platform, options["profile_platform"])
         self.assertNotIn("SUBTÍTULOS", "\n".join(messages))
         subtitle_resolver.assert_not_called()
-        controller._select_studio_profile.assert_not_called()
         controller.select_studio_intro_outro_plan.assert_called_once_with(
             profile_key,
         )

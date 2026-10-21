@@ -32,5 +32,3 @@ def test_run_controller_label_wrappers_keep_the_existing_public_surface():
     )
     controller = RunController()
     assert controller._label("mi_valor") == "Mi Valor"
-    assert controller._voice_label("masculina") == "Masculina"
-    assert controller._subtitle_label("word_by_word") == "Palabra por palabra"

@@ -262,7 +262,7 @@ class TextEncodingQualityTest(unittest.TestCase):
             "builtins.input",
             return_value="1"
         ):
-            controller.select_subtitle_config()
+            controller.select_profile("image")
             controller.select_music_category()
             controller.select_overlays_mode()
 
@@ -273,7 +273,7 @@ class TextEncodingQualityTest(unittest.TestCase):
             output
         )
         self.assertIn(
-            "Línea única",
+            "FORMATO ESTÁNDAR",
             output
         )
         self.assertIn(

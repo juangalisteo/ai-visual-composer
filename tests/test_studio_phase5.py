@@ -113,10 +113,6 @@ class StudioPhase5Test(unittest.TestCase):
                 subtitle_path=Path("input/studio/srt_video/source.srt"),
             ),
         ), patch.object(
-            controller,
-            "select_studio_subtitle_options",
-            return_value=("single_line", False),
-        ), patch.object(
             controller, "select_studio_music", return_value=None
         ), patch.object(
             controller, "select_studio_intro_outro", return_value=None

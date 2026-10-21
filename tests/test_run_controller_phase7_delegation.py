@@ -33,15 +33,6 @@ def test_run_controller_delegates_phase_seven_selection_facades():
         profile_key,
         studio_profile,
     )
-    subtitles.select_subtitle_config.return_value = "single_line"
-    subtitles.select_profile_subtitle_config.return_value = subtitle_key
-    subtitles.select_studio_subtitle_config.return_value = "word_by_word"
-    subtitles.select_studio_subtitle_options.return_value = ("single_line", False)
-    subtitles.select_studio_srt_video_subtitle_options.return_value = (
-        subtitle_key,
-        True,
-    )
-    subtitles.select_subtitle_profile.return_value = "word_by_word"
     subtitles.select_studio_subtitle_profile.return_value = (subtitle_key, True)
     subtitles.select_studio_video_audio_srt_subtitle_profile.return_value = subtitle_key
     controller = RunController(
@@ -60,18 +51,6 @@ def test_run_controller_delegates_phase_seven_selection_facades():
         platform="instagram",
         profiles_by_platform=discovered,
     ) == (profile_key, studio_profile)
-    assert controller.select_subtitle_config() == "single_line"
-    assert controller._select_profile_subtitle_config(profile_key) is subtitle_key
-    assert controller.select_studio_subtitle_config(profile_key) == "word_by_word"
-    assert controller.select_studio_subtitle_options(
-        profile_key,
-        StudioInputMode.VIDEO.value,
-    ) == ("single_line", False)
-    assert controller._select_studio_srt_video_subtitle_options(profile_key) == (
-        subtitle_key,
-        True,
-    )
-    assert controller._select_subtitle_profile(profile_key, "heading") == "word_by_word"
     assert controller._select_studio_subtitle_profile(
         StudioInputMode.SRT_VIDEO.value,
         platform="instagram",
@@ -130,10 +109,6 @@ def test_studio_profile_coordinator_composes_explicit_selection_without_state():
     assert selection == StudioProfileSelection(
         operational=StudioOperationalSelection(profile_key, studio_profile),
         subtitle=StudioSubtitleSelection(subtitle_key, True),
-    )
-    assert controller._select_studio_profile(StudioInputMode.SRT_VIDEO.value) == (
-        profile_key,
-        studio_profile,
     )
     assert not hasattr(controller, "_active_studio_subtitle_key")
     assert not hasattr(controller, "_active_studio_subtitle_original")

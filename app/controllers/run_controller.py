@@ -232,15 +232,7 @@ class RunController:
             "subtitles",
             "storyboard"
         }:
-            profile_key = profile.get("profile_key")
-            subtitle_config = (
-                self._select_profile_subtitle_config(
-                    profile_key,
-                    profile.get("subtitle_profile_key"),
-                )
-                if profile_key is not None
-                else self.select_subtitle_config()
-            )
+            subtitle_config = profile.get("subtitle_profile_key")
 
         if pipeline_mode not in {
             "script",
@@ -373,64 +365,6 @@ class RunController:
     def _presentation_families(families):
         return labels.presentation_families(families)
 
-    def select_subtitle_config(self, profile_key=None):
-        return self.subtitle_selection.select_subtitle_config(
-            profile_key,
-            writer=self._print,
-            selector=self._select_from_list,
-            subtitle_label=self._subtitle_label,
-            select_subtitle_profile=self._select_subtitle_profile,
-        )
-
-    def _select_profile_subtitle_config(self, profile_key, subtitle_profile_key=None):
-        return self.subtitle_selection.select_profile_subtitle_config(
-            profile_key,
-            subtitle_profile_key,
-            select_subtitle_config=self.select_subtitle_config,
-        )
-
-    def select_studio_subtitle_config(self, profile_key):
-        return self.subtitle_selection.select_studio_subtitle_config(
-            profile_key,
-            select_subtitle_profile=self._select_subtitle_profile,
-        )
-
-    def select_studio_subtitle_options(self, profile_key, input_mode):
-        return self.subtitle_selection.select_studio_subtitle_options(
-            profile_key,
-            input_mode,
-            writer=self._print,
-            selector=self._select_from_list,
-            select_srt_video_subtitle_options=(
-                self._select_studio_srt_video_subtitle_options
-            ),
-        )
-
-    def _select_studio_srt_video_subtitle_options(self, profile_key):
-        return self.subtitle_selection.select_studio_srt_video_subtitle_options(
-            profile_key,
-            writer=self._print,
-            selector=self._select_from_list,
-        )
-
-    def _select_subtitle_profile(self, profile_key, heading):
-        return self.subtitle_selection.select_subtitle_profile(
-            profile_key,
-            heading,
-            writer=self._print,
-            selector=self._select_from_list,
-        )
-
-    def _studio_design_subtitle_key(self, profile_key):
-        key = getattr(self, "_active_studio_design_subtitle_key", None)
-        if (
-            key is not None
-            and key.component is profile_key.component
-            and key.platform == profile_key.platform
-        ):
-            return key
-        return None
-
     def select_studio_input_mode(self):
         return self.navigation.select_studio_input_mode(
             writer=self._print,
@@ -522,15 +456,6 @@ class RunController:
             selector=self._select_from_list,
         )
 
-    def _select_studio_input_candidate(self, label, candidates, direct):
-        return self.resource_selection.select_studio_input_candidate(
-            label,
-            candidates,
-            direct,
-            writer=self._print,
-            selector=self._select_from_list,
-        )
-
     def select_studio_music(self):
         return self.resource_selection.select_studio_music(
             writer=self._print,
@@ -604,18 +529,6 @@ class RunController:
         value
     ):
         return labels.label(value)
-
-    def _voice_label(
-        self,
-        value
-    ):
-        return labels.voice_label(value)
-
-    def _subtitle_label(
-        self,
-        value
-    ):
-        return labels.subtitle_label(value)
 
     def _profile_scope(
         self,
@@ -809,13 +722,6 @@ class RunController:
                 subtitle_key=subtitle_key,
                 subtitle_original=subtitle_original,
             ),
-        )
-
-    def _select_studio_profile(self, input_mode=None):
-        selection = self._select_studio_profile_selection(input_mode)
-        return (
-            selection.operational.operational_key,
-            selection.operational.studio_profile,
         )
 
     def _studio_operational_profiles_by_platform(self):

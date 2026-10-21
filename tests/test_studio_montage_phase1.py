@@ -272,10 +272,6 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 side_effect=AssertionError("legacy input must not run"),
             ), patch.object(
                 controller,
-                "select_studio_subtitle_config",
-                side_effect=AssertionError("subtitle must not run"),
-            ), patch.object(
-                controller,
                 "select_studio_music",
                 return_value=None,
             ), patch.object(

@@ -119,15 +119,10 @@ def test_studio_coordinator_transports_contract_to_final_options_without_state()
     assert not hasattr(controller, "_active_studio_subtitle_original")
 
 
-def test_legacy_studio_selector_keeps_its_tuple_contract_and_options_are_explicit():
+def test_studio_profile_options_are_explicit():
     selection = _studio_selection()
     controller = RunController()
-    controller._select_studio_profile_selection = Mock(return_value=selection)
 
-    assert controller._select_studio_profile(StudioInputMode.SRT_VIDEO.value) == (
-        selection.operational.operational_key,
-        selection.operational.studio_profile,
-    )
     assert controller._studio_profile_options(
         selection.operational.operational_key,
         selection.subtitle.subtitle_key,
@@ -146,10 +141,10 @@ def test_legacy_studio_selector_keeps_its_tuple_contract_and_options_are_explici
     }
 
 
-def test_removed_state_has_no_runtime_readers_and_design_state_remains_protected():
+def test_removed_state_has_no_runtime_readers():
     source = inspect.getsource(RunController)
 
     assert "_active_studio_subtitle_key" not in source
     assert "_active_studio_subtitle_original" not in source
-    assert "_active_studio_design_subtitle_key" in source
-    assert "def _studio_design_subtitle_key" in source
+    assert "_active_studio_design_subtitle_key" not in source
+    assert "_studio_design_subtitle_key" not in source

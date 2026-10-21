@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.controllers.run_controller import RunController
 from app.modules.subtitles.modes.single_line import (
     SingleLineModel,
 )
@@ -164,19 +163,6 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     self.assertEqual("design", subtitle.key.family)
                     self.assertEqual(descriptor.mode, subtitle.cue_policy["mode"])
 
-    def test_system_keeps_the_generic_subtitle_style_selector(self):
-        controller = RunController()
-        messages = []
-        controller._print = messages.append
-        controller._select_from_list = lambda items: "single_line"
-
-        style = controller._select_profile_subtitle_config(
-            ProfileKey.for_component("video", "instagram")
-        )
-
-        self.assertEqual("single_line", style)
-        self.assertTrue(any("SUBT" in message for message in messages))
-
     def test_rejects_invalid_component_platform_and_profile_id(self):
         with self.assertRaisesRegex(ValueError, "Componente"):
             SubtitleProfileKey(
@@ -309,20 +295,14 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertEqual("PROFILE", caught.exception.context.family)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
-    def test_console_keeps_two_styles_and_resolves_selected_identity(self):
+    def test_legacy_styles_resolve_selected_identity(self):
         selections = (
-            ("1", SubtitleStyle.SINGLE_LINE),
-            ("2", SubtitleStyle.WORD_BY_WORD),
+            SubtitleStyle.SINGLE_LINE,
+            SubtitleStyle.WORD_BY_WORD,
         )
 
-        for option, style in selections:
-            with self.subTest(style=style.value), patch(
-                "builtins.input",
-                return_value=option
-            ):
-                selected = RunController().select_subtitle_config()
-
-            self.assertEqual(style.value, selected)
+        for style in selections:
+            selected = style.value
             key = SubtitleProfileKey.for_profile(
                 ProfileKey.for_component("video", "instagram"),
                 selected

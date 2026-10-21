@@ -183,23 +183,6 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                         self.assertEqual(descriptor.profile_id, resolved.key.profile_id)
                         self.assertEqual(descriptor.display_name, resolved.display_name)
 
-                    controller = RunController(
-                        subtitle_profile_resolver=resolver,
-                    )
-                    messages = []
-                    controller._print = messages.append
-                    controller._select_from_list = Mock(
-                        return_value=descriptors[0].profile_id,
-                    )
-                    self.assertEqual(
-                        descriptors[0].profile_id,
-                        controller.select_subtitle_config(profile_key),
-                    )
-                    self.assertIn(
-                        f"1. {descriptors[0].display_name}",
-                        messages,
-                    )
-
     def test_copy_paste_profile_with_same_style_is_discovered_selected_and_resolved(self):
         profile_key = ProfileKey.for_component("studio", "instagram")
         source = Path(
@@ -243,21 +226,14 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 resolver.load_selection(profile_key, "three_two_words")
 
             controller = RunController(subtitle_profile_resolver=resolver)
-            catalog_messages = []
-            controller._print = catalog_messages.append
-            controller._select_from_list = Mock(return_value=custom_id)
-            self.assertEqual(
-                custom_id,
-                controller.select_studio_subtitle_config(profile_key),
-            )
-            self.assertIn("2. Mi subtítulo personalizado", catalog_messages)
-
             messages = []
             controller._print = messages.append
-            controller._select_from_list = Mock(return_value=by_id[custom_id])
-            selected, original = controller.select_studio_subtitle_options(
-                profile_key,
+            controller._select_from_list = Mock(
+                side_effect=("estandar", by_id[custom_id]),
+            )
+            selected, original = controller._select_studio_subtitle_profile(
                 StudioInputMode.SRT_VIDEO.value,
+                platform="instagram",
             )
 
             self.assertEqual(by_id[custom_id].key, selected)
@@ -335,10 +311,10 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
         controller = RunController(subtitle_profile_resolver=resolver)
         controller._print = Mock()
-        controller._select_from_list = Mock(return_value=descriptor)
-        selected, original = controller.select_studio_subtitle_options(
-            profile_key,
+        controller._select_from_list = Mock(side_effect=("design", descriptor))
+        selected, original = controller._select_studio_subtitle_profile(
             StudioInputMode.SRT_VIDEO.value,
+            platform="youtube",
         )
 
         self.assertEqual(descriptor.key, selected)

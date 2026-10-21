@@ -111,9 +111,6 @@ class StudioMontagePhase4Test(unittest.TestCase):
             controller.select_studio_montage_plan = Mock(return_value=plan)
             controller.select_studio_music = Mock(return_value=Path("music.mp3"))
             controller.select_studio_intro_outro = Mock(return_value=intro_outro)
-            controller.select_studio_subtitle_config = Mock(
-                side_effect=AssertionError("subtitle profile must not be selected")
-            )
             controller.ask_project_name = Mock(return_value="demo")
             controller.ask_clear_output = Mock(return_value=False)
 

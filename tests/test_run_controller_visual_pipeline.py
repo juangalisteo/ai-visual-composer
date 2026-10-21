@@ -10,6 +10,7 @@ from app.shared.profile_identity import (
     ProfileComponent,
     ProfileKey,
 )
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class RunControllerVisualPipelineTest(unittest.TestCase):
@@ -486,6 +487,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "guion_instagram",
             "estandar",
         )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.GUION,
+            "instagram",
+            "dummy_subtitle_profile",
+            "test_family",
+        )
 
         with patch.object(
             controller,
@@ -508,12 +515,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "perfil_guion_instagram.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
         ) as profile_mock, patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="single_line"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="masculina"
@@ -564,7 +568,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        subtitle_mock.assert_called_once()
+        self.assertIs(subtitle_key, options["subtitle_config"])
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -577,6 +581,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "youtube",
             "imagen_youtube",
             "estandar",
+        )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.IMAGEN,
+            "youtube",
+            "dummy_subtitle_profile",
+            "test_family",
         )
 
         with patch.object(
@@ -596,11 +606,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "perfil_imagen_youtube.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
-        ), patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="single_line"
         ), patch.object(
             controller,
             "select_voice_config",
@@ -662,6 +669,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "guion_instagram",
             "estandar",
         )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.GUION,
+            "instagram",
+            "dummy_subtitle_profile",
+            "test_family",
+        )
 
         with patch.object(
             controller,
@@ -684,12 +697,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "perfil_guion_instagram.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
         ) as profile_mock, patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="single_line"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="masculina"
@@ -744,7 +754,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        subtitle_mock.assert_called_once()
+        self.assertIs(subtitle_key, options["subtitle_config"])
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -758,6 +768,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             ProfileComponent.VIDEO,
             "instagram",
             "video_instagram",
+        )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.VIDEO,
+            "instagram",
+            "dummy_subtitle_profile",
+            "test_family",
         )
 
         with patch.object(
@@ -777,12 +793,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "perfil_video_instagram.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
         ) as profile_mock, patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="word_by_word"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="femenina"
@@ -813,7 +826,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         profile_mock.assert_called_once_with(
             "video"
         )
-        subtitle_mock.assert_called_once()
+        self.assertIs(subtitle_key, options["subtitle_config"])
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -826,8 +839,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "full",
             options["pipeline_mode"]
         )
-        self.assertEqual(
-            "word_by_word",
+        self.assertIs(
+            subtitle_key,
             options["subtitle_config"]
         )
         self.assertEqual(
@@ -877,9 +890,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             }
         ) as profile_mock, patch.object(
             controller,
-            "select_subtitle_config"
-        ) as subtitle_mock, patch.object(
-            controller,
             "select_voice_config"
         ) as voice_mock, patch.object(
             controller,
@@ -906,7 +916,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         profile_mock.assert_called_once_with(
             "design_image"
         )
-        subtitle_mock.assert_not_called()
         voice_mock.assert_not_called()
         music_mock.assert_not_called()
         overlays_mock.assert_not_called()
@@ -992,9 +1001,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             }
         ) as profile_mock, patch.object(
             controller,
-            "select_subtitle_config"
-        ) as subtitle_mock, patch.object(
-            controller,
             "select_voice_config"
         ) as voice_mock, patch.object(
             controller,
@@ -1021,7 +1027,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         profile_mock.assert_called_once_with(
             "design_video"
         )
-        subtitle_mock.assert_not_called()
         voice_mock.assert_not_called()
         music_mock.assert_not_called()
         overlays_mock.assert_not_called()
@@ -1095,9 +1100,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             }
         ), patch.object(
             controller,
-            "select_subtitle_config"
-        ) as subtitle_mock, patch.object(
-            controller,
             "select_voice_config",
             return_value="femenina"
         ) as voice_mock, patch.object(
@@ -1121,7 +1123,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ):
             options = controller.run()
 
-        subtitle_mock.assert_not_called()
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_not_called()
@@ -1213,6 +1214,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "imagen_youtube",
                     "estandar",
                 )
+                subtitle_key = SubtitleProfileKey(
+                    ProfileComponent.IMAGEN,
+                    "youtube",
+                    "dummy_subtitle_profile",
+                    "test_family",
+                )
 
                 with patch.object(
                     controller,
@@ -1231,12 +1238,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                             "perfil_imagen_youtube.json"
                         ),
                         "profile_key": profile_key,
+                        "subtitle_profile_key": subtitle_key,
                     }
                 ), patch.object(
-                    controller,
-                    "select_subtitle_config",
-                    return_value="single_line"
-                ) as subtitle_mock, patch.object(
                     controller,
                     "select_voice_config",
                     return_value="masculina"
@@ -1263,7 +1267,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 ):
                     options = controller.run()
 
-                subtitle_mock.assert_called_once()
+                self.assertIs(subtitle_key, options["subtitle_config"])
                 music_mock.assert_called_once()
                 if pipeline_mode in {
                     "full",
@@ -1281,8 +1285,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                         "off",
                         options["overlays_mode"]
                     )
-                self.assertEqual(
-                    "single_line",
+                self.assertIs(
+                    subtitle_key,
                     options["subtitle_config"]
                 )
 
@@ -1315,9 +1319,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             },
         ), patch.object(
             controller,
-            "select_subtitle_config",
-        ) as subtitle_mock, patch.object(
-            controller,
             "select_voice_config",
             return_value="masculina",
         ), patch.object(
@@ -1343,7 +1344,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ):
             options = controller.run()
 
-        subtitle_mock.assert_not_called()
         self.assertEqual("", options["subtitle_config"])
 
     def test_overlay_menu_returns_on_when_enabled(
@@ -1427,10 +1427,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                             "perfil_imagen_youtube.json"
                         )
                     }
-                ), patch.object(
-                    controller,
-                    "select_subtitle_config",
-                    return_value="single_line"
                 ), patch.object(
                     controller,
                     "select_voice_config",

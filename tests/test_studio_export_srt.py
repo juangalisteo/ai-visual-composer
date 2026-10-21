@@ -430,9 +430,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             return_value=StudioSubtitleExportMode.CONVERTIR,
         ), patch.object(
             controller, "select_studio_subtitle_export_plan", return_value=plan,
-        ), patch.object(
-            controller, "select_studio_subtitle_config",
-        ) as duplicate, patch.object(controller, "select_studio_music") as music, patch.object(
+        ), patch.object(controller, "select_studio_music") as music, patch.object(
             controller, "select_studio_intro_outro",
         ) as intro_outro, patch.object(controller, "ask_project_name", return_value="demo"), patch.object(
             controller, "ask_clear_output", return_value=False,
@@ -444,7 +442,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         self.assertEqual(subtitle_key, options["subtitle_profile_key"])
         self.assertIs(plan, options["studio_subtitle_export_plan"])
         self.assertEqual("studio", options["profile_component"])
-        duplicate.assert_not_called()
         music.assert_not_called()
         intro_outro.assert_not_called()
 
@@ -492,9 +489,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     return_value=plan,
                 ), patch.object(
                     controller,
-                    "select_studio_subtitle_config",
-                ) as duplicate, patch.object(
-                    controller,
                     "ask_project_name",
                     return_value="demo",
                 ), patch.object(
@@ -510,7 +504,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     expected_mode,
                     resolver.load(options["subtitle_profile_key"]).cue_policy["mode"],
                 )
-                duplicate.assert_not_called()
 
     def test_controller_convertir_transports_a_dynamic_subtitle_profile_key(self):
         plan = StudioSubtitleExportPlan(
@@ -564,9 +557,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 return_value=plan,
             ), patch.object(
                 controller,
-                "select_studio_subtitle_config",
-            ) as duplicate, patch.object(
-                controller,
                 "ask_project_name",
                 return_value="demo",
             ), patch.object(
@@ -578,7 +568,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
 
         self.assertEqual(descriptor.key, options["subtitle_profile_key"])
         self.assertEqual("three_two_words", mode)
-        duplicate.assert_not_called()
 
     def test_controller_transcribir_never_selects_a_profile(self):
         plan = StudioSubtitleExportPlan(
@@ -600,9 +589,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             return_value=plan,
         ), patch.object(controller, "select_profile") as profile, patch.object(
             controller,
-            "select_studio_subtitle_config",
-        ) as style, patch.object(
-            controller,
             "ask_project_name",
             return_value="demo",
         ), patch.object(
@@ -613,7 +599,6 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             options = controller._run_studio()
 
         profile.assert_not_called()
-        style.assert_not_called()
         self.assertNotIn("profile_component", options)
         self.assertNotIn("profile_platform", options)
         self.assertNotIn("profile_id", options)
