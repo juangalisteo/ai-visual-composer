@@ -65,12 +65,10 @@ assets/audio/voices/
 /validation/
 
 # ============================================================
-# User input (local working state; *.example.txt are versioned)
+# User input (input/*.txt are versioned empty)
 # ============================================================
-/input/guion.txt
-/input/tema.txt
-/input/guion_imagen.txt
-/input/guion_video.txt
+# Local backup of user input content
+/input/_backup_local/
 
 # STUDIO input folders: keep only the folder structure (.gitkeep)
 input/studio/*

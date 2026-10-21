@@ -467,6 +467,8 @@ These files belong to the public project structure and are included in a clone o
 
 They are intentionally empty. The user writes into them when preparing a local generation.
 
+To keep your local edits out of `git status` and commits, run `git update-index --skip-worktree input/guion.txt input/guion_imagen.txt input/guion_video.txt input/tema.txt`; undo it with `git update-index --no-skip-worktree` and the same files.
+
 Generated projects are maintained under:
 
 ```text
