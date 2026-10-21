@@ -581,7 +581,6 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
         renderer.render.return_value = (output, 2.0, ("ffmpeg",))
 
         options = dict(
-            subtitle_style=style,
             subtitle_profile_key=subtitle_profile.key,
             project=project,
             config_manager=config,

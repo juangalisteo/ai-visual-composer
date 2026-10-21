@@ -261,7 +261,7 @@ class StudioPhase5Test(unittest.TestCase):
             ),
         ):
             result = ejecutar_studio(
-                subtitle_style="single_line",
+                subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 intro_outro_selection=plan,
                 preparation_service=Mock(return_value=preparation),

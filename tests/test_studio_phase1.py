@@ -34,6 +34,12 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID = (
     "subtitulo_studio_instagram_dos_tres"
 )
+STUDIO_INSTAGRAM_THREE_TWO_KEY = SubtitleProfileKey(
+    "studio",
+    "instagram",
+    STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+    "estandar",
+)
 
 
 STUDIO_PROFILE_IDS = {
@@ -635,7 +641,7 @@ class StudioPhase1Test(unittest.TestCase):
                 encoding="utf-8",
             )
             result = preparar_studio(
-                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+                subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                 input_mode="srt_video",
                 input_preparation_service=StudioInputPreparationService(input_root),
             )
@@ -681,7 +687,7 @@ class StudioPhase1Test(unittest.TestCase):
                 "no contiene una pista de audio",
             ):
                 ejecutar_studio(
-                    subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+                    subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                     input_mode="video",
                     preparation_service=prepare,
                     external_subtitle_preparation_service=subtitle_service,
@@ -717,7 +723,7 @@ class StudioPhase1Test(unittest.TestCase):
             )
 
             prepared = preparar_studio(
-                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+                subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                 input_mode="video",
                 input_preparation_service=StudioInputPreparationService(
                     input_root
@@ -750,7 +756,7 @@ class StudioPhase1Test(unittest.TestCase):
             probe = Mock()
 
             prepared = preparar_studio(
-                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+                subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                 input_mode="srt_video",
                 input_preparation_service=StudioInputPreparationService(
                     input_root

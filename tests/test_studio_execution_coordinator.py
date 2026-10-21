@@ -158,7 +158,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         self.assertEqual(StudioInputMode.VIDEO.value, preparation.input_mode)
         self.assertEqual([(config, {
             "subtitle_profile_key": self.subtitle_key,
-            "subtitle_style": None,
         })], normalizer_calls)
         self.assertEqual(self.subtitle_key, config.requested_subtitle_key)
         self.assertEqual([(self.profile, "video", {})], input_preparation.calls)
@@ -322,7 +321,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                     audio_path,
                     source_subtitle_path,
                 ),
-                subtitle_style="single_line",
                 subtitle_profile_key=self.subtitle_key,
                 project=project,
                 config_manager=config,
@@ -350,7 +348,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
             normalizer.assert_called_once_with(
                 config,
                 subtitle_profile_key=self.subtitle_key,
-                subtitle_style="single_line",
             )
 
     def test_run_video_audio_srt_rejects_invalid_subtitle_combinations(self):
@@ -367,7 +364,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sin SRT no admite"):
             self.coordinator.run_video_audio_srt(
                 plan_without_srt,
-                subtitle_style="single_line",
+                subtitle_profile_key=self.subtitle_key,
             )
         with self.assertRaisesRegex(ValueError, "con SRT requiere"):
             self.coordinator.run_video_audio_srt(plan_with_srt)
@@ -413,7 +410,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
 
         result = self.coordinator.run_subtitle_export(
             export_plan,
-            subtitle_style="single_line",
             subtitle_profile_key=self.subtitle_key,
             project=project,
             config_manager=config,
@@ -429,7 +425,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         normalizer.assert_called_once_with(
             config,
             subtitle_profile_key=self.subtitle_key,
-            subtitle_style="single_line",
         )
         service.export.assert_called_once_with(
             plan=export_plan,

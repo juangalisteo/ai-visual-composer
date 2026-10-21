@@ -403,7 +403,7 @@ class StudioPhase4Test(unittest.TestCase):
             ),
         ):
             result = ejecutar_studio(
-                subtitle_style="single_line",
+                subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 music_path=track,
                 preparation_service=Mock(return_value=preparation),

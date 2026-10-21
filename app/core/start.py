@@ -2,7 +2,7 @@ import json
 import os
 import secrets
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 from app.core.pipeline_telemetry import (
@@ -788,18 +788,15 @@ def _typed_subtitle_options(subtitle_profile_key):
 def _normalise_subtitle_profile_key(
     config,
     subtitle_profile_key=None,
-    subtitle_style=None,
 ):
-    """Keep legacy strings at one input boundary and return a full key."""
-    if subtitle_profile_key is not None:
-        if not isinstance(subtitle_profile_key, SubtitleProfileKey):
-            raise TypeError(
-                "La ruta moderna requiere una SubtitleProfileKey completa."
-            )
-        return subtitle_profile_key
-    if subtitle_style is None:
+    """Validate and return the full subtitle identity."""
+    if subtitle_profile_key is None:
         raise ValueError("La ruta de subtitulos requiere una SubtitleProfileKey.")
-    return config.adapt_legacy_subtitle_selection(subtitle_style)
+    if not isinstance(subtitle_profile_key, SubtitleProfileKey):
+        raise TypeError(
+            "La ruta moderna requiere una SubtitleProfileKey completa."
+        )
+    return subtitle_profile_key
 
 
 def _resolve_single_video_operational_key(profile_resolver, platform):
@@ -826,7 +823,6 @@ def _resolve_single_video_operational_key(profile_resolver, platform):
 
 
 def preparar_studio(
-    subtitle_style=None,
     input_mode=None,
     subtitle_profile_key=None,
     config_manager=None,
@@ -839,7 +835,6 @@ def preparar_studio(
 ):
     """Validate and transport Studio inputs without creating a project."""
     return _STUDIO_EXECUTION_COORDINATOR.prepare_standard(
-        subtitle_style=subtitle_style,
         input_mode=input_mode,
         subtitle_profile_key=subtitle_profile_key,
         config_manager=config_manager,
@@ -855,7 +850,6 @@ def preparar_studio(
 
 def ejecutar_studio_video_audio_srt(
     plan,
-    subtitle_style=None,
     subtitle_profile_key=None,
     project=None,
     config_manager=None,
@@ -865,7 +859,6 @@ def ejecutar_studio_video_audio_srt(
 ):
     return _STUDIO_EXECUTION_COORDINATOR.run_video_audio_srt(
         plan=plan,
-        subtitle_style=subtitle_style,
         subtitle_profile_key=subtitle_profile_key,
         project=project,
         config_manager=config_manager,
@@ -896,7 +889,6 @@ def ejecutar_studio_intro_outro(
 
 def ejecutar_studio_exportar_srt(
     export_plan,
-    subtitle_style=None,
     subtitle_profile_key=None,
     project=None,
     config_manager=None,
@@ -905,7 +897,6 @@ def ejecutar_studio_exportar_srt(
 ):
     return _STUDIO_EXECUTION_COORDINATOR.run_subtitle_export(
         export_plan=export_plan,
-        subtitle_style=subtitle_style,
         subtitle_profile_key=subtitle_profile_key,
         project=project,
         config_manager=config_manager,
@@ -940,7 +931,6 @@ def ejecutar_studio_montaje(
 
 
 def ejecutar_studio(
-    subtitle_style=None,
     input_mode=None,
     subtitle_profile_key=None,
     music_path=None,
@@ -963,7 +953,6 @@ def ejecutar_studio(
             )
 
     return _STUDIO_EXECUTION_COORDINATOR.run_standard(
-        subtitle_style=subtitle_style,
         input_mode=input_mode,
         subtitle_profile_key=subtitle_profile_key,
         music_path=music_path,

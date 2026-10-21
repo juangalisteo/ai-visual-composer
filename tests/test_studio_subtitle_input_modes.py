@@ -226,7 +226,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 "app.modules.studio.execution_coordinator.ProgressLogger"
             ) as progress_logger:
                 result = ejecutar_studio(
-                    subtitle_style="word_by_word",
+                    subtitle_profile_key=preparation.subtitle_profile.key,
                     input_mode="video",
                     preparation_service=Mock(return_value=preparation),
                     external_subtitle_preparation_service=subtitle_service,
@@ -282,7 +282,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             resolver = Mock(resolve=Mock(return_value=output_path))
 
             result = ejecutar_studio(
-                subtitle_style="single_line",
+                subtitle_profile_key=preparation.subtitle_profile.key,
                 input_mode="srt_video",
                 preparation_service=Mock(return_value=preparation),
                 render_service=renderer,
@@ -330,7 +330,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
             ) as transformer:
                 ejecutar_studio(
-                    subtitle_style="word_by_word",
+                    subtitle_profile_key=preparation.subtitle_profile.key,
                     input_mode="srt_video",
                     preparation_service=Mock(return_value=preparation),
                     render_service=renderer,
@@ -468,7 +468,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "ORIGINAL solo esta disponible para STUDIO SRT \\+ VIDEO",
         ):
             ejecutar_studio(
-                subtitle_style="single_line",
+                subtitle_profile_key=self._subtitle_profile("single_line").key,
                 input_mode="video",
                 subtitle_original=True,
                 external_subtitle_preparation_service=subtitle_service,
@@ -516,7 +516,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                     "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
                 ) as transformer:
                     ejecutar_studio(
-                        subtitle_style="word_by_word",
+                        subtitle_profile_key=subtitle_profile.key,
                         input_mode="srt_video",
                         subtitle_original=True,
                         preparation_service=Mock(return_value=preparation),

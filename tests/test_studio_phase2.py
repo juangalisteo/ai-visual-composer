@@ -119,7 +119,7 @@ class StudioPhase2Test(unittest.TestCase):
             return_value=derived_path,
         ):
             result = ejecutar_studio(
-                subtitle_style="three_two_words",
+                subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 preparation_service=prepare,
                 render_service=renderer,
@@ -129,7 +129,7 @@ class StudioPhase2Test(unittest.TestCase):
 
         self.assertEqual("rendered", result)
         prepare.assert_called_once_with(
-            subtitle_style="three_two_words",
+            subtitle_profile_key=self.subtitle_profile.key,
             input_mode="srt_video",
         )
         resolver.resolve.assert_called_once_with(

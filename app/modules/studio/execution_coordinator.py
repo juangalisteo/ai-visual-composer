@@ -53,7 +53,6 @@ class StudioExecutionCoordinator:
 
     def prepare_standard(
         self,
-        subtitle_style=None,
         input_mode=None,
         subtitle_profile_key=None,
         config_manager=None,
@@ -88,7 +87,6 @@ class StudioExecutionCoordinator:
         subtitle_profile_key = subtitle_profile_key_normalizer(
             config,
             subtitle_profile_key=subtitle_profile_key,
-            subtitle_style=subtitle_style,
         )
         subtitle_profile = config.get_subtitle_profile_by_key(
             subtitle_profile_key,
@@ -139,7 +137,6 @@ class StudioExecutionCoordinator:
 
     def run_standard(
         self,
-        subtitle_style=None,
         input_mode=None,
         subtitle_profile_key=None,
         music_path=None,
@@ -171,8 +168,6 @@ class StudioExecutionCoordinator:
             preparation_options["subtitle_profile_key"] = (
                 subtitle_profile_key
             )
-        elif subtitle_style is not None:
-            preparation_options["subtitle_style"] = subtitle_style
         if subtitle_original:
             preparation_options["subtitle_original"] = True
         if video_path is not None:
@@ -326,7 +321,6 @@ class StudioExecutionCoordinator:
     def run_video_audio_srt(
         self,
         plan,
-        subtitle_style=None,
         subtitle_profile_key=None,
         project=None,
         config_manager=None,
@@ -344,17 +338,14 @@ class StudioExecutionCoordinator:
             )
         if (
             plan.subtitle_path is None
-            and (
-                subtitle_style is not None
-                or subtitle_profile_key is not None
-            )
+            and subtitle_profile_key is not None
         ):
             raise ValueError(
                 "VIDEO + AUDIO SRT sin SRT no admite estilo de subtitulos."
             )
         if (
             plan.subtitle_path is not None
-            and not (subtitle_style or subtitle_profile_key)
+            and not subtitle_profile_key
         ):
             raise ValueError(
                 "VIDEO + AUDIO SRT con SRT requiere un estilo de subtitulos."
@@ -395,7 +386,6 @@ class StudioExecutionCoordinator:
             subtitle_profile_key = subtitle_profile_key_normalizer(
                 config,
                 subtitle_profile_key=subtitle_profile_key,
-                subtitle_style=subtitle_style,
             )
             subtitle_profile = config.get_subtitle_profile_by_key(
                 subtitle_profile_key,
@@ -448,7 +438,6 @@ class StudioExecutionCoordinator:
     def run_subtitle_export(
         self,
         export_plan,
-        subtitle_style=None,
         subtitle_profile_key=None,
         project=None,
         config_manager=None,
@@ -465,10 +454,7 @@ class StudioExecutionCoordinator:
         project.setup()
         service = export_service or StudioSubtitleExportService()
         if export_plan.mode is StudioSubtitleExportMode.TRANSCRIBIR:
-            if (
-                subtitle_style is not None
-                or subtitle_profile_key is not None
-            ):
+            if subtitle_profile_key is not None:
                 raise ValueError(
                     "TRANSCRIBIR no admite formato de subtitulos."
                 )
@@ -477,7 +463,7 @@ class StudioExecutionCoordinator:
                 project=project,
             )
 
-        if subtitle_profile_key is None and subtitle_style is None:
+        if subtitle_profile_key is None:
             raise ValueError("CONVERTIR requiere una SubtitleProfileKey.")
         config = config_manager or ConfigManager()
         profile_key = config.get_operational_profile_key()
@@ -499,7 +485,6 @@ class StudioExecutionCoordinator:
         subtitle_profile_key = subtitle_profile_key_normalizer(
             config,
             subtitle_profile_key=subtitle_profile_key,
-            subtitle_style=subtitle_style,
         )
         subtitle_profile = config.get_subtitle_profile_by_key(
             subtitle_profile_key,

@@ -649,7 +649,12 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         ):
             ejecutar_studio_exportar_srt(
                 plan,
-                subtitle_style="single_line",
+                subtitle_profile_key=SubtitleProfileKey(
+                    "studio",
+                    "instagram",
+                    "subtitulo_studio_instagram_linea_unica",
+                    "estandar",
+                ),
                 config_manager=config,
             )
 
@@ -681,7 +686,6 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
 
         ejecutar_studio_exportar_srt(
             plan,
-            subtitle_style="single_line",
             subtitle_profile_key=selected_key,
             project=Mock(),
             config_manager=config,
@@ -690,7 +694,6 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         )
 
         config.get_subtitle_profile_by_key.assert_called_once_with(selected_key)
-        config.adapt_legacy_subtitle_selection.assert_not_called()
         self.assertEqual(
             "word_by_word",
             service.export.call_args.kwargs["subtitle_profile"].cue_policy["mode"],
