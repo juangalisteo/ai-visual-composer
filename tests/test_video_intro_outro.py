@@ -277,7 +277,7 @@ class IntroOutroTest(unittest.TestCase):
         iniciar_mock.assert_called_once()
         request = iniciar_mock.call_args.kwargs["request"]
         self.assertIs(plan, request.route.intro_outro_plan)
-        self.assertEqual("single_line", iniciar_mock.call_args.kwargs["subtitle_style"])
+        self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
 
     def test_compatible_asset_uses_stream_copy_and_intro_is_first(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

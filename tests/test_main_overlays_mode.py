@@ -55,7 +55,7 @@ class MainOverlaysModeTest(
         request = iniciar_mock.call_args.kwargs["request"]
         self.assertEqual("smart", request.route.overlays_mode)
         self.assertEqual("imagen_youtube", request.operational_profile_key.profile_id)
-        self.assertEqual("single_line", iniciar_mock.call_args.kwargs["subtitle_style"])
+        self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
         self.assertNotIn(
             "MC_SUBTITLE_CONFIG",
             os.environ

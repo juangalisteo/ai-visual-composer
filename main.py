@@ -114,16 +114,9 @@ def _run_main():
             print(f"ERROR: {error}")
             return 1
 
-    start_options = {"request": request}
-    if (
-        request.subtitle_profile_key is None
-        and options.get("subtitle_config")
-    ):
-        start_options["subtitle_style"] = options["subtitle_config"]
-
     studio_start = time.perf_counter()
     try:
-        result = iniciar(**start_options)
+        result = iniciar(request=request)
     except (
         StudioMontageError,
         StudioVideoAudioSrtError,

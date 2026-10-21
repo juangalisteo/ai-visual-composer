@@ -549,10 +549,7 @@ class StudioPhase1Test(unittest.TestCase):
             Path("input/studio/srt_video/source.srt"),
             request.route.subtitle_path,
         )
-        self.assertEqual(
-            "three_two_words",
-            start.call_args.kwargs["subtitle_style"],
-        )
+        self.assertEqual({"request"}, set(start.call_args.kwargs))
         output_manager.assert_not_called()
 
     def test_main_resets_output_for_studio_when_selected(self):
@@ -583,6 +580,12 @@ class StudioPhase1Test(unittest.TestCase):
         output_manager.return_value.reset.assert_called_once_with()
 
     def test_start_routes_studio_without_initializing_project(self):
+        subtitle_key = SubtitleProfileKey(
+            "studio",
+            "instagram",
+            STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+            "estandar",
+        )
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
             {
@@ -596,14 +599,14 @@ class StudioPhase1Test(unittest.TestCase):
             "app.core.start.ejecutar_studio"
         ) as render:
             iniciar(
-                subtitle_style="three_two_words",
+                subtitle_profile_key=subtitle_key,
                 studio_input_mode="srt_video",
                 studio_video_path="input/studio/srt_video/source.mp4",
                 studio_subtitle_path="input/studio/srt_video/source.srt",
             )
 
         render.assert_called_once_with(
-            subtitle_style="three_two_words",
+            subtitle_profile_key=subtitle_key,
             music_path=None,
             input_mode="srt_video",
             video_path="input/studio/srt_video/source.mp4",

@@ -149,7 +149,6 @@ class _I2VArtifactLease:
 
 
 def iniciar(
-    subtitle_style=None,
     subtitle_profile_key=None,
     intro_outro_selection=None,
     studio_music_path=None,
@@ -175,7 +174,6 @@ def iniciar(
             return _iniciar_studio_request(
                 route=route,
                 subtitle_profile_key=request.subtitle_profile_key,
-                legacy_subtitle_style=subtitle_style,
                 operational_profile_key=request.operational_profile_key,
                 project_name=request.project_name,
             )
@@ -223,8 +221,6 @@ def iniciar(
                     video_audio_options["subtitle_profile_key"] = (
                         subtitle_profile_key
                     )
-                elif subtitle_style is not None:
-                    video_audio_options["subtitle_style"] = subtitle_style
                 return ejecutar_studio_video_audio_srt(
                     studio_video_audio_srt_plan,
                     **video_audio_options,
@@ -237,8 +233,6 @@ def iniciar(
                     export_options["subtitle_profile_key"] = (
                         subtitle_profile_key
                     )
-                elif subtitle_style is not None:
-                    export_options["subtitle_style"] = subtitle_style
                 return ejecutar_studio_exportar_srt(
                     studio_subtitle_export_plan,
                     **export_options,
@@ -263,8 +257,6 @@ def iniciar(
                 studio_options["subtitle_profile_key"] = (
                     subtitle_profile_key
                 )
-            elif subtitle_style is not None:
-                studio_options["subtitle_style"] = subtitle_style
             if studio_subtitle_original:
                 studio_options["subtitle_original"] = True
             if intro_outro_selection is not None:
@@ -334,7 +326,6 @@ def iniciar(
                 _normalise_subtitle_profile_key(
                     config,
                     subtitle_profile_key=subtitle_profile_key,
-                    subtitle_style=subtitle_style,
                 )
             )
 
@@ -709,7 +700,6 @@ def _iniciar_studio_request(
     *,
     route,
     subtitle_profile_key,
-    legacy_subtitle_style,
     operational_profile_key,
     project_name,
 ):
@@ -721,7 +711,6 @@ def _iniciar_studio_request(
     if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT:
         video_audio_options = _typed_subtitle_options(
             subtitle_profile_key,
-            legacy_subtitle_style,
         )
         return ejecutar_studio_video_audio_srt(
             route.plan,
@@ -738,7 +727,6 @@ def _iniciar_studio_request(
     if route.input_mode is StudioInputMode.EXPORTAR_SRT:
         export_options = _typed_subtitle_options(
             subtitle_profile_key,
-            legacy_subtitle_style,
         )
         return ejecutar_studio_exportar_srt(
             route.plan,
@@ -762,7 +750,6 @@ def _iniciar_studio_request(
     studio_options.update(
         _typed_subtitle_options(
             subtitle_profile_key,
-            legacy_subtitle_style,
         )
     )
     if route.subtitle_original:
@@ -792,11 +779,9 @@ def _config_manager_for_operational_key(
     return ConfigManager(**options)
 
 
-def _typed_subtitle_options(subtitle_profile_key, legacy_subtitle_style):
+def _typed_subtitle_options(subtitle_profile_key):
     if subtitle_profile_key is not None:
         return {"subtitle_profile_key": subtitle_profile_key}
-    if legacy_subtitle_style is not None:
-        return {"subtitle_style": legacy_subtitle_style}
     return {}
 
 

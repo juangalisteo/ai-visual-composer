@@ -185,18 +185,18 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertEqual("studio music", request.project_name)
         self.assertEqual(selected, request.route.music_path)
         self.assertEqual("srt_video", request.route.input_mode.value)
-        self.assertEqual("single_line", start.call_args.kwargs["subtitle_style"])
+        self.assertEqual({"request"}, set(start.call_args.kwargs))
 
         with patch.dict("os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True), patch(
             "app.core.start.ejecutar_studio"
         ) as studio, patch("app.core.start.ProjectManager") as project_manager:
             iniciar(
-                subtitle_style="single_line",
+                subtitle_profile_key=self.subtitle_profile.key,
                 studio_music_path=selected,
                 studio_input_mode="srt_video",
             )
         studio.assert_called_once_with(
-            subtitle_style="single_line",
+            subtitle_profile_key=self.subtitle_profile.key,
             music_path=selected,
             input_mode="srt_video",
         )

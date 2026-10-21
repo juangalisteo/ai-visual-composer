@@ -157,12 +157,12 @@ class StudioPhase2Test(unittest.TestCase):
             "app.core.start.SrtOptimizer"
         ) as optimizer:
             iniciar(
-                subtitle_style="three_two_words",
+                subtitle_profile_key=self.subtitle_profile.key,
                 studio_input_mode="srt_video",
             )
 
         studio.assert_called_once_with(
-            subtitle_style="three_two_words",
+            subtitle_profile_key=self.subtitle_profile.key,
             music_path=None,
             input_mode="srt_video",
         )

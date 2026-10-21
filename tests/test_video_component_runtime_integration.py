@@ -744,11 +744,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         },
                     }
 
-                def adapt_legacy_subtitle_selection(self, selection):
-                    if selection != "single_line":
-                        raise AssertionError(selection)
-                    return subtitle_key
-
                 def get_subtitle_profile_by_key(self, selected_key):
                     requested_subtitle_keys.append(selected_key)
                     return resolved_subtitle_profile
@@ -820,7 +815,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 )
 
                 result = start.iniciar(
-                    subtitle_style="single_line",
+                    subtitle_profile_key=subtitle_key,
                     intro_outro_selection=(
                         intro_outro_selection
                     ),

@@ -966,7 +966,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             iniciar_mock.assert_called_once()
             request = iniciar_mock.call_args.kwargs["request"]
             self.assertEqual(profile_key, request.operational_profile_key)
-            self.assertEqual("word_by_word", iniciar_mock.call_args.kwargs["subtitle_style"])
+            self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
 
     def test_main_transports_design_subtitle_identity_without_a_profile_path(self):
         subtitle_profile_key = SubtitleProfileKey("imagen", "instagram", "modo_conciencia_reels", "design",
