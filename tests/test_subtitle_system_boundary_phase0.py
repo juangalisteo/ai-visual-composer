@@ -253,15 +253,12 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
     with pytest.MonkeyPatch.context() as context:
         for name, value in _environment(system_key).items():
             context.setenv(name, value)
-        rendered = manager.get_subtitle_profile(design_subtitle_key)
-        original = manager.get_subtitle_profile(design_subtitle_key, original=True)
+        rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
         assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
         assert manager.get_operational_profile_key().platform == "instagram"
 
     assert rendered.cue_policy == design.cue_policy
     assert rendered.render_style == design.render_style
-    assert original.cue_policy == design.cue_policy
-    assert original.render_style == design.render_style
 
 
 def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():

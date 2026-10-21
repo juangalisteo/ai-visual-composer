@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from app.modules.audio.voice_configuration import load_tts_voice_configuration
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import create_operational_error
 from app.shared.subtitle_profile_resolver import (
@@ -165,86 +165,6 @@ class ConfigManager:
                 resource="MC_PROFILE_COMPONENT/MC_PROFILE_PLATFORM/MC_PROFILE_ID",
             ) from error
 
-    def _get_legacy_subtitle_parent_key(self):
-        """Build the isolated parent identity required by legacy subtitles.
-
-        This is not an operational-profile lookup: `family` exists here only
-        because old subtitle-selection inputs do not transport a complete
-        `SubtitleProfileKey` yet.
-        """
-        if self._operational_profile_key is not None:
-            family = (
-                os.environ.get("MC_PROFILE_FAMILY", "estandar").strip()
-                or "estandar"
-            )
-            # LEGACY_ADAPTER: only the historic subtitle-style input still
-            # needs a family-bearing parent key. Its operational identity is
-            # the explicit injected value, never the MC_PROFILE_* bridge.
-            if family.casefold() == "system":
-                family = "estandar"
-            return ProfileKey(
-                component=self._operational_profile_key.component,
-                platform=self._operational_profile_key.platform,
-                profile_id=self._operational_profile_key.profile_id,
-                family=family,
-            )
-
-        values = (
-            os.environ.get(
-                "MC_PROFILE_COMPONENT",
-                ""
-            ).strip(),
-            os.environ.get(
-                "MC_PROFILE_PLATFORM",
-                ""
-            ).strip(),
-            os.environ.get(
-                "MC_PROFILE_ID",
-                ""
-            ).strip(),
-            os.environ.get("MC_PROFILE_FAMILY", "estandar").strip() or "estandar",
-        )
-
-        if not any(values[:3]):
-            return None
-        if not all(values[:3]):
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="La identidad padre de subtítulos está incompleta.",
-                recommended_action=(
-                    "Configure component, platform y profile_id antes de "
-                    "iniciar la operación."
-                ),
-                operation="Adaptar selección legacy de subtítulos",
-                technical_metadata={
-                    "component_present": bool(values[0]),
-                    "platform_present": bool(values[1]),
-                    "profile_id_present": bool(values[2]),
-                },
-            )
-
-        # LEGACY_ADAPTER: persisted MC_PROFILE_FAMILY=system predates the
-        # physical ESTANDAR family and is normalized at this input boundary.
-        family = "estandar" if values[3].casefold() == "system" else values[3]
-        try:
-            return ProfileKey(
-                component=values[0],
-                platform=values[1],
-                profile_id=values[2],
-                family=family,
-            )
-        except (TypeError, ValueError) as error:
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="La identidad padre de subtítulos no es válida.",
-                recommended_action=(
-                    "Revise component, platform, family y profile_id de la "
-                    "selección legacy de subtítulos."
-                ),
-                operation="Adaptar selección legacy de subtítulos",
-                resource="MC_PROFILE_COMPONENT/MC_PROFILE_PLATFORM/MC_PROFILE_ID",
-            ) from error
-
     def get_subtitle_profile_by_key(self, subtitle_profile_key):
         """Resolve a modern, complete subtitle identity without adaptation."""
         if not isinstance(subtitle_profile_key, SubtitleProfileKey):
@@ -258,31 +178,3 @@ class ConfigManager:
                 operation="Resolver perfil de subtítulos",
             ) from error
         return self.subtitle_profile_resolver.load(subtitle_profile_key)
-
-    def adapt_legacy_subtitle_selection(self, selection):
-        """Convert one legacy string/style input at the compatibility boundary."""
-        profile_key = self._get_legacy_subtitle_parent_key()
-        if profile_key is None:
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="Falta la identidad de perfil para resolver subtítulos.",
-                recommended_action=(
-                    "Configure component, platform y profile_id antes de "
-                    "resolver subtítulos."
-                ),
-                operation="Resolver perfil de subtítulos",
-            )
-        return self.subtitle_profile_resolver.adapt_legacy_selection(
-            profile_key=profile_key,
-            selection=selection,
-        )
-
-    def get_subtitle_profile(self, selection, original=False):
-        """Legacy public facade; modern callers use ``get_subtitle_profile_by_key``."""
-        del original
-        subtitle_profile_key = (
-            selection
-            if isinstance(selection, SubtitleProfileKey)
-            else self.adapt_legacy_subtitle_selection(selection)
-        )
-        return self.get_subtitle_profile_by_key(subtitle_profile_key)

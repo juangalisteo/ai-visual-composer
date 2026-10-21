@@ -649,21 +649,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         identity_profile
                     )
 
-    def test_config_manager_defaults_missing_family_to_system_and_loads_design(self):
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "video",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "video_instagram",
-            },
-            clear=True,
-        ):
-            self.assertEqual(
-                "estandar",
-                ConfigManager()._get_legacy_subtitle_parent_key().family,
-            )
-
+    def test_config_manager_loads_design_key_regardless_of_family_environment(self):
         design_key = SubtitleProfileResolver().discover_profiles_for_family(
             "video", "instagram", "design",
         )[0].key
@@ -679,7 +665,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         ):
             self.assertEqual(
                 SubtitleProfileResolver().load(design_key),
-                ConfigManager().get_subtitle_profile(design_key),
+                ConfigManager().get_subtitle_profile_by_key(design_key),
             )
 
     def test_official_identity_does_not_require_profile_path_adapter(self):

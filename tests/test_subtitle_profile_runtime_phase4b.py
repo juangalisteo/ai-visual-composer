@@ -80,15 +80,6 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
     def test_design_subtitle_profile_is_autonomous(self):
         for component in ProfileComponent:
-            main_key = ProfileKey.for_component(
-                component,
-                "instagram",
-                family="design",
-                profile_id=(
-                    f"{component.value}_instagram_design_"
-                    "modo_conciencia_reels"
-                ),
-            )
             descriptors = self.subtitle_resolver.discover_profiles_for_family(
                 component, "instagram", "design",
             )
@@ -106,18 +97,10 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                         / f"{key.profile_id}.json",
                         resolved.path,
                     )
-
-                    environment = {
-                        "MC_PROFILE_COMPONENT": component.value,
-                        "MC_PROFILE_PLATFORM": "instagram",
-                        "MC_PROFILE_ID": main_key.profile_id,
-                        "MC_PROFILE_FAMILY": "design",
-                    }
-                    with patch.dict(os.environ, environment, clear=True):
-                        self.assertEqual(
-                            resolved.path,
-                            ConfigManager().get_subtitle_profile(key.profile_id).path,
-                        )
+                    self.assertEqual(
+                        resolved.path,
+                        ConfigManager().get_subtitle_profile_by_key(key).path,
+                    )
 
     def test_design_subtitles_do_not_fallback_to_system(self):
         main_key = ProfileKey.for_component(
@@ -335,8 +318,8 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                         "Official subtitles must not use legacy JSON"
                     )
                 ):
-                    resolved = manager.get_subtitle_profile(
-                        self._expected_path(component, platform, style).stem
+                    resolved = manager.get_subtitle_profile_by_key(
+                        self._key(component, platform, style)
                     )
 
             self.assertEqual(
@@ -373,8 +356,8 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 platform=platform,
                 style=style.value
             ), patch.dict(os.environ, environment, clear=True):
-                resolved = ConfigManager().get_subtitle_profile(
-                    self._expected_path(component, platform, style).stem
+                resolved = ConfigManager().get_subtitle_profile_by_key(
+                    self._key(component, platform, style)
                 )
                 optimizer = SrtOptimizer(
                     subtitle_profile=resolved,
@@ -403,21 +386,6 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 fps
             )
 
-    def test_subtitle_execution_without_identity_fails_explicitly(self):
-        environment = {
-            "MC_PROFILE_COMPONENT": "",
-            "MC_PROFILE_PLATFORM": "",
-            "MC_PROFILE_ID": "",
-        }
-
-        with patch.dict(os.environ, environment, clear=True):
-            with self.assertRaises(OperationalError) as caught:
-                ConfigManager().get_subtitle_profile(
-                    "word_by_word"
-                )
-
-        self.assertEqual("CONFIG", caught.exception.context.family)
-
     def test_video_config_uses_injected_resolved_render_style(self):
         environment = self._environment(
             ProfileComponent.VIDEO,
@@ -425,8 +393,12 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         )
 
         with patch.dict(os.environ, environment, clear=True):
-            resolved = ConfigManager().get_subtitle_profile(
-                SubtitleStyle.SINGLE_LINE
+            resolved = ConfigManager().get_subtitle_profile_by_key(
+                self._key(
+                    ProfileComponent.VIDEO,
+                    "youtube",
+                    SubtitleStyle.SINGLE_LINE
+                )
             )
             loaded = VideoConfigLoader(
                 subtitle_profile=resolved
@@ -495,16 +467,24 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             "MC_PROFILE_ID": main_key.profile_id,
         }
 
+    def _key(
+        self,
+        component,
+        platform,
+        style
+    ):
+        return SubtitleProfileKey.for_profile(
+            ProfileKey.for_component(component, platform),
+            style
+        )
+
     def _expected_path(
         self,
         component,
         platform,
         style
     ):
-        key = SubtitleProfileKey.for_profile(
-            ProfileKey.for_component(component, platform),
-            style
-        )
+        key = self._key(component, platform, style)
         return Path("config/profiles") / key.relative_path
 
     def _assert_model_equivalent(

@@ -5,7 +5,6 @@ import pytest
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import OperationalProfileKey, ProfileKey
 from app.shared.profile_resolver import ProfileResolver
-from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 def _write_operational_profile(root):
@@ -45,21 +44,7 @@ def test_operational_resolver_rejects_family_bearing_legacy_key(tmp_path):
         )
 
 
-def test_legacy_subtitle_parent_remains_isolated_from_operational_resolution(monkeypatch):
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", "guion")
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", "test_platform")
-    monkeypatch.setenv("MC_PROFILE_ID", "test_profile")
-    monkeypatch.setenv("MC_PROFILE_FAMILY", "test_family")
-
-    parent = ConfigManager()._get_legacy_subtitle_parent_key()
-    subtitle_key = SubtitleProfileKey(
-        "guion", "test_platform", "test_subtitle", "test_family"
-    )
-
-    assert parent == ProfileKey(
-        "guion", "test_platform", "test_profile", "test_family"
-    )
-    assert subtitle_key.family == parent.family
+def test_config_manager_exposes_no_family_bearing_profile_key_accessor():
     assert not hasattr(ConfigManager, "get_profile_key")
 
 

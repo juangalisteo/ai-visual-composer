@@ -893,7 +893,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         "subtitle_profile": {"style": "word_by_word"},
                     }
 
-                def get_subtitle_profile(self, style):
+                def get_subtitle_profile_by_key(self, subtitle_profile_key):
                     raise AssertionError(
                         "Subtitle profile must not be resolved"
                     )

@@ -227,7 +227,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             self.assertEqual(original_bytes, source.read_bytes())
 
         self.assertEqual("rendered", result)
-        config.get_subtitle_profile.assert_not_called()
+        config.get_subtitle_profile_by_key.assert_not_called()
         renderer.render.assert_called_once_with(
             video_path=source,
             subtitle_path=None,

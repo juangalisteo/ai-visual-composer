@@ -7,7 +7,6 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import (
     OperationalProfileDescriptor,
@@ -94,30 +93,6 @@ def test_config_manager_without_explicit_key_keeps_legacy_environment_fallback(
     monkeypatch.setenv("MC_PROFILE_ID", legacy_key.profile_id)
 
     assert ConfigManager().get_operational_profile_key() == legacy_key
-
-
-def test_explicit_key_adapts_legacy_subtitle_parent_without_identity_environment(
-    monkeypatch,
-):
-    explicit_key = OperationalProfileKey(
-        "guion",
-        "instagram",
-        "guion_instagram",
-    )
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", "video")
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", "youtube")
-    monkeypatch.setenv("MC_PROFILE_ID", "video_youtube")
-
-    parent = ConfigManager(
-        operational_profile_key=explicit_key,
-    )._get_legacy_subtitle_parent_key()
-
-    assert parent == ProfileKey(
-        component=explicit_key.component,
-        platform=explicit_key.platform,
-        profile_id=explicit_key.profile_id,
-        family="estandar",
-    )
 
 
 def test_m3_run_controller_selects_operational_key_without_family():

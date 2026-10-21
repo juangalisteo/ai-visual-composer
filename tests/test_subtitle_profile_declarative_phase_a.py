@@ -251,7 +251,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             with patch.dict(os.environ, environment, clear=True):
                 resolved = ConfigManager(
                     subtitle_profile_resolver=resolver,
-                ).get_subtitle_profile(custom_id)
+                ).get_subtitle_profile_by_key(by_id[custom_id].key)
 
             self.assertEqual(custom_path, resolved.path)
             self.assertEqual(custom_id, resolved.key.profile_id)

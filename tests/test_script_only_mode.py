@@ -100,12 +100,6 @@ class FakeConfigManager:
             },
         }
 
-    def get_subtitle_profile(
-        self,
-        style
-    ):
-        return self.subtitle_profile
-
     def get_subtitle_profile_by_key(
         self,
         subtitle_profile_key,
@@ -791,7 +785,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     FakeConfigManager,
                 ), patch.object(
                     FakeConfigManager,
-                    "get_subtitle_profile",
+                    "get_subtitle_profile_by_key",
                     side_effect=AssertionError(
                         "Subtitle profile must not be resolved"
                     ),
