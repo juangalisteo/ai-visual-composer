@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.core import start
+from app.modules.design import DesignExecutionCoordinator
 from app.modules.video_component import (
     VideoClipGenerationResult,
     VideoDesignPreparationService,
@@ -273,7 +274,10 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = start._ensure_single_video_design_clip(manifest_path)
+            result = DesignExecutionCoordinator.ensure_single_video_design_clip(
+                manifest_path,
+                scene_clip_identity=start._scene_clip_identity,
+            )
 
         self.assertEqual(clip, result)
 
@@ -291,7 +295,10 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "scene_001"):
-                start._ensure_single_video_design_clip(manifest_path)
+                DesignExecutionCoordinator.ensure_single_video_design_clip(
+                    manifest_path,
+                    scene_clip_identity=start._scene_clip_identity,
+                )
 
     def test_video_design_preparation_reads_only_guion_video(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.core import start
+from app.modules.design import DesignExecutionCoordinator
 from app.modules.images import ImageDesignPreparationService
 
 
@@ -313,7 +314,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
         with self.assertRaises(
             ValueError
         ):
-            start._ensure_single_design_scene(
+            DesignExecutionCoordinator.ensure_single_design_scene(
                 [
                     {
                         "scene": 1

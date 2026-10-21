@@ -7,7 +7,10 @@ from unittest.mock import Mock, patch
 
 import main
 from app.controllers.run_controller import RunController
-from app.core.start import iniciar, preparar_studio_montaje
+from app.core.start import iniciar
+from app.modules.studio.execution_coordinator import (
+    StudioExecutionCoordinator,
+)
 from app.modules.studio import (
     StudioInputMode,
     StudioInputPreparationService,
@@ -317,7 +320,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
         self.assertEqual("montage-result", result)
         montage.assert_called_once_with(plan)
-        self.assertIs(plan, preparar_studio_montaje(plan))
+        self.assertIs(plan, StudioExecutionCoordinator.prepare_montage(plan))
 
     def test_main_transports_montage_with_reset_and_montage_summary(self):
         with tempfile.TemporaryDirectory() as directory:

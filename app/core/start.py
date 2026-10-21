@@ -868,11 +868,6 @@ def preparar_studio(
     )
 
 
-def preparar_studio_montaje(montage_plan):
-    """Validate the structured STUDIO montage boundary."""
-    return _STUDIO_EXECUTION_COORDINATOR.prepare_montage(montage_plan)
-
-
 def ejecutar_studio_video_audio_srt(
     plan,
     subtitle_style=None,
@@ -1044,26 +1039,6 @@ def _with_studio_subtitle_artifacts(
         render_subtitle_path=render_subtitle_path,
         subtitle_preparation_duration=subtitle_preparation_duration,
     )
-
-
-def cargar_o_generar_guion(
-    builders,
-    ai_config,
-    profile,
-    input_script_path,
-    input_topic_path,
-    output_script_path,
-    script_builder_factory=None
-):
-    return preparar_guion(
-        builders=builders,
-        ai_config=ai_config,
-        profile=profile,
-        input_script_path=input_script_path,
-        input_topic_path=input_topic_path,
-        output_script_path=output_script_path,
-        script_builder_factory=script_builder_factory
-    ).text
 
 
 def ejecutar_guion(
@@ -1489,34 +1464,6 @@ def _build_video_clip_manifest_entry(
     }
 
 
-def preparar_guion(
-    builders,
-    ai_config,
-    profile,
-    input_script_path,
-    input_topic_path,
-    output_script_path,
-    script_builder_factory=None
-):
-    service_kwargs = {}
-
-    if script_builder_factory is not None:
-        service_kwargs[
-            "script_builder_factory"
-        ] = script_builder_factory
-
-    return ScriptPreparationService(
-        **service_kwargs
-    ).prepare(
-        builders=builders,
-        ai_config=ai_config,
-        profile=profile,
-        input_script_path=input_script_path,
-        input_topic_path=input_topic_path,
-        output_script_path=output_script_path
-    )
-
-
 def _required_builders(profile):
     builders = require_mapping(
         profile,
@@ -1558,23 +1505,6 @@ def _required_render_fps(profile):
             "superior a cero."
         )
     return fps
-
-
-def _ensure_single_design_scene(
-    scenes
-):
-    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_design_scene(
-        scenes
-    )
-
-
-def _ensure_single_video_design_clip(
-    video_clips_manifest_path
-):
-    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_video_design_clip(
-        video_clips_manifest_path,
-        scene_clip_identity=_scene_clip_identity,
-    )
 
 
 def _scene_clip_identity(
