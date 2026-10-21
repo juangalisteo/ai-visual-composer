@@ -25,7 +25,6 @@ from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -37,12 +36,19 @@ STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID = (
 )
 
 
+STUDIO_PROFILE_IDS = {
+    "instagram": "studio_instagram",
+    "youtube": "studio_youtube",
+}
+
+
 class StudioPhase1Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component(
+        self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
             "instagram",
+            "studio_instagram",
         )
         self.operational_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
@@ -93,7 +99,9 @@ class StudioPhase1Test(unittest.TestCase):
         resolver = SubtitleProfileResolver()
         resolved = []
         for platform in ("instagram", "youtube"):
-            profile_key = ProfileKey.for_component("studio", platform)
+            profile_key = OperationalProfileKey(
+                "studio", platform, STUDIO_PROFILE_IDS[platform]
+            )
             for descriptor in resolver.discover_profiles_for_family(
                 "studio", platform, "estandar",
             ):
@@ -135,7 +143,9 @@ class StudioPhase1Test(unittest.TestCase):
 
             resolver = SubtitleProfileResolver(root)
             with self.assertRaises(OperationalError) as captured:
-                resolver.discover_profiles(self.profile_key)
+                resolver.discover_profiles_for_family(
+                    "studio", "instagram", "estandar",
+                )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
 
@@ -364,7 +374,6 @@ class StudioPhase1Test(unittest.TestCase):
             StudioProfileLoader().load(incomplete, self.profile_key)
 
     def test_transition_duration_is_isolated_by_studio_platform(self):
-        youtube_key = ProfileKey.for_component("studio", "youtube")
         youtube_operational_key = OperationalProfileKey(
             "studio", "youtube", "studio_youtube"
         )
@@ -418,10 +427,12 @@ class StudioPhase1Test(unittest.TestCase):
                         self.profile,
                     ),
                     subtitle=StudioSubtitleSelection(
-                        SubtitleProfileResolver().load_selection(
-                            self.profile_key,
+                        SubtitleProfileKey(
+                            "studio",
+                            "instagram",
                             "subtitulo_studio_instagram_linea_unica",
-                        ).key,
+                            "estandar",
+                        ),
                         False,
                     ),
                 ),

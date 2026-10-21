@@ -47,6 +47,34 @@ GLOBAL_SUBTITLE_FORBIDDEN_KEYS = frozenset(
 )
 
 
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "instagram"): "guion_instagram",
+    (ProfileComponent.GUION, "youtube"): "guion_youtube",
+    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
+    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
+    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
+    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
+    (ProfileComponent.STUDIO, "instagram"): "studio_instagram",
+    (ProfileComponent.STUDIO, "youtube"): "studio_youtube",
+}
+
+
+def _operational_key(component, platform):
+    return OperationalProfileKey(
+        component,
+        platform,
+        OPERATIONAL_PROFILE_IDS[(component, platform)],
+    )
+
+
+def _operational_environment(operational_key):
+    return {
+        "MC_PROFILE_COMPONENT": operational_key.component.value,
+        "MC_PROFILE_PLATFORM": operational_key.platform,
+        "MC_PROFILE_ID": operational_key.profile_id,
+    }
+
+
 def _environment(profile_key):
     return {
         "MC_PROFILE_COMPONENT": profile_key.component.value,
@@ -88,20 +116,22 @@ def test_phase0_standard_selection_preserves_system_operational_projection(
     platform,
 ):
     """A STANDARD selection may resolve subtitle data, never mutate SYSTEM data."""
-    profile_key = ProfileKey.for_component(component, platform)
+    operational_key = _operational_key(component, platform)
     manager = ConfigManager()
     resolver = SubtitleProfileResolver()
-    descriptor = resolver.discover_profiles(profile_key)[0]
+    descriptor = resolver.discover_profiles_for_family(
+        component, platform, "estandar",
+    )[0]
 
     with monkeypatch.context() as context:
-        for name, value in _environment(profile_key).items():
+        for name, value in _operational_environment(operational_key).items():
             context.setenv(name, value)
 
         before = _operational_projection(
             manager.get_profile_config(),
             component,
         )
-        resolved = manager.get_subtitle_profile(descriptor.profile_id)
+        resolved = manager.get_subtitle_profile_by_key(descriptor.key)
         after = _operational_projection(
             manager.get_profile_config(),
             component,
@@ -116,10 +146,11 @@ def test_phase0_standard_selection_preserves_system_operational_projection(
 @pytest.mark.parametrize("component", COMPONENTS)
 @pytest.mark.parametrize("platform", PLATFORMS)
 def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
-    profile_key = ProfileKey.for_component(component, platform)
     resolver = SubtitleProfileResolver()
 
-    descriptors = resolver.discover_profiles(profile_key)
+    descriptors = resolver.discover_profiles_for_family(
+        component, platform, "estandar",
+    )
     assert descriptors
 
     for descriptor in descriptors:
@@ -179,25 +210,24 @@ def test_phase1_design_selection_keeps_system_operational_projection(
     monkeypatch,
     component,
 ):
-    system_key = ProfileKey.for_component(
-        component,
-        "instagram",
-    )
+    system_key = _operational_key(component, "instagram")
     subtitle_resolver = SubtitleProfileResolver()
     subtitle_key = subtitle_resolver.discover_profiles_for_family(
         component, "instagram", "design",
     )[0].key
-    standard_key = subtitle_resolver.discover_profiles(system_key)[0].key
+    standard_key = subtitle_resolver.discover_profiles_for_family(
+        component, "instagram", "estandar",
+    )[0].key
 
     with monkeypatch.context() as context:
-        for name, value in _environment(system_key).items():
+        for name, value in _operational_environment(system_key).items():
             context.setenv(name, value)
         manager = ConfigManager()
         before = _operational_projection(
             manager.get_profile_config(), component,
         )
-        standard = manager.get_subtitle_profile(standard_key)
-        design = manager.get_subtitle_profile(subtitle_key)
+        standard = manager.get_subtitle_profile_by_key(standard_key)
+        design = manager.get_subtitle_profile_by_key(subtitle_key)
         after = _operational_projection(
             manager.get_profile_config(), component,
         )
@@ -235,7 +265,7 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
 
 
 def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():
-    system_key = ProfileKey.for_component("studio", "instagram")
+    system_key = _operational_key(ProfileComponent.STUDIO, "instagram")
     resolver = SubtitleProfileResolver()
     descriptors = resolver.discover_profiles_for_family(
         "studio", "instagram", "design",
@@ -243,12 +273,12 @@ def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():
     assert descriptors
 
     with pytest.MonkeyPatch.context() as context:
-        for name, value in _environment(system_key).items():
+        for name, value in _operational_environment(system_key).items():
             context.setenv(name, value)
         manager = ConfigManager()
         for descriptor in descriptors:
             design = resolver.load(descriptor.key)
-            selected = manager.get_subtitle_profile(descriptor.key)
+            selected = manager.get_subtitle_profile_by_key(descriptor.key)
 
             assert selected.key == descriptor.key
             assert selected.cue_policy["mode"] == descriptor.mode
@@ -272,8 +302,12 @@ def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():
 
 
 def test_phase0_static_srt_renderer_baseline_uses_force_style(tmp_path):
-    profile_key = ProfileKey.for_component("video", "instagram")
-    subtitle_key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
+    subtitle_key = SubtitleProfileKey(
+        "video",
+        "instagram",
+        "subtitulo_video_instagram_palabra_por_palabra",
+        "estandar",
+    )
     subtitle_profile = SubtitleProfileResolver().load(subtitle_key)
     style = SubtitleStyleBuilder().build(subtitle_profile.render_style)
     subtitle_path = tmp_path / "source.srt"

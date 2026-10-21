@@ -13,7 +13,7 @@ from app.modules.studio import (
     StudioIntroOutroPlan,
 )
 from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import OperationalProfileDescriptor
 
 
@@ -62,7 +62,9 @@ class StudioIntroOutroTest(unittest.TestCase):
             controller = RunController(
                 studio_intro_outro_input_service=service,
             )
-            profile_key = ProfileKey.for_component("studio", "instagram")
+            profile_key = OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            )
             controller._require_intro_outro_assets = Mock(
                 side_effect=lambda _, position: (intro,)
                 if position == "intro"
@@ -94,7 +96,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             controller._select_from_list = Mock(side_effect=(second, "intro"))
 
             plan = controller.select_studio_intro_outro_plan(
-                ProfileKey.for_component("studio", "instagram"),
+                OperationalProfileKey("studio", "instagram", "studio_instagram"),
             )
 
         self.assertEqual(second, plan.source_path)
@@ -114,7 +116,9 @@ class StudioIntroOutroTest(unittest.TestCase):
             controller = RunController(
                 subtitle_profile_resolver=subtitle_resolver,
             )
-            profile_key = ProfileKey.for_component("studio", "instagram")
+            profile_key = OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            )
             selection_order = []
             controller.select_studio_input_mode = Mock(
                 return_value=StudioInputMode.INTRO_OUTRO.value,
@@ -196,7 +200,9 @@ class StudioIntroOutroTest(unittest.TestCase):
                 source,
                 IntroOutroPlan(outro=IntroOutroSelection(source, "outro")),
             )
-            profile_key = ProfileKey.for_component("studio", "instagram")
+            profile_key = OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            )
             config = Mock()
             config.get_profile_key.return_value = profile_key
             config.get_operational_profile_key.return_value = OperationalProfileKey(

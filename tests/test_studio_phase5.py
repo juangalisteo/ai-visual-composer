@@ -30,7 +30,7 @@ from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -54,10 +54,14 @@ class StudioPhase5Test(unittest.TestCase):
         self.profile_key = OperationalProfileKey(
             "studio", "instagram", "studio_instagram"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                "instagram",
+                "subtitulo_studio_instagram_linea_unica",
+                "estandar",
+            )
         )
 
     @staticmethod
@@ -541,7 +545,6 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
         self.profile_key = OperationalProfileKey(
             "studio", "instagram", "studio_instagram"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         profile = _load_studio_profile(self.profile_key)
         self.profile = replace(
             profile,
@@ -551,7 +554,12 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             preset="ultrafast",
         )
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                "instagram",
+                "subtitulo_studio_instagram_linea_unica",
+                "estandar",
+            )
         )
 
     @staticmethod

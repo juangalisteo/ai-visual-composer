@@ -29,6 +29,21 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+STUDIO_PROFILE_IDS = {
+    "instagram": "studio_instagram",
+    "youtube": "studio_youtube",
+}
+
+STUDIO_STANDARD_SUBTITLE_PROFILE_IDS = {
+    ("instagram", "single_line"): "subtitulo_studio_instagram_linea_unica",
+    ("instagram", "word_by_word"): (
+        "subtitulo_studio_instagram_palabra_por_palabra"
+    ),
+    ("youtube", "single_line"): "subtitulo_studio_youtube_linea_unica",
+    ("youtube", "word_by_word"): "subtitulo_studio_youtube_palabra_por_palabra",
+}
+
+
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
@@ -44,7 +59,9 @@ def _load_studio_profile(profile_key):
 class StudioFinalContractTest(unittest.TestCase):
 
     def test_design_subtitles_do_not_replace_the_studio_system_profile(self):
-        system_key = ProfileKey.for_component("studio", "instagram")
+        system_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
+        )
         profile = _load_studio_profile(system_key)
         descriptors = SubtitleProfileResolver().discover_profiles_for_family(
             "studio", "instagram", "design",
@@ -114,7 +131,9 @@ class StudioFinalContractTest(unittest.TestCase):
                 "1\n00:00:00,000 --> 00:00:01,000\nTexto íntegro.\n",
                 encoding="utf-8",
             )
-            key = ProfileKey.for_component("studio", "instagram")
+            key = OperationalProfileKey(
+                "studio", "instagram", "studio_instagram"
+            )
             profile = _load_studio_profile(key)
             prepared = StudioInputPreparationService(root).prepare(
                 profile,
@@ -175,10 +194,17 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         subprocess.run(command, capture_output=True, check=True)
 
     def _context(self, platform, style="single_line"):
-        key = ProfileKey.for_component("studio", platform)
+        key = OperationalProfileKey(
+            "studio", platform, STUDIO_PROFILE_IDS[platform]
+        )
         profile = _load_studio_profile(key)
         subtitle = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(key, style)
+            SubtitleProfileKey(
+                "studio",
+                platform,
+                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[(platform, style)],
+                "estandar",
+            )
         )
         return key, profile, subtitle
 

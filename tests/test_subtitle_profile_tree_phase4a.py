@@ -1,16 +1,14 @@
 import json
-import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
 )
 from app.shared.config_manager import ConfigManager
-from app.shared.profile_identity import ProfileKey
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class SubtitleProfileTreePhase4ATest(unittest.TestCase):
@@ -224,19 +222,17 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
     def test_official_runtime_loads_new_cue_profiles(self):
         for component, platform, _, _, path in self._cases():
-            profile_key = ProfileKey.for_component(component, platform)
-            environment = {
-                "MC_PROFILE_COMPONENT": component,
-                "MC_PROFILE_PLATFORM": platform,
-                "MC_PROFILE_ID": profile_key.profile_id,
-            }
+            subtitle_key = SubtitleProfileKey(
+                component,
+                platform,
+                self._load(path)["profile_id"],
+                "estandar",
+            )
 
-            with self.subTest(path=path), patch.dict(
-                os.environ,
-                environment,
-                clear=True,
-            ):
-                loaded = ConfigManager().get_subtitle_profile(path.stem)
+            with self.subTest(path=path):
+                loaded = ConfigManager().get_subtitle_profile_by_key(
+                    subtitle_key
+                )
 
             self.assertEqual(path, loaded.path)
             self.assertEqual(self._load(path)["cue_policy"], loaded.cue_policy)

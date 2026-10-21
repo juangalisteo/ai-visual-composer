@@ -283,7 +283,6 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             self.assertEqual("Mi subtítulo personalizado", resolved.display_name)
 
     def test_new_standard_profile_requires_display_name(self):
-        profile_key = ProfileKey.for_component("studio", "instagram")
         source = Path(
             "config/profiles/studio/instagram/estandar/subtitulos/"
             "subtitulo_studio_instagram_linea_unica.json"
@@ -302,7 +301,9 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             )
 
             with self.assertRaises(OperationalError) as captured:
-                SubtitleProfileResolver(root).discover_profiles(profile_key)
+                SubtitleProfileResolver(root).discover_profiles_for_family(
+                    "studio", "instagram", "estandar",
+                )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
 
@@ -344,15 +345,11 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         self.assertTrue(original)
 
     def test_design_remains_automatic_and_self_contained(self):
-        profile_key = ProfileKey.for_component(
-            "studio",
-            "instagram",
-            family="design",
-            profile_id="studio_instagram_design_modo_conciencia_reels",
-        )
         resolver = SubtitleProfileResolver()
         descriptor = next(
-            item for item in resolver.discover_profiles(profile_key)
+            item for item in resolver.discover_profiles_for_family(
+                "studio", "instagram", "design",
+            )
             if item.profile_id == "modo_conciencia_reels"
         )
 
@@ -360,7 +357,9 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         self.assertEqual("Modo Conciencia | Reels", descriptor.display_name)
         self.assertEqual(
             "word_by_word",
-            resolver.load_selection(
-                profile_key, "modo_conciencia_reels",
+            resolver.load(
+                SubtitleProfileKey(
+                    "studio", "instagram", "modo_conciencia_reels", "design",
+                )
             ).cue_policy["mode"],
         )

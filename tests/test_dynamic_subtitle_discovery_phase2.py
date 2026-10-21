@@ -158,13 +158,16 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 profile_id="perfil_prueba",
                 filename="archivo_opaco.json",
             )
-            profile_key = ProfileKey(
-                "guion", "instagram", "perfil_operacional", "test_family"
-            )
             resolver = SubtitleProfileResolver(root)
 
-            descriptors = resolver.discover_profiles(profile_key)
-            resolved = resolver.load_selection(profile_key, "perfil_prueba")
+            descriptors = resolver.discover_profiles_for_family(
+                "guion", "instagram", "test_family"
+            )
+            resolved = resolver.load(
+                SubtitleProfileKey(
+                    "guion", "instagram", "perfil_prueba", "test_family"
+                )
+            )
 
         self.assertEqual(("perfil_prueba",), tuple(item.profile_id for item in descriptors))
         self.assertEqual(path, resolved.path)
@@ -691,9 +694,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             )
 
             self._assert_operational_error(
-                lambda: SubtitleProfileResolver(root).load_selection(
-                    profile_key, other_family_key
-                ),
+                lambda: SubtitleProfileResolver(root).load(other_family_key),
                 "PROFILE",
                 FileNotFoundError,
             )
@@ -706,17 +707,11 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
 
         self.assertEqual(
             design_selection,
-            subtitle_resolver.load_selection(
-                ProfileKey.for_component("guion", "instagram"),
-                design_selection,
-            ).key,
+            subtitle_resolver.load(design_selection).key,
         )
         self.assertEqual(
             design_selection,
-            subtitle_resolver.load_selection(
-                ProfileKey.for_component("guion", "instagram"),
-                design_selection,
-            ).key,
+            subtitle_resolver.load(design_selection).key,
         )
 
     def test_generic_resolution_checks_the_profiles_root_boundary_for_design(self):

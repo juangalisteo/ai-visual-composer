@@ -17,11 +17,41 @@ from app.modules.video.video_config import VideoConfigLoader
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "instagram"): "guion_instagram",
+    (ProfileComponent.GUION, "youtube"): "guion_youtube",
+    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
+    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
+    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
+    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
+}
+
+WORD_BY_WORD_SUBTITLE_PROFILE_IDS = {
+    (ProfileComponent.GUION, "instagram"): (
+        "subtitulo_guion_instagram_palabra_por_palabra"
+    ),
+    (ProfileComponent.GUION, "youtube"): (
+        "subtitulo_guion_youtube_palabra_por_palabra"
+    ),
+    (ProfileComponent.IMAGEN, "instagram"): (
+        "subtitulo_imagen_instagram_palabra_por_palabra"
+    ),
+    (ProfileComponent.IMAGEN, "youtube"): (
+        "subtitulo_imagen_youtube_palabra_por_palabra"
+    ),
+    (ProfileComponent.VIDEO, "instagram"): (
+        "subtitulo_video_instagram_palabra_por_palabra"
+    ),
+    (ProfileComponent.VIDEO, "youtube"): (
+        "subtitulo_video_youtube_palabra_por_palabra"
+    ),
+}
 
 
 class RequiredProfileContractsTest(unittest.TestCase):
@@ -235,15 +265,16 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     SubtitleConfigLoader().load_render_style(incomplete)
 
     def test_subtitle_cue_policy_rejects_missing_critical_keys(self):
-        for style in ("single_line", "word_by_word"):
+        for style, subtitle_profile_id in (
+            ("single_line", "subtitulo_video_instagram_linea_unica"),
+            ("word_by_word", "subtitulo_video_instagram_palabra_por_palabra"),
+        ):
             with self.subTest(style=style):
-                profile_key = ProfileKey.for_component(
+                subtitle_key = SubtitleProfileKey(
                     ProfileComponent.VIDEO,
                     "instagram",
-                )
-                subtitle_key = SubtitleProfileKey.for_profile(
-                    profile_key,
-                    style,
+                    subtitle_profile_id,
+                    "estandar",
                 )
                 cue_policy = deepcopy(
                     self.subtitle_resolver.load(subtitle_key).cue_policy
@@ -335,25 +366,24 @@ class RequiredProfileContractsTest(unittest.TestCase):
         )
 
     def _profile(self, component, platform):
-        legacy_key = ProfileKey.for_component(component, platform)
         key = OperationalProfileKey(
             component,
             platform,
-            legacy_key.profile_id,
+            OPERATIONAL_PROFILE_IDS[(component, platform)],
         )
         return key, self.profile_resolver.load_operational(key)
 
     def _subtitle_profile(self, profile_key, profile):
         del profile
-        legacy_key = ProfileKey(
-            profile_key.component,
-            profile_key.platform,
-            profile_key.profile_id,
-            "estandar",
-        )
-        return self.subtitle_resolver.load_selection(
-            legacy_key,
-            "word_by_word",
+        return self.subtitle_resolver.load(
+            SubtitleProfileKey(
+                profile_key.component,
+                profile_key.platform,
+                WORD_BY_WORD_SUBTITLE_PROFILE_IDS[
+                    (profile_key.component, profile_key.platform)
+                ],
+                "estandar",
+            )
         )
 
     def _video_config(self, profile_key, profile):

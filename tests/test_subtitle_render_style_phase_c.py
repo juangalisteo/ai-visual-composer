@@ -10,7 +10,6 @@ from app.modules.video.config.loaders.subtitle_loader import (
 from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
-from app.shared.profile_identity import ProfileKey
 from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -143,7 +142,6 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     def test_dynamic_profile_is_validated_during_discovery(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            main_key = ProfileKey.for_component("guion", "instagram")
             source = self._source_standard()
             data = json.loads(source.read_text(encoding="utf-8"))
             data["profile_id"] = "subtitulo_guion_instagram_prueba_c"
@@ -158,16 +156,20 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
             path.write_text(json.dumps(data), encoding="utf-8")
 
             with self.assertRaises(OperationalError) as captured:
-                SubtitleProfileResolver(root).discover_profiles(main_key)
+                SubtitleProfileResolver(root).discover_profiles_for_family(
+                    "guion", "instagram", "estandar",
+                )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
 
     def _assert_invalid_standard_profile(self, field, value):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            key = SubtitleProfileKey.for_profile(
-                ProfileKey.for_component("guion", "instagram"),
-                "single_line",
+            key = SubtitleProfileKey(
+                "guion",
+                "instagram",
+                "subtitulo_guion_instagram_linea_unica",
+                "estandar",
             )
             path = root / key.relative_path
             path.parent.mkdir(parents=True)

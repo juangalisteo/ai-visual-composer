@@ -45,6 +45,12 @@ SRT_CONTENT = (
 )
 
 
+STUDIO_PROFILE_IDS = {
+    "instagram": "studio_instagram",
+    "youtube": "studio_youtube",
+}
+
+
 def _studio_selection(profile_key, subtitle_key, studio_profile=None):
     return StudioProfileSelection(
         operational=StudioOperationalSelection(
@@ -231,7 +237,6 @@ class ExternalMediaSubtitlePreparationTest(unittest.TestCase):
 class StudioSubtitleExportServiceTest(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
         self.operational_key = OperationalProfileKey(
             "studio", "instagram", "studio_instagram"
         )
@@ -248,8 +253,12 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
                     "subtitulo_studio_instagram_linea_unica", "estandar",
                 )
             )
+        profile_id = {
+            "single_line": "subtitulo_studio_instagram_linea_unica",
+            "word_by_word": "subtitulo_studio_instagram_palabra_por_palabra",
+        }[style]
         return SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, style)
+            SubtitleProfileKey("studio", "instagram", profile_id, "estandar")
         )
 
     def _project(self, root, name="exportacion"):
@@ -407,7 +416,9 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             Path("input/studio/exportar_srt/source.srt"),
         )
         controller = RunController()
-        profile_key = ProfileKey.for_component("studio", "instagram")
+        profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
+        )
         subtitle_key = SubtitleProfileResolver().discover_profiles_for_family(
             "studio", "instagram", "estandar",
         )[0].key
@@ -460,7 +471,9 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     if resolver.load(item.key).cue_policy["mode"] == expected_mode
                 )
                 controller = RunController()
-                profile_key = ProfileKey.for_component("studio", platform)
+                profile_key = OperationalProfileKey(
+                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                )
                 with patch.object(
                     controller,
                     "_select_studio_profile_selection",
@@ -660,7 +673,9 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             StudioSubtitleExportMode.CONVERTIR,
             Path("source.srt"),
         )
-        profile_key = ProfileKey.for_component("studio", "instagram")
+        profile_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
+        )
         resolver = SubtitleProfileResolver()
         selected_key = next(
             descriptor.key

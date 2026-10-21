@@ -12,10 +12,54 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "instagram"): "guion_instagram",
+    (ProfileComponent.GUION, "youtube"): "guion_youtube",
+    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
+    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
+    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
+    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
+}
+
+OFFICIAL_SUBTITLE_PROFILE_IDS = {
+    (ProfileComponent.GUION, "instagram"): (
+        "subtitulo_guion_instagram_palabra_por_palabra"
+    ),
+    (ProfileComponent.GUION, "youtube"): "subtitulo_guion_youtube_linea_unica",
+    (ProfileComponent.IMAGEN, "instagram"): (
+        "subtitulo_imagen_instagram_palabra_por_palabra"
+    ),
+    (ProfileComponent.IMAGEN, "youtube"): "subtitulo_imagen_youtube_linea_unica",
+    (ProfileComponent.VIDEO, "instagram"): (
+        "subtitulo_video_instagram_palabra_por_palabra"
+    ),
+    (ProfileComponent.VIDEO, "youtube"): "subtitulo_video_youtube_linea_unica",
+}
+
+
+def _profile_key(component, platform):
+    return OperationalProfileKey(
+        component,
+        platform,
+        OPERATIONAL_PROFILE_IDS[(component, platform)],
+    )
+
+
+def _official_subtitle_key(profile_key):
+    return SubtitleProfileKey(
+        profile_key.component,
+        profile_key.platform,
+        OFFICIAL_SUBTITLE_PROFILE_IDS[
+            (profile_key.component, profile_key.platform)
+        ],
+        "estandar",
+    )
 
 
 def _operational_key(profile_key):
@@ -72,7 +116,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     component=component.value,
                     platform=platform
                 ):
-                    profile_key = ProfileKey.for_component(
+                    profile_key = _profile_key(
                         component,
                         platform
                     )
@@ -88,8 +132,10 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         environment,
                         clear=True
                     ):
-                        subtitle_profile = ConfigManager().get_subtitle_profile(
-                            expected["subtitle_config"]
+                        subtitle_profile = (
+                            ConfigManager().get_subtitle_profile_by_key(
+                                _official_subtitle_key(profile_key)
+                            )
                         )
                     subtitles = subtitle_profile.render_style
 
@@ -163,7 +209,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     target=target_component.value,
                     platform=platform
                 ):
-                    profile_key = ProfileKey.for_component(
+                    profile_key = _profile_key(
                         target_component,
                         platform
                     )
@@ -267,7 +313,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
     def test_official_subtitle_configuration_is_unified_and_equivalent(self):
         for platform, expected in self.PLATFORM_EXPECTATIONS.items():
             with self.subTest(platform=platform):
-                profile_key = ProfileKey.for_component(
+                profile_key = _profile_key(
                     ProfileComponent.VIDEO,
                     platform
                 )
@@ -281,8 +327,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 ):
                     subtitle_profile = (
                         ConfigManager()
-                        .get_subtitle_profile(
-                            expected["subtitle_config"]
+                        .get_subtitle_profile_by_key(
+                            _official_subtitle_key(profile_key)
                         )
                     )
 
@@ -356,7 +402,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
     def test_runtime_objects_are_consistent_with_structured_identity(self):
         for platform, expected in self.PLATFORM_EXPECTATIONS.items():
             with self.subTest(platform=platform):
-                profile_key = ProfileKey.for_component(
+                profile_key = _profile_key(
                     ProfileComponent.VIDEO,
                     platform
                 )
@@ -370,8 +416,10 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         ConfigManager()
                         .get_profile_config()
                     )
-                    subtitle_profile = ConfigManager().get_subtitle_profile(
-                        expected["subtitle_config"]
+                    subtitle_profile = (
+                        ConfigManager().get_subtitle_profile_by_key(
+                            _official_subtitle_key(profile_key)
+                        )
                     )
                     identity_video = VideoConfigLoader(
                         subtitle_profile=subtitle_profile

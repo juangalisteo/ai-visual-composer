@@ -21,10 +21,21 @@ from app.modules.studio import (
     StudioRenderService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+STUDIO_PROFILE_IDS = {
+    "instagram": "studio_instagram",
+    "youtube": "studio_youtube",
+}
+
+STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS = {
+    "instagram": "subtitulo_studio_instagram_linea_unica",
+    "youtube": "subtitulo_studio_youtube_linea_unica",
+}
 
 
 def _load_studio_profile(profile_key):
@@ -45,7 +56,6 @@ class StudioPhase2Test(unittest.TestCase):
         self.profile_key = OperationalProfileKey(
             "studio", "instagram", "studio_instagram"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
@@ -446,9 +456,13 @@ class StudioPhase2Test(unittest.TestCase):
                 self.assertFalse(root.joinpath("result.rendering.mp4").exists())
 
     def test_profile_and_subtitle_platforms_cannot_cross(self):
-        youtube_key = ProfileKey.for_component("studio", "youtube")
         youtube_subtitles = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(youtube_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                "youtube",
+                "subtitulo_studio_youtube_linea_unica",
+                "estandar",
+            )
         )
         with tempfile.TemporaryDirectory() as directory:
             video_path, subtitle_path = self._sources(Path(directory))
@@ -541,11 +555,17 @@ class StudioPhase2Test(unittest.TestCase):
 class StudioPhase2RealFFmpegTest(unittest.TestCase):
 
     def _profile(self, platform="instagram"):
-        subtitle_parent_key = ProfileKey.for_component("studio", platform)
-        key = OperationalProfileKey("studio", platform, f"studio_{platform}")
+        key = OperationalProfileKey(
+            "studio", platform, STUDIO_PROFILE_IDS[platform]
+        )
         profile = _load_studio_profile(key)
         subtitles = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(subtitle_parent_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                platform,
+                STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS[platform],
+                "estandar",
+            )
         )
         return key, profile, subtitles
 

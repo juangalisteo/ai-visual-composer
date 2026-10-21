@@ -18,9 +18,15 @@ from app.modules.studio import (
 )
 from app.modules.studio.montage import StudioMontageError
 from app.shared.media_probe import MediaInfo
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.modules.studio import StudioProfileLoader
+
+
+STUDIO_PROFILE_IDS = {
+    "instagram": "studio_instagram",
+    "youtube": "studio_youtube",
+}
 
 
 def _load_studio_profile(profile_key):
@@ -645,7 +651,9 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         ) in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                profile_key = ProfileKey.for_component("studio", platform)
+                profile_key = OperationalProfileKey(
+                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                )
                 loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
                     loaded_profile,
@@ -802,7 +810,9 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         ):
             with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                profile_key = ProfileKey.for_component("studio", platform)
+                profile_key = OperationalProfileKey(
+                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                )
                 loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
                     loaded_profile,

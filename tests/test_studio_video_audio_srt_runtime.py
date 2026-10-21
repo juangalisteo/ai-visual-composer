@@ -18,7 +18,7 @@ from app.modules.studio import (
     StudioVideoAudioSrtService,
 )
 from app.shared.media_probe import MediaInfo
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -60,14 +60,28 @@ def _media_info(duration):
     )
 
 
+STUDIO_YOUTUBE_SUBTITLE_PROFILE_IDS = {
+    "single_line": "subtitulo_studio_youtube_linea_unica",
+    "word_by_word": "subtitulo_studio_youtube_palabra_por_palabra",
+}
+
+
+def _standard_subtitle_key(style):
+    return SubtitleProfileKey(
+        "studio",
+        "youtube",
+        STUDIO_YOUTUBE_SUBTITLE_PROFILE_IDS[style],
+        "estandar",
+    )
+
+
 def _profile_and_subtitles():
-    profile_key = ProfileKey.for_component("studio", "youtube")
     operational_key = OperationalProfileKey("studio", "youtube", "studio_youtube")
     profile = StudioProfileLoader().load(
         ProfileResolver().load_operational(operational_key),
         operational_key,
     )
-    return profile_key, profile, SubtitleProfileResolver()
+    return operational_key, profile, SubtitleProfileResolver()
 
 
 def _write_sources(root, with_subtitle=False):
@@ -119,7 +133,7 @@ def test_video_audio_srt_menu_uses_operational_platform_and_never_asks_for_music
         return_value=(profile_key, Mock())
     )
     controller._select_from_list = Mock(return_value=subtitles)
-    subtitle_key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
+    subtitle_key = _standard_subtitle_key("word_by_word")
     controller._select_studio_video_audio_srt_subtitle_profile = Mock(
         return_value=subtitle_key
     )
@@ -511,7 +525,7 @@ def test_short_audio_can_be_completed_with_music_only_in_the_final_gap():
 def test_render_uses_the_common_studio_style_for_human_srt(style):
     profile_key, profile, resolver = _profile_and_subtitles()
     subtitle_profile = resolver.load(
-        SubtitleProfileKey.for_profile(profile_key, style)
+        _standard_subtitle_key(style)
     )
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -545,7 +559,7 @@ def test_render_uses_the_common_studio_style_for_human_srt(style):
 def test_human_srt_is_preserved_without_whisper_or_transformers(style):
     profile_key, profile, resolver = _profile_and_subtitles()
     subtitle_profile = resolver.load(
-        SubtitleProfileKey.for_profile(profile_key, style)
+        _standard_subtitle_key(style)
     )
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -602,7 +616,7 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
 def test_human_srt_allows_only_a_visual_uppercase_derivative():
     profile_key, profile, resolver = _profile_and_subtitles()
     subtitle_profile = resolver.load(
-        SubtitleProfileKey.for_profile(profile_key, "single_line")
+        _standard_subtitle_key("single_line")
     )
     subtitle_profile = type("UppercaseProfile", (), {
         "key": subtitle_profile.key,
@@ -665,10 +679,7 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
         "studio_input_mode": "video_audio_srt",
         "studio_video_audio_srt_plan": plan,
         "subtitle_config": "subtitulo_studio_youtube_linea_unica",
-        "subtitle_profile_key": SubtitleProfileKey.for_profile(
-            ProfileKey.for_component("studio", "youtube"),
-            "single_line",
-        ),
+        "subtitle_profile_key": _standard_subtitle_key("single_line"),
     }
     result = SimpleNamespace(
         output_path=Path("output/video/final.mp4"),

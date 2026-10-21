@@ -3,10 +3,7 @@ import pytest
 from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
-from app.shared.profile_identity import (
-    ProfileComponent,
-    ProfileKey,
-)
+from app.shared.profile_identity import ProfileComponent
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -31,10 +28,11 @@ def test_phase3_official_standard_baseline_uses_the_static_srt_engine(
     component,
     platform,
 ):
-    profile_key = ProfileKey.for_component(component, platform)
     resolver = SubtitleProfileResolver()
 
-    for descriptor in resolver.discover_profiles(profile_key):
+    for descriptor in resolver.discover_profiles_for_family(
+        component, platform, "estandar",
+    ):
         resolved = resolver.load(descriptor.key)
         force_style = SubtitleStyleBuilder().build(resolved.render_style)
 

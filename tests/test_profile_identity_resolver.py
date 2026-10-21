@@ -22,6 +22,18 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "instagram"): "guion_instagram",
+    (ProfileComponent.GUION, "youtube"): "guion_youtube",
+    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
+    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
+    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
+    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
+    (ProfileComponent.STUDIO, "instagram"): "studio_instagram",
+    (ProfileComponent.STUDIO, "youtube"): "studio_youtube",
+}
+
+
 class ProfileIdentityResolverTest(unittest.TestCase):
 
     EXPECTED_PATHS = {
@@ -101,14 +113,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_resolves_complete_valid_matrix_exactly(self):
         for component in ProfileComponent:
             for platform in ("instagram", "youtube"):
-                legacy_key = ProfileKey.for_component(
-                    component,
-                    platform,
-                )
                 profile_key = OperationalProfileKey(
                     component,
                     platform,
-                    legacy_key.profile_id,
+                    OPERATIONAL_PROFILE_IDS[(component, platform)],
                 )
                 with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
@@ -614,12 +622,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                     component=component.value,
                     platform=platform
                 ):
-                    legacy_key = ProfileKey.for_component(
-                        component,
-                        platform
-                    )
                     profile_key = OperationalProfileKey(
-                        component, platform, legacy_key.profile_id,
+                        component,
+                        platform,
+                        OPERATIONAL_PROFILE_IDS[(component, platform)],
                     )
                     expected_profile = self.resolver.load_operational(
                         profile_key
@@ -683,12 +689,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                     component=component.value,
                     platform=platform
                 ):
-                    legacy_key = ProfileKey.for_component(
-                        component,
-                        platform
-                    )
                     profile_key = OperationalProfileKey(
-                        component, platform, legacy_key.profile_id,
+                        component,
+                        platform,
+                        OPERATIONAL_PROFILE_IDS[(component, platform)],
                     )
                     with patch.dict(
                         os.environ,

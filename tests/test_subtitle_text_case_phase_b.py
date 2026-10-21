@@ -4,7 +4,6 @@ import pytest
 
 from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.modules.subtitles.policies.text_case import TextCasePolicy
-from app.shared.profile_identity import ProfileKey
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -55,7 +54,12 @@ def test_text_case_contract_validation():
 
 def test_design_and_standard_profiles_use_the_common_policy_without_original_path():
     resolver = SubtitleProfileResolver()
-    standard = resolver.load_selection(ProfileKey.for_component("guion", "instagram"), "subtitulo_guion_instagram_linea_unica")
+    standard = resolver.load(SubtitleProfileKey(
+        component="guion",
+        platform="instagram",
+        family="estandar",
+        profile_id="subtitulo_guion_instagram_linea_unica",
+    ))
     design = resolver.load(SubtitleProfileKey(
         component="studio",
         platform="instagram",

@@ -13,7 +13,6 @@ from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
 from app.modules.video.video_config import VideoConfig
-from app.shared.profile_identity import ProfileKey
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -180,9 +179,11 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
     def _assert_standard_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            key = SubtitleProfileKey.for_profile(
-                ProfileKey.for_component("video", "instagram"),
-                "single_line",
+            key = SubtitleProfileKey(
+                "video",
+                "instagram",
+                "subtitulo_video_instagram_linea_unica",
+                "estandar",
             )
             path = root / key.relative_path
             path.parent.mkdir(parents=True)
@@ -216,7 +217,6 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
     def _assert_dynamic_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            profile_key = ProfileKey.for_component("studio", "instagram")
             data = self._source_standard("studio").copy()
             profile_id = "subtitulo_studio_instagram_linea_unica_tipografico"
             data["profile_id"] = profile_id
@@ -227,8 +227,10 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
             path.write_text(json.dumps(data), encoding="utf-8")
 
             resolver = SubtitleProfileResolver(root)
-            descriptor = resolver.discover_profiles(profile_key)[0]
-            resolved = resolver.load_selection(profile_key, descriptor.profile_id)
+            descriptor = resolver.discover_profiles_for_family(
+                "studio", "instagram", "estandar",
+            )[0]
+            resolved = resolver.load(descriptor.key)
             self.assertEqual(profile_id, resolved.key.profile_id)
             self.assertIn("Spacing=2.0", SubtitleStyleBuilder().build(resolved.render_style))
 

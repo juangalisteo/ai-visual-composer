@@ -39,6 +39,21 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+STUDIO_PROFILE_IDS = {
+    "instagram": "studio_instagram",
+    "youtube": "studio_youtube",
+}
+
+STUDIO_STANDARD_SUBTITLE_PROFILE_IDS = {
+    ("instagram", "single_line"): "subtitulo_studio_instagram_linea_unica",
+    ("instagram", "word_by_word"): (
+        "subtitulo_studio_instagram_palabra_por_palabra"
+    ),
+    ("youtube", "single_line"): "subtitulo_studio_youtube_linea_unica",
+    ("youtube", "word_by_word"): "subtitulo_studio_youtube_palabra_por_palabra",
+}
+
+
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
@@ -60,12 +75,21 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     )
 
     def setUp(self):
+        # Solo para los tests del menu heredado (se retiran en L5b/L5c).
         self.profile_key = ProfileKey.for_component("studio", "instagram")
-        self.profile = _load_studio_profile(self.profile_key)
+        self.operational_key = OperationalProfileKey(
+            "studio", "instagram", "studio_instagram"
+        )
+        self.profile = _load_studio_profile(self.operational_key)
 
     def _subtitle_profile(self, style):
         return SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.profile_key, style)
+            SubtitleProfileKey(
+                "studio",
+                "instagram",
+                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[("instagram", style)],
+                "estandar",
+            )
         )
 
     @staticmethod
@@ -175,7 +199,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 video_path=Path("input/studio/video/source.mp4"),
                 subtitle_path=None,
                 input_mode="video",
-                profile_key=self.profile_key,
+                profile_key=self.operational_key,
                 profile=self.profile,
                 subtitle_profile=self._subtitle_profile("word_by_word"),
             )
@@ -248,7 +272,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 video_path=root / "source.mp4",
                 subtitle_path=human_srt,
                 input_mode="srt_video",
-                profile_key=self.profile_key,
+                profile_key=self.operational_key,
                 profile=self.profile,
                 subtitle_profile=self._subtitle_profile("single_line"),
             )
@@ -293,7 +317,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 video_path=root / "source.mp4",
                 subtitle_path=human_srt,
                 input_mode="srt_video",
-                profile_key=self.profile_key,
+                profile_key=self.operational_key,
                 profile=self.profile,
                 subtitle_profile=self._subtitle_profile("word_by_word"),
                 subtitle_original=True,
@@ -345,8 +369,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             base = root / "demo" / "subtitles" / "demo.srt"
             base.parent.mkdir(parents=True)
             base.write_text(source, encoding="utf-8")
-            subtitle_profile = ConfigManager().get_subtitle_profile(
-                self._design_subtitle_key(), original=True,
+            subtitle_profile = ConfigManager().get_subtitle_profile_by_key(
+                self._design_subtitle_key(),
             )
 
             with patch(
@@ -409,8 +433,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             base = root / "demo" / "subtitles" / "demo.srt"
             base.parent.mkdir(parents=True)
             base.write_text(source, encoding="utf-8")
-            design_profile = ConfigManager().get_subtitle_profile(
-                self._design_subtitle_key(), original=True,
+            design_profile = ConfigManager().get_subtitle_profile_by_key(
+                self._design_subtitle_key(),
             )
             subtitle_profile = replace(
                 design_profile,
@@ -459,10 +483,19 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         for platform in ("instagram", "youtube"):
             with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                profile_key = ProfileKey.for_component("studio", platform)
+                profile_key = OperationalProfileKey(
+                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                )
                 profile = _load_studio_profile(profile_key)
                 subtitle_profile = SubtitleProfileResolver().load(
-                    SubtitleProfileKey.for_profile(profile_key, "word_by_word")
+                    SubtitleProfileKey(
+                        "studio",
+                        platform,
+                        STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[
+                            (platform, "word_by_word")
+                        ],
+                        "estandar",
+                    )
                 )
                 human_srt = root / "human.srt"
                 human_srt.write_text(source, encoding="utf-8")
@@ -508,7 +541,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 order.append("subtitle"),
                 StudioProfileSelection(
                     operational=StudioOperationalSelection(
-                        self.profile_key,
+                        self.operational_key,
                         self.profile,
                     ),
                     subtitle=StudioSubtitleSelection(
@@ -893,7 +926,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "MC_PROFILE_FAMILY": "system",
         }
         with patch.dict(os.environ, environment, clear=False):
-            subtitle_profile = ConfigManager().get_subtitle_profile(
+            subtitle_profile = ConfigManager().get_subtitle_profile_by_key(
                 self._design_subtitle_key(),
             )
 

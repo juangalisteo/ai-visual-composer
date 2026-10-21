@@ -713,9 +713,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_profile_key(
                     self
                 ):
-                    return ProfileKey.for_component(
+                    return OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram"
+                        "instagram",
+                        "video_instagram",
                     )
 
                 def get_operational_profile_key(self):
