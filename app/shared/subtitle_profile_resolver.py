@@ -8,7 +8,6 @@ from app.modules.subtitles.policies.text_case import TextCasePolicy
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileKey,
     coerce_profile_family,
     coerce_profile_platform,
 )
@@ -17,7 +16,6 @@ from app.shared.subtitle_profile_identity import (
     ResolvedSubtitleProfile,
     SubtitleProfileDescriptor,
     SubtitleProfileKey,
-    coerce_subtitle_style,
 )
 
 
@@ -190,85 +188,6 @@ class SubtitleProfileResolver:
                 descriptor.display_name.casefold(), descriptor.profile_id,
             ),
         ))
-
-    def discover_profiles(self, profile_key):
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError("La identidad principal debe ser un ProfileKey.")
-        descriptors = self.discover_profiles_for_family(
-            profile_key.component, profile_key.platform, profile_key.family,
-        )
-        if not descriptors:
-            error = FileNotFoundError(
-                "No existen perfiles de subtitulos para: "
-                f"{profile_key.family}."
-            )
-            raise create_operational_error(
-                family="PROFILE",
-                user_message="No existen perfiles de subtítulos para la familia seleccionada.",
-                recommended_action=(
-                    "Revise la estructura y configuración de perfiles de "
-                    "subtítulos."
-                ),
-                operation="Descubrir perfiles de subtítulos",
-                resource=(
-                    f"{profile_key.component.value}/{profile_key.platform}/"
-                    f"{profile_key.family}"
-                ),
-            ) from error
-        return descriptors
-
-    def adapt_legacy_selection(self, profile_key, selection):
-        """Adapt a legacy subtitle selection to one explicit technical key."""
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError("La identidad principal debe ser un ProfileKey.")
-        if isinstance(selection, SubtitleProfileKey):
-            if (
-                selection.component is not profile_key.component
-                or selection.platform != profile_key.platform
-            ):
-                raise ValueError(
-                    "La seleccion de subtitulos no coincide con el perfil."
-                )
-            return selection
-
-        selected = selection.value if hasattr(selection, "value") else selection
-        if not isinstance(selected, str):
-            raise TypeError(
-                "La seleccion heredada de subtitulos debe ser texto."
-            )
-        selected = selected.strip().lower()
-        if not selected:
-            raise ValueError("La seleccion de subtitulos esta vacia.")
-        descriptors = self.discover_profiles(profile_key)
-        for descriptor in descriptors:
-            if descriptor.profile_id == selected:
-                return descriptor.key
-        matches = [
-            descriptor for descriptor in descriptors
-            if descriptor.mode == selected
-        ]
-        if len(matches) == 1:
-            return matches[0].key
-        if len(matches) > 1:
-            raise ValueError(
-                "La seleccion heredada por style/mode es ambigua; "
-                "use profile_id."
-            )
-        raise ValueError(
-            "No existe el perfil de subtitulos seleccionado: "
-            f"{selection}"
-        )
-
-    def load_selection(self, profile_key, selection):
-        """Legacy compatibility adapter; modern callers use ``load(key)``."""
-        return self.load(self.adapt_legacy_selection(profile_key, selection))
-
-    def discover_styles(self, profile_key):
-        """Legacy style facade derived from modern cue_policy.mode values."""
-        return tuple(
-            coerce_subtitle_style(descriptor.mode)
-            for descriptor in self.discover_profiles(profile_key)
-        )
 
     def _profile_documents(self, component, platform, family):
         directory = (

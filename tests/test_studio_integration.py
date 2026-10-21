@@ -104,15 +104,10 @@ class StudioFinalContractTest(unittest.TestCase):
                     profile.audio_sample_rate,
                     profile.audio_channels,
                 ))
-                styles = {
-                    style.value if hasattr(style, "value") else str(style)
-                    for style in resolver.discover_styles(key)
-                }
-                descriptors = resolver.discover_profiles(key)
-                self.assertEqual(
-                    {descriptor.mode for descriptor in descriptors},
-                    styles,
+                descriptors = resolver.discover_profiles_for_family(
+                    "studio", platform, "estandar",
                 )
+                self.assertTrue(descriptors)
                 for descriptor in descriptors:
                     resolved = resolver.load(
                         descriptor.key

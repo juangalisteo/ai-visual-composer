@@ -10,7 +10,7 @@ from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
-from app.shared.profile_identity import ProfileComponent, ProfileKey
+from app.shared.profile_identity import ProfileComponent
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -157,8 +157,9 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                     component=component.value,
                     platform=platform,
                 ):
-                    profile_key = ProfileKey.for_component(component, platform)
-                    descriptors = resolver.discover_profiles(profile_key)
+                    descriptors = resolver.discover_profiles_for_family(
+                        component, platform, "estandar",
+                    )
 
                     word_by_word_name = (
                         "Palabra única"
@@ -176,15 +177,11 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                     )
 
                     for descriptor in descriptors:
-                        resolved = resolver.load_selection(
-                            profile_key,
-                            descriptor.profile_id,
-                        )
+                        resolved = resolver.load(descriptor.key)
                         self.assertEqual(descriptor.profile_id, resolved.key.profile_id)
                         self.assertEqual(descriptor.display_name, resolved.display_name)
 
     def test_copy_paste_profile_with_same_style_is_discovered_selected_and_resolved(self):
-        profile_key = ProfileKey.for_component("studio", "instagram")
         source = Path(
             "config/profiles/studio/instagram/estandar/subtitulos/"
             "subtitulo_studio_instagram_linea_unica.json"
@@ -209,7 +206,9 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             )
 
             resolver = SubtitleProfileResolver(profiles_root)
-            descriptors = resolver.discover_profiles(profile_key)
+            descriptors = resolver.discover_profiles_for_family(
+                "studio", "instagram", "estandar",
+            )
             by_id = {descriptor.profile_id: descriptor for descriptor in descriptors}
 
             self.assertEqual(2, len(descriptors))
@@ -222,8 +221,6 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 "three_two_words",
                 by_id["subtitulo_studio_instagram_linea_unica"].mode,
             )
-            with self.assertRaisesRegex(ValueError, "style/mode es ambigua"):
-                resolver.load_selection(profile_key, "three_two_words")
 
             controller = RunController(subtitle_profile_resolver=resolver)
             messages = []
@@ -245,7 +242,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             environment = {
                 "MC_PROFILE_COMPONENT": "studio",
                 "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": profile_key.profile_id,
+                "MC_PROFILE_ID": "studio_instagram",
                 "MC_PROFILE_FAMILY": "system",
             }
             with patch.dict(os.environ, environment, clear=True):
@@ -283,29 +280,16 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
 
-    def test_style_selection_is_compatible_only_when_unambiguous(self):
-        resolver = SubtitleProfileResolver()
-        profile_key = ProfileKey.for_component("video", "youtube")
-        resolved = resolver.load_selection(profile_key, "single_line")
-
-        self.assertEqual(
-            "subtitulo_video_youtube_linea_unica",
-            resolved.key.profile_id,
-        )
-
     def test_original_remains_outside_the_declarative_catalog(self):
-        profile_key = ProfileKey.for_component(
-            "studio", "youtube", family="design", profile_id="studio_youtube",
-        )
         resolver = SubtitleProfileResolver()
-        profile_ids = {
-            descriptor.profile_id
-            for descriptor in resolver.discover_profiles(profile_key)
-        }
+        descriptors = resolver.discover_profiles_for_family(
+            "studio", "youtube", "design",
+        )
+        profile_ids = {descriptor.profile_id for descriptor in descriptors}
 
         self.assertNotIn("original", profile_ids)
         descriptor = next(
-            item for item in resolver.discover_profiles(profile_key)
+            item for item in descriptors
             if item.profile_id == "modo_conciencia_youtube"
         )
 

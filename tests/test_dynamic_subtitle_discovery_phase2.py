@@ -180,20 +180,15 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 profile_id="perfil_prueba",
                 changes={"cue_policy": None},
             )
-            profile_key = ProfileKey(
-                "guion", "instagram", "perfil_operacional", "test_family"
-            )
-
             self._assert_operational_error(
-                lambda: SubtitleProfileResolver(root).discover_profiles(profile_key),
+                lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
+                    "guion", "instagram", "test_family",
+                ),
                 "VALIDATION",
                 TypeError,
             )
 
     def test_subtitle_directory_requires_cue_policy_and_render_style(self):
-        profile_key = ProfileKey(
-            "guion", "instagram", "perfil_operacional", "test_family"
-        )
         for missing in ("cue_policy", "render_style"):
             with self.subTest(missing=missing), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -203,7 +198,9 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                     changes={missing: None},
                 )
                 self._assert_operational_error(
-                    lambda: SubtitleProfileResolver(root).discover_profiles(profile_key),
+                    lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
+                        "guion", "instagram", "test_family",
+                    ),
                     "VALIDATION",
                     TypeError,
                 )

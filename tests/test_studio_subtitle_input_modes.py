@@ -32,7 +32,7 @@ from app.modules.subtitles.policies.timing import (
     SubtitleTimingResolver,
     whisper_timing_path,
 )
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -76,7 +76,6 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
     def setUp(self):
         # Solo para los tests del menu heredado (se retiran en L5b/L5c).
-        self.profile_key = ProfileKey.for_component("studio", "instagram")
         self.operational_key = OperationalProfileKey(
             "studio", "instagram", "studio_instagram"
         )
@@ -889,16 +888,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-            styles = SubtitleProfileResolver(root).discover_styles(
-                self.profile_key,
+            descriptors = SubtitleProfileResolver(root).discover_profiles_for_family(
+                "studio", "instagram", "estandar",
             )
 
         self.assertEqual(
             ("single_line", "word_by_word", "word_by_word"),
-            tuple(
-                style.value if hasattr(style, "value") else style
-                for style in styles
-            ),
+            tuple(descriptor.mode for descriptor in descriptors),
         )
 
 
