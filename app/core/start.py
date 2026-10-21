@@ -32,7 +32,6 @@ from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
 from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
-from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
 from app.modules.video.video_builder import VideoBuilder
 from app.modules.video_component import (
@@ -48,15 +47,6 @@ from app.modules.video_component.direct_i2v import (
 )
 from app.modules.studio import (
     StudioInputMode,
-    StudioSubtitleExportMode,
-    StudioSubtitleExportPlan,
-    StudioSubtitleExportService,
-    StudioOutputPathResolver,
-    StudioProfileLoader,
-    StudioRenderService,
-    StudioIntroOutroPlan,
-    StudioVideoAudioSrtPlan,
-    StudioVideoAudioSrtService,
 )
 from app.modules.studio.execution_coordinator import (
     StudioExecutionCoordinator,
@@ -1017,31 +1007,6 @@ def ejecutar_studio(
     )
 
 
-def _render_prepared_studio(
-    preparation,
-    project,
-    music_path,
-    intro_outro_selection,
-    output_path,
-    render_service=None,
-    external_subtitle_preparation_service=None,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.render_prepared(
-        preparation=preparation,
-        project=project,
-        music_path=music_path,
-        intro_outro_selection=intro_outro_selection,
-        output_path=output_path,
-        render_service=render_service,
-        external_subtitle_preparation_service=(
-            external_subtitle_preparation_service
-        ),
-        persist_subtitle_base=_persist_studio_subtitle_base,
-        persist_render_subtitle=_persist_studio_render_subtitle,
-        with_subtitle_artifacts=_with_studio_subtitle_artifacts,
-    )
-
-
 def _persist_studio_subtitle_base(subtitle_path, output_path):
     return _STUDIO_EXECUTION_COORDINATOR.persist_subtitle_base(
         subtitle_path,
@@ -1599,22 +1564,6 @@ def _ensure_single_design_scene(
     scenes
 ):
     return _DESIGN_EXECUTION_COORDINATOR.ensure_single_design_scene(
-        scenes
-    )
-
-
-def _ensure_single_design_image(
-    images_manifest_path
-):
-    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_design_image(
-        images_manifest_path
-    )
-
-
-def _ensure_single_video_design_scene(
-    scenes
-):
-    return _DESIGN_EXECUTION_COORDINATOR.ensure_single_video_design_scene(
         scenes
     )
 

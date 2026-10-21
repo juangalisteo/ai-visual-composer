@@ -1,5 +1,3 @@
-import json
-
 from app.controllers.interaction import labels
 from app.controllers.interaction.common_options import CommonOptions
 from app.controllers.interaction.contracts import (
@@ -43,7 +41,6 @@ from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
 )
-from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.media_probe import MediaProbe
 from app.modules.video.intro_outro import IntroOutroCatalog
 from app.modules.audio.music_selector import MusicSelector

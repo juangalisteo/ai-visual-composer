@@ -5,7 +5,7 @@ from app.domain import (
     VisualInspectionResult,
     VisualSemantics,
 )
-from app.visual_intelligence.analysis.rules import clean, dedupe, tuple_values
+from app.visual_intelligence.analysis.rules import clean, tuple_values
 from app.visual_intelligence.analysis.support import (
     evidence_for,
     specialized_trace,
