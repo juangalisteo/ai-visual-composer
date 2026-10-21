@@ -9,14 +9,6 @@ def voice_label(value):
     return label(value)
 
 
-def subtitle_label(value):
-    labels = {
-        "single_line": "Línea única",
-        "word_by_word": "Palabra por palabra",
-    }
-    return labels.get(value, label(value))
-
-
 def family_label(family):
     return {
         "design": "MODO CONCIENCIA",

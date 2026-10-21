@@ -6,8 +6,6 @@ def test_labels_keep_known_values_and_technical_fallbacks():
     assert labels.label("mi_valor") == "Mi Valor"
     assert labels.voice_label("femenina") == "Femenina"
     assert labels.voice_label("voz_neutra") == "Voz Neutra"
-    assert labels.subtitle_label("single_line") == "Línea única"
-    assert labels.subtitle_label("other_mode") == "Other Mode"
     assert labels.family_label("minimalista") == "MODO MINIMALISTA"
     assert labels.family_label("future_family") == "FUTURE FAMILY"
 

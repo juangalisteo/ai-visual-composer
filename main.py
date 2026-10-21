@@ -213,17 +213,13 @@ def _subtitle_display_name(options):
     if not selection:
         return ""
 
-    labels = {
-        "single_line": "Línea única",
-        "word_by_word": "Palabra por palabra",
-    }
     try:
         selected_key = options.get("subtitle_profile_key")
         if selected_key is not None:
             return SubtitleProfileResolver().load(selected_key).display_name
     except (FileNotFoundError, TypeError, ValueError):
         pass
-    return labels.get(selection, selection)
+    return selection
 
 
 def _print_studio_summary(options, result, elapsed_seconds):

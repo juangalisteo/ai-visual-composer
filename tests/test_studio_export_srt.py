@@ -776,7 +776,13 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             "project_name": "demo",
             "profile_id": "studio_instagram",
             "profile_platform": "instagram",
-            "subtitle_config": "word_by_word",
+            "subtitle_config": "subtitulo_studio_instagram_cumulative_line",
+            "subtitle_profile_key": SubtitleProfileKey(
+                component="studio",
+                platform="instagram",
+                family="minimalista",
+                profile_id="subtitulo_studio_instagram_cumulative_line",
+            ),
             "studio_subtitle_export_plan": plan,
         }
         summary = Mock()

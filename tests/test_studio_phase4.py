@@ -215,7 +215,13 @@ class StudioPhase4Test(unittest.TestCase):
             "profile_id": "studio_instagram",
             "profile_platform": "instagram",
             "studio_input_mode": "video",
-            "subtitle_config": "word_by_word",
+            "subtitle_config": "subtitulo_studio_instagram_cumulative_line",
+            "subtitle_profile_key": SubtitleProfileKey(
+                component="studio",
+                platform="instagram",
+                family="minimalista",
+                profile_id="subtitulo_studio_instagram_cumulative_line",
+            ),
             "studio_music_path": "assets/music/track.mp3",
             "intro_outro_selection": None,
         }
