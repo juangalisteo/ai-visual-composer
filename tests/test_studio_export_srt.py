@@ -438,7 +438,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             options = controller._run_studio()
 
         self.assertEqual("exportar_srt", options["studio_input_mode"])
-        self.assertEqual(subtitle_key.profile_id, options["subtitle_config"])
+        self.assertNotIn("subtitle_config", options)
         self.assertEqual(subtitle_key, options["subtitle_profile_key"])
         self.assertIs(plan, options["studio_subtitle_export_plan"])
         self.assertEqual("studio", options["profile_component"])
@@ -499,7 +499,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     options = controller._run_studio()
 
                 self.assertEqual(descriptor.key, options["subtitle_profile_key"])
-                self.assertEqual(descriptor.profile_id, options["subtitle_config"])
+                self.assertNotIn("subtitle_config", options)
                 self.assertEqual(
                     expected_mode,
                     resolver.load(options["subtitle_profile_key"]).cue_policy["mode"],
@@ -722,7 +722,6 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             Path("input/studio/exportar_srt/source.mp3"),
         )
         options = {
-            "subtitle_config": None,
             "voice_config": "",
             "music_category": None,
             "project_name": "demo",
@@ -779,7 +778,6 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             "project_name": "demo",
             "profile_id": "studio_instagram",
             "profile_platform": "instagram",
-            "subtitle_config": "subtitulo_studio_instagram_cumulative_line",
             "subtitle_profile_key": SubtitleProfileKey(
                 component="studio",
                 platform="instagram",
@@ -812,7 +810,6 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         )
         options = {
             "project_name": "demo",
-            "subtitle_config": None,
             "studio_subtitle_export_plan": plan,
         }
         summary = Mock()

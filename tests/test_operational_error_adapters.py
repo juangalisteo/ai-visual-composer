@@ -140,7 +140,6 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
                 "profile_component": "video",
                 "profile_platform": "instagram",
                 "profile_id": "test_profile",
-                "subtitle_config": "",
                 "voice_config": "",
                 "music_category": None,
                 "overlays_mode": "off",

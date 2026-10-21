@@ -149,7 +149,6 @@ class StudioPhase4Test(unittest.TestCase):
             "profile_component": "studio",
             "profile_platform": "instagram",
             "profile_id": "studio_instagram",
-            "subtitle_config": "single_line",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio music",
@@ -215,7 +214,6 @@ class StudioPhase4Test(unittest.TestCase):
             "profile_id": "studio_instagram",
             "profile_platform": "instagram",
             "studio_input_mode": "video",
-            "subtitle_config": "subtitulo_studio_instagram_cumulative_line",
             "subtitle_profile_key": SubtitleProfileKey(
                 component="studio",
                 platform="instagram",
@@ -259,7 +257,6 @@ class StudioPhase4Test(unittest.TestCase):
             "profile_id": "studio_instagram",
             "profile_platform": "instagram",
             "studio_input_mode": "video",
-            "subtitle_config": "single_line",
             "studio_music_path": None,
             "intro_outro_selection": SimpleNamespace(
                 intro=object(),
@@ -301,7 +298,6 @@ class StudioPhase4Test(unittest.TestCase):
             "profile_id": "studio_youtube",
             "profile_platform": "youtube",
             "studio_input_mode": "srt_video",
-            "subtitle_config": "word_by_word",
             "studio_music_path": None,
             "intro_outro_selection": None,
         }
@@ -329,7 +325,6 @@ class StudioPhase4Test(unittest.TestCase):
             "profile_id": "studio_instagram",
             "profile_platform": "instagram",
             "studio_input_mode": "srt_video",
-            "subtitle_config": "single_line",
             "studio_music_path": None,
             "intro_outro_selection": None,
         }
@@ -362,7 +357,6 @@ class StudioPhase4Test(unittest.TestCase):
                     "profile_id": "studio_instagram",
                     "profile_platform": "instagram",
                     "studio_input_mode": "srt_video",
-                    "subtitle_config": "single_line",
                     "studio_music_path": None,
                     "intro_outro_selection": SimpleNamespace(
                         intro=intro,

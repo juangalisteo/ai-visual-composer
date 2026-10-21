@@ -477,7 +477,7 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual("studio", options["profile_component"])
         self.assertEqual(
             "subtitulo_studio_instagram_linea_unica",
-            options["subtitle_config"],
+            options["subtitle_profile_key"].profile_id,
         )
         self.assertFalse(options["studio_subtitle_original"])
         self.assertEqual("srt_video", options["studio_input_mode"])
@@ -518,7 +518,6 @@ class StudioPhase1Test(unittest.TestCase):
             "profile_component": "studio",
             "profile_platform": "instagram",
             "profile_id": "studio_instagram",
-            "subtitle_config": "three_two_words",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio transport",
@@ -563,7 +562,6 @@ class StudioPhase1Test(unittest.TestCase):
             "profile_component": "studio",
             "profile_platform": "instagram",
             "profile_id": "studio_instagram",
-            "subtitle_config": "three_two_words",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio project",

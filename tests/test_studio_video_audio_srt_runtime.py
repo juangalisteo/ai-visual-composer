@@ -167,9 +167,7 @@ def test_video_audio_srt_menu_uses_operational_platform_and_never_asks_for_music
     assert controller._select_from_list.call_args_list[0].args == ((True, False),)
     controller.select_studio_music.assert_not_called()
     assert "studio_music_path" not in options
-    assert options["subtitle_config"] == (
-        subtitle_key.profile_id if subtitles else None
-    )
+    assert "subtitle_config" not in options
     assert ("subtitle_profile_key" in options) is subtitles
     assert "studio_subtitle_original" not in options
     if subtitles:
@@ -677,7 +675,6 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
         "profile_platform": "youtube",
         "studio_input_mode": "video_audio_srt",
         "studio_video_audio_srt_plan": plan,
-        "subtitle_config": "subtitulo_studio_youtube_linea_unica",
         "subtitle_profile_key": _standard_subtitle_key("single_line"),
     }
     result = SimpleNamespace(

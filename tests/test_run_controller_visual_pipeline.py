@@ -566,7 +566,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        self.assertIs(subtitle_key, options["subtitle_config"])
+        self.assertIs(subtitle_key, options["subtitle_profile_key"])
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -750,7 +750,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        self.assertIs(subtitle_key, options["subtitle_config"])
+        self.assertIs(subtitle_key, options["subtitle_profile_key"])
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -822,7 +822,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         profile_mock.assert_called_once_with(
             "video"
         )
-        self.assertIs(subtitle_key, options["subtitle_config"])
+        self.assertIs(subtitle_key, options["subtitle_profile_key"])
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -835,10 +835,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "full",
             options["pipeline_mode"]
         )
-        self.assertIs(
-            subtitle_key,
-            options["subtitle_config"]
-        )
+        self.assertNotIn("subtitle_config", options)
         self.assertEqual(
             "femenina",
             options["voice_config"]
@@ -934,10 +931,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "design_image",
             options["pipeline_mode"]
         )
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
+        self.assertNotIn("subtitle_config", options)
         self.assertIsNone(options["subtitle_profile_key"])
         self.assertEqual(
             "",
@@ -1045,10 +1039,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "design_video",
             options["pipeline_mode"]
         )
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
+        self.assertNotIn("subtitle_config", options)
         self.assertIsNone(options["subtitle_profile_key"])
         self.assertEqual(
             "",
@@ -1123,10 +1114,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         music_mock.assert_called_once()
         overlays_mock.assert_not_called()
         intro_outro_mock.assert_not_called()
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
+        self.assertNotIn("subtitle_config", options)
         self.assertEqual(
             "femenina",
             options["voice_config"]
@@ -1262,7 +1250,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 ):
                     options = controller.run()
 
-                self.assertIs(subtitle_key, options["subtitle_config"])
+                self.assertIs(subtitle_key, options["subtitle_profile_key"])
                 music_mock.assert_called_once()
                 if pipeline_mode in {
                     "full",
@@ -1280,10 +1268,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                         "off",
                         options["overlays_mode"]
                     )
-                self.assertIs(
-                    subtitle_key,
-                    options["subtitle_config"]
-                )
+                self.assertNotIn("subtitle_config", options)
 
     def test_full_without_subtitles_skips_subtitle_selection(self):
         controller = RunController()
@@ -1338,7 +1323,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ):
             options = controller.run()
 
-        self.assertEqual("", options["subtitle_config"])
+        self.assertNotIn("subtitle_config", options)
 
     def test_overlay_menu_returns_on_when_enabled(
         self

@@ -108,7 +108,7 @@ def test_studio_coordinator_transports_contract_to_final_options_without_state()
     assert options["profile_component"] == "studio"
     assert options["profile_platform"] == "instagram"
     assert options["profile_id"] == "studio_instagram"
-    assert options["subtitle_config"] == "subtitle_fixture"
+    assert options["subtitle_profile_key"].profile_id == "subtitle_fixture"
     assert options["subtitle_profile_key"] is selection.subtitle.subtitle_key
     assert options["studio_subtitle_original"] is True
     assert options["studio_video_path"] == "input\\studio\\srt_video\\source.mp4"

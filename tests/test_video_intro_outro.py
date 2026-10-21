@@ -249,7 +249,6 @@ class IntroOutroTest(unittest.TestCase):
             "profile_component": "video",
             "profile_platform": "instagram",
             "profile_id": "video_instagram",
-            "subtitle_config": "single_line",
             "voice_config": "masculina",
             "music_category": None,
             "overlays_mode": "off",

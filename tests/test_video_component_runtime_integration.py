@@ -887,8 +887,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                             "video": True,
                         },
                         "video_style": {"fps": 30},
-                        "subtitle_config": "word_by_word",
-                        "subtitle_profile": {"style": "word_by_word"},
                     }
 
                 def get_subtitle_profile_by_key(self, subtitle_profile_key):

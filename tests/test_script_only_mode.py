@@ -502,7 +502,6 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "subtitle_profile_key": (
                             FakeConfigManager.subtitle_profile_key
                         ),
-                        "subtitle_config": None,
                         "voice_config": "masculina",
                         "music_category": None,
                         "overlays_mode": "smart",
@@ -672,7 +671,6 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "subtitle_profile_key": (
                             FakeConfigManager.subtitle_profile_key
                         ),
-                        "subtitle_config": None,
                         "voice_config": "masculina",
                         "music_category": None,
                         "overlays_mode": "smart",

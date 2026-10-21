@@ -291,7 +291,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
         self.assertIs(plan, options["studio_montage_plan"])
         self.assertEqual("montaje_videos", options["studio_input_mode"])
-        self.assertIsNone(options["subtitle_config"])
+        self.assertNotIn("subtitle_config", options)
         self.assertIsNone(options["studio_music_path"])
 
     def test_start_transports_montage_plan_to_phase_two_orchestrator(self):
@@ -332,7 +332,6 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 "profile_component": "studio",
                 "profile_platform": "instagram",
                 "profile_id": "studio_instagram",
-                "subtitle_config": "",
                 "voice_config": "",
                 "music_category": None,
                 "project_name": "montaje",

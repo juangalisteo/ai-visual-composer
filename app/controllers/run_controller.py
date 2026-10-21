@@ -221,18 +221,10 @@ class RunController:
             )
         )
         profile_key = profile.get("profile_key")
-        subtitle_config = ""
         voice_config = ""
         music_category = None
         overlays_mode = "off"
         intro_outro_selection = None
-
-        if pipeline_mode in {
-            "full",
-            "subtitles",
-            "storyboard"
-        }:
-            subtitle_config = profile.get("subtitle_profile_key")
 
         if pipeline_mode not in {
             "script",
@@ -272,7 +264,6 @@ class RunController:
                 if profile_key
                 else ""
             ),
-            "subtitle_config": subtitle_config,
             "subtitle_profile_key": profile.get(
                 "subtitle_profile_key"
             ),
@@ -553,7 +544,6 @@ class RunController:
             self._print("1. Sí")
             self._print("2. No")
             enabled = self._select_from_list((True, False))
-            subtitle_config = None
             subtitle_profile_key = None
             subtitle_path = None
             if enabled:
@@ -563,7 +553,6 @@ class RunController:
                         profile_key
                     )
                 )
-                subtitle_config = subtitle_profile_key.profile_id
             plan = self.select_studio_video_audio_srt_plan(
                 enabled,
                 video_path=video_path,
@@ -576,7 +565,6 @@ class RunController:
                 "script_source": "external",
                 "design_target": "",
                 "pipeline_mode": "studio",
-                "subtitle_config": subtitle_config,
                 "studio_input_mode": input_mode,
                 "studio_video_audio_srt_plan": plan,
                 "voice_config": "",
@@ -600,7 +588,6 @@ class RunController:
                 "script_source": "external",
                 "design_target": "",
                 "pipeline_mode": "studio",
-                "subtitle_config": None,
                 "studio_input_mode": input_mode,
                 "studio_intro_outro_plan": intro_outro_plan,
                 "voice_config": "",
@@ -624,7 +611,6 @@ class RunController:
                 "script_source": "external",
                 "design_target": "",
                 "pipeline_mode": "studio",
-                "subtitle_config": None,
                 "studio_input_mode": input_mode,
                 "studio_montage_plan": montage_plan,
                 "studio_music_path": str(music_path) if music_path else None,
@@ -638,14 +624,12 @@ class RunController:
         if input_mode == StudioInputMode.EXPORTAR_SRT.value:
             export_mode = self.select_studio_subtitle_export_mode()
             export_plan = self.select_studio_subtitle_export_plan(export_mode)
-            subtitle_config = None
             profile_key = None
             subtitle_key = None
             if export_mode is StudioSubtitleExportMode.CONVERTIR:
                 studio_selection = self._select_studio_profile_selection()
                 profile_key = studio_selection.operational.operational_key
                 subtitle_key = studio_selection.subtitle.subtitle_key
-                subtitle_config = subtitle_key.profile_id
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
             return {
@@ -653,7 +637,6 @@ class RunController:
                 "script_source": "external",
                 "design_target": "",
                 "pipeline_mode": "studio",
-                "subtitle_config": subtitle_config,
                 "studio_input_mode": input_mode,
                 "studio_subtitle_export_plan": export_plan,
                 "voice_config": "",
@@ -670,7 +653,6 @@ class RunController:
             studio_profile,
             input_mode,
         )
-        subtitle_config = subtitle_key.profile_id
         subtitle_original = studio_selection.subtitle.subtitle_original
         music_path = self.select_studio_music()
         intro_outro_selection = self.select_studio_intro_outro(profile_key)
@@ -682,7 +664,6 @@ class RunController:
             "script_source": "external",
             "design_target": "",
             "pipeline_mode": "studio",
-            "subtitle_config": subtitle_config,
             "studio_subtitle_original": subtitle_original,
             "studio_input_mode": input_mode,
             "studio_video_path": str(prepared_input.video_path),

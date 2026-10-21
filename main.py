@@ -202,17 +202,14 @@ def _present_incident(presentation):
 
 
 def _subtitle_display_name(options):
-    selection = options.get("subtitle_config")
-    if not selection:
+    selected_key = options.get("subtitle_profile_key")
+    if selected_key is None:
         return ""
 
     try:
-        selected_key = options.get("subtitle_profile_key")
-        if selected_key is not None:
-            return SubtitleProfileResolver().load(selected_key).display_name
+        return SubtitleProfileResolver().load(selected_key).display_name
     except (FileNotFoundError, TypeError, ValueError):
-        pass
-    return selection
+        return selected_key.profile_id
 
 
 def _print_studio_summary(options, result, elapsed_seconds):
@@ -250,7 +247,7 @@ def _print_studio_summary(options, result, elapsed_seconds):
     )
     if options["studio_input_mode"] == "video_audio_srt":
         video_audio_plan = options["studio_video_audio_srt_plan"]
-        subtitles_enabled = options["subtitle_config"] is not None
+        subtitles_enabled = options.get("subtitle_profile_key") is not None
         summary.add_detail("Proyecto", options["project_name"])
         summary.add_detail("Video fuente", video_audio_plan.video_path)
         summary.add_detail("Audio nuevo", video_audio_plan.audio_path)

@@ -140,7 +140,7 @@ class StudioIntroOutroTest(unittest.TestCase):
 
         self.assertEqual(StudioInputMode.INTRO_OUTRO.value, options["studio_input_mode"])
         self.assertIs(plan, options["studio_intro_outro_plan"])
-        self.assertIsNone(options["subtitle_config"])
+        self.assertNotIn("subtitle_config", options)
         self.assertNotIn("subtitle_profile_key", options)
         self.assertEqual(profile_key.platform, options["profile_platform"])
         self.assertNotIn("SUBTÍTULOS", "\n".join(messages))

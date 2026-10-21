@@ -191,7 +191,6 @@ class StudioPhase5Test(unittest.TestCase):
             "profile_component": "studio",
             "profile_platform": "instagram",
             "profile_id": "studio_instagram",
-            "subtitle_config": "single_line",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio intro outro",

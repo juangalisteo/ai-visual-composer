@@ -116,7 +116,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
 
             options = controller._run_studio()
 
-        self.assertIsNone(options["subtitle_config"])
+        self.assertNotIn("subtitle_config", options)
         self.assertNotIn("subtitle_profile_key", options)
         self.assertEqual("music.mp3", options["studio_music_path"])
         self.assertIs(intro_outro, options["intro_outro_selection"])

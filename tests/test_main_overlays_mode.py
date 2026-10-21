@@ -16,7 +16,6 @@ class MainOverlaysModeTest(
             "profile_component": "imagen",
             "profile_platform": "youtube",
             "profile_id": "imagen_youtube",
-            "subtitle_config": "single_line",
             "voice_config": "masculina",
             "music_category": None,
             "overlays_mode": "smart",
