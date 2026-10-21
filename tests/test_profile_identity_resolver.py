@@ -756,9 +756,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             manager = ConfigManager()
             with patch.object(
                 manager,
-                "get_app_config",
+                "load_json",
                 side_effect=AssertionError(
-                    "app.json must not resolve profiles"
+                    "application config must not resolve profiles"
+                )
+            ), patch.object(
+                manager.profile_resolver,
+                "load_operational",
+                side_effect=AssertionError(
+                    "missing identity must not resolve a profile"
                 )
             ), self.assertRaises(OperationalError) as caught:
                 manager.get_profile_config()
@@ -779,17 +785,6 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 ConfigManager().get_profile_config()
 
         self.assertEqual("CONFIG", caught.exception.context.family)
-
-    def test_app_json_no_longer_declares_profile_selection(self):
-        app = ConfigManager().get_app_config()
-
-        self.assertNotIn("platform", app)
-        self.assertNotIn("profile", app)
-        self.assertEqual(
-            "MODO CONCIENCIA | IA",
-            app["project_name"]
-        )
-        self.assertEqual("es", app["language"])
 
     def test_run_controller_returns_structured_identity_for_main_routes(self):
         expected_components = {

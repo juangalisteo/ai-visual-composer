@@ -84,9 +84,6 @@ class ConfigManager:
                 resource=str(path),
             ) from error
 
-    def get_app_config(self):
-        return self.load_json(self.config_path / "app.json")
-
     def get_ai_config(self):
         return self.load_json(self.config_path / "ai.json")
 
