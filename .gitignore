@@ -93,6 +93,7 @@ backup_codificacion_*/
 # Codex/agent local state
 AGENT_AI/CODEX/
 AGENT_AI/ANTIGRAVITY/
+AGENT_AI/
 CODEX/
 .agents/
 .codex/
