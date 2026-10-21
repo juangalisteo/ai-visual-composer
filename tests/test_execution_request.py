@@ -37,7 +37,6 @@ def _subtitle_key(component=ProfileComponent.VIDEO):
         platform="instagram",
         profile_id=f"subtitulo_{component.value}_instagram_linea_unica",
         family="estandar",
-        parent_profile_id=f"{component.value}_instagram",
     )
 
 

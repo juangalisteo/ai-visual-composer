@@ -27,7 +27,6 @@ def _studio_selection():
         "instagram",
         "subtitle_fixture",
         "estandar",
-        parent_profile_id="studio_instagram",
     )
     studio_profile = Mock()
     return StudioProfileSelection(
@@ -53,7 +52,6 @@ def test_profile_coordinators_compose_extracted_operational_and_subtitle_selecto
         "instagram",
         "subtitle_fixture",
         "estandar",
-        parent_profile_id="imagen_instagram",
     )
     profile_selection.select_profile_identity.return_value = operational
     subtitle_selection.select_profile_subtitle_profile.return_value = subtitle_key

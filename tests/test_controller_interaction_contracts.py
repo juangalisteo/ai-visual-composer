@@ -32,7 +32,6 @@ def _subtitle_key():
         platform="instagram",
         profile_id="subtitle_fixture",
         family="fixture_family",
-        parent_profile_id="studio_instagram",
     )
 
 

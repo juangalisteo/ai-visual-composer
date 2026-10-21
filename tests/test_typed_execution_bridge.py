@@ -28,7 +28,6 @@ def _subtitle_key():
         platform="instagram",
         profile_id="subtitulo_studio_instagram_linea_unica",
         family="estandar",
-        parent_profile_id="studio_instagram",
     )
 
 

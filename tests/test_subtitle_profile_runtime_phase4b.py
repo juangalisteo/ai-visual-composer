@@ -29,7 +29,6 @@ from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_identity import (
     SubtitleProfileKey,
-    SubtitleStyle,
 )
 from app.shared.subtitle_profile_resolver import (
     SubtitleProfileResolver,
@@ -50,7 +49,33 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         ProfileComponent.VIDEO,
     )
     PLATFORMS = ("instagram", "youtube")
-    STYLES = tuple(SubtitleStyle)
+    STYLES = ("single_line", "word_by_word")
+    PROFILE_IDS = {
+        (ProfileComponent.GUION, "instagram", "single_line"):
+            "subtitulo_guion_instagram_linea_unica",
+        (ProfileComponent.GUION, "instagram", "word_by_word"):
+            "subtitulo_guion_instagram_palabra_por_palabra",
+        (ProfileComponent.GUION, "youtube", "single_line"):
+            "subtitulo_guion_youtube_linea_unica",
+        (ProfileComponent.GUION, "youtube", "word_by_word"):
+            "subtitulo_guion_youtube_palabra_por_palabra",
+        (ProfileComponent.IMAGEN, "instagram", "single_line"):
+            "subtitulo_imagen_instagram_linea_unica",
+        (ProfileComponent.IMAGEN, "instagram", "word_by_word"):
+            "subtitulo_imagen_instagram_palabra_por_palabra",
+        (ProfileComponent.IMAGEN, "youtube", "single_line"):
+            "subtitulo_imagen_youtube_linea_unica",
+        (ProfileComponent.IMAGEN, "youtube", "word_by_word"):
+            "subtitulo_imagen_youtube_palabra_por_palabra",
+        (ProfileComponent.VIDEO, "instagram", "single_line"):
+            "subtitulo_video_instagram_linea_unica",
+        (ProfileComponent.VIDEO, "instagram", "word_by_word"):
+            "subtitulo_video_instagram_palabra_por_palabra",
+        (ProfileComponent.VIDEO, "youtube", "single_line"):
+            "subtitulo_video_youtube_linea_unica",
+        (ProfileComponent.VIDEO, "youtube", "word_by_word"):
+            "subtitulo_video_youtube_palabra_por_palabra",
+    }
 
     def setUp(self):
         self.profile_resolver = ProfileResolver()
@@ -61,8 +86,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         profile_ids = set()
 
         for component, platform, style in self._cases():
-            main_key = ProfileKey.for_component(component, platform)
-            key = SubtitleProfileKey.for_profile(main_key, style)
+            key = self._key(component, platform, style)
             resolved = self.subtitle_resolver.load(key)
 
             with self.subTest(profile_id=key.profile_id):
@@ -115,7 +139,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         system_source = self._expected_path(
             ProfileComponent.VIDEO,
             "instagram",
-            SubtitleStyle.SINGLE_LINE,
+            "single_line",
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
@@ -195,24 +219,20 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 ),
             )
             for component, platform in alternatives:
-                alternative_key = SubtitleProfileKey.for_profile(
-                    ProfileKey.for_component(component, platform),
-                    "single_line"
-                )
+                alternative_key = self._key(component, platform, "single_line")
                 alternative_path = root / alternative_key.relative_path
                 alternative_path.parent.mkdir(parents=True)
                 alternative_path.write_text(
                     self._expected_path(
                         component,
                         platform,
-                        SubtitleStyle.SINGLE_LINE
+                        "single_line"
                     ).read_text(encoding="utf-8"),
                     encoding="utf-8"
                 )
 
-            instagram_key = SubtitleProfileKey.for_profile(
-                ProfileKey.for_component("video", "instagram"),
-                "single_line"
+            instagram_key = self._key(
+                ProfileComponent.VIDEO, "instagram", "single_line"
             )
             resolver = SubtitleProfileResolver(root)
 
@@ -223,10 +243,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertIsInstance(caught.exception.__cause__, FileNotFoundError)
 
     def test_loaded_profiles_do_not_share_mutable_configuration(self):
-        key = SubtitleProfileKey.for_profile(
-            ProfileKey.for_component("video", "instagram"),
-            "word_by_word"
-        )
+        key = self._key(ProfileComponent.VIDEO, "instagram", "word_by_word")
         first = self.subtitle_resolver.load(key)
         second = self.subtitle_resolver.load(key)
 
@@ -245,7 +262,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             self._load(self._expected_path(
                 ProfileComponent.VIDEO,
                 "instagram",
-                SubtitleStyle.WORD_BY_WORD
+                "word_by_word"
             ))["cue_policy"],
             second.cue_policy
         )
@@ -253,17 +270,14 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
     def test_rejects_internal_identity_that_disagrees_with_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            key = SubtitleProfileKey.for_profile(
-                ProfileKey.for_component("imagen", "instagram"),
-                "word_by_word"
-            )
+            key = self._key(ProfileComponent.IMAGEN, "instagram", "word_by_word")
             path = root / key.relative_path
             path.parent.mkdir(parents=True)
             data = self._load(
                 self._expected_path(
                     key.component,
                     key.platform,
-                    SubtitleStyle.WORD_BY_WORD,
+                    "word_by_word",
                 )
             )
             data["component"] = "video"
@@ -278,27 +292,6 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertEqual("PROFILE", caught.exception.context.family)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
-    def test_legacy_styles_resolve_selected_identity(self):
-        selections = (
-            SubtitleStyle.SINGLE_LINE,
-            SubtitleStyle.WORD_BY_WORD,
-        )
-
-        for style in selections:
-            selected = style.value
-            key = SubtitleProfileKey.for_profile(
-                ProfileKey.for_component("video", "instagram"),
-                selected
-            )
-            self.assertEqual(
-                self._expected_path(
-                    ProfileComponent.VIDEO,
-                    "instagram",
-                    style
-                ),
-                self.subtitle_resolver.resolve(key)
-            )
-
     def test_official_config_manager_never_loads_legacy_subtitle_json(self):
         for component, platform, style in self._cases():
             environment = self._environment(
@@ -308,7 +301,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             with self.subTest(
                 component=component.value,
                 platform=platform,
-                style=style.value
+                style=style
             ), patch.dict(os.environ, environment, clear=True):
                 manager = ConfigManager()
                 with patch.object(
@@ -354,7 +347,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             with self.subTest(
                 component=component.value,
                 platform=platform,
-                style=style.value
+                style=style
             ), patch.dict(os.environ, environment, clear=True):
                 resolved = ConfigManager().get_subtitle_profile_by_key(
                     self._key(component, platform, style)
@@ -397,7 +390,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 self._key(
                     ProfileComponent.VIDEO,
                     "youtube",
-                    SubtitleStyle.SINGLE_LINE
+                    "single_line"
                 )
             )
             loaded = VideoConfigLoader(
@@ -408,7 +401,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             self._expected_path(
                 ProfileComponent.VIDEO,
                 "youtube",
-                SubtitleStyle.SINGLE_LINE
+                "single_line"
             )
         )["render_style"]
         self.assertEqual(expected, loaded.subtitle_style)
@@ -473,9 +466,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         platform,
         style
     ):
-        return SubtitleProfileKey.for_profile(
-            ProfileKey.for_component(component, platform),
-            style
+        return SubtitleProfileKey(
+            component=component,
+            platform=platform,
+            profile_id=self.PROFILE_IDS[(component, platform, style)],
+            family="estandar",
         )
 
     def _expected_path(
@@ -494,7 +489,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         cue_policy,
         fps
     ):
-        if style is SubtitleStyle.SINGLE_LINE:
+        if style == "single_line":
             self.assertIsInstance(model, SingleLineModel)
             self.assertEqual(
                 cue_policy["max_chars_per_line"],

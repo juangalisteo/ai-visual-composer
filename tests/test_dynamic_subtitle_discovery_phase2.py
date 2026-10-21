@@ -676,18 +676,11 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             root = Path(directory)
             self._write_profile(root)
             self._write_subtitle_profile(root)
-            profile_key = ProfileKey(
-                "guion",
-                "instagram",
-                "perfil_prueba",
-                "test_family",
-            )
             other_family_key = SubtitleProfileKey(
                 component="guion",
                 platform="instagram",
                 profile_id="subtitulo_guion_instagram_otra_linea_unica",
                 family="otra",
-                parent_profile_id=profile_key.profile_id,
             )
 
             self._assert_operational_error(
