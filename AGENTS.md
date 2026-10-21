@@ -1,12 +1,19 @@
 # AGENTS.md — Reglas comunes para agentes de IA
 
-Válido para cualquier agente (Claude Code, Codex u otros). Aquí solo hay reglas
-permanentes y comunes. El estado de trabajo no va aquí: ver §7.
+Válido para cualquier agente (Claude Code, Codex, Antigravity u otros). Aquí solo hay
+reglas permanentes y comunes. El estado de trabajo no va aquí: ver §7.
+
+**Idioma:** todos los agentes responden siempre en español (chat, informes, bitácoras
+y resúmenes).
 
 Cada agente tiene además sus reglas propias, que no repiten lo común:
 
 - Si eres Claude, tus reglas propias están en `AGENT_AI/CLAUDE/AGENT.md`.
 - Si eres Codex, lee `AGENT_AI/CODEX/AGENT.md` al empezar.
+- Si eres Antigravity, lee `AGENT_AI/ANTIGRAVITY/AGENT.md` al empezar. Antigravity es
+  **solo auditor en modo lectura**: no modifica, crea ni borra archivos fuera de
+  `AGENT_AI/ANTIGRAVITY/REPORTS/` y no hace ninguna operación de Git que cambie algo.
+  Sus reglas prevalecen sobre cualquier autorización de este archivo.
 
 ## 1. Protección del producto
 
@@ -87,6 +94,9 @@ AGENT_AI/
     BITACORA.md        historia del agente
     PUENTE.md          resultado para el propietario u otro asistente
     REPORTS/           informes del agente
+  ANTIGRAVITY/         auditor de reserva, solo lectura
+    AGENT.md           sus reglas
+    REPORTS/           sus informes (sin bitácora ni puente)
 ```
 
 ## 7. Dónde está el estado
