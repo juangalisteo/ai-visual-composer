@@ -507,8 +507,7 @@ Validation evidence represents preserved historical system behavior.
 Private development and agent state may exist under:
 
 ```text
-AGENT_AI/CODEX/
-AGENT_AI/ANTIGRAVITY/
+AGENT_AI/
 CODEX/
 .agents/
 .codex/
@@ -516,17 +515,15 @@ CODEX/
 
 These locations are intentionally excluded from the public repository.
 
-The root:
+`AGENT_AI/` holds the shared working state (`ESTADO.md`, `TRABAJO/`) and one folder per agent (`CLAUDE/`, `CODEX/`…) with the same layout: `AGENT.md`, `BITACORA.md`, `PUENTE.md` and `REPORTS/`.
 
-```text
-AGENTS.md
-```
+The root files are different and remain version-controlled:
 
-is different.
+- `AGENTS.md` contains the common rules for any AI agent (product protection, data/config-driven architecture, proportional validation, closing documentation, privacy). Each agent's own rules live in `AGENT_AI/<AGENT>/AGENT.md`.
+- `CLAUDE.md` only imports `AGENTS.md` and `AGENT_AI/CLAUDE/AGENT.md`; the second import is simply not loaded in a clone without `AGENT_AI/`.
+- `PROMPTS.md` explains how to write prompts for any agent.
 
-It contains the public AI-assisted development methodology and is intended to remain version-controlled.
-
-Private agent configuration must not be copied into the public `AGENTS.md`.
+Private agent state must not be copied into the public `AGENTS.md`.
 
 ---
 
