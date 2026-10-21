@@ -105,3 +105,15 @@ AGENT_AI/
 - Líneas de trabajo: `AGENT_AI/TRABAJO/<linea>.md`.
 - Historia: `AGENT_AI/<AGENTE>/BITACORA.md` (buscar, no leer entera).
 - Cómo redactar prompts: `PROMPTS.md`.
+
+## 8. Comportamientos intencionados (no cambiar sin preguntar)
+
+Parecen mejorables, pero son así a propósito. No se cambian ni se proponen como
+mejora sin preguntar antes al propietario.
+
+- **Ollama y WAN no tienen tiempo límite (timeout).** Con límites como 180 s se
+  cortaban generaciones válidas y daba fallos. No añadas timeouts a esas llamadas.
+- **STUDIO, SRT + VIDEO usa siempre el SRT tal cual (ORIGINAL, sin Whisper).** Si
+  SOLO VIDEO transcribe mal una palabra, el propietario corrige el SRT y usa
+  SRT + VIDEO. No es una opción que haya que ofrecer ni "mejorar" (decisión P1 de
+  `AGENT_AI/TRABAJO/LIMPIEZA.md` §3.1).
