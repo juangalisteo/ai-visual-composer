@@ -89,6 +89,17 @@ Install project dependencies:
 pip install -r requirements.txt
 ```
 
+`requirements.txt` lists only the Python packages that AI Visual Composer uses directly:
+
+- `requests`: HTTP requests to the local Ollama service;
+- `Pillow`: font metrics for subtitle rendering;
+- `nudenet==3.4.2` and `onnxruntime==1.30.0`: image nudity-safety validation (`onnxruntime` is also the ONNX runtime required by Piper);
+- `piper-tts==1.8.0`: local text-to-speech (see Piper ONNX);
+- `openai-whisper`: transcription and subtitle timing, invoked as `python -m whisper` (see OpenAI Whisper);
+- `pytest`: automated tests.
+
+Other libraries are installed as dependencies of these packages.
+
 ---
 
 ## 4. FFmpeg
