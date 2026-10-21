@@ -3,8 +3,9 @@ import json
 import pytest
 
 from app.shared.config_manager import ConfigManager
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 def _write_operational_profile(root):
@@ -40,7 +41,7 @@ def test_operational_resolver_rejects_family_bearing_legacy_key(tmp_path):
 
     with pytest.raises(TypeError, match="OperationalProfileKey"):
         ProfileResolver(tmp_path).resolve_operational(
-            ProfileKey("guion", "test_platform", "test_profile", "test_family")
+            SubtitleProfileKey("guion", "test_platform", "test_profile", "test_family")
         )
 
 
@@ -53,5 +54,5 @@ def test_wan_resolver_keeps_its_dedicated_contract_and_rejects_legacy_key():
 
     with pytest.raises(TypeError, match="OperationalProfileKey"):
         resolver.resolve_video_component(
-            ProfileKey("video", "instagram", "video_instagram", "test_family")
+            SubtitleProfileKey("video", "instagram", "video_instagram", "test_family")
         )

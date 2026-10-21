@@ -62,91 +62,11 @@ def _coerce_enum(
 
 
 @dataclass(frozen=True)
-class ProfileKey:
-    component: ProfileComponent
-    platform: str
-    profile_id: str
-    family: str
-
-    def __post_init__(self):
-        component = coerce_profile_component(
-            self.component
-        )
-        platform = coerce_profile_platform(
-            self.platform
-        )
-        family = coerce_profile_family(self.family)
-        if not isinstance(self.profile_id, str):
-            raise ValueError(
-                "profile_id invalido: debe ser texto."
-            )
-        profile_id = str(
-            self.profile_id
-        ).strip().lower()
-        if not re.fullmatch(
-            r"[a-z0-9]+(?:_[a-z0-9]+)*",
-            profile_id,
-        ):
-            raise ValueError(
-                "profile_id invalido: se requiere un identificador tecnico "
-                f"seguro, se recibio {self.profile_id}"
-            )
-        object.__setattr__(
-            self,
-            "component",
-            component
-        )
-        object.__setattr__(
-            self,
-            "platform",
-            platform
-        )
-        object.__setattr__(
-            self,
-            "profile_id",
-            profile_id
-        )
-        object.__setattr__(self, "family", family)
-
-    @classmethod
-    def for_component(
-        cls,
-        component,
-        platform,
-        family=None,
-        profile_id=None,
-    ):
-        component = coerce_profile_component(
-            component
-        )
-        platform = coerce_profile_platform(
-            platform
-        )
-        legacy_family_missing = family is None
-        # LEGACY_ADAPTER: this creates only a subtitle-parent identity for
-        # callers that still use the former subtitle-selection input. It is
-        # not an operational-profile factory: modern operational code uses
-        # OperationalProfileKey explicitly.
-        family = coerce_profile_family("estandar" if family is None else family)
-        if not legacy_family_missing and profile_id is None:
-            raise ValueError(
-                "Una family explicita requiere un profile_id concreto."
-            )
-        return cls(
-            component=component,
-            platform=platform,
-            profile_id=(profile_id or f"{component.value}_{platform}"),
-            family=family,
-        )
-
-
-@dataclass(frozen=True)
 class OperationalProfileKey:
     """Canonical identity for a general operational profile.
 
     Subtitle family is deliberately absent: it belongs exclusively to the
-    subtitle-profile domain. ``ProfileKey`` remains only an isolated legacy
-    subtitle-selection compatibility identity.
+    subtitle-profile domain (``SubtitleProfileKey``).
     """
 
     component: ProfileComponent

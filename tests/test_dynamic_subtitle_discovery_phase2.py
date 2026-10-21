@@ -9,7 +9,6 @@ from app.controllers.run_controller import RunController
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
     coerce_profile_family,
 )
 from app.shared.profile_resolver import ProfileResolver
@@ -59,14 +58,14 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 coerce_profile_family(invalid)
         with self.assertRaises(ValueError):
-            ProfileKey(
+            SubtitleProfileKey(
                 "guion",
                 "instagram",
                 "perfil_../escape",
                 "test_family",
             )
         with self.assertRaises(ValueError):
-            ProfileKey(
+            SubtitleProfileKey(
                 component="guion",
                 platform="instagram",
                 profile_id="guion_instagram_1_prueba",

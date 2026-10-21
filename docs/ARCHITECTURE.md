@@ -417,7 +417,7 @@ running Whisper.
 
 ## Studio render
 
-Studio has its own `ProfileKey`, main profiles, subtitle profiles, input
+Studio has its own `OperationalProfileKey`, main profiles, subtitle profiles, input
 preparation, output naming, and render service. It does not fall back to
 Guion, Imagen, or Video and does not invoke Ollama, Flux, Wan, ComfyUI,
 Motion, storyboard generation, or narrative audio generation.

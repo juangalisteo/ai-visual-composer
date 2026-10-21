@@ -15,7 +15,6 @@ from app.modules.video.intro_outro import (
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import OperationalProfileDescriptor
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -24,18 +23,6 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 class FakeConfigManager:
 
     subtitle_profile = object()
-    script_profile_key = ProfileKey(
-        component=ProfileComponent.GUION,
-        platform="test_platform",
-        family="test_family",
-        profile_id="test_profile",
-    )
-    video_profile_key = ProfileKey(
-        component=ProfileComponent.VIDEO,
-        platform="test_platform",
-        family="test_family",
-        profile_id="test_profile",
-    )
     script_operational_key = OperationalProfileKey(
         ProfileComponent.GUION,
         "test_platform",
@@ -64,7 +51,7 @@ class FakeConfigManager:
     def get_profile_key(
         self
     ):
-        return self.script_profile_key
+        return self.script_operational_key
 
     def get_operational_profile_key(self):
         return (
@@ -630,7 +617,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ), patch.object(
                     FakeConfigManager,
                     "get_profile_key",
-                    return_value=FakeConfigManager.script_profile_key,
+                    return_value=FakeConfigManager.script_operational_key,
                 ), patch(
                     "app.modules.script.preparation.PromptEngine",
                     side_effect=AssertionError(
@@ -677,10 +664,10 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "pipeline_mode": "full",
                         "profile_component": "guion",
                         "profile_platform": (
-                            FakeConfigManager.script_profile_key.platform
+                            FakeConfigManager.script_operational_key.platform
                         ),
                         "profile_id": (
-                            FakeConfigManager.script_profile_key.profile_id
+                            FakeConfigManager.script_operational_key.profile_id
                         ),
                         "subtitle_profile_key": (
                             FakeConfigManager.subtitle_profile_key

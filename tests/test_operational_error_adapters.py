@@ -8,7 +8,7 @@ from unittest.mock import patch
 import main
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver

@@ -23,7 +23,6 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import OperationalError
@@ -127,12 +126,6 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     )
 
     def test_design_subtitles_do_not_fallback_to_system(self):
-        main_key = ProfileKey.for_component(
-            "studio",
-            "instagram",
-            family="design",
-            profile_id="studio_instagram_design_modo_conciencia_reels",
-        )
         design_key = SubtitleProfileKey(
             "studio", "instagram", "modo_conciencia_reels", "design",
         )
@@ -453,11 +446,10 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         component,
         platform
     ):
-        main_key = ProfileKey.for_component(component, platform)
         return {
             "MC_PROFILE_COMPONENT": component.value,
             "MC_PROFILE_PLATFORM": platform,
-            "MC_PROFILE_ID": main_key.profile_id,
+            "MC_PROFILE_ID": f"{component.value}_{platform}",
         }
 
     def _key(

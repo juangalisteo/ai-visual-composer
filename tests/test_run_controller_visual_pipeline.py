@@ -8,7 +8,6 @@ from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
@@ -481,11 +480,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_entry_selects_image_destination_and_reuses_image_flow(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
             "instagram",
             "guion_instagram",
-            "estandar",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.GUION,
@@ -576,11 +574,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_run_includes_visual_pipeline_without_changing_existing_options(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
             "youtube",
             "imagen_youtube",
-            "estandar",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.IMAGEN,
@@ -663,11 +660,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_entry_selects_video_destination_and_reuses_video_flow(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
             "instagram",
             "guion_instagram",
-            "estandar",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.GUION,
@@ -1208,11 +1204,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 pipeline_mode=pipeline_mode
             ):
                 controller = RunController()
-                profile_key = ProfileKey(
+                profile_key = OperationalProfileKey(
                     ProfileComponent.IMAGEN,
                     "youtube",
                     "imagen_youtube",
-                    "estandar",
                 )
                 subtitle_key = SubtitleProfileKey(
                     ProfileComponent.IMAGEN,
@@ -1292,11 +1287,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_full_without_subtitles_skips_subtitle_selection(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
             "youtube",
             "imagen_youtube",
-            "estandar",
         )
 
         with patch.object(

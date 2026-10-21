@@ -2,7 +2,6 @@ import json
 import os
 import tempfile
 import unittest
-from dataclasses import FrozenInstanceError
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,7 +12,6 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
     coerce_profile_platform,
 )
 from app.shared.profile_resolver import ProfileResolver
@@ -66,50 +64,6 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def setUp(self):
         self.resolver = ProfileResolver()
 
-    def test_profile_key_is_immutable_and_canonical(self):
-        profile_key = ProfileKey.for_component(
-            "video",
-            "instagram"
-        )
-
-        self.assertEqual(
-            ProfileComponent.VIDEO,
-            profile_key.component
-        )
-        self.assertEqual(
-            "instagram",
-            profile_key.platform
-        )
-        self.assertEqual(
-            "video_instagram",
-            profile_key.profile_id
-        )
-        with self.assertRaises(FrozenInstanceError):
-            profile_key.profile_id = "video_youtube"
-
-    def test_design_profile_key_requires_a_concrete_technical_identity(self):
-        key = ProfileKey.for_component(
-            "video",
-            "instagram",
-            family="design",
-            profile_id="video_instagram_design_modo_conciencia_reels",
-        )
-
-        self.assertEqual("design", key.family)
-        self.assertEqual(
-            "video_instagram_design_modo_conciencia_reels",
-            key.profile_id,
-        )
-        with self.assertRaisesRegex(ValueError, "profile_id concreto"):
-            ProfileKey.for_component("video", "instagram", "design")
-        with self.assertRaisesRegex(ValueError, "profile_id invalido"):
-            ProfileKey(
-                "video",
-                "instagram",
-                "video_instagram_design_",
-                "design",
-            )
-
     def test_resolves_complete_valid_matrix_exactly(self):
         for component in ProfileComponent:
             for platform in ("instagram", "youtube"):
@@ -142,7 +96,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 platform=platform,
                 profile_id=profile_id
             ):
-                key = ProfileKey(component, platform, profile_id, "estandar")
+                key = OperationalProfileKey(component, platform, profile_id)
                 self.assertEqual(profile_id, key.profile_id)
 
     def test_rejects_unknown_component_and_invalid_platform(self):
@@ -150,22 +104,20 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             ValueError,
             "Componente de perfil no soportado"
         ):
-            ProfileKey(
+            OperationalProfileKey(
                 "design",
                 "instagram",
                 "design_instagram",
-                "estandar",
             )
 
         with self.assertRaisesRegex(
             ValueError,
             "Plataforma de perfil no soportado"
         ):
-            ProfileKey(
+            OperationalProfileKey(
                 "video",
                 "Instagram Reels",
                 "video_instagram",
-                "estandar",
             )
 
     def test_platform_is_a_normalized_technical_id(self):
@@ -177,7 +129,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             coerce_profile_platform("youtube!")
 
-        key = ProfileKey("guion", " Test_Platform ", "test_profile", "estandar")
+        key = OperationalProfileKey("guion", " Test_Platform ", "test_profile")
         self.assertEqual("test_platform", key.platform)
         self.assertFalse(hasattr(profile_identity, "ProfilePlatform"))
 

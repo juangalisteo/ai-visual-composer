@@ -12,7 +12,6 @@ from app.core import start
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -864,11 +863,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     return {}
 
                 def get_profile_key(self):
-                    return ProfileKey(
+                    return OperationalProfileKey(
                         ProfileComponent.GUION,
                         "instagram",
                         "guion_instagram",
-                        "estandar",
                     )
 
                 def get_operational_profile_key(self):

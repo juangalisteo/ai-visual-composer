@@ -3,7 +3,7 @@ from pathlib import Path
 
 from app.core.start import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -19,21 +19,12 @@ def _canonical_operational_identity(profile_key):
 
 
 def test_m1_canonical_operational_identity_excludes_legacy_family():
-    standard = ProfileKey(
-        "guion", "instagram", "guion_instagram", "estandar",
-    )
-    design_context = ProfileKey(
-        "guion", "instagram", "guion_instagram", "design",
-    )
+    key = OperationalProfileKey("guion", "instagram", "guion_instagram")
 
-    assert _canonical_operational_identity(standard) == (
+    assert _canonical_operational_identity(key) == (
         "guion", "instagram", "guion_instagram",
     )
-    assert _canonical_operational_identity(design_context) == (
-        "guion", "instagram", "guion_instagram",
-    )
-    # The different legacy route context remains observable until M2/M5.
-    assert standard.family != design_context.family
+    assert not hasattr(key, "family")
 
 
 def test_m1_root_operational_document_uses_canonical_discovery_only(tmp_path):
@@ -97,8 +88,8 @@ def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
 
 
 def test_m1_subtitle_key_family_is_independent_of_operational_legacy_family():
-    operational_key = ProfileKey(
-        "studio", "instagram", "studio_instagram", "estandar",
+    operational_key = OperationalProfileKey(
+        "studio", "instagram", "studio_instagram",
     )
     subtitle_key = SubtitleProfileKey(
         "studio", "instagram", "modo_conciencia_reels", "design",

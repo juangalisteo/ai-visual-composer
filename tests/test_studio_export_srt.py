@@ -29,7 +29,7 @@ from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
 from app.modules.subtitles.policies.timing import whisper_timing_path
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -536,8 +536,8 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             )[0]
             mode = resolver.load(descriptor.key).cue_policy["mode"]
             controller = RunController(subtitle_profile_resolver=resolver)
-            profile_key = ProfileKey(
-                "studio", "test_platform", "test_operational", "test_family",
+            profile_key = OperationalProfileKey(
+                "studio", "test_platform", "test_operational",
             )
             with patch.object(
                 controller,

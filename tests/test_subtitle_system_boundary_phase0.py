@@ -21,7 +21,6 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -75,12 +74,10 @@ def _operational_environment(operational_key):
     }
 
 
-def _environment(profile_key):
+def _environment(operational_key):
     return {
-        "MC_PROFILE_COMPONENT": profile_key.component.value,
-        "MC_PROFILE_PLATFORM": profile_key.platform,
-        "MC_PROFILE_ID": profile_key.profile_id,
-        "MC_PROFILE_FAMILY": profile_key.family,
+        **_operational_environment(operational_key),
+        "MC_PROFILE_FAMILY": "estandar",
     }
 
 
@@ -238,7 +235,7 @@ def test_phase1_design_selection_keeps_system_operational_projection(
 
 
 def test_phase3_studio_loads_design_subtitle_identity_without_composition():
-    system_key = ProfileKey.for_component("studio", "instagram")
+    system_key = _operational_key(ProfileComponent.STUDIO, "instagram")
     resolver = SubtitleProfileResolver()
     design_subtitle_key = next(
         descriptor.key

@@ -23,7 +23,7 @@ from app.modules.video.intro_outro import (
     IntroOutroSelection,
 )
 from app.shared.media_probe import MediaProbe
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -88,12 +88,12 @@ class StudioFinalContractTest(unittest.TestCase):
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()
 
-        for platform, dimensions in {
-            "instagram": (1080, 1920),
-            "youtube": (1920, 1080),
-        }.items():
+        for platform, profile_id, dimensions in (
+            ("instagram", "studio_instagram", (1080, 1920)),
+            ("youtube", "studio_youtube", (1920, 1080)),
+        ):
             with self.subTest(platform=platform):
-                key = ProfileKey.for_component("studio", platform)
+                key = OperationalProfileKey("studio", platform, profile_id)
                 profile = _load_studio_profile(key)
                 self.assertEqual(dimensions, (profile.width, profile.height))
                 self.assertEqual(30, profile.fps)
