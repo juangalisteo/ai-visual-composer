@@ -72,14 +72,11 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 family=1,
             )
 
-    def test_family_strings_are_normalized_and_system_is_reserved(self):
+    def test_family_strings_are_normalized_case_and_whitespace(self):
         for value in ("design", "DESIGN", " design "):
             with self.subTest(value=value):
                 self.assertEqual("design", coerce_profile_family(value))
 
-        for value in ("system", "SYSTEM", " system "):
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                coerce_profile_family(value)
         self.assertEqual("test_family", coerce_profile_family("test_family"))
         with self.assertRaises(ValueError):
             SubtitleProfileKey(

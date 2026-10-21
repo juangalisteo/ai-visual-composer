@@ -37,9 +37,7 @@ def coerce_profile_family(value):
             f"Familia de perfil no soportada: {value}"
         )
     normalized = value.strip().lower()
-    if normalized == "system" or not re.fullmatch(
-        r"[a-z0-9]+(?:_[a-z0-9]+)*", normalized
-    ):
+    if not re.fullmatch(r"[a-z0-9]+(?:_[a-z0-9]+)*", normalized):
         raise ValueError(f"Familia de perfil no soportada: {value}")
     return normalized
 
