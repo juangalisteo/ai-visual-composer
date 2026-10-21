@@ -5,6 +5,13 @@
 **Version:** `3.0`  
 **Architecture:** `Data/Config-Driven`
 
+## Documentación
+
+- [Instalación](docs/INSTALL.md)
+- [Arranque y parada](docs/START.md)
+- [Arquitectura](docs/ARCHITECTURE.md)
+- [Hoja de ruta](docs/ROADMAP.md)
+
 AI Visual Composer is a modular artificial intelligence-assisted system for audiovisual production, developed on a data/config-driven architecture. Artificial intelligence is an essential part of its operation and participates in the different stages of generation, interpretation, and processing that make it possible to turn scripts, ideas, and topics into complete audiovisual projects. This architecture establishes a clear separation between the technical capabilities implemented by the system and the entities defined through configuration, promoting extensibility, reuse, and the structured evolution of the system as a whole.
 
 Conceived as an integrated production system, AI Visual Composer brings together within a single configurable environment the processes required to create, adapt, process, and finalize audiovisual content. Its architecture makes it possible to centralize tasks that would normally require separate tools and workflows, incorporating artificial intelligence-based generation, audiovisual processing, subtitling, translation, composition, and content adaptation. The system is particularly oriented toward the automation of production workflows for social media, with the goal of reducing manual intervention, reusing capabilities across different formats and platforms, and keeping the entire audiovisual production process within a unified operational structure.
@@ -201,7 +208,7 @@ TECHNICAL IDS DEFINE IDENTITY
 HUMAN-READABLE NAMES DEFINE PRESENTATION
 ```
 
-For a deeper description of the internal architecture, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+For a deeper description of the internal architecture, see **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
 
@@ -319,7 +326,7 @@ This makes it possible to evolve the system toward increasingly complete workflo
 
 Initial installation and environment preparation are documented in:
 
-**[INSTALL.md](INSTALL.md)**
+**[INSTALL.md](docs/INSTALL.md)**
 
 ---
 
@@ -327,7 +334,7 @@ Initial installation and environment preparation are documented in:
 
 Normal startup and shutdown procedures are documented in:
 
-**[START.md](START.md)**
+**[START.md](docs/START.md)**
 
 ---
 

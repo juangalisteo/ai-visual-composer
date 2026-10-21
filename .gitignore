@@ -1,4 +1,6 @@
+# ============================================================
 # Python
+# ============================================================
 __pycache__/
 **/__pycache__/
 *.py[cod]
@@ -20,20 +22,33 @@ ENV/
 .coverage
 htmlcov/
 
-# IDE
+# ============================================================
+# Editors and operating system
+# ============================================================
 .idea/
 .vscode/
-
-# System
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Environment and local secrets
+# ============================================================
+# Environment and local secrets (only .env.example is versioned)
+# ============================================================
 .env
 .env.*
 !.env.example
 
+# ============================================================
+# Private agent state (Claude, Codex, ANTIGRAVITY)
+# ============================================================
+AGENT_AI/
+CODEX/
+.agents/
+.codex/
+
+# ============================================================
+# Generated files and local evidence
+# ============================================================
 # Runtime outputs and logs
 output/
 logs/
@@ -42,6 +57,22 @@ logs/
 # Generated media
 assets/images/generated/
 assets/audio/voices/
+
+# Project tree snapshot (regenerate with: python tools/generate_project_tree.py)
+/project_tree.txt
+
+# Validation evidence (heavy media kept locally)
+/validation/
+
+# ============================================================
+# User input (local working state; *.example.txt are versioned)
+# ============================================================
+/input/guion.txt
+/input/tema.txt
+/input/guion_imagen.txt
+/input/guion_video.txt
+
+# STUDIO input folders: keep only the folder structure (.gitkeep)
 input/studio/*
 !input/studio/srt_video/
 input/studio/srt_video/*
@@ -60,11 +91,20 @@ input/studio/exportar_srt/transcribir/*
 !input/studio/exportar_srt/convertir/
 input/studio/exportar_srt/convertir/*
 !input/studio/exportar_srt/convertir/.gitkeep
-# Intro/outro media is local working state, never a versioned product asset.
-/assets/videos/intro_outro/
+!input/studio/intro_outro/
+input/studio/intro_outro/*
+!input/studio/intro_outro/.gitkeep
+!input/studio/video_audio_srt/
+input/studio/video_audio_srt/*
+!input/studio/video_audio_srt/.gitkeep
 
+# ============================================================
+# Local assets, runtimes and models
+# ============================================================
+# Intro/outro media is local working state, never a versioned product asset.
 # Official product assets under assets/fonts, assets/music, and
 # assets/videos/visual_effects are intentionally versioned.
+/assets/videos/intro_outro/
 
 # Local third-party runtimes and backups
 ComfyUI/
@@ -90,26 +130,12 @@ backup_codificacion_*/
 *.onnx
 *.gguf
 
-# Codex/agent local state
-AGENT_AI/CODEX/
-AGENT_AI/ANTIGRAVITY/
-AGENT_AI/
-CODEX/
-.agents/
-.codex/
-
+# ============================================================
 # Temporary files
+# ============================================================
 tmp/
 temp/
 *.tmp
 *.temp
 *.bak
 *.swp
-
-!input/studio/intro_outro/
-input/studio/intro_outro/*
-!input/studio/intro_outro/.gitkeep
-
-!input/studio/video_audio_srt/
-input/studio/video_audio_srt/*
-!input/studio/video_audio_srt/.gitkeep

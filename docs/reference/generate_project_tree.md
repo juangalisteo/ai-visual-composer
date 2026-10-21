@@ -8,10 +8,10 @@ Su salida no pretende ser un inventario completo de recursos, modelos, cachés, 
 
 ## Ubicación
 
-El archivo debe situarse en la raíz del proyecto:
+El archivo está en la carpeta `tools/`:
 
 ```text
-generate_project_tree.py
+tools/generate_project_tree.py
 ```
 
 Debe ejecutarse también desde la raíz del proyecto.
@@ -19,7 +19,7 @@ Debe ejecutarse también desde la raíz del proyecto.
 ## Ejecución
 
 ```bash
-python generate_project_tree.py
+python tools/generate_project_tree.py
 ```
 
 ## Resultado
@@ -335,7 +335,7 @@ if __name__ == "__main__":
 
 ## Cuando ejecutarlo
 
-Ejecutar `python generate_project_tree.py`:
+Ejecutar `python tools/generate_project_tree.py`:
 
 - antes de crear un Punto Oficial de Restauración;
 - cuando cambie la arquitectura;
