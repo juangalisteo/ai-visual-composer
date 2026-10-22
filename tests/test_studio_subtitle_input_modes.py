@@ -357,7 +357,6 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
             "MC_PROFILE_ID": "studio_instagram",
-            "MC_PROFILE_FAMILY": "system",
         }
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
@@ -421,7 +420,6 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
             "MC_PROFILE_ID": "studio_instagram",
-            "MC_PROFILE_FAMILY": "system",
         }
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ,
@@ -836,7 +834,6 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "MC_PROFILE_COMPONENT": "studio",
             "MC_PROFILE_PLATFORM": "instagram",
             "MC_PROFILE_ID": "studio_instagram",
-            "MC_PROFILE_FAMILY": "system",
         }
         with patch.dict(os.environ, environment, clear=False):
             subtitle_profile = ConfigManager().get_subtitle_profile_by_key(

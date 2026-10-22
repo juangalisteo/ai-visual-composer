@@ -48,11 +48,6 @@ class FakeConfigManager:
         self._operational_profile_key = operational_profile_key
         self._voice_config_id = voice_config_id
 
-    def get_profile_key(
-        self
-    ):
-        return self.script_operational_key
-
     def get_operational_profile_key(self):
         return (
             self._operational_profile_key
@@ -613,10 +608,6 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as run_controller, patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
-                ), patch.object(
-                    FakeConfigManager,
-                    "get_profile_key",
-                    return_value=FakeConfigManager.script_operational_key,
                 ), patch(
                     "app.modules.script.preparation.PromptEngine",
                     side_effect=AssertionError(

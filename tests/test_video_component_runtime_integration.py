@@ -709,15 +709,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return {}
 
-                def get_profile_key(
-                    self
-                ):
-                    return OperationalProfileKey(
-                        ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
-                    )
-
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.VIDEO,
@@ -861,13 +852,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
                 def get_ai_config(self):
                     return {}
-
-                def get_profile_key(self):
-                    return OperationalProfileKey(
-                        ProfileComponent.GUION,
-                        "instagram",
-                        "guion_instagram",
-                    )
 
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(

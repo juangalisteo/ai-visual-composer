@@ -85,7 +85,6 @@ class StudioExecutionCoordinator:
                 "STUDIO requiere un normalizador de SubtitleProfileKey."
             )
         subtitle_profile_key = subtitle_profile_key_normalizer(
-            config,
             subtitle_profile_key=subtitle_profile_key,
         )
         subtitle_profile = config.get_subtitle_profile_by_key(
@@ -384,7 +383,6 @@ class StudioExecutionCoordinator:
                     "STUDIO requiere un normalizador de SubtitleProfileKey."
                 )
             subtitle_profile_key = subtitle_profile_key_normalizer(
-                config,
                 subtitle_profile_key=subtitle_profile_key,
             )
             subtitle_profile = config.get_subtitle_profile_by_key(
@@ -483,7 +481,6 @@ class StudioExecutionCoordinator:
                 "STUDIO requiere un normalizador de SubtitleProfileKey."
             )
         subtitle_profile_key = subtitle_profile_key_normalizer(
-            config,
             subtitle_profile_key=subtitle_profile_key,
         )
         subtitle_profile = config.get_subtitle_profile_by_key(

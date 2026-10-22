@@ -611,7 +611,6 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 "MC_PROFILE_COMPONENT": "video",
                 "MC_PROFILE_PLATFORM": "instagram",
                 "MC_PROFILE_ID": "video_instagram",
-                "MC_PROFILE_FAMILY": "estandar",
             },
             clear=True,
         ):

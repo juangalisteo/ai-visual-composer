@@ -49,8 +49,6 @@ def test_m3_config_manager_loads_operational_profile_without_subtitle_family():
             "MC_PROFILE_COMPONENT": "guion",
             "MC_PROFILE_PLATFORM": "instagram",
             "MC_PROFILE_ID": "guion_instagram",
-            # A legacy subtitle-family value cannot alter operational loading.
-            "MC_PROFILE_FAMILY": "design",
         },
         clear=False,
     ):

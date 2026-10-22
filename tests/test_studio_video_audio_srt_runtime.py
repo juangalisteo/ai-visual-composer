@@ -564,7 +564,6 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
         video, audio, subtitle = _write_sources(root, with_subtitle=True)
         output = root / "output" / "video" / "final.mp4"
         config = Mock()
-        config.get_profile_key.return_value = profile_key
         config.get_operational_profile_key.return_value = OperationalProfileKey(
             profile_key.component,
             profile_key.platform,
@@ -625,7 +624,6 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
         video, audio, subtitle = _write_sources(root, with_subtitle=True)
         output = root / "output" / "video" / "final.mp4"
         config = Mock()
-        config.get_profile_key.return_value = profile_key
         config.get_operational_profile_key.return_value = OperationalProfileKey(
             profile_key.component,
             profile_key.platform,

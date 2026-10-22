@@ -324,7 +324,6 @@ def iniciar(
     ):
             subtitle_profile = config.get_subtitle_profile_by_key(
                 _normalise_subtitle_profile_key(
-                    config,
                     subtitle_profile_key=subtitle_profile_key,
                 )
             )
@@ -786,7 +785,6 @@ def _typed_subtitle_options(subtitle_profile_key):
 
 
 def _normalise_subtitle_profile_key(
-    config,
     subtitle_profile_key=None,
 ):
     """Validate and return the full subtitle identity."""

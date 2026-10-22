@@ -74,13 +74,6 @@ def _operational_environment(operational_key):
     }
 
 
-def _environment(operational_key):
-    return {
-        **_operational_environment(operational_key),
-        "MC_PROFILE_FAMILY": "estandar",
-    }
-
-
 def _operational_projection(profile, component):
     if component is ProfileComponent.STUDIO:
         studio = profile["studio"]
@@ -248,7 +241,7 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
 
     manager = ConfigManager()
     with pytest.MonkeyPatch.context() as context:
-        for name, value in _environment(system_key).items():
+        for name, value in _operational_environment(system_key).items():
             context.setenv(name, value)
         rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
         assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO

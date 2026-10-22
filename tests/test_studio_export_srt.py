@@ -641,7 +641,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             Path("source.srt"),
         )
         config = Mock()
-        config.get_profile_key.return_value = None
+        config.get_operational_profile_key.return_value = None
 
         with self.assertRaisesRegex(
             ValueError,
@@ -676,10 +676,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         )
         selected_profile = resolver.load(selected_key)
         config = Mock()
-        config.get_profile_key.return_value = profile_key
-        config.get_operational_profile_key.return_value = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
-        )
+        config.get_operational_profile_key.return_value = profile_key
         config.get_profile_config.return_value = {}
         config.get_subtitle_profile_by_key.return_value = selected_profile
         service = Mock()

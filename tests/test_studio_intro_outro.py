@@ -202,7 +202,6 @@ class StudioIntroOutroTest(unittest.TestCase):
                 "studio", "instagram", "studio_instagram"
             )
             config = Mock()
-            config.get_profile_key.return_value = profile_key
             config.get_operational_profile_key.return_value = OperationalProfileKey(
                 "studio", "instagram", "studio_instagram"
             )

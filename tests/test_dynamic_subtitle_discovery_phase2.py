@@ -416,8 +416,6 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                     "family": "design",
                     "profile_id": "guion_instagram_design_valido",
                     "display_name": "Diseño inválido",
-                    "subtitle_config": "single_line",
-                    "subtitle_profile": {"style": "single_line"},
                 },
             )
 

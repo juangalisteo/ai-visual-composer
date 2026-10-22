@@ -243,7 +243,6 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 "MC_PROFILE_COMPONENT": "studio",
                 "MC_PROFILE_PLATFORM": "instagram",
                 "MC_PROFILE_ID": "studio_instagram",
-                "MC_PROFILE_FAMILY": "system",
             }
             with patch.dict(os.environ, environment, clear=True):
                 resolved = ConfigManager(

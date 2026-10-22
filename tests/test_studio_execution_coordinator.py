@@ -145,8 +145,8 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 inspect=lambda path: SimpleNamespace(has_audio=True),
             ),
             subtitle_profile_key_normalizer=(
-                lambda current_config, **options: (
-                    normalizer_calls.append((current_config, options))
+                lambda **options: (
+                    normalizer_calls.append(options)
                     or options["subtitle_profile_key"]
                 )
             ),
@@ -156,9 +156,9 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         self.assertIs(self.profile, preparation.profile)
         self.assertIs(self.subtitle_profile, preparation.subtitle_profile)
         self.assertEqual(StudioInputMode.VIDEO.value, preparation.input_mode)
-        self.assertEqual([(config, {
+        self.assertEqual([{
             "subtitle_profile_key": self.subtitle_key,
-        })], normalizer_calls)
+        }], normalizer_calls)
         self.assertEqual(self.subtitle_key, config.requested_subtitle_key)
         self.assertEqual([(self.profile, "video", {})], input_preparation.calls)
 
@@ -180,7 +180,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                     inspect=lambda path: SimpleNamespace(has_audio=False),
                 ),
                 subtitle_profile_key_normalizer=(
-                    lambda config, **options: options["subtitle_profile_key"]
+                    lambda **options: options["subtitle_profile_key"]
                 ),
             )
 
@@ -346,7 +346,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 project=project,
             )
             normalizer.assert_called_once_with(
-                config,
                 subtitle_profile_key=self.subtitle_key,
             )
 
@@ -423,7 +422,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         self.assertEqual([(config.get_profile_config(), self.profile_key)], profile_loader.calls)
         self.assertEqual(self.subtitle_key, config.requested_subtitle_key)
         normalizer.assert_called_once_with(
-            config,
             subtitle_profile_key=self.subtitle_key,
         )
         service.export.assert_called_once_with(
