@@ -1,4 +1,3 @@
-import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -7,7 +6,7 @@ from unittest.mock import Mock, call, patch
 import pytest
 import main
 
-from app.core.start import ejecutar_studio_video_audio_srt, iniciar
+from app.core.start import ejecutar_studio_video_audio_srt
 from app.controllers.run_controller import RunController
 from app.modules.studio import (
     StudioInputMode,
@@ -97,18 +96,6 @@ def _write_sources(root, with_subtitle=False):
             encoding="utf-8",
         )
     return video, audio, subtitle
-
-
-def test_video_audio_runtime_dispatches_service():
-    with tempfile.TemporaryDirectory() as directory:
-        video, audio, _ = _write_sources(Path(directory))
-        plan = StudioVideoAudioSrtPlan(video, audio)
-        with patch.dict(os.environ, {"MC_PIPELINE_MODE": "studio"}, clear=True), patch(
-            "app.core.start.ejecutar_studio_video_audio_srt",
-            return_value="ok",
-        ) as run:
-            assert iniciar(studio_video_audio_srt_plan=plan) == "ok"
-        run.assert_called_once_with(plan)
 
 
 def test_studio_export_menu_label_changes_without_changing_its_mode_id():

@@ -151,15 +151,6 @@ class _I2VArtifactLease:
 def iniciar(
     subtitle_profile_key=None,
     intro_outro_selection=None,
-    studio_music_path=None,
-    studio_input_mode=None,
-    studio_video_path=None,
-    studio_subtitle_path=None,
-    studio_subtitle_export_plan=None,
-    studio_montage_plan=None,
-    studio_intro_outro_plan=None,
-    studio_video_audio_srt_plan=None,
-    studio_subtitle_original=False,
     request=None,
 ):
     pipeline_start = time.perf_counter()
@@ -215,58 +206,8 @@ def iniciar(
         ).strip().lower()
 
         if pipeline_mode == "studio":
-            if studio_video_audio_srt_plan is not None:
-                video_audio_options = {}
-                if subtitle_profile_key is not None:
-                    video_audio_options["subtitle_profile_key"] = (
-                        subtitle_profile_key
-                    )
-                return ejecutar_studio_video_audio_srt(
-                    studio_video_audio_srt_plan,
-                    **video_audio_options,
-                )
-            if studio_intro_outro_plan is not None:
-                return ejecutar_studio_intro_outro(studio_intro_outro_plan)
-            if studio_subtitle_export_plan is not None:
-                export_options = {}
-                if subtitle_profile_key is not None:
-                    export_options["subtitle_profile_key"] = (
-                        subtitle_profile_key
-                    )
-                return ejecutar_studio_exportar_srt(
-                    studio_subtitle_export_plan,
-                    **export_options,
-                )
-            if studio_montage_plan is not None:
-                montage_options = {}
-                if studio_music_path is not None:
-                    montage_options["music_path"] = studio_music_path
-                if intro_outro_selection is not None:
-                    montage_options["intro_outro_selection"] = (
-                        intro_outro_selection
-                    )
-                return ejecutar_studio_montaje(
-                    studio_montage_plan,
-                    **montage_options,
-                )
-            studio_options = {
-                "music_path": studio_music_path,
-                "input_mode": studio_input_mode,
-            }
-            if subtitle_profile_key is not None:
-                studio_options["subtitle_profile_key"] = (
-                    subtitle_profile_key
-                )
-            if studio_subtitle_original:
-                studio_options["subtitle_original"] = True
-            if intro_outro_selection is not None:
-                studio_options["intro_outro_selection"] = intro_outro_selection
-            if studio_video_path is not None:
-                studio_options["video_path"] = studio_video_path
-            if studio_subtitle_path is not None:
-                studio_options["subtitle_path"] = studio_subtitle_path
-            return ejecutar_studio(
-                **studio_options
+            raise ValueError(
+                "STUDIO requiere request=ApplicationExecutionRequest."
             )
 
         project = ProjectManager()

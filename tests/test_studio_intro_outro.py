@@ -1,10 +1,13 @@
-import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.core.start import ejecutar_studio_intro_outro, iniciar
 from app.modules.studio import (
     StudioInputMode,
@@ -242,9 +245,27 @@ class StudioIntroOutroTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             source = self._file(directory, "source.mp4")
             plan = StudioIntroOutroPlan(source, IntroOutroPlan(intro=IntroOutroSelection(source, "intro")))
-            with patch.dict(os.environ, {"MC_PIPELINE_MODE": "studio"}, clear=True), patch("app.core.start.ejecutar_studio_intro_outro", return_value="result") as execute, patch("app.core.start.ejecutar_studio") as normal:
-                self.assertEqual("result", iniciar(studio_intro_outro_plan=plan))
-            execute.assert_called_once_with(plan)
+            request = ApplicationExecutionRequest(
+                project_name="demo",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio", "instagram", "studio_instagram"
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.INTRO_OUTRO,
+                    plan=plan,
+                ),
+            )
+            with patch("app.core.start.ProjectManager") as projects, patch("app.core.start.ejecutar_studio_intro_outro", return_value="result") as execute, patch("app.core.start.ejecutar_studio") as normal:
+                self.assertEqual("result", iniciar(request=request))
+            self.assertEqual((plan,), execute.call_args.args)
+            self.assertIs(projects.return_value, execute.call_args.kwargs["project"])
+            self.assertEqual(
+                request.operational_profile_key,
+                execute.call_args.kwargs["config_manager"].get_operational_profile_key(),
+            )
+            projects.assert_called_once_with(project_name="demo")
             normal.assert_not_called()
 
 

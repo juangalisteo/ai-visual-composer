@@ -7,6 +7,10 @@ from unittest.mock import Mock, patch
 
 import main
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.core.start import iniciar
 from app.modules.studio.execution_coordinator import (
     StudioExecutionCoordinator,
@@ -304,18 +308,27 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 False,
                 service.parse_order("1 2", service.discover(self.profile)),
             )
-            with patch.dict(
-                os.environ,
-                {"MC_PIPELINE_MODE": "studio"},
-                clear=True,
-            ), patch(
+            request = ApplicationExecutionRequest(
+                project_name="demo",
+                clear_output=False,
+                operational_profile_key=self.profile_key,
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS,
+                    plan=plan,
+                ),
+            )
+            with patch(
+                "app.core.start.ProjectManager"
+            ) as projects, patch(
                 "app.core.start.ejecutar_studio_montaje",
                 return_value="montage-result",
             ) as montage:
-                result = iniciar(studio_montage_plan=plan)
+                result = iniciar(request=request)
 
         self.assertEqual("montage-result", result)
-        montage.assert_called_once_with(plan)
+        montage.assert_called_once_with(plan, project=projects.return_value)
+        projects.assert_called_once_with(project_name="demo")
         self.assertIs(plan, StudioExecutionCoordinator.prepare_montage(plan))
 
     def test_main_transports_montage_with_reset_and_montage_summary(self):

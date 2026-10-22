@@ -14,7 +14,7 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio, preparar_studio, iniciar
+from app.core.start import ejecutar_studio, preparar_studio
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioInputMode,
@@ -582,41 +582,6 @@ class StudioPhase1Test(unittest.TestCase):
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROJECT_NAME", os.environ)
         output_manager.return_value.reset.assert_called_once_with()
-
-    def test_start_routes_studio_without_initializing_project(self):
-        subtitle_key = SubtitleProfileKey(
-            "studio",
-            "instagram",
-            STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
-            "estandar",
-        )
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PIPELINE_MODE": "studio",
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ), patch("app.core.start.ProjectManager") as project_manager, patch(
-            "app.core.start.ejecutar_studio"
-        ) as render:
-            iniciar(
-                subtitle_profile_key=subtitle_key,
-                studio_input_mode="srt_video",
-                studio_video_path="input/studio/srt_video/source.mp4",
-                studio_subtitle_path="input/studio/srt_video/source.srt",
-            )
-
-        render.assert_called_once_with(
-            subtitle_profile_key=subtitle_key,
-            music_path=None,
-            input_mode="srt_video",
-            video_path="input/studio/srt_video/source.mp4",
-            subtitle_path="input/studio/srt_video/source.srt",
-        )
-        project_manager.assert_not_called()
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(

@@ -697,21 +697,43 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         )
 
     def test_iniciar_dispatches_export_without_render_arguments(self):
+        from app.core.execution_request import (
+            ApplicationExecutionRequest,
+            StudioExecutionRequest,
+        )
         from app.core.start import iniciar
 
         plan = StudioSubtitleExportPlan(
             StudioSubtitleExportMode.TRANSCRIBIR,
             Path("source.mp3"),
         )
+        request = ApplicationExecutionRequest(
+            project_name="demo",
+            clear_output=False,
+            operational_profile_key=None,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode=StudioInputMode.EXPORTAR_SRT,
+                plan=plan,
+            ),
+        )
         expected = Mock()
-        with patch.dict("os.environ", {"MC_PIPELINE_MODE": "studio"}), patch(
+        with patch(
+            "app.core.start.ProjectManager"
+        ) as projects, patch(
             "app.core.start.ejecutar_studio_exportar_srt",
             return_value=expected,
         ) as exporter:
-            result = iniciar(studio_subtitle_export_plan=plan)
+            result = iniciar(request=request)
 
         self.assertIs(expected, result)
-        exporter.assert_called_once_with(plan)
+        self.assertEqual((plan,), exporter.call_args.args)
+        self.assertEqual(
+            {"config_manager", "project"},
+            set(exporter.call_args.kwargs),
+        )
+        self.assertIs(projects.return_value, exporter.call_args.kwargs["project"])
+        projects.assert_called_once_with(project_name="demo")
 
     def test_main_transcribe_clears_profile_transport(self):
         plan = StudioSubtitleExportPlan(

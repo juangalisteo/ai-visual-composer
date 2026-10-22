@@ -9,12 +9,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.core.start import (
     _persist_studio_render_subtitle,
     ejecutar_studio,
     iniciar,
 )
 from app.modules.studio import (
+    StudioInputMode,
     StudioOutputPathResolver,
     StudioOutputValidator,
     StudioProfileLoader,
@@ -147,26 +152,28 @@ class StudioPhase2Test(unittest.TestCase):
         )
 
     def test_runtime_studio_bypasses_all_audiovisual_builders(self):
-        with patch.dict(
-            "os.environ",
-            {"MC_PIPELINE_MODE": "studio"},
-            clear=True,
-        ), patch("app.core.start.ejecutar_studio") as studio, patch(
+        request = ApplicationExecutionRequest(
+            project_name="demo",
+            clear_output=False,
+            operational_profile_key=self.profile_key,
+            subtitle_profile_key=self.subtitle_profile.key,
+            route=StudioExecutionRequest(input_mode=StudioInputMode.SRT_VIDEO),
+        )
+        with patch("app.core.start.ejecutar_studio") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects, patch("app.core.start.VideoBuilder") as video, patch(
             "app.core.start.SrtOptimizer"
         ) as optimizer:
-            iniciar(
-                subtitle_profile_key=self.subtitle_profile.key,
-                studio_input_mode="srt_video",
-            )
+            iniciar(request=request)
 
-        studio.assert_called_once_with(
-            subtitle_profile_key=self.subtitle_profile.key,
-            music_path=None,
-            input_mode="srt_video",
+        studio.assert_called_once()
+        self.assertEqual(
+            self.subtitle_profile.key,
+            studio.call_args.kwargs["subtitle_profile_key"],
         )
-        projects.assert_not_called()
+        self.assertIsNone(studio.call_args.kwargs["music_path"])
+        self.assertEqual("srt_video", studio.call_args.kwargs["input_mode"])
+        projects.assert_called_once_with(project_name="demo")
         video.assert_not_called()
         optimizer.assert_not_called()
 

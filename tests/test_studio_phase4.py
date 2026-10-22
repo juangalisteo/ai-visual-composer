@@ -186,20 +186,14 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertEqual("srt_video", request.route.input_mode.value)
         self.assertEqual({"request"}, set(start.call_args.kwargs))
 
-        with patch.dict("os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True), patch(
+        with patch(
             "app.core.start.ejecutar_studio"
         ) as studio, patch("app.core.start.ProjectManager") as project_manager:
-            iniciar(
-                subtitle_profile_key=self.subtitle_profile.key,
-                studio_music_path=selected,
-                studio_input_mode="srt_video",
-            )
-        studio.assert_called_once_with(
-            subtitle_profile_key=self.subtitle_profile.key,
-            music_path=selected,
-            input_mode="srt_video",
-        )
-        project_manager.assert_not_called()
+            iniciar(request=request)
+        studio.assert_called_once()
+        self.assertEqual(selected, studio.call_args.kwargs["music_path"])
+        self.assertEqual("srt_video", studio.call_args.kwargs["input_mode"])
+        project_manager.assert_called_once_with(project_name="studio music")
 
     def test_studio_summary_reports_execution_contract_and_generated_srt(self):
         output_path = Path("output/demo/video/demo.mp4")

@@ -214,23 +214,15 @@ class StudioPhase5Test(unittest.TestCase):
         self.assertEqual("srt_video", request.route.input_mode.value)
         self.assertEqual({"request"}, set(start.call_args.kwargs))
 
-        with patch.dict(
-            "os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True
-        ), patch("app.core.start.ejecutar_studio") as studio, patch(
+        with patch("app.core.start.ejecutar_studio") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects:
-            iniciar(
-                subtitle_profile_key=self.subtitle_profile.key,
-                intro_outro_selection=plan,
-                studio_input_mode="srt_video",
-            )
-        studio.assert_called_once_with(
-            subtitle_profile_key=self.subtitle_profile.key,
-            music_path=None,
-            input_mode="srt_video",
-            intro_outro_selection=plan,
-        )
-        projects.assert_not_called()
+            iniciar(request=request)
+        studio.assert_called_once()
+        self.assertIs(plan, studio.call_args.kwargs["intro_outro_selection"])
+        self.assertIsNone(studio.call_args.kwargs["music_path"])
+        self.assertEqual("srt_video", studio.call_args.kwargs["input_mode"])
+        projects.assert_called_once_with(project_name="studio intro outro")
 
     def test_phase_two_transports_plan_to_project_output_and_renderer(self):
         plan = IntroOutroPlan(
