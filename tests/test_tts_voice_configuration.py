@@ -1,9 +1,7 @@
 import copy
 import inspect
 import json
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -226,17 +224,15 @@ def test_current_terminal_selection_loads_the_same_neutral_voice_document(
     expected_voice_id,
     expected_backend_key,
 ):
-    with patch.dict(os.environ, {"MC_VOICE_CONFIG": selected_stem}, clear=False):
-        configuration = ConfigManager().get_tts_voice_configuration()
+    configuration = ConfigManager(
+        voice_config_id=selected_stem
+    ).get_tts_voice_configuration()
 
     assert configuration.voice.voice_id == expected_voice_id
     assert configuration.voice.backend_key == expected_backend_key
 
 
-def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
-    monkeypatch,
-    tmp_path,
-):
+def test_explicit_voice_config_id_selects_its_own_voice_document(tmp_path):
     voice_configs = tmp_path / "voice_configs"
     voice_configs.mkdir()
     selected_document = _document()
@@ -251,8 +247,6 @@ def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
         json.dumps(conflicting_document),
         encoding="utf-8",
     )
-    monkeypatch.setenv("MC_VOICE_CONFIG", "test_voice_conflict")
-
     manager = ConfigManager(voice_config_id="test_voice_selected")
     manager.config_path = tmp_path
     configuration = manager.get_tts_voice_configuration()
@@ -262,9 +256,7 @@ def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
 
 
 def test_default_voice_configuration_is_the_approved_piper_davefx_baseline():
-    with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("MC_VOICE_CONFIG", None)
-        configuration = ConfigManager().get_tts_voice_configuration()
+    configuration = ConfigManager().get_tts_voice_configuration()
 
     assert configuration.voice.voice_id == "piper_voice_davefx"
     assert configuration.voice.backend_key == "piper_onnx"
@@ -272,13 +264,10 @@ def test_default_voice_configuration_is_the_approved_piper_davefx_baseline():
 
 
 def test_invalid_explicit_voice_override_preserves_the_configuration_error():
-    with patch.dict(
-        os.environ,
-        {"MC_VOICE_CONFIG": "missing_voice_fixture"},
-        clear=False,
-    ):
-        with pytest.raises(OperationalError) as error:
-            ConfigManager().get_tts_voice_configuration()
+    with pytest.raises(OperationalError) as error:
+        ConfigManager(
+            voice_config_id="missing_voice_fixture"
+        ).get_tts_voice_configuration()
 
     assert error.value.context.family == "CONFIG"
     assert isinstance(error.value.__cause__, FileNotFoundError)
@@ -286,9 +275,8 @@ def test_invalid_explicit_voice_override_preserves_the_configuration_error():
 
 @pytest.mark.parametrize("legacy_stem", ("femenina", "masculina", "masculina_santa"))
 def test_removed_kokoro_voice_override_preserves_the_configuration_error(legacy_stem):
-    with patch.dict(os.environ, {"MC_VOICE_CONFIG": legacy_stem}, clear=False):
-        with pytest.raises(OperationalError) as error:
-            ConfigManager().get_tts_voice_configuration()
+    with pytest.raises(OperationalError) as error:
+        ConfigManager(voice_config_id=legacy_stem).get_tts_voice_configuration()
 
     assert error.value.context.family == "CONFIG"
     assert isinstance(error.value.__cause__, FileNotFoundError)

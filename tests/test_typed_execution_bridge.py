@@ -155,9 +155,7 @@ def test_typed_standard_music_category_uses_request_value_not_environment():
     )
 
 
-def test_typed_standard_injects_its_explicit_config_into_profile_consumers(
-    monkeypatch,
-):
+def test_typed_standard_injects_its_explicit_config_into_profile_consumers():
     project = _project()
     profile = object()
     config = Mock()
@@ -165,7 +163,6 @@ def test_typed_standard_injects_its_explicit_config_into_profile_consumers(
     config.get_profile_config.return_value = profile
     telemetry = _telemetry()
     request = _standard_request(pipeline_mode="full")
-    monkeypatch.setenv("MC_OVERLAYS_MODE", "smart")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
@@ -248,9 +245,7 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     assert optimizer.call_args.kwargs["project"] is project
 
 
-def test_typed_standard_voice_config_is_injected_without_environment_fallback(
-    monkeypatch,
-):
+def test_typed_standard_voice_config_is_injected_without_environment_fallback():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -260,7 +255,6 @@ def test_typed_standard_voice_config_is_injected_without_environment_fallback(
         pipeline_mode="audio",
         voice_config_id="test_voice_selected",
     )
-    monkeypatch.setenv("MC_VOICE_CONFIG", "test_voice_conflict")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
@@ -290,9 +284,7 @@ def test_typed_standard_voice_config_is_injected_without_environment_fallback(
     )
 
 
-def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent(
-    monkeypatch,
-):
+def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -309,7 +301,6 @@ def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent(
             script_source="manual",
         ),
     )
-    monkeypatch.setenv("MC_VOICE_CONFIG", "piper_davefx")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
@@ -330,7 +321,7 @@ def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent(
     voice_builder.assert_not_called()
 
 
-def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatch):
+def test_typed_video_uses_request_visual_pipeline_and_operational_key():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -342,7 +333,6 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatc
     )
     manifest = Path("output/typed/video_clips_manifest.json")
     final_video = Path("output/typed/video/final.mp4")
-    monkeypatch.setenv("MC_OVERLAYS_MODE", "smart")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config

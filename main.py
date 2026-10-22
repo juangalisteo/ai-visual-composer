@@ -77,12 +77,6 @@ def _run_main():
     os.environ.pop("MC_PROFILE_COMPONENT", None)
     os.environ.pop("MC_PROFILE_PLATFORM", None)
     os.environ.pop("MC_PROFILE_ID", None)
-    # Voice selection travels in StandardExecutionRequest. Remove any stale
-    # legacy value so the modern path cannot resolve a contradictory voice.
-    os.environ.pop("MC_VOICE_CONFIG", None)
-    # Overlay mode travels in StandardExecutionRequest. Remove any stale
-    # legacy value so the modern path cannot resolve a contradictory mode.
-    os.environ.pop("MC_OVERLAYS_MODE", None)
     # Project identity is carried by ApplicationExecutionRequest. Remove any
     # stale legacy value so the modern path cannot recreate its project from
     # process environment.

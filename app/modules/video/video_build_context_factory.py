@@ -1,5 +1,4 @@
 from dataclasses import replace
-import os
 from pathlib import Path
 
 from app.managers.project_manager import ProjectManager
@@ -15,9 +14,6 @@ from app.modules.video.video_build_context import VideoBuildContext
 from app.modules.video.video_config import VideoConfigLoader
 
 
-_OVERLAYS_MODE_UNSET = object()
-
-
 class VideoBuildContextFactory:
 
     def __init__(
@@ -26,7 +22,7 @@ class VideoBuildContextFactory:
         warnings=None,
         config_manager=None,
         project=None,
-        overlays_mode=_OVERLAYS_MODE_UNSET,
+        overlays_mode=None,
     ):
         self.subtitle_profile = subtitle_profile
         self.warnings = warnings
@@ -175,14 +171,7 @@ class VideoBuildContextFactory:
         self,
         video_config
     ):
-        if self._overlays_mode is _OVERLAYS_MODE_UNSET:
-            overlays_mode = os.environ.get(
-                "MC_OVERLAYS_MODE",
-                "",
-            )
-        else:
-            overlays_mode = self._overlays_mode or ""
-        overlays_mode = overlays_mode.strip().lower()
+        overlays_mode = (self._overlays_mode or "").strip().lower()
 
         if not overlays_mode:
             return video_config

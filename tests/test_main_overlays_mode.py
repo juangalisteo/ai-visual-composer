@@ -30,7 +30,6 @@ class MainOverlaysModeTest(
             os.environ,
             {
                 "MC_PROJECT_NAME": "stale project",
-                "MC_OVERLAYS_MODE": "off",
             },
             clear=True
         ), patch(
@@ -46,8 +45,6 @@ class MainOverlaysModeTest(
 
             main.main()
 
-            self.assertNotIn("MC_OVERLAYS_MODE", os.environ)
-            self.assertNotIn("MC_VOICE_CONFIG", os.environ)
             self.assertNotIn("MC_PROJECT_NAME", os.environ)
 
         iniciar_mock.assert_called_once()

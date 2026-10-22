@@ -1,12 +1,10 @@
 """Focused configuration-to-public-audio tests for declarative Piper voices."""
 
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile
 import wave
-from unittest.mock import patch
 
 import pytest
 
@@ -80,16 +78,15 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
         root = Path(directory)
         workspace_parent = root / "workspaces"
         output_path = root / "audio" / "voz.mp3"
-        with patch.dict(os.environ, {"MC_VOICE_CONFIG": voice_stem}, clear=False):
-            builder = VoiceBuilder(
-                config_manager=ConfigManager(),
-                backend_registry=TtsBackendRegistry((provider,)),
-                workspace_parent=workspace_parent,
-            )
-            result = builder.build(
-                "La certificación técnica conserva puntuación y arquitectura.",
-                output_path=output_path,
-            )
+        builder = VoiceBuilder(
+            config_manager=ConfigManager(voice_config_id=voice_stem),
+            backend_registry=TtsBackendRegistry((provider,)),
+            workspace_parent=workspace_parent,
+        )
+        result = builder.build(
+            "La certificación técnica conserva puntuación y arquitectura.",
+            output_path=output_path,
+        )
 
         probe = subprocess.run(
             [
@@ -121,9 +118,7 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
 def test_piper_catalog_uses_no_fallback_and_default_voice_is_davefx():
     configuration = ConfigManager()
 
-    with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("MC_VOICE_CONFIG", None)
-        default_voice = configuration.get_tts_voice_configuration().voice
+    default_voice = configuration.get_tts_voice_configuration().voice
 
     assert default_voice.voice_id == "piper_voice_davefx"
     assert default_voice.backend_key == "piper_onnx"

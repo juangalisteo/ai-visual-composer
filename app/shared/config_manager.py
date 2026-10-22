@@ -96,10 +96,7 @@ class ConfigManager:
     def _voice_config_document(self):
         selected_voice_config = self._voice_config_id
         if selected_voice_config is None:
-            selected_voice_config = os.environ.get("MC_VOICE_CONFIG")
-
-            if not selected_voice_config:
-                selected_voice_config = "piper_davefx"
+            selected_voice_config = "piper_davefx"
 
         voice_config_path = (
             self.config_path
