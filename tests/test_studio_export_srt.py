@@ -262,8 +262,7 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
         )
 
     def _project(self, root, name="exportacion"):
-        with patch.dict("os.environ", {"MC_PROJECT_NAME": name}, clear=False):
-            project = ProjectManager()
+        project = ProjectManager(project_name=name)
         project.base_path = root / "output" / project.project_name
         project.setup()
         return project

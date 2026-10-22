@@ -1,4 +1,3 @@
-import os
 import re
 from pathlib import Path
 
@@ -7,10 +6,7 @@ class ProjectManager:
 
     def __init__(self, project_name=None):
         if project_name is None:
-            project_name = os.environ.get(
-                "MC_PROJECT_NAME",
-                "default_project"
-            )
+            project_name = "default_project"
 
         self.project_name = self._sanitize_name(
             project_name

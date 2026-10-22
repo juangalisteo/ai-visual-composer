@@ -1,4 +1,3 @@
-import os
 import time
 import traceback
 from pathlib import Path
@@ -71,11 +70,6 @@ def _run_main():
         return 1
 
     request = adapt_legacy_run_options(options)
-
-    # Project identity is carried by ApplicationExecutionRequest. Remove any
-    # stale legacy value so the modern path cannot recreate its project from
-    # process environment.
-    os.environ.pop("MC_PROJECT_NAME", None)
 
     studio_route = (
         request.route

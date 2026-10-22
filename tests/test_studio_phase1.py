@@ -580,7 +580,6 @@ class StudioPhase1Test(unittest.TestCase):
         ) as output_manager:
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
-            self.assertNotIn("MC_PROJECT_NAME", os.environ)
         output_manager.return_value.reset.assert_called_once_with()
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):

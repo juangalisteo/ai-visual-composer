@@ -28,9 +28,7 @@ class MainOverlaysModeTest(
 
         with patch.dict(
             os.environ,
-            {
-                "MC_PROJECT_NAME": "stale project",
-            },
+            {},
             clear=True
         ), patch(
             "main.RunController"
@@ -44,8 +42,6 @@ class MainOverlaysModeTest(
             )
 
             main.main()
-
-            self.assertNotIn("MC_PROJECT_NAME", os.environ)
 
         iniciar_mock.assert_called_once()
         request = iniciar_mock.call_args.kwargs["request"]

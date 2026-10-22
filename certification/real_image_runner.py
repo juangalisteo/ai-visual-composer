@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import time
 from dataclasses import dataclass
@@ -53,9 +52,6 @@ class RealImageComponentRunner:
         project_name = (
             f"{self.config.campaign_id}_{scenario.scenario_id}"
         )
-        previous_project = os.environ.get(
-            "MC_PROJECT_NAME"
-        )
 
         try:
             profile = self._build_campaign_profile()
@@ -63,11 +59,9 @@ class RealImageComponentRunner:
                 profile,
                 scenario_dir
             )
-            os.environ[
-                "MC_PROJECT_NAME"
-            ] = project_name
-
-            project = ProjectManager()
+            project = ProjectManager(
+                project_name=project_name
+            )
             project.setup()
             self._write_storyboard(
                 project.storyboard_path(),
@@ -77,7 +71,8 @@ class RealImageComponentRunner:
             manifest_path = ImageBuilder(
                 comfyui_url=self.config.comfyui_url,
                 workflow_path=self.config.workflow_path,
-                profile=profile
+                profile=profile,
+                project=project,
             ).build(
                 storyboard_path=project.storyboard_path(),
                 output_dir=project.images_dir(),
@@ -170,11 +165,6 @@ class RealImageComponentRunner:
                     ),
                 ),
                 metadata=metadata,
-            )
-        finally:
-            _restore_env(
-                "MC_PROJECT_NAME",
-                previous_project
             )
 
     def _build_campaign_profile(
@@ -610,18 +600,3 @@ def _file_fingerprint(
                 chunk
             )
     return digest.hexdigest()
-
-
-def _restore_env(
-    name: str,
-    value: str | None
-) -> None:
-    if value is None:
-        os.environ.pop(
-            name,
-            None
-        )
-    else:
-        os.environ[
-            name
-        ] = value

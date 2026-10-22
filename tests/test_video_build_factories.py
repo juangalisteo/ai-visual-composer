@@ -253,7 +253,7 @@ class VideoBuildFactoriesTest(
             config_manager=config_manager,
         )
 
-    def test_context_factory_uses_injected_project_without_environment_lookup(self):
+    def test_context_factory_uses_injected_project_without_fallback_project(self):
         project = SimpleNamespace(
             subtitle_path=lambda: Path("project.srt"),
             storyboard_path=lambda: Path("project_storyboard.json"),
@@ -277,7 +277,7 @@ class VideoBuildFactoriesTest(
 
         with patch(
             "app.modules.video.video_build_context_factory.ProjectManager",
-            side_effect=AssertionError("No debe consultar MC_PROJECT_NAME."),
+            side_effect=AssertionError("No debe crear un proyecto de reserva."),
         ), patch(
             "app.modules.video.video_build_context_factory.AudioResolver"
         ) as audio_resolver_class, patch(

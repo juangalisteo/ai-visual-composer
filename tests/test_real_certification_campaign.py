@@ -525,6 +525,13 @@ class RealCertificationCampaignTest(unittest.TestCase):
             self.assertTrue(
                 observation.approved
             )
+            project_manager.assert_called_once_with(
+                project_name="explicit_profile_portrait"
+            )
+            self.assertIs(
+                project,
+                image_builder.call_args.kwargs["project"]
+            )
             injected_profile = image_builder.call_args.kwargs[
                 "profile"
             ]

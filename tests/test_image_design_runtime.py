@@ -10,6 +10,7 @@ from app.core.execution_request import (
     ApplicationExecutionRequest,
     DesignExecutionRequest,
 )
+from app.managers.project_manager import ProjectManager
 from app.modules.design import DesignExecutionCoordinator
 from app.modules.images import ImageDesignPreparationService
 from app.shared.profile_identity import (
@@ -217,13 +218,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PROJECT_NAME": "design image",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ScriptOperation",
                     side_effect=AssertionError(
                         "ScriptOperation must not run"
@@ -273,6 +268,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     return_value=None
                 ):
                     result = start.ejecutar_diseno_imagen(
+                        project=ProjectManager(project_name="design image"),
                         preparation_service=ImageDesignPreparationService(
                             visual_interpreter=(
                                 FakeVisualDesignInterpreter()

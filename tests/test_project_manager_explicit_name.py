@@ -3,21 +3,11 @@ from app.modules.audio.audio_mixer import AudioMixer
 from unittest.mock import patch
 
 
-def test_explicit_project_name_wins_over_conflicting_legacy_environment(monkeypatch):
-    monkeypatch.setenv("MC_PROJECT_NAME", "legacy project")
-
+def test_explicit_project_name_is_sanitized_into_its_output_folder():
     project = ProjectManager(project_name="  request/project  ")
 
     assert project.project_name == "requestproject"
     assert project.base_path.as_posix() == "output/requestproject"
-
-
-def test_project_manager_without_explicit_name_keeps_legacy_environment(monkeypatch):
-    monkeypatch.setenv("MC_PROJECT_NAME", "legacy project")
-
-    project = ProjectManager()
-
-    assert project.project_name == "legacy project"
 
 
 def test_audio_mixer_with_explicit_artifacts_does_not_construct_legacy_project(

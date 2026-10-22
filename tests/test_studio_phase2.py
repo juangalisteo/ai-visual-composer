@@ -18,6 +18,7 @@ from app.core.start import (
     ejecutar_studio,
     iniciar,
 )
+from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
     StudioInputMode,
     StudioOutputPathResolver,
@@ -214,14 +215,10 @@ class StudioPhase2Test(unittest.TestCase):
             self.assertEqual(b"valid-existing", output_path.read_bytes())
 
     def test_default_output_resolver_uses_project_manager_contract(self):
-        with patch.dict(
-            "os.environ",
-            {"MC_PROJECT_NAME": "Proyecto Studio"},
-            clear=True,
-        ):
-            output_path = StudioOutputPathResolver().resolve(
-                self.profile_key,
-            )
+        output_path = StudioOutputPathResolver().resolve(
+            self.profile_key,
+            project=ProjectManager(project_name="Proyecto Studio"),
+        )
 
         self.assertEqual(
             Path("output/Proyecto Studio/video/Proyecto Studio.mp4"),
