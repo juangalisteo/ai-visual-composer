@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 
 from app.modules.audio.voice_configuration import load_tts_voice_configuration
@@ -122,45 +121,8 @@ class ConfigManager:
         )
 
     def get_operational_profile_key(self):
-        """Read canonical operational identity without subtitle family."""
-        if self._operational_profile_key is not None:
-            return self._operational_profile_key
-
-        values = (
-            os.environ.get("MC_PROFILE_COMPONENT", "").strip(),
-            os.environ.get("MC_PROFILE_PLATFORM", "").strip(),
-            os.environ.get("MC_PROFILE_ID", "").strip(),
-        )
-        if not any(values):
-            return None
-        if not all(values):
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="La identidad operacional esta incompleta.",
-                recommended_action=(
-                    "Configure component, platform y profile_id antes de "
-                    "iniciar la operacion."
-                ),
-                operation="Leer identidad operacional",
-                technical_metadata={
-                    "component_present": bool(values[0]),
-                    "platform_present": bool(values[1]),
-                    "profile_id_present": bool(values[2]),
-                },
-            )
-        try:
-            return OperationalProfileKey(*values)
-        except (TypeError, ValueError) as error:
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="La identidad operacional configurada no es valida.",
-                recommended_action=(
-                    "Revise component, platform y profile_id de la "
-                    "configuracion activa."
-                ),
-                operation="Leer identidad operacional",
-                resource="MC_PROFILE_COMPONENT/MC_PROFILE_PLATFORM/MC_PROFILE_ID",
-            ) from error
+        """Return the injected operational identity, or None without one."""
+        return self._operational_profile_key
 
     def get_subtitle_profile_by_key(self, subtitle_profile_key):
         """Resolve a modern, complete subtitle identity without adaptation."""

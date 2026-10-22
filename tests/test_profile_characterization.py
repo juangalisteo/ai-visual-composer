@@ -1,8 +1,6 @@
 import json
-import os
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from app.modules.video_component.profile_parameters import (
     load_video_component_parameters,
@@ -124,19 +122,12 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         _operational_key(profile_key)
                     )
                     video_style = profile["video_style"]
-                    environment = self._identity_environment(
-                        profile_key
-                    )
-                    with patch.dict(
-                        os.environ,
-                        environment,
-                        clear=True
-                    ):
-                        subtitle_profile = (
-                            ConfigManager().get_subtitle_profile_by_key(
-                                _official_subtitle_key(profile_key)
-                            )
+                    subtitle_profile = (
+                        self._config_manager(profile_key)
+                        .get_subtitle_profile_by_key(
+                            _official_subtitle_key(profile_key)
                         )
+                    )
                     subtitles = subtitle_profile.render_style
 
                     self.assertEqual(
@@ -317,20 +308,12 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     ProfileComponent.VIDEO,
                     platform
                 )
-                environment = self._identity_environment(
-                    profile_key
-                )
-                with patch.dict(
-                    os.environ,
-                    environment,
-                    clear=True
-                ):
-                    subtitle_profile = (
-                        ConfigManager()
-                        .get_subtitle_profile_by_key(
-                            _official_subtitle_key(profile_key)
-                        )
+                subtitle_profile = (
+                    self._config_manager(profile_key)
+                    .get_subtitle_profile_by_key(
+                        _official_subtitle_key(profile_key)
                     )
+                )
 
                 self.assertEqual(
                     expected["subtitle_config"],
@@ -407,23 +390,15 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     platform
                 )
 
-                with patch.dict(
-                    os.environ,
-                    self._identity_environment(profile_key),
-                    clear=True
-                ):
-                    identity_profile = (
-                        ConfigManager()
-                        .get_profile_config()
-                    )
-                    subtitle_profile = (
-                        ConfigManager().get_subtitle_profile_by_key(
-                            _official_subtitle_key(profile_key)
-                        )
-                    )
-                    identity_video = VideoConfigLoader(
-                        subtitle_profile=subtitle_profile
-                    ).load()
+                config = self._config_manager(profile_key)
+                identity_profile = config.get_profile_config()
+                subtitle_profile = config.get_subtitle_profile_by_key(
+                    _official_subtitle_key(profile_key)
+                )
+                identity_video = VideoConfigLoader(
+                    subtitle_profile=subtitle_profile,
+                    config_manager=config,
+                ).load()
 
                 self.assertEqual(
                     self.resolver.load_operational(
@@ -448,15 +423,13 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     )
                 )
 
-    def _identity_environment(
+    def _config_manager(
         self,
         profile_key
     ):
-        return {
-            "MC_PROFILE_COMPONENT": profile_key.component.value,
-            "MC_PROFILE_PLATFORM": profile_key.platform,
-            "MC_PROFILE_ID": profile_key.profile_id,
-        }
+        return ConfigManager(
+            operational_profile_key=_operational_key(profile_key)
+        )
 
     def _load(
         self,

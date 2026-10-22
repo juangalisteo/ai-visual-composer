@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 from app.controllers.run_controller import RunController
 from app.core.start import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
@@ -40,34 +38,23 @@ class _OperationalResolver:
 
 def test_m3_config_manager_loads_operational_profile_without_subtitle_family():
     resolver = ProfileResolver()
-    manager = ConfigManager(profile_resolver=resolver)
     key = OperationalProfileKey("guion", "instagram", "guion_instagram")
+    manager = ConfigManager(
+        profile_resolver=resolver,
+        operational_profile_key=key,
+    )
 
-    with patch.dict(
-        "os.environ",
-        {
-            "MC_PROFILE_COMPONENT": "guion",
-            "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "guion_instagram",
-        },
-        clear=False,
-    ):
-        assert manager.get_operational_profile_key() == key
-        assert manager.get_profile_config() == resolver.load_operational(key)
+    assert manager.get_operational_profile_key() == key
+    assert manager.get_profile_config() == resolver.load_operational(key)
 
 
-def test_explicit_operational_key_wins_over_conflicting_legacy_environment(
-    monkeypatch,
-):
+def test_explicit_operational_key_is_returned_as_the_same_object():
     resolver = ProfileResolver()
     explicit_key = OperationalProfileKey(
         "guion",
         "instagram",
         "guion_instagram",
     )
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", "video")
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", "youtube")
-    monkeypatch.setenv("MC_PROFILE_ID", "video_youtube")
 
     manager = ConfigManager(
         profile_resolver=resolver,
@@ -76,21 +63,6 @@ def test_explicit_operational_key_wins_over_conflicting_legacy_environment(
 
     assert manager.get_operational_profile_key() is explicit_key
     assert manager.get_profile_config() == resolver.load_operational(explicit_key)
-
-
-def test_config_manager_without_explicit_key_keeps_legacy_environment_fallback(
-    monkeypatch,
-):
-    legacy_key = OperationalProfileKey(
-        "video",
-        "youtube",
-        "video_youtube",
-    )
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", legacy_key.component.value)
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", legacy_key.platform)
-    monkeypatch.setenv("MC_PROFILE_ID", legacy_key.profile_id)
-
-    assert ConfigManager().get_operational_profile_key() == legacy_key
 
 
 def test_m3_run_controller_selects_operational_key_without_family():

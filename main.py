@@ -72,11 +72,6 @@ def _run_main():
 
     request = adapt_legacy_run_options(options)
 
-    # Operational identity travels in ApplicationExecutionRequest. Remove any
-    # stale legacy bridge values so the modern path cannot consult them.
-    os.environ.pop("MC_PROFILE_COMPONENT", None)
-    os.environ.pop("MC_PROFILE_PLATFORM", None)
-    os.environ.pop("MC_PROFILE_ID", None)
     # Project identity is carried by ApplicationExecutionRequest. Remove any
     # stale legacy value so the modern path cannot recreate its project from
     # process environment.

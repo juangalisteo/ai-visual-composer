@@ -14,6 +14,7 @@ from app.modules.video.video_build_context import (
 )
 from app.modules.video.video_render_service import VideoRenderService
 from app.modules.video.video_validator import VideoValidator
+from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -54,9 +55,6 @@ class I2VCompositionTest(unittest.TestCase):
             "video_instagram",
         )
         environment = {
-            "MC_PROFILE_COMPONENT": profile_key.component.value,
-            "MC_PROFILE_PLATFORM": profile_key.platform,
-            "MC_PROFILE_ID": profile_key.profile_id,
             "MC_PROFILE_PATH": "C:/arbitrary/profile.json",
         }
 
@@ -68,7 +66,10 @@ class I2VCompositionTest(unittest.TestCase):
             output_path = Path(directory) / "video" / "final.mp4"
             diagnostics = FFmpegDiagnostics(
                 output_path=output_path,
-                scene_count=2
+                scene_count=2,
+                config_manager=ConfigManager(
+                    operational_profile_key=profile_key
+                ),
             )
             persisted = json.loads(
                 diagnostics.path.read_text(

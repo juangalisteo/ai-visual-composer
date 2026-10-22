@@ -1,5 +1,4 @@
 import json
-import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -287,16 +286,12 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
     def test_official_config_manager_never_loads_legacy_subtitle_json(self):
         for component, platform, style in self._cases():
-            environment = self._environment(
-                component,
-                platform
-            )
             with self.subTest(
                 component=component.value,
                 platform=platform,
                 style=style
-            ), patch.dict(os.environ, environment, clear=True):
-                manager = ConfigManager()
+            ):
+                manager = self._config_manager(component, platform)
                 with patch.object(
                     manager,
                     "load_json",
@@ -319,10 +314,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         )
 
         for component, platform, style in self._cases():
-            environment = self._environment(
-                component,
-                platform
-            )
+            config = self._config_manager(component, platform)
             main_profile = self.profile_resolver.load_operational(
                 OperationalProfileKey(
                     component,
@@ -341,8 +333,8 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 component=component.value,
                 platform=platform,
                 style=style
-            ), patch.dict(os.environ, environment, clear=True):
-                resolved = ConfigManager().get_subtitle_profile_by_key(
+            ):
+                resolved = config.get_subtitle_profile_by_key(
                     self._key(component, platform, style)
                 )
                 optimizer = SrtOptimizer(
@@ -350,7 +342,8 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     render_fps=fps
                 )
                 video_config = VideoConfigLoader(
-                    subtitle_profile=resolved
+                    subtitle_profile=resolved,
+                    config_manager=config,
                 ).load()
 
             self.assertEqual(expected_cue, resolved.cue_policy)
@@ -373,22 +366,22 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             )
 
     def test_video_config_uses_injected_resolved_render_style(self):
-        environment = self._environment(
+        config = self._config_manager(
             ProfileComponent.VIDEO,
             "youtube"
         )
 
-        with patch.dict(os.environ, environment, clear=True):
-            resolved = ConfigManager().get_subtitle_profile_by_key(
-                self._key(
-                    ProfileComponent.VIDEO,
-                    "youtube",
-                    "single_line"
-                )
+        resolved = config.get_subtitle_profile_by_key(
+            self._key(
+                ProfileComponent.VIDEO,
+                "youtube",
+                "single_line"
             )
-            loaded = VideoConfigLoader(
-                subtitle_profile=resolved
-            ).load()
+        )
+        loaded = VideoConfigLoader(
+            subtitle_profile=resolved,
+            config_manager=config,
+        ).load()
 
         expected = self._load(
             self._expected_path(
@@ -441,16 +434,18 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 for style in self.STYLES:
                     yield component, platform, style
 
-    def _environment(
+    def _config_manager(
         self,
         component,
         platform
     ):
-        return {
-            "MC_PROFILE_COMPONENT": component.value,
-            "MC_PROFILE_PLATFORM": platform,
-            "MC_PROFILE_ID": f"{component.value}_{platform}",
-        }
+        return ConfigManager(
+            operational_profile_key=OperationalProfileKey(
+                component,
+                platform,
+                f"{component.value}_{platform}",
+            )
+        )
 
     def _key(
         self,

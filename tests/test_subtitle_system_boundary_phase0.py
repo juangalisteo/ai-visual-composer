@@ -66,14 +66,6 @@ def _operational_key(component, platform):
     )
 
 
-def _operational_environment(operational_key):
-    return {
-        "MC_PROFILE_COMPONENT": operational_key.component.value,
-        "MC_PROFILE_PLATFORM": operational_key.platform,
-        "MC_PROFILE_ID": operational_key.profile_id,
-    }
-
-
 def _operational_projection(profile, component):
     if component is ProfileComponent.STUDIO:
         studio = profile["studio"]
@@ -101,31 +93,26 @@ def _operational_projection(profile, component):
 @pytest.mark.parametrize("component", COMPONENTS)
 @pytest.mark.parametrize("platform", PLATFORMS)
 def test_phase0_standard_selection_preserves_system_operational_projection(
-    monkeypatch,
     component,
     platform,
 ):
     """A STANDARD selection may resolve subtitle data, never mutate SYSTEM data."""
     operational_key = _operational_key(component, platform)
-    manager = ConfigManager()
+    manager = ConfigManager(operational_profile_key=operational_key)
     resolver = SubtitleProfileResolver()
     descriptor = resolver.discover_profiles_for_family(
         component, platform, "estandar",
     )[0]
 
-    with monkeypatch.context() as context:
-        for name, value in _operational_environment(operational_key).items():
-            context.setenv(name, value)
-
-        before = _operational_projection(
-            manager.get_profile_config(),
-            component,
-        )
-        resolved = manager.get_subtitle_profile_by_key(descriptor.key)
-        after = _operational_projection(
-            manager.get_profile_config(),
-            component,
-        )
+    before = _operational_projection(
+        manager.get_profile_config(),
+        component,
+    )
+    resolved = manager.get_subtitle_profile_by_key(descriptor.key)
+    after = _operational_projection(
+        manager.get_profile_config(),
+        component,
+    )
 
     assert resolved.key.family == "estandar"
     assert resolved.key.component is component
@@ -197,7 +184,6 @@ def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
 
 @pytest.mark.parametrize("component", COMPONENTS)
 def test_phase1_design_selection_keeps_system_operational_projection(
-    monkeypatch,
     component,
 ):
     system_key = _operational_key(component, "instagram")
@@ -209,18 +195,15 @@ def test_phase1_design_selection_keeps_system_operational_projection(
         component, "instagram", "estandar",
     )[0].key
 
-    with monkeypatch.context() as context:
-        for name, value in _operational_environment(system_key).items():
-            context.setenv(name, value)
-        manager = ConfigManager()
-        before = _operational_projection(
-            manager.get_profile_config(), component,
-        )
-        standard = manager.get_subtitle_profile_by_key(standard_key)
-        design = manager.get_subtitle_profile_by_key(subtitle_key)
-        after = _operational_projection(
-            manager.get_profile_config(), component,
-        )
+    manager = ConfigManager(operational_profile_key=system_key)
+    before = _operational_projection(
+        manager.get_profile_config(), component,
+    )
+    standard = manager.get_subtitle_profile_by_key(standard_key)
+    design = manager.get_subtitle_profile_by_key(subtitle_key)
+    after = _operational_projection(
+        manager.get_profile_config(), component,
+    )
 
     assert standard.key.family == "estandar"
     assert design.key.family == "design"
@@ -239,13 +222,10 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
     )
     design = resolver.load(design_subtitle_key)
 
-    manager = ConfigManager()
-    with pytest.MonkeyPatch.context() as context:
-        for name, value in _operational_environment(system_key).items():
-            context.setenv(name, value)
-        rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
-        assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
-        assert manager.get_operational_profile_key().platform == "instagram"
+    manager = ConfigManager(operational_profile_key=system_key)
+    rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
+    assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
+    assert manager.get_operational_profile_key().platform == "instagram"
 
     assert rendered.cue_policy == design.cue_policy
     assert rendered.render_style == design.render_style
@@ -259,18 +239,15 @@ def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():
     )
     assert descriptors
 
-    with pytest.MonkeyPatch.context() as context:
-        for name, value in _operational_environment(system_key).items():
-            context.setenv(name, value)
-        manager = ConfigManager()
-        for descriptor in descriptors:
-            design = resolver.load(descriptor.key)
-            selected = manager.get_subtitle_profile_by_key(descriptor.key)
+    manager = ConfigManager(operational_profile_key=system_key)
+    for descriptor in descriptors:
+        design = resolver.load(descriptor.key)
+        selected = manager.get_subtitle_profile_by_key(descriptor.key)
 
-            assert selected.key == descriptor.key
-            assert selected.cue_policy["mode"] == descriptor.mode
-            assert selected.cue_policy == design.cue_policy
-            assert selected.render_style == design.render_style
+        assert selected.key == descriptor.key
+        assert selected.cue_policy["mode"] == descriptor.mode
+        assert selected.cue_policy == design.cue_policy
+        assert selected.render_style == design.render_style
 
 
 def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():

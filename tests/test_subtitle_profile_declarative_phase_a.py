@@ -1,10 +1,9 @@
 import json
-import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
@@ -239,15 +238,9 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             self.assertNotIn(custom_id, messages)
             self.assertNotIn("ORIGINAL", "\n".join(messages))
 
-            environment = {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            }
-            with patch.dict(os.environ, environment, clear=True):
-                resolved = ConfigManager(
-                    subtitle_profile_resolver=resolver,
-                ).get_subtitle_profile_by_key(by_id[custom_id].key)
+            resolved = ConfigManager(
+                subtitle_profile_resolver=resolver,
+            ).get_subtitle_profile_by_key(by_id[custom_id].key)
 
             self.assertEqual(custom_path, resolved.path)
             self.assertEqual(custom_id, resolved.key.profile_id)

@@ -162,16 +162,9 @@ class ScriptComponentProfilesTest(
             "youtube",
             "guion_youtube",
         )
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "guion",
-                "MC_PROFILE_PLATFORM": "youtube",
-                "MC_PROFILE_ID": profile_key.profile_id,
-            },
-            clear=True
-        ):
-            profile = ConfigManager().get_profile_config()
+        profile = ConfigManager(
+            operational_profile_key=profile_key
+        ).get_profile_config()
 
         self.assertEqual(
             "youtube",

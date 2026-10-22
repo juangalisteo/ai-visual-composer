@@ -583,41 +583,23 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         profile_key
                     )
 
-                    with patch.dict(
-                        os.environ,
-                        {
-                            "MC_PROFILE_COMPONENT": component.value,
-                            "MC_PROFILE_PLATFORM": platform,
-                            "MC_PROFILE_ID": profile_key.profile_id,
-                        },
-                        clear=True
-                    ):
-                        identity_profile = (
-                            ConfigManager().get_profile_config()
-                        )
+                    identity_profile = ConfigManager(
+                        operational_profile_key=profile_key
+                    ).get_profile_config()
 
                     self.assertEqual(
                         expected_profile,
                         identity_profile
                     )
 
-    def test_config_manager_loads_design_key_regardless_of_family_environment(self):
+    def test_config_manager_loads_design_subtitle_key_as_given(self):
         design_key = SubtitleProfileResolver().discover_profiles_for_family(
             "video", "instagram", "design",
         )[0].key
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "video",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "video_instagram",
-            },
-            clear=True,
-        ):
-            self.assertEqual(
-                SubtitleProfileResolver().load(design_key),
-                ConfigManager().get_subtitle_profile_by_key(design_key),
-            )
+        self.assertEqual(
+            SubtitleProfileResolver().load(design_key),
+            ConfigManager().get_subtitle_profile_by_key(design_key),
+        )
 
     def test_official_identity_does_not_require_profile_path_adapter(self):
         for component in ProfileComponent:
@@ -631,16 +613,9 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         platform,
                         OPERATIONAL_PROFILE_IDS[(component, platform)],
                     )
-                    with patch.dict(
-                        os.environ,
-                        {
-                            "MC_PROFILE_COMPONENT": component.value,
-                            "MC_PROFILE_PLATFORM": platform,
-                            "MC_PROFILE_ID": profile_key.profile_id,
-                        },
-                        clear=True
-                    ):
-                        profile = ConfigManager().get_profile_config()
+                    profile = ConfigManager(
+                        operational_profile_key=profile_key
+                    ).get_profile_config()
 
                     self.assertEqual(
                         self.resolver.load_operational(
@@ -649,43 +624,26 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                         profile
                     )
 
-    def test_config_manager_rejects_partial_identity(self):
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "video",
-                "MC_PROFILE_PLATFORM": "",
-                "MC_PROFILE_ID": "",
-            },
-            clear=True
-        ):
-            with self.assertRaises(OperationalError) as caught:
-                ConfigManager().get_profile_config()
-
-        self.assertEqual("CONFIG", caught.exception.context.family)
-
     def test_external_profile_path_cannot_override_identity(self):
+        profile_key = OperationalProfileKey(
+            ProfileComponent.VIDEO,
+            "instagram",
+            "video_instagram",
+        )
         with patch.dict(
             os.environ,
             {
                 "MC_PROFILE_PATH": (
                     "ignored-profile.json"
                 ),
-                "MC_PROFILE_COMPONENT": "video",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "video_instagram",
             },
             clear=True
         ):
-            profile = ConfigManager().get_profile_config()
+            profile = ConfigManager(
+                operational_profile_key=profile_key
+            ).get_profile_config()
 
-        expected = self.resolver.load_operational(
-            OperationalProfileKey(
-                ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
-            )
-        )
+        expected = self.resolver.load_operational(profile_key)
         self.assertEqual(expected, profile)
 
     def test_missing_identity_fails_without_app_fallback(self):
@@ -880,9 +838,6 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
-            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
-            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
-            self.assertNotIn("MC_PROFILE_ID", os.environ)
             self.assertNotIn("MC_PROFILE_FAMILY", os.environ)
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
@@ -930,9 +885,6 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROFILE_FAMILY", os.environ)
-            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
-            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
-            self.assertNotIn("MC_PROFILE_ID", os.environ)
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
         iniciar_mock.assert_called_once()
         request = iniciar_mock.call_args.kwargs["request"]

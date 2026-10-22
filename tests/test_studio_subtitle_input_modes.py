@@ -1,6 +1,5 @@
 import hashlib
 import json
-import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -353,16 +352,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "00:00:12,000 --> 00:00:13,500\n"
             "Segundo cue humano\n"
         )
-        environment = {
-            "MC_PROFILE_COMPONENT": "studio",
-            "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "studio_instagram",
-        }
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            environment,
-            clear=False,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             base = root / "demo" / "subtitles" / "demo.srt"
             base.parent.mkdir(parents=True)
@@ -416,16 +406,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             "00:00:01,000 --> 00:00:02,000\n"
             "Texto humano sin cambios\n"
         )
-        environment = {
-            "MC_PROFILE_COMPONENT": "studio",
-            "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "studio_instagram",
-        }
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            environment,
-            clear=False,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             base = root / "demo" / "subtitles" / "demo.srt"
             base.parent.mkdir(parents=True)
@@ -830,15 +811,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertEqual("test_profile", descriptors[0].profile_id)
 
     def test_design_video_audio_srt_uses_its_autonomous_subtitle_profile(self):
-        environment = {
-            "MC_PROFILE_COMPONENT": "studio",
-            "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "studio_instagram",
-        }
-        with patch.dict(os.environ, environment, clear=False):
-            subtitle_profile = ConfigManager().get_subtitle_profile_by_key(
-                self._design_subtitle_key(),
-            )
+        subtitle_profile = ConfigManager().get_subtitle_profile_by_key(
+            self._design_subtitle_key(),
+        )
 
         self.assertEqual("word_by_word", subtitle_profile.cue_policy["mode"])
         self.assertEqual("oswald", subtitle_profile.render_style["font"])

@@ -735,7 +735,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         self.assertIs(projects.return_value, exporter.call_args.kwargs["project"])
         projects.assert_called_once_with(project_name="demo")
 
-    def test_main_transcribe_clears_profile_transport(self):
+    def test_main_transcribe_sends_no_operational_profile_key(self):
         plan = StudioSubtitleExportPlan(
             StudioSubtitleExportMode.TRANSCRIBIR,
             Path("input/studio/exportar_srt/source.mp3"),
@@ -753,15 +753,9 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             "studio_subtitle_export_plan": plan,
             "clear_output": False,
         }
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ), patch("main.RunController") as controller, patch(
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "main.RunController"
+        ) as controller, patch(
             "main.iniciar",
             return_value=Mock(),
         ) as iniciar_mock, patch(
@@ -769,9 +763,6 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         ):
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
-            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
-            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
-            self.assertNotIn("MC_PROFILE_ID", os.environ)
         iniciar_mock.assert_called_once()
         request = iniciar_mock.call_args.kwargs["request"]
         self.assertIs(plan, request.route.plan)

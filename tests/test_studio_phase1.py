@@ -66,6 +66,9 @@ class StudioPhase1Test(unittest.TestCase):
             self.operational_key,
         )
 
+    def _config_manager(self):
+        return ConfigManager(operational_profile_key=self.operational_key)
+
     def test_studio_is_an_official_component_with_exact_profiles(self):
         resolver = ProfileResolver()
         self.assertEqual(ProfileComponent.STUDIO.value, "studio")
@@ -538,9 +541,6 @@ class StudioPhase1Test(unittest.TestCase):
         ) as output_manager:
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
-            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
-            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
-            self.assertNotIn("MC_PROFILE_ID", os.environ)
             self.assertNotIn("MC_PIPELINE_MODE", os.environ)
 
         start.assert_called_once()
@@ -584,15 +584,7 @@ class StudioPhase1Test(unittest.TestCase):
         output_manager.return_value.reset.assert_called_once_with()
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "srt_video"
             input_dir.mkdir()
@@ -606,6 +598,7 @@ class StudioPhase1Test(unittest.TestCase):
             result = preparar_studio(
                 subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                 input_mode="srt_video",
+                config_manager=self._config_manager(),
                 input_preparation_service=StudioInputPreparationService(input_root),
             )
 
@@ -614,15 +607,7 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual("three_two_words", result.subtitle_profile.cue_policy["mode"])
 
     def test_solo_video_requires_audio_before_whisper_or_render(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "video"
             input_dir.mkdir()
@@ -640,6 +625,7 @@ class StudioPhase1Test(unittest.TestCase):
 
             def prepare(**options):
                 return preparar_studio(
+                    config_manager=self._config_manager(),
                     input_preparation_service=input_service,
                     media_probe=probe,
                     **options,
@@ -665,15 +651,7 @@ class StudioPhase1Test(unittest.TestCase):
         resolver.resolve.assert_not_called()
 
     def test_solo_video_with_audio_keeps_preparation_contract(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "video"
             input_dir.mkdir()
@@ -688,6 +666,7 @@ class StudioPhase1Test(unittest.TestCase):
             prepared = preparar_studio(
                 subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                 input_mode="video",
+                config_manager=self._config_manager(),
                 input_preparation_service=StudioInputPreparationService(
                     input_root
                 ),
@@ -699,15 +678,7 @@ class StudioPhase1Test(unittest.TestCase):
         probe.inspect.assert_called_once_with(video_path)
 
     def test_srt_video_does_not_probe_or_require_audio(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "srt_video"
             input_dir.mkdir()
@@ -721,6 +692,7 @@ class StudioPhase1Test(unittest.TestCase):
             prepared = preparar_studio(
                 subtitle_profile_key=STUDIO_INSTAGRAM_THREE_TWO_KEY,
                 input_mode="srt_video",
+                config_manager=self._config_manager(),
                 input_preparation_service=StudioInputPreparationService(
                     input_root
                 ),
