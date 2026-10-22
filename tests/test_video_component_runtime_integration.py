@@ -9,6 +9,10 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -27,6 +31,32 @@ from app.modules.video_component import (
 from app.modules.video_component.profile_parameters import (
     build_video_backend_overrides,
 )
+from app.modules.video.intro_outro import (
+    IntroOutroPlan,
+    IntroOutroSelection,
+)
+
+
+def _video_request(
+    *,
+    pipeline_mode,
+    operational_profile_key,
+    subtitle_profile_key=None,
+    intro_outro_plan=None,
+):
+    return ApplicationExecutionRequest(
+        project_name="video runtime",
+        clear_output=False,
+        operational_profile_key=operational_profile_key,
+        subtitle_profile_key=subtitle_profile_key,
+        route=StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline="video",
+            script_source="generated",
+            voice_config_id="test_voice",
+            intro_outro_plan=intro_outro_plan,
+        ),
+    )
 
 
 class FakeProject:
@@ -694,7 +724,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video-runtime.mp4"
             )
             resolved_subtitle_profile = object()
-            intro_outro_selection = object()
+            intro_outro_selection = IntroOutroPlan(
+                intro=IntroOutroSelection(Path("intro.mp4"), "intro")
+            )
             requested_subtitle_keys = []
             subtitle_key = SubtitleProfileKey(
                 ProfileComponent.VIDEO,
@@ -738,15 +770,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     requested_subtitle_keys.append(selected_key)
                     return resolved_subtitle_profile
 
-            with patch.dict(
-                "os.environ",
-                {
-                    "MC_VISUAL_PIPELINE": "video",
-                    "MC_PIPELINE_MODE": "full",
-                    "MC_MUSIC_CATEGORY": "",
-                },
-                clear=False,
-            ), patch(
+            with patch(
                 "app.core.start.ProjectManager",
                 return_value=project
             ), patch(
@@ -805,9 +829,15 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 )
 
                 result = start.iniciar(
-                    subtitle_profile_key=subtitle_key,
-                    intro_outro_selection=(
-                        intro_outro_selection
+                    request=_video_request(
+                        pipeline_mode="full",
+                        operational_profile_key=OperationalProfileKey(
+                            ProfileComponent.VIDEO,
+                            "instagram",
+                            "video_instagram",
+                        ),
+                        subtitle_profile_key=subtitle_key,
+                        intro_outro_plan=intro_outro_selection,
                     ),
                 )
 
@@ -822,7 +852,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         clips_builder.assert_called_once()
         srt_optimizer.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
-            render_fps=30
+            render_fps=30,
+            project=project,
         )
         srt_optimizer.return_value.optimize.assert_called_once_with(
             canonical_content="Guion de prueba.",
@@ -830,7 +861,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         video_builder.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
             warnings=ANY,
+            overlays_mode=None,
             intro_outro_selection=intro_outro_selection,
+            config_manager=ANY,
+            project=project,
         )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=video_clips_manifest
@@ -879,15 +913,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     )
 
             config = FakeConfig()
-            with patch.dict(
-                "os.environ",
-                {
-                    "MC_VISUAL_PIPELINE": "video",
-                    "MC_PIPELINE_MODE": "full_without_subtitles",
-                    "MC_MUSIC_CATEGORY": "",
-                },
-                clear=False,
-            ), patch(
+            with patch(
                 "app.core.start.ProjectManager",
                 return_value=project,
             ), patch(
@@ -923,7 +949,16 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 image_builder.return_value.build.return_value = project.images_manifest_path()
                 video_builder.return_value.build.return_value = final_video
 
-                result = start.iniciar()
+                result = start.iniciar(
+                    request=_video_request(
+                        pipeline_mode="full_without_subtitles",
+                        operational_profile_key=OperationalProfileKey(
+                            ProfileComponent.GUION,
+                            "instagram",
+                            "guion_instagram",
+                        ),
+                    ),
+                )
 
         self.assertEqual(final_video, result)
         subtitle_builder.assert_not_called()
@@ -940,7 +975,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         video_builder.assert_called_once_with(
             subtitle_profile=None,
             warnings=ANY,
+            overlays_mode=None,
             render_subtitles=False,
+            config_manager=config,
+            project=project,
         )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=clips_manifest,

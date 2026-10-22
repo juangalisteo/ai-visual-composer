@@ -148,94 +148,56 @@ class _I2VArtifactLease:
         return tuple(failures)
 
 
-def iniciar(
-    subtitle_profile_key=None,
-    intro_outro_selection=None,
-    request=None,
-):
+def iniciar(request):
     pipeline_start = time.perf_counter()
 
-    if request is not None:
-        if not isinstance(request, ApplicationExecutionRequest):
-            raise TypeError(
-                "request debe ser ApplicationExecutionRequest o None."
-            )
-        route = request.route
-        if isinstance(route, StudioExecutionRequest):
-            return _iniciar_studio_request(
-                route=route,
-                subtitle_profile_key=request.subtitle_profile_key,
-                operational_profile_key=request.operational_profile_key,
-                project_name=request.project_name,
-            )
+    if not isinstance(request, ApplicationExecutionRequest):
+        raise TypeError(
+            "request debe ser ApplicationExecutionRequest."
+        )
+    route = request.route
+    if isinstance(route, StudioExecutionRequest):
+        return _iniciar_studio_request(
+            route=route,
+            subtitle_profile_key=request.subtitle_profile_key,
+            operational_profile_key=request.operational_profile_key,
+            project_name=request.project_name,
+        )
 
-        project = ProjectManager(project_name=request.project_name)
-        if isinstance(route, DesignExecutionRequest):
-            design_config = _config_manager_for_operational_key(
-                request.operational_profile_key
-            )
-            if route.mode == "design_image":
-                return ejecutar_diseno_imagen(
-                    pipeline_start=pipeline_start,
-                    project=project,
-                    profile=design_config.get_profile_config(),
-                    ai_config=design_config.get_ai_config(),
-                )
-            return ejecutar_diseno_video(
-                pipeline_start=pipeline_start,
-                project=project,
-                profile_key=request.operational_profile_key,
-                config_manager=design_config,
-            )
-
-        if not isinstance(route, StandardExecutionRequest):
-            raise TypeError("request contiene una ruta de ejecución no soportada.")
-        pipeline_mode = route.pipeline_mode
-        visual_pipeline = route.visual_pipeline
-        script_source = route.script_source
-        music_category = route.music_category
-        voice_config_id = route.voice_config_id
-        overlays_mode = route.overlays_mode
-        intro_outro_selection = route.intro_outro_plan
-        subtitle_profile_key = request.subtitle_profile_key
-        operational_profile_key = request.operational_profile_key
-    else:
-        pipeline_mode = os.environ.get(
-            "MC_PIPELINE_MODE",
-            "full"
-        ).strip().lower()
-
-        if pipeline_mode == "studio":
-            raise ValueError(
-                "STUDIO requiere request=ApplicationExecutionRequest."
-            )
-
-        project = ProjectManager()
-        visual_pipeline = os.environ.get(
-            "MC_VISUAL_PIPELINE",
-            "image"
-        ).strip().lower()
-        script_source = None
-        music_category = None
-        operational_profile_key = None
-        voice_config_id = None
-        overlays_mode = None
-
-        if pipeline_mode == "design_image":
+    project = ProjectManager(project_name=request.project_name)
+    if isinstance(route, DesignExecutionRequest):
+        design_config = _config_manager_for_operational_key(
+            request.operational_profile_key
+        )
+        if route.mode == "design_image":
             return ejecutar_diseno_imagen(
                 pipeline_start=pipeline_start,
-                project=project
+                project=project,
+                profile=design_config.get_profile_config(),
+                ai_config=design_config.get_ai_config(),
             )
+        return ejecutar_diseno_video(
+            pipeline_start=pipeline_start,
+            project=project,
+            profile_key=request.operational_profile_key,
+            config_manager=design_config,
+        )
 
-        if pipeline_mode == "design_video":
-            return ejecutar_diseno_video(
-                pipeline_start=pipeline_start,
-                project=project
-            )
+    if not isinstance(route, StandardExecutionRequest):
+        raise TypeError("request contiene una ruta de ejecución no soportada.")
+    pipeline_mode = route.pipeline_mode
+    visual_pipeline = route.visual_pipeline
+    script_source = route.script_source
+    music_category = route.music_category
+    voice_config_id = route.voice_config_id
+    overlays_mode = route.overlays_mode
+    intro_outro_selection = route.intro_outro_plan
+    subtitle_profile_key = request.subtitle_profile_key
+    operational_profile_key = request.operational_profile_key
 
     config = _config_manager_for_operational_key(
-        operational_profile_key if request is not None else None,
-        voice_config_id=voice_config_id if request is not None else None,
+        operational_profile_key,
+        voice_config_id=voice_config_id,
     )
 
     if pipeline_mode != "script":
@@ -304,9 +266,8 @@ def iniciar(
         "input_script_path": input_script_path,
         "input_topic_path": input_topic_path,
         "output_script_path": output_script_path,
+        "script_source": script_source,
     }
-    if request is not None:
-        script_options["script_source"] = script_source
     prepared_script, script_elapsed = _PIPELINE_TELEMETRY.measure_stage(
         ejecutar_guion,
         **script_options,
@@ -334,22 +295,15 @@ def iniciar(
         "voice",
         False
     ):
-        if request is not None and voice_config_id is None:
+        if voice_config_id is None:
             raise ValueError(
                 "La ruta moderna requiere voice_config_id para generar voz."
             )
-        voice_options = {}
-        if request is not None:
-            voice_options["output_path"] = project.audio_path()
-        voice_builder = (
-            VoiceBuilder(config_manager=config)
-            if request is not None
-            else VoiceBuilder()
-        )
+        voice_builder = VoiceBuilder(config_manager=config)
         voice_path, voice_elapsed = _PIPELINE_TELEMETRY.measure_stage(
             voice_builder.build,
             prepared_script.text,
-            **voice_options,
+            output_path=project.audio_path(),
         )
 
         stage_times["Voces"] = (
@@ -357,12 +311,6 @@ def iniciar(
         )
 
         final_result = voice_path
-
-        if request is None:
-            music_category = os.environ.get(
-                "MC_MUSIC_CATEGORY",
-                ""
-            ).strip()
 
         audio_start = time.perf_counter()
 
@@ -375,14 +323,12 @@ def iniciar(
         else:
             music_path = None
 
-        audio_options = {"music_path": music_path}
-        if request is not None:
-            audio_options.update(
-                voice_path=voice_path,
-                output_path=project.final_audio_path(),
-                project=project,
-            )
-        final_audio_path = AudioMixer().build(**audio_options)
+        final_audio_path = AudioMixer().build(
+            voice_path=voice_path,
+            music_path=music_path,
+            output_path=project.final_audio_path(),
+            project=project,
+        )
 
         stage_times["Audio"] = (
             time.perf_counter()
@@ -412,20 +358,16 @@ def iniciar(
             time.perf_counter()
         )
 
-        subtitle_options = {}
-        if request is not None:
-            subtitle_options.update(
-                audio_path=project.audio_path(),
-                output_path=project.subtitle_path(),
-            )
-        subtitle_path = SubtitleBuilder().build(**subtitle_options)
+        subtitle_path = SubtitleBuilder().build(
+            audio_path=project.audio_path(),
+            output_path=project.subtitle_path(),
+        )
 
         optimizer_options = {
             "subtitle_profile": subtitle_profile,
             "render_fps": _required_render_fps(profile),
+            "project": project,
         }
-        if request is not None:
-            optimizer_options["project"] = project
         optimized_subtitle_path = (
             SrtOptimizer(**optimizer_options).optimize(
                 canonical_content=prepared_script.text,
@@ -456,13 +398,9 @@ def iniciar(
         "storyboard",
         False
     ):
-        storyboard_builder = (
-            StoryboardBuilder(
-                config_manager=config,
-                project=project,
-            )
-            if request is not None
-            else StoryboardBuilder()
+        storyboard_builder = StoryboardBuilder(
+            config_manager=config,
+            project=project,
         )
         storyboard_path, storyboard_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
@@ -490,13 +428,9 @@ def iniciar(
         "images",
         False
     ):
-        image_builder = (
-            ImageBuilder(
-                profile=profile,
-                project=project,
-            )
-            if request is not None
-            else ImageBuilder()
+        image_builder = ImageBuilder(
+            profile=profile,
+            project=project,
         )
         images_manifest_path, images_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
@@ -515,9 +449,8 @@ def iniciar(
     video_builder_options = {
         "subtitle_profile": subtitle_profile,
         "warnings": summary.warnings,
+        "overlays_mode": overlays_mode,
     }
-    if request is not None:
-        video_builder_options["overlays_mode"] = overlays_mode
     if not render_subtitles:
         video_builder_options["render_subtitles"] = False
     if intro_outro_selection is not None:
@@ -532,14 +465,7 @@ def iniciar(
             "full_without_subtitles",
         }
     ):
-        profile_key = (
-            operational_profile_key
-            if (
-                request is not None
-                and operational_profile_key is not None
-            )
-            else config.get_operational_profile_key()
-        )
+        profile_key = operational_profile_key
         if (
             isinstance(
                 profile_key,
@@ -578,14 +504,10 @@ def iniciar(
         video_path, video_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
                 _build_i2v_public_video,
-                video_builder=(
-                    VideoBuilder(
-                        **video_builder_options,
-                        config_manager=config,
-                        project=project,
-                    )
-                    if request is not None
-                    else VideoBuilder(**video_builder_options)
+                video_builder=VideoBuilder(
+                    **video_builder_options,
+                    config_manager=config,
+                    project=project,
                 ),
                 video_clips_manifest_path=(
                     video_clips_manifest_path
@@ -608,14 +530,10 @@ def iniciar(
     ):
         video_path, video_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
-                (
-                    VideoBuilder(
-                        **video_builder_options,
-                        config_manager=config,
-                        project=project,
-                    )
-                    if request is not None
-                    else VideoBuilder(**video_builder_options)
+                VideoBuilder(
+                    **video_builder_options,
+                    config_manager=config,
+                    project=project,
                 ).build
             )
         )
@@ -961,15 +879,8 @@ def ejecutar_guion(
     input_script_path,
     input_topic_path,
     output_script_path,
-    script_source=None,
+    script_source,
 ):
-    source_mode = script_source
-    if source_mode is None:
-        source_mode = os.environ.get(
-            "MC_SCRIPT_SOURCE",
-            "generated"
-        ).strip().lower()
-
     return ScriptOperation().execute(
         builders=builders,
         ai_config=ai_config,
@@ -977,7 +888,7 @@ def ejecutar_guion(
         input_script_path=input_script_path,
         input_topic_path=input_topic_path,
         output_script_path=output_script_path,
-        source_mode=source_mode
+        source_mode=script_source
     )
 
 

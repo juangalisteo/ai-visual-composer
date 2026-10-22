@@ -6,8 +6,16 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+)
 from app.modules.design import DesignExecutionCoordinator
 from app.modules.images import ImageDesignPreparationService
+from app.shared.profile_identity import (
+    OperationalProfileKey,
+    ProfileComponent,
+)
 
 
 class FakeVisualDesignInterpreter:
@@ -118,17 +126,24 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "design_image",
-                        "MC_PROJECT_NAME": "design start",
-                    },
-                    clear=False
-                ), patch(
-                    "app.core.start.ConfigManager",
+                operational_profile_key = OperationalProfileKey(
+                    ProfileComponent.IMAGEN,
+                    "test_platform",
+                    "test_profile",
+                )
+                request = ApplicationExecutionRequest(
+                    project_name="design start",
+                    clear_output=False,
+                    operational_profile_key=operational_profile_key,
+                    subtitle_profile_key=None,
+                    route=DesignExecutionRequest(mode="design_image"),
+                )
+                with patch(
+                    "app.core.start.ConfigManager"
+                ) as config_manager, patch(
+                    "app.core.start.ScriptOperation",
                     side_effect=AssertionError(
-                        "ConfigManager must not run before design route"
+                        "ScriptOperation must not run before design route"
                     )
                 ), patch(
                     "app.modules.design.execution_coordinator.ImageDesignPreparationService",
@@ -142,11 +157,20 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     "app.core.start.MediaProbe.get_duration",
                     return_value=None
                 ):
-                    result = start.iniciar()
+                    config_manager.return_value.get_profile_config.return_value = None
+                    config_manager.return_value.get_ai_config.return_value = None
+                    result = start.iniciar(request=request)
 
+                config_manager.assert_called_once_with(
+                    operational_profile_key=operational_profile_key
+                )
                 self.assertEqual(
                     "images_manifest.json",
                     Path(result).name
+                )
+                self.assertIn(
+                    "design start",
+                    Path(result).parts
                 )
                 self.assertEqual(
                     1,
@@ -196,7 +220,6 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                 with patch.dict(
                     os.environ,
                     {
-                        "MC_PIPELINE_MODE": "design_image",
                         "MC_PROJECT_NAME": "design image",
                     },
                     clear=False

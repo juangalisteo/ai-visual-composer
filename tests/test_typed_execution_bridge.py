@@ -82,7 +82,7 @@ def _standard_request(*, pipeline_mode="script", visual_pipeline="image", **kwar
     )
 
 
-def test_typed_standard_script_uses_request_source_not_environment(monkeypatch):
+def test_typed_standard_script_uses_request_source_not_environment():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -90,9 +90,6 @@ def test_typed_standard_script_uses_request_source_not_environment(monkeypatch):
     prepared_script = SimpleNamespace(text="Texto manual")
     telemetry = _telemetry()
     request = _standard_request(script_source="manual")
-    monkeypatch.setenv("MC_PIPELINE_MODE", "audio")
-    monkeypatch.setenv("MC_VISUAL_PIPELINE", "video")
-    monkeypatch.setenv("MC_SCRIPT_SOURCE", "generated")
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         start, "ConfigManager", return_value=config
@@ -117,7 +114,7 @@ def test_typed_standard_script_uses_request_source_not_environment(monkeypatch):
     project.setup.assert_not_called()
 
 
-def test_typed_standard_music_category_uses_request_value_not_environment(monkeypatch):
+def test_typed_standard_music_category_uses_request_value_not_environment():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -127,7 +124,6 @@ def test_typed_standard_music_category_uses_request_value_not_environment(monkey
         pipeline_mode="full",
         music_category="calm",
     )
-    monkeypatch.setenv("MC_MUSIC_CATEGORY", "random")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
@@ -346,8 +342,6 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatc
     )
     manifest = Path("output/typed/video_clips_manifest.json")
     final_video = Path("output/typed/video/final.mp4")
-    monkeypatch.setenv("MC_VISUAL_PIPELINE", "image")
-    monkeypatch.setenv("MC_PIPELINE_MODE", "audio")
     monkeypatch.setenv("MC_OVERLAYS_MODE", "smart")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
@@ -374,7 +368,7 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatc
     assert video_builder.call_args.kwargs["overlays_mode"] == "off"
 
 
-def test_typed_design_image_dispatch_ignores_environment_pipeline(monkeypatch):
+def test_typed_design_image_dispatch_ignores_environment_pipeline():
     project = _project()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
@@ -383,7 +377,6 @@ def test_typed_design_image_dispatch_ignores_environment_pipeline(monkeypatch):
         subtitle_profile_key=None,
         route=DesignExecutionRequest(mode="design_image"),
     )
-    monkeypatch.setenv("MC_PIPELINE_MODE", "design_video")
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         start, "ejecutar_diseno_imagen", return_value=Path("images.json")
@@ -424,7 +417,7 @@ def test_typed_design_video_transports_the_existing_operational_key():
     project.setup.assert_not_called()
 
 
-def test_typed_studio_standard_preserves_paths_and_subtitle_key(monkeypatch):
+def test_typed_studio_standard_preserves_paths_and_subtitle_key():
     subtitle_profile_key = _subtitle_key()
     request = ApplicationExecutionRequest(
         project_name="typed studio",
@@ -437,7 +430,6 @@ def test_typed_studio_standard_preserves_paths_and_subtitle_key(monkeypatch):
             subtitle_path=Path("input/source.srt"),
         ),
     )
-    monkeypatch.setenv("MC_PIPELINE_MODE", "full")
 
     project = _project()
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(

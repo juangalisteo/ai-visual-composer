@@ -7,6 +7,10 @@ from unittest.mock import ANY, patch
 import main as app_main
 
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.modules.script import PreparedScript
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
@@ -110,6 +114,28 @@ class FakeProfileResolver:
 
 
 FakeConfigManager.profile_resolver = FakeProfileResolver()
+
+
+def _standard_request(
+    *,
+    project_name,
+    pipeline_mode,
+    script_source,
+    visual_pipeline="image",
+    subtitle_profile_key=None,
+):
+    return ApplicationExecutionRequest(
+        project_name=project_name,
+        clear_output=False,
+        operational_profile_key=FakeConfigManager.script_operational_key,
+        subtitle_profile_key=subtitle_profile_key,
+        route=StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline=visual_pipeline,
+            script_source=script_source,
+            voice_config_id="test_voice",
+        ),
+    )
 
 
 class FakePromptEngine:
@@ -272,16 +298,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_VISUAL_PIPELINE": "script",
-                        "MC_SCRIPT_SOURCE": "manual",
-                        "MC_PIPELINE_MODE": "script",
-                        "MC_PROJECT_NAME": "guion component",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
@@ -315,7 +332,14 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "VideoBuilder must not run"
                     )
                 ):
-                    result = start.iniciar()
+                    result = start.iniciar(
+                        request=_standard_request(
+                            project_name="guion component",
+                            pipeline_mode="script",
+                            visual_pipeline="script",
+                            script_source="manual",
+                        ),
+                    )
 
                 script_path = (
                     root
@@ -362,23 +386,21 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_VISUAL_PIPELINE": "script",
-                        "MC_SCRIPT_SOURCE": "manual",
-                        "MC_PIPELINE_MODE": "script",
-                        "MC_PROJECT_NAME": "guion component",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ):
                     with self.assertRaises(
                         FileNotFoundError
                     ):
-                        start.iniciar()
+                        start.iniciar(
+                            request=_standard_request(
+                                project_name="guion component",
+                                pipeline_mode="script",
+                                visual_pipeline="script",
+                                script_source="manual",
+                            ),
+                        )
 
                 self.assertFalse(
                     (
@@ -748,15 +770,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "full_without_subtitles",
-                        "MC_PROJECT_NAME": "full without subtitles",
-                        "MC_MUSIC_CATEGORY": "",
-                    },
-                    clear=False,
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager,
                 ), patch.object(
@@ -807,7 +821,13 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     )
                     video_builder.return_value.build.return_value = final_video
 
-                    result = start.iniciar()
+                    result = start.iniciar(
+                        request=_standard_request(
+                            project_name="full without subtitles",
+                            pipeline_mode="full_without_subtitles",
+                            script_source="generated",
+                        ),
+                    )
 
                 self.assertEqual(final_video, result)
                 subtitle_builder.assert_not_called()
@@ -815,7 +835,10 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 video_builder.assert_called_once_with(
                     subtitle_profile=None,
                     warnings=ANY,
+                    overlays_mode=None,
                     render_subtitles=False,
+                    config_manager=ANY,
+                    project=ANY,
                 )
                 video_builder.return_value.build.assert_called_once_with()
                 self.assertFalse(
@@ -850,15 +873,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 FakeScriptBuilder.prompts = []
                 FakeVoiceBuilder.received_scripts = []
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "full",
-                        "MC_PROJECT_NAME": "full test",
-                        "MC_MUSIC_CATEGORY": "",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
@@ -908,8 +923,11 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     )
 
                     result = start.iniciar(
-                        subtitle_profile_key=(
-                            FakeConfigManager.subtitle_profile_key
+                        request=_standard_request(
+                            project_name="full test",
+                            pipeline_mode="full",
+                            script_source="generated",
+                            subtitle_profile_key=FakeConfigManager.subtitle_profile_key,
                         ),
                     )
 
@@ -966,17 +984,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 FakeVoiceBuilder.received_scripts = []
                 FakeScriptOperation.instances = []
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_VISUAL_PIPELINE": "image",
-                        "MC_SCRIPT_SOURCE": "generated",
-                        "MC_PIPELINE_MODE": "full",
-                        "MC_PROJECT_NAME": "full generated source",
-                        "MC_MUSIC_CATEGORY": "",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
@@ -1026,8 +1034,11 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     )
 
                     start.iniciar(
-                        subtitle_profile_key=(
-                            FakeConfigManager.subtitle_profile_key
+                        request=_standard_request(
+                            project_name="full generated source",
+                            pipeline_mode="full",
+                            script_source="generated",
+                            subtitle_profile_key=FakeConfigManager.subtitle_profile_key,
                         ),
                     )
 
