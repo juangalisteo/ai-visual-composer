@@ -476,9 +476,11 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
                 Path(directory), "instagram", 5.4,
                 music=True, intro=True, outro=True,
             )
-            self.assertGreater(self._frame_mean(result.output_path, 0.7), 10)
+            # Fuente negra de 5,4 s entre intro (0-0,5 s) y outro (5,9-6,4 s):
+            # brillo alto solo dentro de intro y outro; el centro es la fuente.
+            self.assertGreater(self._frame_mean(result.output_path, 0.2), 10)
             self.assertLess(self._frame_mean(result.output_path, 3.0), 10)
-            self.assertGreater(self._frame_mean(result.output_path, 5.7), 10)
+            self.assertGreater(self._frame_mean(result.output_path, 6.2), 10)
 
     def test_case_d_youtube_complete(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -487,9 +489,11 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
                 style="word_by_word", music=True,
                 intro=True, outro=True,
             )
-            self.assertGreater(self._frame_mean(result.output_path, 0.7), 10)
+            # Fuente negra de 5,4 s entre intro (0-0,5 s) y outro (5,9-6,4 s):
+            # brillo alto solo dentro de intro y outro; el centro es la fuente.
+            self.assertGreater(self._frame_mean(result.output_path, 0.2), 10)
             self.assertLess(self._frame_mean(result.output_path, 3.0), 10)
-            self.assertGreater(self._frame_mean(result.output_path, 5.7), 10)
+            self.assertGreater(self._frame_mean(result.output_path, 6.2), 10)
 
     def test_case_e_source_without_audio(self):
         with tempfile.TemporaryDirectory() as directory:
