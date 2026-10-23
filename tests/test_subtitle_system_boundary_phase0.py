@@ -22,7 +22,6 @@ from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
 )
-from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 

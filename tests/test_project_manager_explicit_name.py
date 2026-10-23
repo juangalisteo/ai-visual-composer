@@ -3,6 +3,13 @@ from app.modules.audio.audio_mixer import AudioMixer
 from unittest.mock import patch
 
 
+def test_project_manager_without_name_uses_default_project():
+    project = ProjectManager()
+
+    assert project.project_name == "default_project"
+    assert project.base_path.as_posix() == "output/default_project"
+
+
 def test_explicit_project_name_is_sanitized_into_its_output_folder():
     project = ProjectManager(project_name="  request/project  ")
 

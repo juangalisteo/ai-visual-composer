@@ -82,7 +82,7 @@ def _standard_request(*, pipeline_mode="script", visual_pipeline="image", **kwar
     )
 
 
-def test_typed_standard_script_uses_request_source_not_environment():
+def test_typed_standard_script_uses_request_source():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -114,7 +114,7 @@ def test_typed_standard_script_uses_request_source_not_environment():
     project.setup.assert_not_called()
 
 
-def test_typed_standard_music_category_uses_request_value_not_environment():
+def test_typed_standard_music_category_uses_request_value():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -245,7 +245,7 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     assert optimizer.call_args.kwargs["project"] is project
 
 
-def test_typed_standard_voice_config_is_injected_without_environment_fallback():
+def test_typed_standard_voice_config_id_is_injected_into_config_manager():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -284,7 +284,7 @@ def test_typed_standard_voice_config_is_injected_without_environment_fallback():
     )
 
 
-def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent():
+def test_typed_standard_voice_requires_voice_config_id():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -316,7 +316,7 @@ def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent(
                 "La ruta moderna requiere voice_config_id para generar voz."
             )
         else:
-            raise AssertionError("La ruta moderna acepto un fallback ambiental.")
+            raise AssertionError("La ruta moderna acepto una voz sin voice_config_id.")
 
     voice_builder.assert_not_called()
 
@@ -358,7 +358,7 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key():
     assert video_builder.call_args.kwargs["overlays_mode"] == "off"
 
 
-def test_typed_design_image_dispatch_ignores_environment_pipeline():
+def test_typed_design_image_dispatches_only_to_design_image():
     project = _project()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",

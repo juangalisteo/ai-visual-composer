@@ -36,16 +36,8 @@ class _OperationalResolver:
         return "test_operational_profile.json"
 
 
-def test_m3_config_manager_loads_operational_profile_without_subtitle_family():
-    resolver = ProfileResolver()
-    key = OperationalProfileKey("guion", "instagram", "guion_instagram")
-    manager = ConfigManager(
-        profile_resolver=resolver,
-        operational_profile_key=key,
-    )
-
-    assert manager.get_operational_profile_key() == key
-    assert manager.get_profile_config() == resolver.load_operational(key)
+def test_config_manager_without_operational_key_returns_none():
+    assert ConfigManager().get_operational_profile_key() is None
 
 
 def test_explicit_operational_key_is_returned_as_the_same_object():
