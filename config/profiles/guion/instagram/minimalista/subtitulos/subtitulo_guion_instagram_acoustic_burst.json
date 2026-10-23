@@ -8,7 +8,7 @@
         "mode": "acoustic_burst",
         "text_case": "original",
         "significant_gap_threshold": 0.4,
-        "hard_max_chars": 80,
+        "hard_max_chars": 28,
         "punctuation": {
             "remove_commas": false,
             "remove_periods": false,

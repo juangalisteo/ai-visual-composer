@@ -7,7 +7,7 @@
   "cue_policy": {
     "mode": "roll_up",
     "text_case": "original",
-    "max_chars_per_line": 40,
+    "max_chars_per_line": 24,
     "visible_lines": 3,
     "significant_gap_threshold": 0.35,
     "punctuation": {"remove_commas": false, "remove_periods": false, "remove_colons": false, "remove_semicolons": false, "remove_question_marks": false, "remove_exclamation_marks": false, "remove_ellipsis": false, "remove_hyphens": false, "remove_em_dashes": false, "remove_double_quotes": false, "remove_single_quotes": false, "remove_parentheses": false}

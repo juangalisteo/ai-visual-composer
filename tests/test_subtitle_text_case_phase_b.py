@@ -68,5 +68,10 @@ def test_design_and_standard_profiles_use_the_common_policy_without_original_pat
     ))
     standard.cue_policy["text_case"] = "lowercase"
     design.cue_policy["text_case"] = "uppercase"
-    assert SPANISH.lower() in SubtitleCueTransformer(standard, 30).transform(SOURCE)
+    standard_output = SubtitleCueTransformer(standard, 30).transform(SOURCE)
+    standard_text = " ".join(
+        line for line in standard_output.splitlines()
+        if "-->" not in line and not line.isdigit()
+    )
+    assert SPANISH.lower() == " ".join(standard_text.split())
     assert SPANISH.upper().split()[0] in SubtitleCueTransformer(design, 30).transform(SOURCE)

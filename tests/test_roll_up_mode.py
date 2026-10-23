@@ -241,7 +241,7 @@ def test_instagram_karaoke_roll_up_profiles_are_discovered_declaratively():
         assert profile.display_name == "Desplazamiento vertical"
         assert isinstance(CueModelRegistry().create(profile.cue_policy), RollUpModel)
         assert profile.cue_policy["visible_lines"] == 3
-        assert profile.cue_policy["max_chars_per_line"] == 40
+        assert profile.cue_policy["max_chars_per_line"] == 24
         assert render_style.scroll_duration_ms == 200
         assert render_style.dynamic is True
         assert profile.render_style == STYLE | {

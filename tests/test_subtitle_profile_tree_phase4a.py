@@ -121,6 +121,9 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         },
     }
 
+    # F5 (H7): the vertical format fits fewer characters per line.
+    EXPECTED_MAX_CHARS_PER_LINE = {"instagram": 20, "youtube": 60}
+
     def test_tree_contains_expected_profiles(self):
         actual = {
             path
@@ -172,8 +175,13 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         for _, platform, _, mode, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
+                expected_cue_policy = dict(self.EXPECTED_CUE_POLICIES[mode])
+                if "max_chars_per_line" in expected_cue_policy:
+                    expected_cue_policy["max_chars_per_line"] = (
+                        self.EXPECTED_MAX_CHARS_PER_LINE[platform]
+                    )
                 self.assertEqual(
-                    self.EXPECTED_CUE_POLICIES[mode],
+                    expected_cue_policy,
                     profile["cue_policy"],
                 )
                 self.assertEqual(

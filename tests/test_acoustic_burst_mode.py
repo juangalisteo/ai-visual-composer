@@ -119,5 +119,5 @@ def test_instagram_minimalista_profiles_resolve_declaratively():
 
         assert descriptor.mode == "acoustic_burst"
         assert profile.cue_policy["significant_gap_threshold"] == 0.4
-        assert profile.cue_policy["hard_max_chars"] == 80
+        assert profile.cue_policy["hard_max_chars"] == 28
         assert "pause_split_threshold" not in profile.cue_policy
