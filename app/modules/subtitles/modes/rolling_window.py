@@ -6,7 +6,11 @@ from app.shared.config_contract import require_float, require_int
 
 
 class RollingWindowModel(BaseSubtitleModel):
-    """Emit fixed-size FIFO word windows with intentionally overlapping cues."""
+    """Emit fixed-size FIFO word windows shown one at a time.
+
+    Each window ends where the next one of its group starts; the last
+    window keeps the end of its final word.
+    """
 
     def __init__(self, config):
         self.punctuation = PunctuationPolicy(config)
@@ -36,12 +40,18 @@ class RollingWindowModel(BaseSubtitleModel):
         index = 1
         for segment in timing.segments:
             for group in self._split_words_by_gap(segment.words):
-                for window in self._windows(group):
+                windows = self._windows(group)
+                for position, window in enumerate(windows):
+                    end = (
+                        windows[position + 1][0].start
+                        if position + 1 < len(windows)
+                        else window[-1].end
+                    )
                     optimized.append(
                         self._format_block(
                             index,
                             self._seconds_to_time(window[0].start),
-                            self._seconds_to_time(window[-1].end),
+                            self._seconds_to_time(end),
                             self._format_words(window),
                         )
                     )
@@ -57,13 +67,19 @@ class RollingWindowModel(BaseSubtitleModel):
                 continue
             start_ms, end_ms, words = parsed
             ranges = self._distribute_word_ranges(start_ms, end_ms, words)
-            for start_index in range(max(0, len(words) - self.window_size + 1)):
+            window_count = max(0, len(words) - self.window_size + 1)
+            for start_index in range(window_count):
                 end_index = start_index + self.window_size - 1
+                cue_end = (
+                    ranges[start_index + 1][0]
+                    if start_index + 1 < window_count
+                    else ranges[end_index][1]
+                )
                 optimized.append(
                     self._format_block(
                         index,
                         self._ms_to_time(ranges[start_index][0]),
-                        self._ms_to_time(ranges[end_index][1]),
+                        self._ms_to_time(cue_end),
                         self._format_words(words[start_index:end_index + 1]),
                     )
                 )

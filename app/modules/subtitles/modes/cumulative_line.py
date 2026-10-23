@@ -3,7 +3,11 @@ from app.modules.subtitles.modes.single_line import SingleLineModel
 
 
 class CumulativeLineModel(BaseSubtitleModel):
-    """Emit additive left-to-right cue events for each semantic clause."""
+    """Emit additive left-to-right cue events for each semantic clause.
+
+    Each event ends where the next one of its clause starts, so only one
+    line is visible at a time; the last event keeps the clause end.
+    """
 
     def __init__(self, config):
         self.segmenter = SingleLineModel(config)
@@ -20,12 +24,16 @@ class CumulativeLineModel(BaseSubtitleModel):
         for segment in timing.segments:
             for word_group in self.segmenter._split_words_by_gap(segment.words):
                 for clause in self.segmenter._split_timed_words_by_sense(word_group):
-                    for position, word in enumerate(clause, start=1):
+                    starts = [word.start for word in clause]
+                    ends = starts[1:] + [clause[-1].end]
+                    for position, (start, end) in enumerate(
+                        zip(starts, ends), start=1
+                    ):
                         optimized.append(
                             self._format_block(
                                 index=index,
-                                start=self.segmenter._seconds_to_time(word.start),
-                                end=self.segmenter._seconds_to_time(clause[-1].end),
+                                start=self.segmenter._seconds_to_time(start),
+                                end=self.segmenter._seconds_to_time(end),
                                 text=self._format_words(clause[:position]),
                             )
                         )
@@ -54,12 +62,16 @@ class CumulativeLineModel(BaseSubtitleModel):
                 word_ranges = self.segmenter._distribute_time_by_text_length(
                     clause_start, clause_end, words
                 )
-                for position, (word_start, _) in enumerate(word_ranges, start=1):
+                starts = [word_start for word_start, _ in word_ranges]
+                ends = starts[1:] + [clause_end]
+                for position, (word_start, word_end) in enumerate(
+                    zip(starts, ends), start=1
+                ):
                     optimized.append(
                         self._format_block(
                             index=index,
                             start=self.segmenter._ms_to_time(word_start),
-                            end=self.segmenter._ms_to_time(clause_end),
+                            end=self.segmenter._ms_to_time(word_end),
                             text=self._format_words(words[:position]),
                         )
                     )

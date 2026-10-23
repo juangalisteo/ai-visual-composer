@@ -65,9 +65,58 @@ def test_cumulative_line_adds_each_word_and_clears_after_a_pause():
     assert _texts(blocks) == [
         "uno", "uno dos", "uno dos tres", "cuatro", "cuatro cinco",
     ]
-    assert "00:00:00,000 --> 00:00:00,500" in blocks[0]
+    assert "00:00:00,000 --> 00:00:00,200" in blocks[0]
     assert "00:00:00,400 --> 00:00:00,500" in blocks[2]
-    assert "00:00:01,000 --> 00:00:01,300" in blocks[3]
+    assert "00:00:01,000 --> 00:00:01,200" in blocks[3]
+
+
+def _cues(blocks):
+    return [
+        (*block.splitlines()[1].split(" --> "), block.splitlines()[2])
+        for block in blocks
+    ]
+
+
+def _assert_no_overlap(cues):
+    for (_, end, _), (start, _, _) in zip(cues, cues[1:]):
+        assert end <= start
+
+
+def test_cumulative_line_timed_cues_do_not_overlap_and_keep_starts_and_texts():
+    timing = _timing(
+        WordTiming("uno", 0.0, 0.1),
+        WordTiming("dos", 0.2, 0.3),
+        WordTiming("tres", 0.4, 0.5),
+        WordTiming("cuatro", 1.0, 1.1),
+        WordTiming("cinco", 1.2, 1.3),
+    )
+
+    cues = _cues(CumulativeLineModel(_config()).optimize([], timing=timing))
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,200", "uno"),
+        ("00:00:00,200", "00:00:00,400", "uno dos"),
+        ("00:00:00,400", "00:00:00,500", "uno dos tres"),
+        ("00:00:01,000", "00:00:01,200", "cuatro"),
+        ("00:00:01,200", "00:00:01,300", "cuatro cinco"),
+    ]
+    _assert_no_overlap(cues)
+
+
+def test_cumulative_line_untimed_cues_do_not_overlap_and_keep_starts_and_texts():
+    cues = _cues(CumulativeLineModel(_config()).optimize([
+        "1\n00:00:00,000 --> 00:00:00,900\nuno dos tres",
+        "2\n00:00:01,000 --> 00:00:01,600\ncuatro cinco",
+    ]))
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,300", "uno"),
+        ("00:00:00,300", "00:00:00,600", "uno dos"),
+        ("00:00:00,600", "00:00:00,900", "uno dos tres"),
+        ("00:00:01,000", "00:00:01,300", "cuatro"),
+        ("00:00:01,300", "00:00:01,600", "cuatro cinco"),
+    ]
+    _assert_no_overlap(cues)
 
 
 def test_cumulative_line_restarts_when_the_semantic_line_reaches_its_limit():

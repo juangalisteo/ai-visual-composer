@@ -51,7 +51,19 @@ def test_registry_resolves_rolling_window_once():
     assert CueModelRegistry().resolve("rolling_window") is RollingWindowModel
 
 
-def test_rolling_window_emits_fifo_windows_at_their_exact_overlapping_word_ranges():
+def _cues(blocks):
+    return [
+        (*block.splitlines()[1].split(" --> "), block.splitlines()[2])
+        for block in blocks
+    ]
+
+
+def _assert_no_overlap(cues):
+    for (_, end, _), (start, _, _) in zip(cues, cues[1:]):
+        assert end <= start
+
+
+def test_rolling_window_emits_fifo_windows_one_after_another():
     timing = _timing(
         WordTiming("uno", 0.0, 0.1),
         WordTiming("dos", 0.1, 0.2),
@@ -69,9 +81,49 @@ def test_rolling_window_emits_fifo_windows_at_their_exact_overlapping_word_range
         "tres cuatro cinco",
         "cuatro cinco seis",
     ]
-    assert "00:00:00,000 --> 00:00:00,300" in blocks[0]
-    assert "00:00:00,100 --> 00:00:00,400" in blocks[1]
+    assert "00:00:00,000 --> 00:00:00,100" in blocks[0]
+    assert "00:00:00,100 --> 00:00:00,200" in blocks[1]
     assert "00:00:00,300 --> 00:00:00,600" in blocks[3]
+
+
+def test_rolling_window_timed_cues_do_not_overlap_and_keep_starts_and_texts():
+    timing = _timing(
+        WordTiming("uno", 0.0, 0.1),
+        WordTiming("dos", 0.15, 0.2),
+        WordTiming("tres", 0.25, 0.3),
+        WordTiming("cuatro", 0.35, 0.4),
+        WordTiming("cinco", 1.0, 1.1),
+        WordTiming("seis", 1.15, 1.2),
+        WordTiming("siete", 1.25, 1.3),
+        WordTiming("ocho", 1.35, 1.4),
+    )
+
+    cues = _cues(
+        RollingWindowModel(_config(window_size=3)).optimize([], timing=timing)
+    )
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,150", "uno dos tres"),
+        ("00:00:00,150", "00:00:00,400", "dos tres cuatro"),
+        ("00:00:01,000", "00:00:01,150", "cinco seis siete"),
+        ("00:00:01,150", "00:00:01,400", "seis siete ocho"),
+    ]
+    _assert_no_overlap(cues)
+
+
+def test_rolling_window_untimed_cues_do_not_overlap_and_keep_starts_and_texts():
+    cues = _cues(RollingWindowModel(_config(window_size=3)).optimize([
+        "1\n00:00:00,000 --> 00:00:00,800\nuno dos tres cuatro",
+        "2\n00:00:01,000 --> 00:00:01,400\ncinco seis siete ocho",
+    ]))
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,200", "uno dos tres"),
+        ("00:00:00,200", "00:00:00,800", "dos tres cuatro"),
+        ("00:00:01,000", "00:00:01,100", "cinco seis siete"),
+        ("00:00:01,100", "00:00:01,400", "seis siete ocho"),
+    ]
+    _assert_no_overlap(cues)
 
 
 def test_rolling_window_restarts_after_a_significant_pause_without_crossing_it():
@@ -97,8 +149,8 @@ def test_rolling_window_requires_a_complete_fixed_window_and_preserves_fallback_
     assert model.optimize([
         "1\n00:00:00,000 --> 00:00:00,600\nuno dos tres cuatro cinco"
     ]) == [
-        "1\n00:00:00,000 --> 00:00:00,360\nuno dos tres",
-        "2\n00:00:00,120 --> 00:00:00,480\ndos tres cuatro",
+        "1\n00:00:00,000 --> 00:00:00,120\nuno dos tres",
+        "2\n00:00:00,120 --> 00:00:00,240\ndos tres cuatro",
         "3\n00:00:00,240 --> 00:00:00,600\ntres cuatro cinco",
     ]
     assert RollingWindowModel(_config(window_size=5)).optimize([
