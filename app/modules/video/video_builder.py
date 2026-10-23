@@ -20,9 +20,6 @@ from app.modules.video.ffmpeg.diagnostics import (
 from app.shared.operational_error import OperationalError, create_operational_error
 
 
-_OVERLAYS_MODE_UNSET = object()
-
-
 class VideoBuilder:
 
     def __init__(
@@ -33,7 +30,7 @@ class VideoBuilder:
         warnings=None,
         config_manager=None,
         project=None,
-        overlays_mode=_OVERLAYS_MODE_UNSET,
+        overlays_mode=None,
     ):
         self.subtitle_profile = subtitle_profile
         self.intro_outro_selection = (
@@ -75,7 +72,7 @@ class VideoBuilder:
             "config_manager": self.config_manager,
             "project": self.project,
         }
-        if self._overlays_mode is not _OVERLAYS_MODE_UNSET:
+        if self._overlays_mode is not None:
             context_factory_options["overlays_mode"] = self._overlays_mode
 
         build_context = VideoBuildContextFactory(
