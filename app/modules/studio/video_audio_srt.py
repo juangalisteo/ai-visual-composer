@@ -196,7 +196,7 @@ class StudioVideoAudioSrtService:
         filters = [
             f"[0:v:0]scale={profile.width}:{profile.height}:"
             f"force_original_aspect_ratio=decrease,pad={profile.width}:"
-            f"{profile.height}:(ow-iw)/2:(oh-ih),setsar=1,fps={profile.fps},"
+            f"{profile.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={profile.fps},"
             f"format={profile.pixel_format},trim=duration={video_duration:.6f},"
             "setpts=PTS-STARTPTS[studio_base]"
         ]
@@ -222,8 +222,11 @@ class StudioVideoAudioSrtService:
             filters.extend([
                 f"[1:a:0]aresample={profile.audio_sample_rate},"
                 f"atrim=duration={audio_duration:.6f},asetpts=PTS-STARTPTS[new_audio]",
-                f"[2:a:0]aresample={profile.audio_sample_rate},"
-                f"atrim=duration={remaining_duration:.6f},asetpts=PTS-STARTPTS[tail_music]",
+                f"[2:a:0]volume={profile.music.volume:.6f},"
+                f"aresample={profile.audio_sample_rate},"
+                f"atrim=duration={remaining_duration:.6f},asetpts=PTS-STARTPTS,"
+                f"alimiter=limit={profile.music.limiter_limit:.6f}:"
+                "level=false:latency=true[tail_music]",
                 "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]",
             ])
         elif audio_duration < video_duration:

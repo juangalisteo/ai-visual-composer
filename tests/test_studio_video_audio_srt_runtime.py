@@ -504,6 +504,12 @@ def test_short_audio_can_be_completed_with_music_only_in_the_final_gap():
         assert "atrim=duration=3.000000" in graph
         assert "atrim=duration=7.000000" in graph
         assert "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]" in graph
+        assert f"[2:a:0]volume={profile.music.volume:.6f}," in graph
+        assert (
+            f"alimiter=limit={profile.music.limiter_limit:.6f}:"
+            "level=false:latency=true[tail_music]"
+        ) in graph
+        assert "(ow-iw)/2:(oh-ih)/2," in graph
 
 
 @pytest.mark.parametrize("style", ("single_line", "word_by_word"))
