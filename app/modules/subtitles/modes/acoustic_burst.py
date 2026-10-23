@@ -10,12 +10,6 @@ class AcousticBurstModel(BaseSubtitleModel):
 
     def __init__(self, config):
         self.punctuation = PunctuationPolicy(config)
-        self.min_duration = require_float(
-            config, "min_duration", "cue_policy.min_duration"
-        )
-        self.max_duration = require_float(
-            config, "max_duration", "cue_policy.max_duration"
-        )
         self.significant_gap_threshold = require_float(
             config,
             "significant_gap_threshold",
@@ -25,15 +19,6 @@ class AcousticBurstModel(BaseSubtitleModel):
             config, "hard_max_chars", "cue_policy.hard_max_chars"
         )
 
-        if self.min_duration <= 0 or self.max_duration <= 0:
-            raise ValueError(
-                "Las duraciones de cue_policy deben ser superiores a cero."
-            )
-        if self.max_duration < self.min_duration:
-            raise ValueError(
-                "cue_policy.max_duration no puede ser menor que "
-                "cue_policy.min_duration."
-            )
         if self.significant_gap_threshold <= 0:
             raise ValueError(
                 "cue_policy.significant_gap_threshold debe ser superior a cero."

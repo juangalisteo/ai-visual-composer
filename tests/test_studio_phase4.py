@@ -86,7 +86,6 @@ class StudioPhase4Test(unittest.TestCase):
                 raw_profile["studio"]["music"]["volume"],
                 profile.music.volume,
             )
-            self.assertTrue(profile.music.loop_shorter)
             self.assertEqual(0.95, profile.music.limiter_limit)
 
     def test_music_contract_fails_fast(self):
@@ -95,7 +94,6 @@ class StudioPhase4Test(unittest.TestCase):
         )
         cases = (
             ("volume", 0, "volume"),
-            ("loop_shorter", False, "loop_shorter"),
             ("limiter_limit", 0.01, "limiter_limit"),
         )
         for field, value, message in cases:

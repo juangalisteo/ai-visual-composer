@@ -46,8 +46,6 @@ def _policy(**changes):
         "uppercase": False,
         "max_chars_per_line": 8,
         "visible_lines": 3,
-        "min_duration": 1.0,
-        "max_duration": 7.0,
         "significant_gap_threshold": 0.35,
         "punctuation": PUNCTUATION,
     }

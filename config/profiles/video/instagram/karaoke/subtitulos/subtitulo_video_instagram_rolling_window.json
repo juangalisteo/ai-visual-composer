@@ -7,8 +7,6 @@
   "cue_policy": {
     "mode": "rolling_window",
     "text_case": "original",
-    "min_duration": 0.2,
-    "max_duration": 2.0,
     "significant_gap_threshold": 0.35,
     "window_size": 5,
     "punctuation": {"remove_commas": true, "remove_periods": true, "remove_colons": true, "remove_semicolons": true, "remove_question_marks": false, "remove_exclamation_marks": false, "remove_ellipsis": true, "remove_hyphens": true, "remove_em_dashes": true, "remove_double_quotes": true, "remove_single_quotes": true, "remove_parentheses": true}

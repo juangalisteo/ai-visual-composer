@@ -12,10 +12,6 @@
         "max_duration": 3.0,
         "significant_gap_threshold": 0.35,
         "text_case": "original",
-        "split_on_punctuation": true,
-        "avoid_orphan_words": true,
-        "merge_short_chunks": true,
-        "balance_duration": true,
         "punctuation": {
             "remove_commas": false,
             "remove_periods": false,

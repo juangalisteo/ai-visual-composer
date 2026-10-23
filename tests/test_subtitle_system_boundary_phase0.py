@@ -69,7 +69,6 @@ def _operational_projection(profile, component):
     if component is ProfileComponent.STUDIO:
         studio = profile["studio"]
         return {
-            "format": profile["format"],
             "input": deepcopy(studio["input"]),
             "output": deepcopy(studio["output"]),
             "montage": deepcopy(studio["montage"]),
@@ -78,7 +77,7 @@ def _operational_projection(profile, component):
 
     return {
         "format": profile["format"],
-        "duration": profile["duration"],
+        "duration": profile.get("duration"),
         "tone": profile["tone"],
         "builders": deepcopy(profile["builders"]),
         "image_validation": deepcopy(profile["image_validation"]),

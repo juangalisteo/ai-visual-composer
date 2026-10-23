@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.shared.config_contract import (
-    require_bool,
     require_float,
     require_int,
     require_mapping,
@@ -22,7 +21,6 @@ from app.shared.subtitle_profile_identity import (
 @dataclass(frozen=True)
 class StudioMusicConfig:
     volume: float
-    loop_shorter: bool
     limiter_limit: float
 
 
@@ -30,7 +28,6 @@ class StudioMusicConfig:
 class StudioProfile:
     platform: str
     profile_id: str
-    format: str
     video_extensions: tuple[str, ...]
     subtitle_extensions: tuple[str, ...]
     width: int
@@ -127,11 +124,6 @@ class StudioProfileLoader:
 
         music_config = StudioMusicConfig(
             volume=require_float(music, "volume", "studio.music.volume"),
-            loop_shorter=require_bool(
-                music,
-                "loop_shorter",
-                "studio.music.loop_shorter"
-            ),
             limiter_limit=require_float(
                 music,
                 "limiter_limit",
@@ -143,7 +135,6 @@ class StudioProfileLoader:
         return StudioProfile(
             platform=require_text(profile, "platform", "platform"),
             profile_id=require_text(profile, "profile_id", "profile_id"),
-            format=require_text(profile, "format", "format"),
             video_extensions=self._extensions(
                 input_config,
                 "video_extensions",
@@ -220,10 +211,6 @@ class StudioProfileLoader:
         if not 0 < config.volume <= 1:
             raise ValueError(
                 "studio.music.volume debe estar entre 0 (exclusivo) y 1."
-            )
-        if not config.loop_shorter:
-            raise ValueError(
-                "studio.music.loop_shorter debe ser true en STUDIO V1."
             )
         if not 0.0625 <= config.limiter_limit <= 1:
             raise ValueError(

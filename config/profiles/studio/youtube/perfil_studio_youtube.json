@@ -2,7 +2,6 @@
     "component": "studio",
     "platform": "youtube",
     "profile_id": "studio_youtube",
-    "format": "horizontal",
     "studio": {
         "input": {
             "video_extensions": [".mp4"],
@@ -34,7 +33,6 @@
         },
         "music": {
             "volume": 0.10,
-            "loop_shorter": true,
             "limiter_limit": 0.95
         }
     }

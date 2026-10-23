@@ -47,10 +47,6 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "max_duration": 3.0,
             "significant_gap_threshold": 0.35,
             "text_case": "original",
-            "split_on_punctuation": True,
-            "avoid_orphan_words": True,
-            "merge_short_chunks": True,
-            "balance_duration": True,
             "punctuation": {
                 "remove_commas": False,
                 "remove_periods": False,

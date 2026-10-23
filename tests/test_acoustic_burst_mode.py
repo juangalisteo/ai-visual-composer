@@ -29,8 +29,6 @@ PUNCTUATION = {
 def _config(**changes):
     config = {
         "mode": "acoustic_burst",
-        "min_duration": 0.5,
-        "max_duration": 8.0,
         "significant_gap_threshold": 0.4,
         "hard_max_chars": 80,
         "punctuation": PUNCTUATION,

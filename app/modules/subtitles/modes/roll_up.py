@@ -16,12 +16,6 @@ class RollUpModel(BaseSubtitleModel):
         self.visible_lines = require_int(
             config, "visible_lines", "cue_policy.visible_lines"
         )
-        self.min_duration = require_float(
-            config, "min_duration", "cue_policy.min_duration"
-        )
-        self.max_duration = require_float(
-            config, "max_duration", "cue_policy.max_duration"
-        )
         self.significant_gap_threshold = require_float(
             config,
             "significant_gap_threshold",
@@ -32,12 +26,6 @@ class RollUpModel(BaseSubtitleModel):
             raise ValueError("cue_policy.max_chars_per_line debe ser superior a cero.")
         if self.visible_lines not in (2, 3, 4):
             raise ValueError("cue_policy.visible_lines debe ser 2, 3 o 4.")
-        if self.min_duration <= 0 or self.max_duration <= 0:
-            raise ValueError("Las duraciones de cue_policy deben ser superiores a cero.")
-        if self.max_duration < self.min_duration:
-            raise ValueError(
-                "cue_policy.max_duration no puede ser menor que cue_policy.min_duration."
-            )
         if self.significant_gap_threshold <= 0:
             raise ValueError(
                 "cue_policy.significant_gap_threshold debe ser superior a cero."

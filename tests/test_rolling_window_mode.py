@@ -26,8 +26,6 @@ PUNCTUATION = {
 def _config(**changes):
     config = {
         "mode": "rolling_window",
-        "min_duration": 0.2,
-        "max_duration": 2.0,
         "significant_gap_threshold": 0.35,
         "window_size": 5,
         "punctuation": PUNCTUATION,
@@ -113,7 +111,6 @@ def test_rolling_window_requires_a_complete_fixed_window_and_preserves_fallback_
     (
         ({"window_size": 1}, "window_size"),
         ({"significant_gap_threshold": 0}, "significant_gap_threshold"),
-        ({"min_duration": 3.0, "max_duration": 2.0}, "max_duration"),
     ),
 )
 def test_rolling_window_validates_its_declared_limits(changes, message):

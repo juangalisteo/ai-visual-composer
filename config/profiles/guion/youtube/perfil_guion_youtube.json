@@ -3,7 +3,6 @@
     "platform": "youtube",
     "profile_id": "guion_youtube",
     "format": "horizontal",
-    "duration": 10,
     "tone": "modo_conciencia",
 
     "builders": {
