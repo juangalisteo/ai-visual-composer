@@ -4,6 +4,7 @@ from pathlib import Path
 from app.managers.project_manager import ProjectManager
 from app.shared.progress_logger import ProgressLogger
 
+from app.modules.subtitles.policies.timing import SubtitleTimingResolver
 from app.modules.video.media.audio_resolver import AudioResolver
 from app.modules.video.media.media_loader import MediaLoader
 from app.modules.video.media.timeline_builder import TimelineBuilder
@@ -160,11 +161,20 @@ class VideoBuildContextFactory:
             f"{video_config.fps}"
         )
 
+        subtitle_timing = (
+            SubtitleTimingResolver().resolve(
+                subtitle_path=media.subtitle_path
+            )
+            if render_subtitles
+            else None
+        )
+
         return VideoBuildContext(
             config=video_config,
             media=media,
             timeline=timeline,
             render_subtitles=bool(render_subtitles),
+            subtitle_timing=subtitle_timing,
         )
 
     def _apply_overlay_mode(

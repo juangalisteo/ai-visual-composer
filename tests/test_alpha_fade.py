@@ -88,7 +88,7 @@ def test_alpha_fade_reveals_each_word_at_its_real_timing_with_the_declared_ramp(
         prepared.cleanup()
 
 
-def test_alpha_fade_falls_back_to_a_static_phrase_without_usable_word_timing(tmp_path):
+def test_alpha_fade_spreads_the_cue_over_its_words_without_word_timing(tmp_path):
     style = SubtitleConfigLoader().load_render_style(STYLE)
     prepared = SubtitleRenderPreparation().prepare(
         _source(tmp_path / "source.srt"), style, 1080, 1920, STYLE,
@@ -96,9 +96,13 @@ def test_alpha_fade_falls_back_to_a_static_phrase_without_usable_word_timing(tmp
     try:
         dialogues = _dialogues(prepared.path)
 
-        assert len(dialogues) == 1
-        assert dialogues[0].endswith("UNO DOS TRES")
-        assert r"\1a" not in dialogues[0]
+        assert len(dialogues) == 3
+        assert "0:00:00.00,0:00:00.45" in dialogues[0]
+        assert "0:00:00.45,0:00:00.90" in dialogues[1]
+        assert "0:00:00.90,0:00:01.50" in dialogues[2]
+        assert dialogues[2].endswith(
+            r"UNO DOS {\1a&HFF&\t(0,150,\1a&H00&)}TRES{\1a&H00&}"
+        )
     finally:
         prepared.cleanup()
 

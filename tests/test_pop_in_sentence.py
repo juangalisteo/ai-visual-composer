@@ -69,16 +69,21 @@ def test_pop_in_sentence_scales_only_the_active_word_over_its_real_interval(tmp_
         prepared.cleanup()
 
 
-def test_pop_in_sentence_falls_back_to_a_static_phrase_without_usable_word_timing(tmp_path):
+def test_pop_in_sentence_spreads_the_cue_over_its_words_without_word_timing(tmp_path):
     style = SubtitleConfigLoader().load_render_style(STYLE)
     prepared = SubtitleRenderPreparation().prepare(
         _source(tmp_path / "source.srt"), style, 1080, 1920, STYLE,
     )
     try:
         dialogues = _dialogues(prepared.path)
-        assert len(dialogues) == 1
-        assert r"\fscx125" not in dialogues[0]
-        assert dialogues[0].endswith("UNO DOS TRES")
+        assert len(dialogues) == 3
+        assert "0:00:00.00,0:00:00.45" in dialogues[0]
+        assert "0:00:00.90,0:00:01.50" in dialogues[2]
+        assert all(r"\fscx125" in line for line in dialogues)
+        assert dialogues[2].endswith(
+            r"UNO DOS {\t(0,300,\fscx125\fscy125)"
+            r"\t(300,600,\fscx100\fscy100)}TRES{\fscx100\fscy100}"
+        )
     finally:
         prepared.cleanup()
 

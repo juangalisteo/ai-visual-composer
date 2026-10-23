@@ -73,16 +73,19 @@ def test_typewriter_reveals_one_character_at_a_time_over_each_word_interval(tmp_
         prepared.cleanup()
 
 
-def test_typewriter_falls_back_to_a_static_phrase_without_usable_word_timing(tmp_path):
+def test_typewriter_spreads_the_cue_over_its_words_without_word_timing(tmp_path):
     style = SubtitleConfigLoader().load_render_style(STYLE)
     prepared = SubtitleRenderPreparation().prepare(
         _source(tmp_path / "source.srt"), style, 1080, 1920, STYLE,
     )
     try:
         dialogues = _dialogues(prepared.path)
-        assert len(dialogues) == 1
-        assert dialogues[0].endswith("Hola mundo")
-        assert not dialogues[0].endswith("_")
+        assert len(dialogues) == len("Holamundo")
+        assert "0:00:00.00,0:00:00.11" in dialogues[0]
+        assert dialogues[0].endswith(",H_")
+        assert dialogues[3].endswith(",Hola_")
+        assert "0:00:00.88,0:00:01.00" in dialogues[-1]
+        assert dialogues[-1].endswith(",Hola mundo_")
     finally:
         prepared.cleanup()
 

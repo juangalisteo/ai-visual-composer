@@ -73,16 +73,21 @@ def test_active_pill_draws_a_rounded_vector_behind_only_the_active_word(tmp_path
         prepared.cleanup()
 
 
-def test_active_pill_falls_back_to_a_static_phrase_without_usable_word_timing(tmp_path):
+def test_active_pill_spreads_the_cue_over_its_words_without_word_timing(tmp_path):
     style = SubtitleConfigLoader().load_render_style(STYLE)
     prepared = SubtitleRenderPreparation().prepare(
         _source(tmp_path / "source.srt"), style, 1080, 1920, STYLE,
     )
     try:
         dialogues = _dialogues(prepared.path)
-        assert len(dialogues) == 1
-        assert r"\p1" not in dialogues[0]
-        assert dialogues[0].endswith("UNO DOS TRES")
+        pills = [line for line in dialogues if r"\p1" in line]
+        text = [line for line in dialogues if r"\p1" not in line]
+
+        assert len(pills) == len(text) == 3
+        assert "0:00:00.00,0:00:00.45" in pills[0]
+        assert "0:00:00.45,0:00:00.90" in pills[1]
+        assert "0:00:00.90,0:00:01.50" in pills[2]
+        assert r"UNO {\1c&H00000000}DOS{\1c&H00FFFFFF} TRES" in text[1]
     finally:
         prepared.cleanup()
 

@@ -9,6 +9,7 @@ from app.managers.font_manager import FontManager
 from app.modules.subtitles.effects.physics import KineticPhysicsEngine
 from app.modules.subtitles.effects.typewriter import TypewriterInterpolator
 from app.modules.subtitles.nlp.syllabifier import SyllabifierPolicy
+from app.modules.subtitles.policies.timing import approximate_word_timings
 from app.modules.subtitles.rendering.font_metrics import FontMetricsEngine
 
 
@@ -285,7 +286,13 @@ class AssSubtitleBuilder:
             "alpha_fade",
         }:
             return ()
-        words = self._words_for_cue(start, end, text, timing)
+        words = self._words_for_cue(start, end, text, timing) or (
+            approximate_word_timings(
+                start / 1000.0,
+                end / 1000.0,
+                text.replace("\n", " ").split(),
+            )
+        )
         if not words:
             return ()
         if effect.name == "typewriter":

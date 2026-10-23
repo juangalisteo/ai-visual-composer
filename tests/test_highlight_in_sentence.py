@@ -72,7 +72,7 @@ def test_highlight_in_sentence_emits_one_full_phrase_per_active_word_interval(tm
         prepared.cleanup()
 
 
-def test_highlight_in_sentence_falls_back_to_static_phrase_without_usable_word_timing(tmp_path):
+def test_highlight_in_sentence_spreads_the_cue_over_its_words_without_word_timing(tmp_path):
     source = _source(tmp_path / "source.srt")
     style = SubtitleConfigLoader().load_render_style(STYLE)
 
@@ -81,9 +81,13 @@ def test_highlight_in_sentence_falls_back_to_static_phrase_without_usable_word_t
     )
     try:
         dialogues = _dialogues(prepared.path)
-        assert len(dialogues) == 1
-        assert dialogues[0].endswith("UNO DOS TRES")
-        assert r"\1c" not in dialogues[0]
+        assert len(dialogues) == 3
+        assert "0:00:00.00,0:00:00.45" in dialogues[0]
+        assert "0:00:00.45,0:00:00.90" in dialogues[1]
+        assert "0:00:00.90,0:00:01.50" in dialogues[2]
+        assert dialogues[1].endswith(
+            r"UNO {\1c&H0000FFFF}DOS{\1c&H00FFFFFF} TRES"
+        )
     finally:
         prepared.cleanup()
 

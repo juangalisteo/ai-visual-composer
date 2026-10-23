@@ -109,7 +109,7 @@ def test_continuous_karaoke_emits_one_phrase_with_syllabic_kf_timing(tmp_path):
         prepared.cleanup()
 
 
-def test_continuous_karaoke_falls_back_to_a_static_phrase_without_timing(tmp_path):
+def test_continuous_karaoke_spreads_the_cue_over_its_words_without_timing(tmp_path):
     style = SubtitleConfigLoader().load_render_style(STYLE)
     prepared = SubtitleRenderPreparation().prepare(
         _source(tmp_path / "source.srt"), style, 1080, 1920, STYLE,
@@ -119,8 +119,8 @@ def test_continuous_karaoke_falls_back_to_a_static_phrase_without_timing(tmp_pat
         dialogue = _dialogues(prepared.path)
 
         assert len(dialogue) == 1
-        assert dialogue[0].endswith("HOLA MUNDO")
-        assert r"\kf" not in dialogue[0]
+        assert "0:00:00.00,0:00:01.00" in dialogue[0]
+        assert dialogue[0].endswith(r"{\kf22}HO{\kf22}LA {\kf34}MUN{\kf22}DO")
     finally:
         prepared.cleanup()
 

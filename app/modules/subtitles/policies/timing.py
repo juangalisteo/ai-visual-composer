@@ -214,6 +214,62 @@ def text_joiner(format_words):
     return join_words
 
 
+def approximate_word_timings(
+    start: float,
+    end: float,
+    texts
+) -> tuple[WordTiming, ...]:
+    """Spread a cue's duration over its words, in proportion to the
+    characters of each word.
+
+    The words follow one another without gaps: the first starts at
+    ``start`` and the last ends at ``end``. Used to render word effects
+    when there are no real word times for the cue; the cue keeps its own
+    times and text.
+    """
+    texts = tuple(
+        text
+        for text in texts
+        if str(text).strip()
+    )
+
+    if not texts:
+        return ()
+
+    lengths = [
+        max(1, len(text))
+        for text in texts
+    ]
+    total_length = sum(
+        lengths
+    )
+    duration = end - start
+    boundaries = [start]
+    cumulative = 0
+
+    for length in lengths[:-1]:
+        cumulative += length
+        boundaries.append(
+            start + duration * cumulative / total_length
+        )
+
+    boundaries.append(end)
+
+    return tuple(
+        WordTiming(
+            text=text,
+            start=word_start,
+            end=word_end,
+            source="approximate"
+        )
+        for text, word_start, word_end in zip(
+            texts,
+            boundaries,
+            boundaries[1:]
+        )
+    )
+
+
 def whisper_timing_path(
     subtitle_path
 ) -> Path:
