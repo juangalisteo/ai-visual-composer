@@ -14,7 +14,6 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
         "instagram": {
             "profile": "Instagram",
             "generation": {"width": 448, "height": 800},
-            "target": {"width": 1080, "height": 1920},
             "delivery": {"intermediate_output": "lossless_ffv1"},
             "frames": 49,
             "fps": 12,
@@ -29,7 +28,6 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
         "youtube": {
             "profile": "YouTube",
             "generation": {"width": 800, "height": 448},
-            "target": {"width": 1920, "height": 1080},
             "delivery": {"intermediate_output": "lossless_ffv1"},
             "frames": 49,
             "fps": 12,
@@ -58,7 +56,6 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             "display_name": "Etiqueta que no participa en la resolucion",
             "video_component": {
                 "generation": {"width": 448, "height": 800},
-                "target": {"width": 1080, "height": 1920},
                 "delivery": {
                     "intermediate_output": "lossless_ffv1",
                 },
@@ -263,7 +260,6 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
 
                     self.assertEqual(expected, validated.delivery.intermediate_output)
                     self.assertEqual(448, validated.generation.width)
-                    self.assertEqual(1920, validated.delivery.height)
                     self.assertEqual("uni_pc", validated.sampling.sampler)
 
     def test_missing_delivery_raises_configuration_error_without_legacy_fallback(self):

@@ -61,8 +61,6 @@ class BackendVideoPromptTest(unittest.TestCase):
             fps=8.0,
             generation_width=384,
             generation_height=672,
-            target_width=1080,
-            target_height=1920,
             steps=12,
             cfg=5.0,
             sampler="uni_pc",
@@ -98,14 +96,6 @@ class BackendVideoPromptTest(unittest.TestCase):
         self.assertEqual(
             672,
             prompt.generation_height
-        )
-        self.assertEqual(
-            1080,
-            prompt.target_width
-        )
-        self.assertEqual(
-            1920,
-            prompt.target_height
         )
         self.assertEqual(
             12,

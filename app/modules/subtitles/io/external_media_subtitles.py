@@ -28,6 +28,8 @@ class PreparedExternalMediaSubtitles:
 class ExternalMediaSubtitlePreparationService:
     """Prepare canonical Whisper subtitles from an external media source."""
 
+    SUPPORTED_EXTENSIONS = (".mp4", ".mp3")
+
     def __init__(
         self,
         runner=None,
@@ -67,7 +69,7 @@ class ExternalMediaSubtitlePreparationService:
             )
 
         extension = source_path.suffix.lower()
-        if extension not in {".mp4", ".mp3"}:
+        if extension not in self.SUPPORTED_EXTENSIONS:
             raise ValueError(
                 "El medio de subtitulos debe ser MP4 o MP3: "
                 f"{source_path}"

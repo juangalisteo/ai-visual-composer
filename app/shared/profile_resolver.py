@@ -77,7 +77,54 @@ class ProfileResolver:
 
     def load_operational(self, profile_key):
         """Load a general operational document by canonical identity."""
-        return self._load_profile_json(self.resolve_operational(profile_key))
+        path = self.resolve_operational(profile_key)
+        profile = self._load_profile_json(path)
+        self._validate_format_orientation(profile, path)
+        return profile
+
+    @staticmethod
+    def _validate_format_orientation(profile, path):
+        """Reject a declared format that contradicts video_style size."""
+        profile_format = profile.get("format")
+        video_style = profile.get("video_style")
+        if not isinstance(profile_format, str) or not isinstance(
+            video_style,
+            dict,
+        ):
+            return
+        width = video_style.get("width")
+        height = video_style.get("height")
+        if not all(
+            isinstance(value, int) and not isinstance(value, bool)
+            for value in (width, height)
+        ):
+            return
+
+        profile_format = profile_format.strip().lower()
+        if profile_format == "vertical" and width > height:
+            orientation = "más ancho que alto"
+        elif profile_format == "horizontal" and width < height:
+            orientation = "más alto que ancho"
+        else:
+            return
+
+        error = ValueError(
+            f"format={profile_format} contradice video_style "
+            f"{width}x{height}."
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                f"El perfil declara format «{profile_format}», pero "
+                f"video_style mide {width}x{height} ({orientation})."
+            ),
+            recommended_action=(
+                "Corrige format o video_style.width/height para que "
+                "cuadren."
+            ),
+            operation="Validar perfil operacional",
+            resource=str(path),
+        ) from error
 
     def _operational_candidates(self, component, platform):
         return self._discover_root_operational_profiles(component, platform)
@@ -325,7 +372,6 @@ class ProfileResolver:
             )
             component = data["video_component"]
             generation = component["generation"]
-            target = component["target"]
             try:
                 delivery = component["delivery"]
             except KeyError as error:
@@ -354,8 +400,6 @@ class ProfileResolver:
                     seed=component.get("seed"),
                 ),
                 delivery=WanDeliveryParameters(
-                    width=target["width"],
-                    height=target["height"],
                     intermediate_output=intermediate_output,
                 ),
                 sampling=WanSamplingParameters(

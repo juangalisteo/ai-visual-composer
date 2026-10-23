@@ -87,7 +87,6 @@
         },
 
         "overlays": {
-            "enabled": false,
             "directory": "assets/videos/overlays",
             "folder_selection": "random",
             "file_selection": "random",

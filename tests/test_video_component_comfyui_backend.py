@@ -368,8 +368,6 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                     source_trace=(
                         "VisualTruth.visible_subject",
                     ),
-                    target_width=1080,
-                    target_height=1920,
                     steps=12,
                     cfg=5.0,
                     sampler="uni_pc",
@@ -423,14 +421,6 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
             self.assertEqual(
                 123456789,
                 result.seed
-            )
-            self.assertEqual(
-                1080,
-                result.target_width
-            )
-            self.assertEqual(
-                1920,
-                result.target_height
             )
             self.assertEqual(
                 12,

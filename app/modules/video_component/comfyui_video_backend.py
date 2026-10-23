@@ -221,8 +221,6 @@ class ComfyUIVideoBackend:
             fps=backend_prompt.fps,
             generation_width=backend_prompt.generation_width,
             generation_height=backend_prompt.generation_height,
-            target_width=backend_prompt.target_width,
-            target_height=backend_prompt.target_height,
             steps=backend_prompt.steps,
             cfg=backend_prompt.cfg,
             sampler=backend_prompt.sampler,

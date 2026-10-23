@@ -36,7 +36,7 @@ def _document():
             seed_mode="fixed",
             seed=7,
         ),
-        delivery=WanDeliveryParameters(width=1080, height=1920),
+        delivery=WanDeliveryParameters(),
         sampling=WanSamplingParameters(
             steps=20,
             cfg=5.0,
@@ -57,8 +57,6 @@ def _clip(scene_number=1):
         fps=12,
         generation_width=448,
         generation_height=800,
-        target_width=1080,
-        target_height=1920,
         steps=20,
         cfg=5.0,
         sampler="uni_pc",
@@ -75,13 +73,9 @@ class WanContractsTest(unittest.TestCase):
 
     def test_delivery_parameters_validate_supported_intermediate_outputs(self):
         lossless = WanDeliveryParameters(
-            width=1080,
-            height=1920,
             intermediate_output="lossless_ffv1",
         )
         legacy = WanDeliveryParameters(
-            width=1080,
-            height=1920,
             intermediate_output="savevideo_h264",
         )
 
@@ -95,7 +89,7 @@ class WanContractsTest(unittest.TestCase):
         )
 
     def test_delivery_parameters_adapt_legacy_absence_to_savevideo_h264(self):
-        delivery = WanDeliveryParameters(width=1080, height=1920)
+        delivery = WanDeliveryParameters()
 
         self.assertEqual(
             WanIntermediateOutput.SAVEVIDEO_H264,
@@ -105,8 +99,6 @@ class WanContractsTest(unittest.TestCase):
     def test_delivery_parameters_reject_invalid_intermediate_output(self):
         with self.assertRaisesRegex(ValueError, "intermediate_output"):
             WanDeliveryParameters(
-                width=1080,
-                height=1920,
                 intermediate_output="unsupported_output",
             )
 

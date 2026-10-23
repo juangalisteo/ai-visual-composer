@@ -74,15 +74,11 @@ class WanGenerationParameters:
 
 @dataclass(frozen=True)
 class WanDeliveryParameters:
-    width: int
-    height: int
     intermediate_output: WanIntermediateOutput = (
         WanIntermediateOutput.SAVEVIDEO_H264
     )
 
     def __post_init__(self):
-        _require_positive_int(self.width, "width")
-        _require_positive_int(self.height, "height")
         try:
             intermediate_output = WanIntermediateOutput(
                 self.intermediate_output
@@ -280,8 +276,6 @@ class WanClipArtifact:
     fps: float
     generation_width: int
     generation_height: int
-    target_width: int
-    target_height: int
     steps: int
     cfg: float
     sampler: str
@@ -300,8 +294,6 @@ class WanClipArtifact:
         _require_positive_number(self.fps, "fps")
         _require_positive_int(self.generation_width, "generation_width")
         _require_positive_int(self.generation_height, "generation_height")
-        _require_positive_int(self.target_width, "target_width")
-        _require_positive_int(self.target_height, "target_height")
         _require_positive_int(self.steps, "steps")
         _require_positive_number(self.cfg, "cfg")
         _require_positive_number(self.duration_seconds, "duration_seconds")

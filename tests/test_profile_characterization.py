@@ -243,14 +243,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_video_wan_profiles_keep_current_parameters(self):
         expected_by_platform = {
-            "instagram": (
-                (448, 800),
-                (1080, 1920),
-            ),
-            "youtube": (
-                (800, 448),
-                (1920, 1080),
-            ),
+            "instagram": (448, 800),
+            "youtube": (800, 448),
         }
 
         for platform, dimensions in expected_by_platform.items():
@@ -275,17 +269,10 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     path
                 )
                 self.assertEqual(
-                    dimensions[0],
+                    dimensions,
                     (
                         video["generation"]["width"],
                         video["generation"]["height"],
-                    )
-                )
-                self.assertEqual(
-                    dimensions[1],
-                    (
-                        video["target"]["width"],
-                        video["target"]["height"],
                     )
                 )
                 self.assertEqual(49, video["frames"])

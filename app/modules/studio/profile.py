@@ -2,6 +2,9 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.modules.subtitles.io.external_media_subtitles import (
+    ExternalMediaSubtitlePreparationService,
+)
 from app.shared.config_contract import (
     require_float,
     require_int,
@@ -9,6 +12,7 @@ from app.shared.config_contract import (
     require_sequence,
     require_text,
 )
+from app.shared.operational_error import create_operational_error
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -131,15 +135,17 @@ class StudioProfileLoader:
             ),
         )
         self._validate_music(music_config)
+        video_extensions = self._extensions(
+            input_config,
+            "video_extensions",
+            "studio.input.video_extensions"
+        )
+        self._validate_video_extensions(video_extensions, profile_key)
 
         return StudioProfile(
             platform=require_text(profile, "platform", "platform"),
             profile_id=require_text(profile, "profile_id", "profile_id"),
-            video_extensions=self._extensions(
-                input_config,
-                "video_extensions",
-                "studio.input.video_extensions"
-            ),
+            video_extensions=video_extensions,
             subtitle_extensions=self._extensions(
                 input_config,
                 "subtitle_extensions",
@@ -205,6 +211,46 @@ class StudioProfileLoader:
                 f"La configuracion {path} debe contener extensiones unicas."
             )
         return normalized
+
+    @staticmethod
+    def _validate_video_extensions(video_extensions, profile_key):
+        # SRT + VIDEO y MONTAJE pasan el vídeo a FFmpeg sin filtrar la
+        # extensión; SOLO VIDEO lo transcribe con Whisper, que es el único
+        # modo que la restringe.
+        supported = ExternalMediaSubtitlePreparationService.SUPPORTED_EXTENSIONS
+        unsupported = tuple(
+            extension
+            for extension in video_extensions
+            if extension not in supported
+        )
+        if not unsupported:
+            return
+
+        error = ValueError(
+            "studio.input.video_extensions incluye extensiones que Whisper "
+            f"no admite: {', '.join(unsupported)}."
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                "studio.input.video_extensions incluye "
+                f"{', '.join(unsupported)}, pero SOLO VIDEO transcribe el "
+                "vídeo con Whisper, que solo admite "
+                f"{', '.join(supported)}."
+            ),
+            recommended_action=(
+                "Deja en studio.input.video_extensions solo "
+                f"{', '.join(supported)}."
+            ),
+            operation="Validar perfil STUDIO",
+            resource="/".join(
+                (
+                    profile_key.component.value,
+                    profile_key.platform,
+                    profile_key.profile_id,
+                )
+            ),
+        ) from error
 
     @staticmethod
     def _validate_music(config):

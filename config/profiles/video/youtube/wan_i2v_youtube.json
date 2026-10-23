@@ -8,10 +8,6 @@
             "width": 800,
             "height": 448
         },
-        "target": {
-            "width": 1920,
-            "height": 1080
-        },
         "delivery": {
             "intermediate_output": "lossless_ffv1"
         },

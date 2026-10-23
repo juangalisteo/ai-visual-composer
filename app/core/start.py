@@ -1295,8 +1295,6 @@ def _build_video_clip_manifest_entry(
         "fps": result.fps,
         "generation_width": result.generation_width,
         "generation_height": result.generation_height,
-        "target_width": result.target_width,
-        "target_height": result.target_height,
         "steps": result.steps,
         "cfg": result.cfg,
         "sampler": result.sampler,

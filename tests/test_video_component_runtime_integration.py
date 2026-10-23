@@ -134,8 +134,6 @@ def FakeResult(
         fps=12.0,
         generation_width=384,
         generation_height=672,
-        target_width=1080,
-        target_height=1920,
         steps=12,
         cfg=5.0,
         sampler="uni_pc",
@@ -294,14 +292,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             call["overrides"]["generation_height"]
         )
         self.assertEqual(
-            1080,
-            call["overrides"]["target_width"]
-        )
-        self.assertEqual(
-            1920,
-            call["overrides"]["target_height"]
-        )
-        self.assertEqual(
             49,
             call["overrides"]["frames"]
         )
@@ -454,16 +444,12 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "config/profiles/video/instagram/wan_i2v_instagram.json",
                 448,
                 800,
-                1080,
-                1920,
                 20,
             ),
             (
                 "config/profiles/video/youtube/wan_i2v_youtube.json",
                 800,
                 448,
-                1920,
-                1080,
                 20,
             ),
         )
@@ -472,8 +458,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             profile_path,
             generation_width,
             generation_height,
-            target_width,
-            target_height,
             steps,
         ) in cases:
             with self.subTest(
@@ -501,22 +485,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     generation_height,
                     video_component[
                         "generation"
-                    ][
-                        "height"
-                    ]
-                )
-                self.assertEqual(
-                    target_width,
-                    video_component[
-                        "target"
-                    ][
-                        "width"
-                    ]
-                )
-                self.assertEqual(
-                    target_height,
-                    video_component[
-                        "target"
                     ][
                         "height"
                     ]
@@ -681,8 +649,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 self.assertEqual(expected, prompt.intermediate_output)
                 self.assertEqual(384, prompt.generation_width)
                 self.assertEqual(672, prompt.generation_height)
-                self.assertEqual(1080, prompt.target_width)
-                self.assertEqual(1920, prompt.target_height)
                 self.assertEqual(49, prompt.frames)
                 self.assertEqual(12.0, prompt.fps)
                 self.assertEqual(12, prompt.steps)
@@ -1482,10 +1448,6 @@ def _video_profile(
                     "width": 672,
                     "height": 384,
                 },
-                "target": {
-                    "width": 1920,
-                    "height": 1080,
-                },
                 "frames": 49,
                 "fps": 12,
                 "seed_mode": seed_mode,
@@ -1509,10 +1471,6 @@ def _video_profile(
             "generation": {
                 "width": 384,
                 "height": 672,
-            },
-            "target": {
-                "width": 1080,
-                "height": 1920,
             },
             "frames": 49,
             "fps": 12,

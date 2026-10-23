@@ -149,14 +149,6 @@ class FakeVideoComponentBuilder:
                 "generation_height",
                 320
             ),
-            target_width=overrides.get(
-                "target_width",
-                1080
-            ),
-            target_height=overrides.get(
-                "target_height",
-                1920
-            ),
             steps=overrides.get(
                 "steps",
                 4

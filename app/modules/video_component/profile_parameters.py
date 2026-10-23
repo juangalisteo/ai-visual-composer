@@ -42,10 +42,6 @@ def build_video_backend_overrides(profile):
         "generation",
         {}
     )
-    target = video_component.get(
-        "target",
-        {}
-    )
     sampling = video_component.get(
         "sampling",
         {}
@@ -74,16 +70,6 @@ def build_video_backend_overrides(profile):
             generation,
             "height",
             "generation.height"
-        ),
-        "target_width": _required_int(
-            target,
-            "width",
-            "target.width"
-        ),
-        "target_height": _required_int(
-            target,
-            "height",
-            "target.height"
         ),
         "frames": _required_int(
             video_component,

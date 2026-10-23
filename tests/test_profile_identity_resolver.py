@@ -320,6 +320,70 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         self.assertEqual("PROFILE", caught.exception.context.family)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
+    def _write_format_profile(self, root, profile_format, width, height):
+        target = root / "guion/instagram/test_profile.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            json.dumps(
+                {
+                    "component": "guion",
+                    "platform": "instagram",
+                    "profile_id": "test_profile",
+                    "format": profile_format,
+                    "video_style": {"width": width, "height": height},
+                }
+            ),
+            encoding="utf-8",
+        )
+        return OperationalProfileKey("guion", "instagram", "test_profile")
+
+    def test_load_operational_accepts_format_matching_video_style(self):
+        for (component, platform), profile_id in OPERATIONAL_PROFILE_IDS.items():
+            with self.subTest(profile_id=profile_id):
+                self.resolver.load_operational(
+                    OperationalProfileKey(component, platform, profile_id)
+                )
+
+        cases = (
+            ("vertical", 1080, 1920),
+            ("horizontal", 1920, 1080),
+            ("vertical", 1080, 1080),
+        )
+        for profile_format, width, height in cases:
+            with self.subTest(format=profile_format, size=(width, height)):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    key = self._write_format_profile(
+                        root, profile_format, width, height
+                    )
+
+                    profile = ProfileResolver(root).load_operational(key)
+
+                self.assertEqual(profile_format, profile["format"])
+
+    def test_load_operational_rejects_format_contradicting_video_style(self):
+        cases = (
+            ("vertical", 1920, 1080, "más ancho que alto"),
+            ("horizontal", 1080, 1920, "más alto que ancho"),
+        )
+        for profile_format, width, height, orientation in cases:
+            with self.subTest(format=profile_format):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    key = self._write_format_profile(
+                        root, profile_format, width, height
+                    )
+
+                    with self.assertRaises(OperationalError) as caught:
+                        ProfileResolver(root).load_operational(key)
+
+                context = caught.exception.context
+                self.assertEqual("CONFIG", context.family)
+                self.assertIn(f"format «{profile_format}»", context.user_message)
+                self.assertIn(f"{width}x{height}", context.user_message)
+                self.assertIn(orientation, context.user_message)
+                self.assertIsInstance(caught.exception.__cause__, ValueError)
+
     def test_profile_paths_catalog_no_longer_exists(self):
         self.assertFalse(hasattr(ProfileResolver, "_PROFILE_PATHS"))
 

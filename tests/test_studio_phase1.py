@@ -382,6 +382,45 @@ class StudioPhase1Test(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "studio.output.video.crf"):
             StudioProfileLoader().load(incomplete, self.profile_key)
 
+    def test_video_extensions_accept_what_every_studio_mode_supports(self):
+        for platform in ("instagram", "youtube"):
+            with self.subTest(platform=platform):
+                key = OperationalProfileKey(
+                    "studio", platform, f"studio_{platform}"
+                )
+                profile = StudioProfileLoader().load(
+                    ProfileResolver().load_operational(key),
+                    key,
+                )
+                self.assertEqual((".mp4",), profile.video_extensions)
+
+        raw = ProfileResolver().load_operational(self.operational_key)
+        variant = deepcopy(raw)
+        variant["studio"]["input"]["video_extensions"] = [".mp4", ".MP3"]
+
+        profile = StudioProfileLoader().load(variant, self.profile_key)
+
+        self.assertEqual((".mp4", ".mp3"), profile.video_extensions)
+
+    def test_video_extensions_reject_what_whisper_does_not_support(self):
+        raw = ProfileResolver().load_operational(self.operational_key)
+        invalid = deepcopy(raw)
+        invalid["studio"]["input"]["video_extensions"] = [".mp4", ".mov"]
+
+        with self.assertRaises(OperationalError) as caught:
+            StudioProfileLoader().load(invalid, self.profile_key)
+
+        context = caught.exception.context
+        self.assertEqual("CONFIG", context.family)
+        self.assertIn("incluye .mov, pero", context.user_message)
+        self.assertIn("SOLO VIDEO", context.user_message)
+        self.assertIn("Whisper", context.user_message)
+        self.assertEqual(
+            "studio/instagram/studio_instagram",
+            context.resource,
+        )
+        self.assertIsInstance(caught.exception.__cause__, ValueError)
+
     def test_transition_duration_is_isolated_by_studio_platform(self):
         youtube_operational_key = OperationalProfileKey(
             "studio", "youtube", "studio_youtube"

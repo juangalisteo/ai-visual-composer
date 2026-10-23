@@ -29,7 +29,6 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
             "video_component": {
                 "profile": "Technical profile label",
                 "generation": {"width": 448, "height": 800},
-                "target": {"width": 1080, "height": 1920},
                 "delivery": {
                     "intermediate_output": intermediate_output,
                 },
@@ -53,8 +52,8 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
 
     def test_official_documents_load_and_preserve_lossless_parameters(self):
         expected = {
-            "instagram": ("video_instagram", 448, 800, 1080, 1920),
-            "youtube": ("video_youtube", 800, 448, 1920, 1080),
+            "instagram": ("video_instagram", 448, 800),
+            "youtube": ("video_youtube", 800, 448),
         }
 
         for platform, values in expected.items():
@@ -62,7 +61,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
                 "app.modules.video_component.profile_parameters._random_video_seed",
                 return_value=123,
             ):
-                profile_id, width, height, target_width, target_height = values
+                profile_id, width, height = values
                 profile = load_video_component_parameters(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
@@ -74,8 +73,6 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
 
             self.assertEqual(width, overrides["generation_width"])
             self.assertEqual(height, overrides["generation_height"])
-            self.assertEqual(target_width, overrides["target_width"])
-            self.assertEqual(target_height, overrides["target_height"])
             self.assertEqual(49, overrides["frames"])
             self.assertEqual(12.0, overrides["fps"])
             self.assertEqual(20, overrides["steps"])
