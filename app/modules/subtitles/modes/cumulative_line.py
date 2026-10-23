@@ -1,5 +1,6 @@
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.modes.single_line import SingleLineModel
+from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
 
 
 class CumulativeLineModel(BaseSubtitleModel):
@@ -18,8 +19,7 @@ class CumulativeLineModel(BaseSubtitleModel):
         return self._optimize_without_timing(blocks)
 
     def _optimize_with_timing(self, timing):
-        optimized = []
-        index = 1
+        timed_cues = []
 
         for segment in timing.segments:
             for word_group in self.segmenter._split_words_by_gap(segment.words):
@@ -29,17 +29,24 @@ class CumulativeLineModel(BaseSubtitleModel):
                     for position, (start, end) in enumerate(
                         zip(starts, ends), start=1
                     ):
-                        optimized.append(
-                            self._format_block(
-                                index=index,
-                                start=self.segmenter._seconds_to_time(start),
-                                end=self.segmenter._seconds_to_time(end),
-                                text=self._format_words(clause[:position]),
-                            )
+                        timed_cues.append(
+                            (start, end, self._format_words(clause[:position]))
                         )
-                        index += 1
 
-        return optimized
+        return [
+            self._format_block(
+                index=index,
+                start=self.segmenter._seconds_to_time(start),
+                end=self.segmenter._seconds_to_time(end),
+                text=text,
+            )
+            for index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues, self.segmenter.significant_gap_threshold
+                ),
+                start=1,
+            )
+        ]
 
     def _optimize_without_timing(self, blocks):
         optimized = []

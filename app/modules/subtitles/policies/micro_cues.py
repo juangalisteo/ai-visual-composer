@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from app.modules.subtitles.policies.timing import WordTiming
+from app.modules.subtitles.policies.timing import (
+    WordTiming,
+    stretch_zero_duration_cues,
+)
 
 
 @dataclass(frozen=True)
@@ -155,8 +158,7 @@ class MicroCuePolicy:
         prepared_words = tuple(
             word
             for word in words
-            if word.end > word.start
-            and formatter(word.text)
+            if formatter(word.text)
         )
 
         if not prepared_words:
@@ -168,11 +170,23 @@ class MicroCuePolicy:
         if not self.enabled:
             return MicroCueResult(
                 cues=tuple(
-                    self._cue_from_words(
-                        (word,),
-                        formatter
+                    SubtitleCue(
+                        text=formatter(
+                            word.text
+                        ),
+                        start=start,
+                        end=end,
+                        words=(
+                            word,
+                        )
                     )
-                    for word in prepared_words
+                    for start, end, word in stretch_zero_duration_cues(
+                        tuple(
+                            (word.start, word.end, word)
+                            for word in prepared_words
+                        ),
+                        self.significant_gap_threshold
+                    )
                 ),
                 stats=MicroCueStats()
             )
@@ -381,10 +395,17 @@ class MicroCuePolicy:
             for word in words
         )
 
+        start = words[0].start
+        end = words[-1].end
+
+        # Words that all last zero seconds get the minimum visual duration.
+        if end <= start:
+            end = start + self.minimum_visual_duration
+
         return SubtitleCue(
             text=text,
-            start=words[0].start,
-            end=words[-1].end,
+            start=start,
+            end=end,
             words=words
         )
 

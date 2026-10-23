@@ -2,6 +2,7 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
+from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
 from app.shared.config_contract import require_float, require_int
 
 
@@ -82,23 +83,34 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         return self._optimize_without_timing(blocks)
 
     def _optimize_with_timing(self, timing):
-        optimized = []
-        index = 1
+        timed_cues = []
 
         for segment in timing.segments:
             for word_group in self._split_words_by_gap(segment.words):
                 for cue_words in self._partition_words(word_group):
-                    optimized.append(
-                        self._format_block(
-                            index=index,
-                            start=self._seconds_to_time(cue_words[0].start),
-                            end=self._seconds_to_time(cue_words[-1].end),
-                            text=self._format_words(cue_words),
+                    timed_cues.append(
+                        (
+                            cue_words[0].start,
+                            cue_words[-1].end,
+                            self._format_words(cue_words),
                         )
                     )
-                    index += 1
 
-        return optimized
+        return [
+            self._format_block(
+                index=index,
+                start=self._seconds_to_time(start),
+                end=self._seconds_to_time(end),
+                text=text,
+            )
+            for index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues,
+                    self.significant_gap_threshold,
+                ),
+                start=1,
+            )
+        ]
 
     def _optimize_without_timing(self, blocks):
         optimized = []
@@ -290,9 +302,6 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         current = []
 
         for word in words:
-            if word.end <= word.start:
-                continue
-
             if (
                 current
                 and word.start - current[-1].end

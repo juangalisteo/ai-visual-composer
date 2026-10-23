@@ -2,6 +2,7 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
+from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
 from app.shared.config_contract import require_float, require_int
 
 
@@ -34,21 +35,25 @@ class AcousticBurstModel(BaseSubtitleModel):
         return self._optimize_without_timing(blocks)
 
     def _optimize_with_timing(self, timing):
-        optimized = []
-        index = 1
-
-        for segment in timing.segments:
-            for cue_words in self._partition_timed_words(segment.words):
-                optimized.append(
-                    self._format_block(
-                        index,
-                        self._seconds_to_time(cue_words[0].start),
-                        self._seconds_to_time(cue_words[-1].end),
-                        self._format_words(cue_words),
-                    )
-                )
-                index += 1
-        return optimized
+        timed_cues = [
+            (cue_words[0].start, cue_words[-1].end, self._format_words(cue_words))
+            for segment in timing.segments
+            for cue_words in self._partition_timed_words(segment.words)
+        ]
+        return [
+            self._format_block(
+                index,
+                self._seconds_to_time(start),
+                self._seconds_to_time(end),
+                text,
+            )
+            for index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues, self.significant_gap_threshold
+                ),
+                start=1,
+            )
+        ]
 
     def _optimize_without_timing(self, blocks):
         optimized = []
@@ -80,8 +85,6 @@ class AcousticBurstModel(BaseSubtitleModel):
         current = []
 
         for word in words:
-            if word.end <= word.start:
-                continue
             if current and (
                 word.start - current[-1].end >= self.significant_gap_threshold
                 or not self._fits((*current, word))

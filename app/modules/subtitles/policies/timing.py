@@ -140,6 +140,41 @@ class SubtitleTiming:
         return self.word_count > 0
 
 
+def stretch_zero_duration_cues(
+    cues,
+    max_extension: float
+) -> list:
+    """Give a visible duration to timed cues that last zero seconds.
+
+    ``cues`` are ordered ``(start, end, payload)`` tuples in seconds. A cue
+    whose end is not after its start (its words have ``end == start``) is
+    stretched up to the start of the next cue, at most ``max_extension``
+    seconds; the last cue is stretched by ``max_extension``. A cue that
+    still has no room, because the next cue starts at the same instant,
+    is dropped so cues never overlap. Other cues are kept unchanged.
+    """
+    stretched = []
+
+    for position, (start, end, payload) in enumerate(cues):
+        if end <= start:
+            end = start + max_extension
+
+            if position + 1 < len(cues):
+                end = min(
+                    end,
+                    cues[position + 1][0]
+                )
+
+            if end <= start:
+                continue
+
+        stretched.append(
+            (start, end, payload)
+        )
+
+    return stretched
+
+
 def whisper_timing_path(
     subtitle_path
 ) -> Path:
