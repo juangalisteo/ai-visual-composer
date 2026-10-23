@@ -258,6 +258,13 @@ def iniciar(request):
                 False
             )
         ),
+        include_media_duration=(
+            pipeline_mode != "script"
+            and builders.get(
+                "voice",
+                False
+            )
+        ),
     )
     telemetry_artifacts = _pipeline_telemetry_artifacts(
         project

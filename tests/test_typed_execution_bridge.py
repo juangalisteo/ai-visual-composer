@@ -286,12 +286,13 @@ def test_typed_standard_voice_config_id_is_injected_into_config_manager():
 
 def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
     cases = (
-        ("audio", {"voice": True, "storyboard": True}, False),
-        ("subtitles", {"voice": True, "storyboard": True}, False),
-        ("storyboard", {"voice": True, "storyboard": False}, False),
-        ("storyboard", {"voice": True, "storyboard": True}, True),
+        ("script", {"voice": True, "storyboard": True}, False, False),
+        ("audio", {"voice": True, "storyboard": True}, False, True),
+        ("subtitles", {"voice": True, "storyboard": True}, False, True),
+        ("storyboard", {"voice": True, "storyboard": False}, False, True),
+        ("storyboard", {"voice": True, "storyboard": True}, True, True),
     )
-    for pipeline_mode, builders, expected in cases:
+    for pipeline_mode, builders, expected, expected_duration in cases:
         project = _project()
         config = Mock()
         config.get_ai_config.return_value = object()
@@ -315,6 +316,7 @@ def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
 
         summary = telemetry.complete.call_args.kwargs["summary"]
         assert summary.include_visual_metrics is expected, pipeline_mode
+        assert summary.include_media_duration is expected_duration, pipeline_mode
 
 
 def test_typed_standard_voice_requires_voice_config_id():

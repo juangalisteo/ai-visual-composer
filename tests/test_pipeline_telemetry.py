@@ -215,6 +215,40 @@ class PipelineTelemetryTest(unittest.TestCase):
         ):
             self.assertNotIn(label, rendered)
 
+    def test_summary_shows_media_duration_without_visual_metrics(self):
+        summary = PipelineSummary(
+            "telemetry",
+            include_visual_metrics=False,
+            include_media_duration=True,
+        )
+        summary.set_media_duration(34.0)
+
+        rendered = summary.render()
+
+        self.assertIn("Duración", rendered)
+        for label in (
+            "Escenas",
+            "Imágenes",
+            "Segundos por imagen",
+        ):
+            self.assertNotIn(label, rendered)
+
+    def test_summary_omits_images_when_none_were_generated(self):
+        summary = PipelineSummary("telemetry")
+        summary.set_scene_count(3)
+        summary.set_image_count(0)
+        summary.set_media_duration(34.0)
+
+        rendered = summary.render()
+
+        self.assertNotIn("Imágenes", rendered)
+        for label in (
+            "Escenas",
+            "Duración",
+            "Segundos por imagen",
+        ):
+            self.assertIn(label, rendered)
+
     @staticmethod
     def _raise_original_error():
         raise ValueError("original")

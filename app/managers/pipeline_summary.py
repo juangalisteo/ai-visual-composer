@@ -15,12 +15,18 @@ class PipelineSummary:
         self,
         project_name,
         include_visual_metrics=True,
+        include_media_duration=None,
     ):
         self.project_name = str(
             project_name
         )
         self.include_visual_metrics = bool(
             include_visual_metrics
+        )
+        self.include_media_duration = (
+            self.include_visual_metrics
+            if include_media_duration is None
+            else bool(include_media_duration)
         )
 
         self.scene_count = 0
@@ -118,20 +124,29 @@ class PipelineSummary:
         ]
 
         if self.include_visual_metrics:
-            lines.extend([
+            lines.append(
                 self._metric_line(
                     "Escenas",
                     self.scene_count
-                ),
-                self._metric_line(
-                    "Imágenes",
-                    self.image_count
-                ),
+                )
+            )
+            if self.image_count is not None and self.image_count > 0:
+                lines.append(
+                    self._metric_line(
+                        "Imágenes",
+                        self.image_count
+                    )
+                )
+
+        if self.include_media_duration:
+            lines.append(
                 self._metric_line(
                     "Duración",
                     self._format_media_duration()
-                ),
-            ])
+                )
+            )
+
+        if self.include_visual_metrics:
             seconds_per_image = self._format_seconds_per_image()
             if seconds_per_image is not None:
                 lines.append(
