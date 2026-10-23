@@ -2,7 +2,10 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
-from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -92,6 +95,7 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
                         (
                             cue_words[0].start,
                             cue_words[-1].end,
+                            cue_words,
                             self._format_words(cue_words),
                         )
                     )
@@ -107,6 +111,8 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
                 stretch_zero_duration_cues(
                     timed_cues,
                     self.significant_gap_threshold,
+                    # Joined words go in front on a single line.
+                    text_joiner(self._format_line_words),
                 ),
                 start=1,
             )
@@ -439,6 +445,9 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         )
 
     def _format_words(self, words):
+        return self._format_line_words(words)
+
+    def _format_line_words(self, words):
         text = " ".join(
             self._word_text(word)
             for word in words

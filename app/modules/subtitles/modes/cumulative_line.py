@@ -1,6 +1,9 @@
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.modes.single_line import SingleLineModel
-from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 
 
 class CumulativeLineModel(BaseSubtitleModel):
@@ -30,7 +33,12 @@ class CumulativeLineModel(BaseSubtitleModel):
                         zip(starts, ends), start=1
                     ):
                         timed_cues.append(
-                            (start, end, self._format_words(clause[:position]))
+                            (
+                                start,
+                                end,
+                                clause[:position],
+                                self._format_words(clause[:position]),
+                            )
                         )
 
         return [
@@ -42,7 +50,9 @@ class CumulativeLineModel(BaseSubtitleModel):
             )
             for index, (start, end, text) in enumerate(
                 stretch_zero_duration_cues(
-                    timed_cues, self.segmenter.significant_gap_threshold
+                    timed_cues,
+                    self.segmenter.significant_gap_threshold,
+                    text_joiner(self._format_words),
                 ),
                 start=1,
             )

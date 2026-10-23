@@ -171,21 +171,25 @@ class MicroCuePolicy:
             return MicroCueResult(
                 cues=tuple(
                     SubtitleCue(
-                        text=formatter(
-                            word.text
+                        text=" ".join(
+                            formatter(
+                                word.text
+                            )
+                            for word in cue_words
                         ),
                         start=start,
                         end=end,
-                        words=(
-                            word,
-                        )
+                        words=cue_words
                     )
-                    for start, end, word in stretch_zero_duration_cues(
+                    for start, end, cue_words in stretch_zero_duration_cues(
                         tuple(
-                            (word.start, word.end, word)
+                            (word.start, word.end, (word,), (word,))
                             for word in prepared_words
                         ),
-                        self.significant_gap_threshold
+                        self.significant_gap_threshold,
+                        lambda missing_words, cue_words: (
+                            missing_words + cue_words
+                        )
                     )
                 ),
                 stats=MicroCueStats()

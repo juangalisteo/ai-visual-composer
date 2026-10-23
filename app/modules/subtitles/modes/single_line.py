@@ -4,7 +4,10 @@ from functools import lru_cache
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
-from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -162,6 +165,7 @@ class SingleLineModel(BaseSubtitleModel):
                         (
                             chunk_words[0].start,
                             chunk_words[-1].end,
+                            chunk_words,
                             text
                         )
                     )
@@ -174,11 +178,24 @@ class SingleLineModel(BaseSubtitleModel):
             for new_index, (start, end, text) in enumerate(
                 stretch_zero_duration_cues(
                     timed_cues,
-                    self.significant_gap_threshold
+                    self.significant_gap_threshold,
+                    text_joiner(
+                        self._format_timed_words
+                    )
                 ),
                 start=1
             )
         ]
+
+    def _format_timed_words(self, words):
+        return self.punctuation.apply(
+            self._clean_text(
+                " ".join(
+                    word.text
+                    for word in words
+                )
+            )
+        )
 
     def _split_words_by_gap(self, words):
         groups = []

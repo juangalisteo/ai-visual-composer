@@ -2,7 +2,10 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
-from app.modules.subtitles.policies.timing import stretch_zero_duration_cues
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -36,7 +39,12 @@ class AcousticBurstModel(BaseSubtitleModel):
 
     def _optimize_with_timing(self, timing):
         timed_cues = [
-            (cue_words[0].start, cue_words[-1].end, self._format_words(cue_words))
+            (
+                cue_words[0].start,
+                cue_words[-1].end,
+                cue_words,
+                self._format_words(cue_words),
+            )
             for segment in timing.segments
             for cue_words in self._partition_timed_words(segment.words)
         ]
@@ -49,7 +57,9 @@ class AcousticBurstModel(BaseSubtitleModel):
             )
             for index, (start, end, text) in enumerate(
                 stretch_zero_duration_cues(
-                    timed_cues, self.significant_gap_threshold
+                    timed_cues,
+                    self.significant_gap_threshold,
+                    text_joiner(self._format_words),
                 ),
                 start=1,
             )

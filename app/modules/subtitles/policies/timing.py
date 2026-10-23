@@ -142,20 +142,41 @@ class SubtitleTiming:
 
 def stretch_zero_duration_cues(
     cues,
-    max_extension: float
+    max_extension: float,
+    join_words
 ) -> list:
     """Give a visible duration to timed cues that last zero seconds.
 
-    ``cues`` are ordered ``(start, end, payload)`` tuples in seconds. A cue
-    whose end is not after its start (its words have ``end == start``) is
-    stretched up to the start of the next cue, at most ``max_extension``
-    seconds; the last cue is stretched by ``max_extension``. A cue that
-    still has no room, because the next cue starts at the same instant,
-    is dropped so cues never overlap. Other cues are kept unchanged.
+    ``cues`` are ordered ``(start, end, words, payload)`` tuples in seconds;
+    the result holds ``(start, end, payload)`` tuples. A cue whose end is
+    not after its start (its words have ``end == start``) is stretched up
+    to the start of the next cue, at most ``max_extension`` seconds
+    (greater than zero); the last cue is stretched by ``max_extension``.
+
+    A cue that still has no room, because the next cue starts at the same
+    instant, is not shown on its own, so cues never overlap: its words that
+    the next cue does not already show are put in front of it with
+    ``join_words(words, payload)``, which returns the next cue's payload.
+    The next cue keeps its times. Several such cues in a row are joined in
+    order. Other cues are kept unchanged.
     """
     stretched = []
+    pending_words = ()
 
-    for position, (start, end, payload) in enumerate(cues):
+    for position, (start, end, words, payload) in enumerate(cues):
+        if pending_words:
+            missing_words = tuple(
+                word
+                for word in pending_words
+                if word not in words
+            )
+
+            if missing_words:
+                payload = join_words(
+                    missing_words,
+                    payload
+                )
+
         if end <= start:
             end = start + max_extension
 
@@ -166,13 +187,31 @@ def stretch_zero_duration_cues(
                 )
 
             if end <= start:
+                pending_words += tuple(
+                    word
+                    for word in words
+                    if word not in pending_words
+                )
                 continue
 
+        pending_words = ()
         stretched.append(
             (start, end, payload)
         )
 
     return stretched
+
+
+def text_joiner(format_words):
+    """Return a ``join_words`` for text payloads: the formatted words go in
+    front of the text, separated by a space."""
+
+    def join_words(words, text):
+        prefix = format_words(words)
+
+        return f"{prefix} {text}" if prefix else text
+
+    return join_words
 
 
 def whisper_timing_path(
