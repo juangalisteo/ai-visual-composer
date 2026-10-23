@@ -9,7 +9,8 @@ class RollingWindowModel(BaseSubtitleModel):
     """Emit fixed-size FIFO word windows shown one at a time.
 
     Each window ends where the next one of its group starts; the last
-    window keeps the end of its final word.
+    window keeps the end of its final word. A group shorter than the
+    window is shown whole in a single cue.
     """
 
     def __init__(self, config):
@@ -67,9 +68,10 @@ class RollingWindowModel(BaseSubtitleModel):
                 continue
             start_ms, end_ms, words = parsed
             ranges = self._distribute_word_ranges(start_ms, end_ms, words)
-            window_count = max(0, len(words) - self.window_size + 1)
+            size = min(self.window_size, len(words))
+            window_count = len(words) - size + 1 if words else 0
             for start_index in range(window_count):
-                end_index = start_index + self.window_size - 1
+                end_index = start_index + size - 1
                 cue_end = (
                     ranges[start_index + 1][0]
                     if start_index + 1 < window_count
@@ -104,9 +106,12 @@ class RollingWindowModel(BaseSubtitleModel):
         return groups
 
     def _windows(self, words):
+        if not words:
+            return ()
+        size = min(self.window_size, len(words))
         return tuple(
-            tuple(words[index:index + self.window_size])
-            for index in range(max(0, len(words) - self.window_size + 1))
+            tuple(words[index:index + size])
+            for index in range(len(words) - size + 1)
         )
 
     def _format_words(self, words):

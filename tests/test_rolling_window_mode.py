@@ -143,7 +143,7 @@ def test_rolling_window_restarts_after_a_significant_pause_without_crossing_it()
     assert "00:00:00,800 --> 00:00:01,100" in blocks[1]
 
 
-def test_rolling_window_requires_a_complete_fixed_window_and_preserves_fallback_timing():
+def test_rolling_window_preserves_fallback_timing():
     model = RollingWindowModel(_config(window_size=3))
 
     assert model.optimize([
@@ -153,9 +153,71 @@ def test_rolling_window_requires_a_complete_fixed_window_and_preserves_fallback_
         "2\n00:00:00,120 --> 00:00:00,240\ndos tres cuatro",
         "3\n00:00:00,240 --> 00:00:00,600\ntres cuatro cinco",
     ]
-    assert RollingWindowModel(_config(window_size=5)).optimize([
-        "1\n00:00:00,000 --> 00:00:00,400\nuno dos tres cuatro"
-    ]) == []
+
+
+def test_rolling_window_timed_short_group_is_shown_whole_in_one_cue():
+    timing = _timing(
+        WordTiming("uno", 0.0, 0.1),
+        WordTiming("dos", 0.1, 0.2),
+        WordTiming("tres", 0.8, 0.9),
+        WordTiming("cuatro", 0.9, 1.0),
+        WordTiming("cinco", 1.0, 1.1),
+        WordTiming("seis", 1.1, 1.2),
+        WordTiming("siete", 1.2, 1.3),
+        WordTiming("ocho", 2.0, 2.1),
+    )
+
+    cues = _cues(RollingWindowModel(_config()).optimize([], timing=timing))
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,200", "uno dos"),
+        ("00:00:00,800", "00:00:01,300", "tres cuatro cinco seis siete"),
+        ("00:00:02,000", "00:00:02,100", "ocho"),
+    ]
+    _assert_no_overlap(cues)
+
+
+def test_rolling_window_untimed_short_block_is_shown_whole_in_one_cue():
+    cues = _cues(RollingWindowModel(_config()).optimize([
+        "1\n00:00:00,000 --> 00:00:00,400\nuno dos tres cuatro",
+        "2\n00:00:01,000 --> 00:00:01,500\ncinco seis siete ocho nueve",
+        "3\n00:00:02,000 --> 00:00:02,300\ndiez",
+    ]))
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,400", "uno dos tres cuatro"),
+        ("00:00:01,000", "00:00:01,500", "cinco seis siete ocho nueve"),
+        ("00:00:02,000", "00:00:02,300", "diez"),
+    ]
+    _assert_no_overlap(cues)
+
+
+def test_rolling_window_long_group_is_unchanged_by_short_groups_around_it():
+    long_group = (
+        WordTiming("uno", 0.0, 0.1),
+        WordTiming("dos", 0.15, 0.2),
+        WordTiming("tres", 0.25, 0.3),
+        WordTiming("cuatro", 0.35, 0.4),
+        WordTiming("cinco", 0.45, 0.5),
+        WordTiming("seis", 0.55, 0.6),
+        WordTiming("siete", 0.65, 0.7),
+    )
+    expected = [
+        ("00:00:00,000", "00:00:00,150", "uno dos tres cuatro cinco"),
+        ("00:00:00,150", "00:00:00,250", "dos tres cuatro cinco seis"),
+        ("00:00:00,250", "00:00:00,700", "tres cuatro cinco seis siete"),
+    ]
+    model = RollingWindowModel(_config())
+
+    alone = _cues(model.optimize([], timing=_timing(*long_group)))
+    surrounded = _cues(model.optimize([], timing=_timing(
+        *long_group,
+        WordTiming("ocho", 1.5, 1.6),
+        WordTiming("nueve", 1.6, 1.7),
+    )))
+
+    assert alone == expected
+    assert surrounded == expected + [("00:00:01,500", "00:00:01,700", "ocho nueve")]
 
 
 @pytest.mark.parametrize(
