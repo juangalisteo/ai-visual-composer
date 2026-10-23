@@ -189,7 +189,7 @@ def _subtitle_display_name(options):
 
     try:
         return SubtitleProfileResolver().load(selected_key).display_name
-    except (FileNotFoundError, TypeError, ValueError):
+    except (FileNotFoundError, OperationalError, TypeError, ValueError):
         return selected_key.profile_id
 
 

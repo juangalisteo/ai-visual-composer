@@ -159,6 +159,62 @@ class PipelineTelemetryTest(unittest.TestCase):
         self.assertEqual(6.0, summary.total_time())
         print_summary.assert_called_once_with()
 
+    def test_summary_shows_real_seconds_per_image_with_storyboard(self):
+        summary = PipelineSummary("telemetry")
+        summary.set_scene_count(3)
+        summary.set_image_count(3)
+        summary.set_media_duration(34.0)
+
+        rendered = summary.render()
+
+        self.assertIn("Segundos por imagen", rendered)
+        self.assertIn("11.33", rendered)
+        self.assertIn("Duración", rendered)
+        self.assertIn("Imágenes", rendered)
+
+    def test_summary_omits_seconds_per_image_without_scenes(self):
+        summary = PipelineSummary("telemetry")
+        summary.set_media_duration(34.0)
+
+        rendered = summary.render()
+
+        self.assertNotIn("Segundos por imagen", rendered)
+
+    def test_summary_seconds_per_image_is_unavailable_without_metrics(self):
+        for scene_count, duration in ((None, 34.0), (3, None)):
+            with self.subTest(scene_count=scene_count, duration=duration):
+                summary = PipelineSummary("telemetry")
+                summary.set_scene_count(scene_count)
+                summary.set_media_duration(duration)
+
+                rendered = summary.render()
+
+                line = next(
+                    line
+                    for line in rendered.splitlines()
+                    if line.startswith("Segundos por imagen")
+                )
+                self.assertTrue(line.endswith(" No disponible"))
+
+    def test_summary_without_visual_metrics_hides_storyboard_metrics(self):
+        summary = PipelineSummary(
+            "telemetry",
+            include_visual_metrics=False,
+        )
+        summary.set_scene_count(3)
+        summary.set_image_count(3)
+        summary.set_media_duration(34.0)
+
+        rendered = summary.render()
+
+        for label in (
+            "Escenas",
+            "Imágenes",
+            "Duración",
+            "Segundos por imagen",
+        ):
+            self.assertNotIn(label, rendered)
+
     @staticmethod
     def _raise_original_error():
         raise ValueError("original")

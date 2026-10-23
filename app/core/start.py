@@ -246,7 +246,18 @@ def iniciar(request):
     images_manifest_path = None
 
     summary = PipelineSummary(
-        project.project_name
+        project.project_name,
+        include_visual_metrics=(
+            pipeline_mode in {
+                "storyboard",
+                "full",
+                "full_without_subtitles",
+            }
+            and builders.get(
+                "storyboard",
+                False
+            )
+        ),
     )
     telemetry_artifacts = _pipeline_telemetry_artifacts(
         project

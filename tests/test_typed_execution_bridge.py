@@ -284,6 +284,39 @@ def test_typed_standard_voice_config_id_is_injected_into_config_manager():
     )
 
 
+def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
+    cases = (
+        ("audio", {"voice": True, "storyboard": True}, False),
+        ("subtitles", {"voice": True, "storyboard": True}, False),
+        ("storyboard", {"voice": True, "storyboard": False}, False),
+        ("storyboard", {"voice": True, "storyboard": True}, True),
+    )
+    for pipeline_mode, builders, expected in cases:
+        project = _project()
+        config = Mock()
+        config.get_ai_config.return_value = object()
+        config.get_profile_config.return_value = object()
+        telemetry = _telemetry()
+
+        with patch.object(start, "ProjectManager", return_value=project), patch.object(
+            start, "ConfigManager", return_value=config
+        ), patch.object(
+            start, "_required_builders", return_value=builders
+        ), patch.object(
+            start, "_pipeline_telemetry_artifacts", return_value=Mock()
+        ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
+            start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
+        ), patch.object(start, "VoiceBuilder"), patch.object(
+            start, "AudioMixer"
+        ), patch.object(start, "StoryboardBuilder"):
+            start.iniciar(
+                request=_standard_request(pipeline_mode=pipeline_mode)
+            )
+
+        summary = telemetry.complete.call_args.kwargs["summary"]
+        assert summary.include_visual_metrics is expected, pipeline_mode
+
+
 def test_typed_standard_voice_requires_voice_config_id():
     project = _project()
     config = Mock()

@@ -132,6 +132,14 @@ class PipelineSummary:
                     self._format_media_duration()
                 ),
             ])
+            seconds_per_image = self._format_seconds_per_image()
+            if seconds_per_image is not None:
+                lines.append(
+                    self._metric_line(
+                        "Segundos por imagen",
+                        seconds_per_image
+                    )
+                )
 
         for detail_name, detail_value in self.details.items():
             lines.append(
@@ -264,4 +272,18 @@ class PipelineSummary:
         return (
             f"{minutes:02}:"
             f"{seconds:02}"
+        )
+
+    def _format_seconds_per_image(self):
+        if self.scene_count == 0:
+            return None
+
+        if (
+            self.scene_count is None
+            or self.media_duration is None
+        ):
+            return "No disponible"
+
+        return (
+            f"{self.media_duration / self.scene_count:.2f}"
         )

@@ -213,13 +213,21 @@ class RunController:
             "full_without_subtitles",
         }
 
-        profile = self.select_profile(
-            self._profile_scope(
-                script_source=script_source,
-                visual_pipeline=visual_pipeline,
-                design_target=design_target
-            )
+        profile_scope = self._profile_scope(
+            script_source=script_source,
+            visual_pipeline=visual_pipeline,
+            design_target=design_target
         )
+        if pipeline_mode in {
+            "audio",
+            "full_without_subtitles",
+        }:
+            profile = self.select_profile(
+                profile_scope,
+                select_subtitles=False,
+            )
+        else:
+            profile = self.select_profile(profile_scope)
         profile_key = profile.get("profile_key")
         voice_config = ""
         music_category = None
@@ -305,7 +313,8 @@ class RunController:
 
     def select_profile(
         self,
-        visual_pipeline="image"
+        visual_pipeline="image",
+        select_subtitles=True,
     ):
         components = {
             "script": (ProfileComponent.GUION, True),
@@ -316,10 +325,13 @@ class RunController:
             "studio": (ProfileComponent.STUDIO, True),
         }
         if visual_pipeline in components:
-            component, select_subtitles = components[visual_pipeline]
+            component, scope_selects_subtitles = components[visual_pipeline]
             return self._select_profile_identity(
                 component,
-                select_subtitles=select_subtitles,
+                select_subtitles=(
+                    scope_selects_subtitles
+                    and select_subtitles
+                ),
             )
         raise ValueError(
             "Ámbito de perfil no soportado: "

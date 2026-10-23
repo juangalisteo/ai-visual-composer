@@ -16,7 +16,9 @@ from app.modules.studio import (
     StudioVideoAudioSrtPlan,
     StudioVideoAudioSrtService,
 )
+from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.media_probe import MediaInfo
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -650,6 +652,42 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
         assert result.generated_subtitle_path.read_text(encoding="utf-8") == (
             "1\n00:00:00,000 --> 00:00:01,500\nTEXTO HUMANO INTACTO.\n"
         )
+
+
+def test_subtitle_display_name_falls_back_when_profile_does_not_exist():
+    missing_key = SubtitleProfileKey(
+        "studio",
+        "youtube",
+        "dummy_profile",
+        "test_family",
+    )
+
+    assert main._subtitle_display_name(
+        {"subtitle_profile_key": missing_key}
+    ) == "dummy_profile"
+
+
+def test_subtitle_display_name_falls_back_on_resolver_operational_error():
+    missing_key = _standard_subtitle_key("single_line")
+    error = OperationalError(
+        ErrorContext(
+            family="PROFILE",
+            severity=ErrorSeverity.RECOVERABLE,
+            user_message="No se encontró el perfil de subtítulos solicitado.",
+            exit_kind=ExitKind.OPERATIONAL_ERROR,
+        )
+    )
+
+    with patch.object(
+        main.SubtitleProfileResolver,
+        "load",
+        side_effect=error,
+    ):
+        display_name = main._subtitle_display_name(
+            {"subtitle_profile_key": missing_key}
+        )
+
+    assert display_name == missing_key.profile_id
 
 
 def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
