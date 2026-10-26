@@ -39,7 +39,7 @@ class SubtitleSelection:
         )
         if not families:
             raise FileNotFoundError(
-                "No hay familias de subtitulos para la plataforma "
+                "No hay familias de subtítulos para el formato "
                 f"{profile_format}."
             )
         self._write("\nSUBTÍTULOS\n", writer)
@@ -66,6 +66,7 @@ class SubtitleSelection:
         label=None,
         family_label=None,
         presentation_families=None,
+        order=None,
     ):
         component = ProfileComponent.STUDIO
         label = label or labels.label
@@ -74,8 +75,10 @@ class SubtitleSelection:
             presentation_families or labels.presentation_families
         )
         if profile_format is None:
-            self._write("\nPLATAFORMA\n", writer)
-            profile_formats = self._subtitle_profile_resolver.discover_formats(component)
+            self._write("\nFORMATO\n", writer)
+            profile_formats = tuple((order or sorted)(
+                self._subtitle_profile_resolver.discover_formats(component),
+            ))
             if not profile_formats:
                 raise FileNotFoundError(
                     "No hay perfiles de subtitulos STUDIO disponibles."
@@ -130,7 +133,7 @@ class SubtitleSelection:
         )
         if not families:
             raise FileNotFoundError(
-                "No hay familias de subtitulos STUDIO para la plataforma "
+                "No hay familias de subtítulos STUDIO para el formato "
                 f"{profile_format}."
             )
         for index, family in enumerate(families, start=1):

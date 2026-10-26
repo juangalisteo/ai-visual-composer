@@ -12,9 +12,9 @@ def voice_label(value):
 def family_label(family):
     return {
         "design": "MODO CONCIENCIA",
-        "estandar": "FORMATO ESTÁNDAR",
+        "estandar": "ESTILO ESTÁNDAR",
         "minimalista": "MODO MINIMALISTA",
-        "karaoke": "FORMATO KARAOKE",
+        "karaoke": "ESTILO KARAOKE",
         "primado_negativo": "PRIMADO NEGATIVO",
     }.get(family, family.replace("_", " ").upper())
 

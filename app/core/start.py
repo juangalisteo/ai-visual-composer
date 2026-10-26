@@ -686,12 +686,12 @@ def _resolve_single_video_operational_key(profile_resolver, profile_format):
     )
     if not candidates:
         raise FileNotFoundError(
-            "No existe un perfil operacional VIDEO para la plataforma: "
+            "No existe un perfil operacional VIDEO para el formato: "
             f"{profile_format}."
         )
     if len(candidates) > 1:
         raise ValueError(
-            "La identidad operacional VIDEO es ambigua para la plataforma: "
+            "La identidad operacional VIDEO es ambigua para el formato: "
             f"{profile_format}."
         )
     return candidates[0]

@@ -89,7 +89,7 @@ class IntroOutroCatalog:
             or Path(profile_format).name != profile_format
         ):
             raise ValueError(
-                "La plataforma INTRO / OUTRO debe ser una identidad valida."
+                "El formato INTRO / OUTRO debe ser una identidad válida."
             )
         position = str(position).strip().lower()
         if position not in INTRO_OUTRO_POSITIONS:

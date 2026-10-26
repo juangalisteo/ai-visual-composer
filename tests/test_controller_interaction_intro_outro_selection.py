@@ -8,12 +8,13 @@ from app.controllers.interaction.intro_outro_selection import IntroOutroSelector
 from app.controllers.interaction.resource_selection import ResourceSelection
 from app.controllers.interaction.terminal import Terminal
 from app.controllers.run_controller import RunController
+from tests.test_menu_helpers import MenuAnswers, Typed
 
 
-def _selector(catalog, answers, messages, on_cancel=None):
+def _selector(catalog, answers, on_cancel=None):
     terminal = Terminal(
-        reader=lambda prompt: next(answers),
-        writer=messages.append,
+        reader=answers.read,
+        writer=answers.write,
     )
     return IntroOutroSelector(
         terminal,
@@ -32,16 +33,15 @@ def test_intro_outro_keeps_menu_order_assets_and_original_paths():
         "intro": (intro_first, intro_second),
         "outro": (outro,),
     }[position]
-    messages = []
+    answers = MenuAnswers("INTRO + OUTRO", "b.mp4", "c.mp4")
 
-    plan = _selector(catalog, iter(("4", "2", "1")), messages) \
-        .select_intro_outro("vertical")
+    plan = _selector(catalog, answers).select_intro_outro("vertical")
 
     assert plan.intro.asset_path == intro_second
     assert plan.intro.position == "intro"
     assert plan.outro.asset_path == outro
     assert plan.outro.position == "outro"
-    assert messages == [
+    assert answers.messages == [
         "\nINTRO / OUTRO\n",
         "1. NINGUNO",
         "2. SOLO INTRO",
@@ -61,13 +61,13 @@ def test_intro_outro_keeps_menu_order_assets_and_original_paths():
 
 def test_intro_outro_none_skips_discovery_and_returns_none():
     catalog = Mock()
-    messages = []
+    answers = MenuAnswers("NINGUNO")
 
-    assert _selector(catalog, iter(("1",)), messages).select_intro_outro(
+    assert _selector(catalog, answers).select_intro_outro(
         "vertical"
     ) is None
     catalog.discover.assert_not_called()
-    assert messages == [
+    assert answers.messages == [
         "\nINTRO / OUTRO\n",
         "1. NINGUNO",
         "2. SOLO INTRO",
@@ -84,7 +84,9 @@ def test_intro_outro_keeps_the_existing_missing_assets_error():
         FileNotFoundError,
         match="No hay archivos MP4 disponibles para INTRO.*vertical/intro/",
     ):
-        _selector(catalog, iter(("2",)), []).select_intro_outro("vertical")
+        _selector(catalog, MenuAnswers("SOLO INTRO")).select_intro_outro(
+            "vertical"
+        )
 
 
 def test_studio_adapter_derives_the_format_from_profile_key():
@@ -92,9 +94,10 @@ def test_studio_adapter_derives_the_format_from_profile_key():
     catalog = Mock()
     catalog.discover.return_value = (intro,)
 
-    plan = _selector(catalog, iter(("2", "1")), []).select_studio_intro_outro(
-        SimpleNamespace(format="horizontal")
-    )
+    plan = _selector(
+        catalog,
+        MenuAnswers("SOLO INTRO", "a.mp4"),
+    ).select_studio_intro_outro(SimpleNamespace(format="horizontal"))
 
     assert plan.intro.asset_path == intro
     catalog.discover.assert_called_once_with("horizontal", "intro")
@@ -108,7 +111,7 @@ def test_intro_outro_keeps_the_terminal_cancellation_callback():
         raise RuntimeError("cancelled")
 
     with pytest.raises(RuntimeError, match="cancelled"):
-        _selector(Mock(), iter(("0",)), [], cancel).select_intro_outro(
+        _selector(Mock(), MenuAnswers(Typed("0")), cancel).select_intro_outro(
             "vertical"
         )
     assert calls == ["cancel"]

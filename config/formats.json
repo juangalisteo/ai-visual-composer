@@ -1,0 +1,12 @@
+{
+  "formats": {
+    "vertical": {
+      "display_name": "Vertical 9:16",
+      "order": 1
+    },
+    "horizontal": {
+      "display_name": "Horizontal 16:9",
+      "order": 2
+    }
+  }
+}

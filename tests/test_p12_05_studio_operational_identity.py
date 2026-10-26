@@ -58,9 +58,13 @@ class StudioOperationalIdentityTest(unittest.TestCase):
 
     def test_subtitle_selection_uses_operational_format_as_discovery_context(self):
         controller = RunController()
-        descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "vertical", "estandar",
-        )[0]
+        descriptor = next(
+            item
+            for item in SubtitleProfileResolver().discover_profiles_for_family(
+                "studio", "vertical", "estandar",
+            )
+            if item.display_name == "Doble línea"
+        )
         messages = []
         controller._print = messages.append
         controller._select_from_list = Mock(
@@ -74,7 +78,7 @@ class StudioOperationalIdentityTest(unittest.TestCase):
 
         self.assertEqual(descriptor.key, selected)
         self.assertTrue(original)
-        self.assertNotIn("PLATAFORMA", "\n".join(messages))
+        self.assertNotIn("\nFORMATO\n", messages)
         controller._select_from_list.assert_any_call(
             labels.presentation_families(
                 SubtitleProfileResolver().discover_families(

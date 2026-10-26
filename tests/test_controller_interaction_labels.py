@@ -23,7 +23,7 @@ def test_presentation_families_keep_unknown_relative_order():
 
 
 def test_run_controller_label_wrappers_keep_the_existing_public_surface():
-    assert RunController._family_label("karaoke") == "FORMATO KARAOKE"
+    assert RunController._family_label("karaoke") == "ESTILO KARAOKE"
     assert RunController._presentation_families(("karaoke", "design")) == (
         "design",
         "karaoke",

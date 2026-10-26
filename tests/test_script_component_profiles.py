@@ -11,6 +11,8 @@ from app.shared.profile_identity import (
     ProfileComponent,
 )
 
+from tests.test_menu_helpers import MenuAnswers
+
 
 class ScriptComponentProfilesTest(
     unittest.TestCase
@@ -87,11 +89,13 @@ class ScriptComponentProfilesTest(
     def test_script_profile_selection_uses_script_profile_directory(self):
         controller = RunController()
 
+        answers = MenuAnswers("Vertical 9:16", "ESTILO ESTÁNDAR", "Doble línea")
         with patch(
             "builtins.input",
-            side_effect=("2", "2", "1")
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile(
                 "script"
@@ -110,11 +114,11 @@ class ScriptComponentProfilesTest(
             if call.args
         )
         self.assertIn(
-            "1. Horizontal",
+            "1. Vertical 9:16",
             printed
         )
         self.assertIn(
-            "2. Vertical",
+            "2. Horizontal 16:9",
             printed
         )
         self.assertNotIn(
@@ -125,11 +129,17 @@ class ScriptComponentProfilesTest(
     def test_image_profile_selection_excludes_script_profiles(self):
         controller = RunController()
 
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
         with patch(
             "builtins.input",
-            side_effect=("2", "1", "1")
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile(
                 "image"

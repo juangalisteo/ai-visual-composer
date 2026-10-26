@@ -251,9 +251,13 @@ def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():
     """DESIGN is transported as subtitle identity, never as runtime profile."""
     controller = RunController()
     controller._print = Mock()
-    descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-        "guion", "vertical", "design",
-    )[0]
+    descriptor = next(
+        item
+        for item in SubtitleProfileResolver().discover_profiles_for_family(
+            "guion", "vertical", "design",
+        )
+        if item.display_name == "Modo Conciencia | Palabra única"
+    )
     controller._select_from_list = Mock(side_effect=("vertical", "design", descriptor))
 
     selected = controller._select_profile_identity(ProfileComponent.GUION)

@@ -34,6 +34,7 @@ from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
 def _load_studio_profile(profile_key):
@@ -139,7 +140,10 @@ class StudioPhase5Test(unittest.TestCase):
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
-            with patch("builtins.input", side_effect=("4", "1", "1")):
+            answers = MenuAnswers("INTRO + OUTRO", "brand.mp4", "brand.mp4")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ):
                 plan = controller.select_studio_intro_outro(self.profile_key)
 
         self.assertEqual(intro_asset, plan.intro.asset_path)
@@ -161,9 +165,11 @@ class StudioPhase5Test(unittest.TestCase):
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
-            with patch("builtins.input", side_effect=("2", "2")):
+            answers = MenuAnswers("SOLO INTRO", "b.MP4", "SOLO OUTRO", "c.mp4")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ):
                 intro = controller.select_studio_intro_outro(self.profile_key)
-            with patch("builtins.input", side_effect=("3", "1")):
                 outro_plan = controller.select_studio_intro_outro(self.profile_key)
 
         self.assertEqual(second, intro.intro.asset_path)
@@ -176,7 +182,10 @@ class StudioPhase5Test(unittest.TestCase):
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(directory)
             )
-            with patch("builtins.input", return_value="2"), self.assertRaisesRegex(
+            answers = MenuAnswers("SOLO INTRO")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ), self.assertRaisesRegex(
                 FileNotFoundError, "No hay archivos MP4"
             ):
                 controller.select_studio_intro_outro(self.profile_key)

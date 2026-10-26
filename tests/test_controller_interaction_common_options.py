@@ -5,18 +5,7 @@ import pytest
 
 from app.controllers.interaction.common_options import CommonOptions
 from app.controllers.interaction.terminal import Terminal
-
-
-class SelectingTerminal:
-    def __init__(self, positions=()):
-        self._positions = iter(positions)
-        self.messages = []
-
-    def write(self, message):
-        self.messages.append(message)
-
-    def select_from_list(self, items, on_cancel):
-        return items[next(self._positions) - 1]
+from tests.test_menu_helpers import MenuAnswers
 
 
 def _voice_document(display_name, voice_id):
@@ -43,7 +32,7 @@ def test_voice_configs_are_sorted_by_selection_key_labeled_from_document_and_ret
         json.dumps(_voice_document("Primera voz", "fixture_voice_1")),
         encoding="utf-8",
     )
-    terminal = SelectingTerminal((2,))
+    terminal = MenuAnswers("Segunda voz")
 
     selected = CommonOptions(
         terminal,
@@ -60,7 +49,7 @@ def test_voice_configs_are_sorted_by_selection_key_labeled_from_document_and_ret
 
 
 def test_current_voice_catalog_exposes_only_piper_options_declaratively():
-    terminal = SelectingTerminal((1, 2))
+    terminal = MenuAnswers("Carlfm", "Davefx")
     options = CommonOptions(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert options.select_voice_config() == "piper_carlfm"
@@ -81,14 +70,14 @@ def test_voice_config_keeps_its_existing_file_not_found_contract(tmp_path):
         match="No se encontraron configuraciones en config/voice_configs.",
     ):
         CommonOptions(
-            SelectingTerminal(),
+            MenuAnswers(),
             lambda: pytest.fail("No debe cancelar"),
             tmp_path,
         ).select_voice_config()
 
 
 def test_common_music_and_overlays_keep_technical_values_and_texts():
-    terminal = SelectingTerminal((1, 2, 1, 2))
+    terminal = MenuAnswers("Aleatoria", "Sin música", "Sí", "No")
     options = CommonOptions(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert options.select_music_category() == "random"

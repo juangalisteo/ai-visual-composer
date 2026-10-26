@@ -11,6 +11,7 @@ from app.shared.profile_identity import (
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
 def test_generic_selector_discovers_independent_complete_keys_for_components(
@@ -78,9 +79,14 @@ def test_generic_selector_uses_the_explicit_operational_choice_not_display_name(
     controller = _controller(tmp_path)
 
     with pytest.MonkeyPatch.context() as monkeypatch:
-        selections = iter(("1", "2", "1", "1"))
-        monkeypatch.setattr("builtins.input", lambda _prompt="": next(selections))
-        monkeypatch.setattr("builtins.print", lambda *_args, **_kwargs: None)
+        answers = MenuAnswers(
+            "Test Format",
+            "Z human label",
+            "TEST SUBTITLE FAMILY",
+            "Subtitle label",
+        )
+        monkeypatch.setattr("builtins.input", answers.input)
+        monkeypatch.setattr("builtins.print", answers.print)
         selected = controller._select_profile_identity(ProfileComponent.GUION)
 
     assert selected["profile_key"] == OperationalProfileKey(

@@ -5,6 +5,7 @@ from app.controllers.interaction.contracts import (
     StudioProfileSelection,
     StudioSubtitleSelection,
 )
+from app.controllers.interaction.format_catalog import FormatCatalog
 from app.controllers.interaction.intro_outro_selection import (
     IntroOutroSelector,
 )
@@ -83,6 +84,7 @@ class RunController:
         studio_input_selection=None,
         profile_selection=None,
         subtitle_selection=None,
+        format_catalog=None,
     ):
         self.profile_resolver = (
             profile_resolver
@@ -182,6 +184,7 @@ class RunController:
             self.terminal,
             self._exit_application,
         )
+        self.format_catalog = format_catalog or FormatCatalog()
 
     def run(self):
         visual_pipeline = self.select_visual_pipeline()
@@ -344,6 +347,7 @@ class RunController:
             writer=self._print,
             selector=self._select_from_list,
             label=self._label,
+            order=self._format_order,
         )
         if not select_subtitles:
             return selection
@@ -531,7 +535,13 @@ class RunController:
         self,
         value
     ):
-        return labels.label(value)
+        return self.format_catalog.label(value)
+
+    def _format_order(
+        self,
+        profile_formats
+    ):
+        return self.format_catalog.ordered(profile_formats)
 
     def _profile_scope(
         self,
@@ -726,6 +736,7 @@ class RunController:
             writer=self._print,
             selector=self._select_from_list,
             label=self._label,
+            order=self._format_order,
         )
 
     def _select_studio_operational_profile(
@@ -753,6 +764,7 @@ class RunController:
             label=self._label,
             family_label=self._family_label,
             presentation_families=self._presentation_families,
+            order=self._format_order,
         )
 
     def _select_studio_video_audio_srt_subtitle_profile(self, profile_key):

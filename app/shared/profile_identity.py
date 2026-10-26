@@ -21,12 +21,12 @@ def coerce_profile_component(value):
 def coerce_profile_format(value):
     if not isinstance(value, str):
         raise ValueError(
-            f"Plataforma de perfil no soportado: {value}"
+            f"Formato de perfil no soportado: {value}"
         )
     normalized = value.strip().lower()
     if not re.fullmatch(r"[a-z0-9]+(?:_[a-z0-9]+)*", normalized):
         raise ValueError(
-            f"Plataforma de perfil no soportado: {value}"
+            f"Formato de perfil no soportado: {value}"
         )
     return normalized
 

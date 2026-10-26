@@ -469,7 +469,7 @@ class StudioPhase2Test(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as directory:
             video_path, subtitle_path = self._sources(Path(directory))
-            with self.assertRaisesRegex(ValueError, "compartir plataforma"):
+            with self.assertRaisesRegex(ValueError, "compartir formato"):
                 self._service().render(
                     video_path,
                     subtitle_path,

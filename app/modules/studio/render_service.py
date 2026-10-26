@@ -539,7 +539,7 @@ class StudioRenderService:
             subtitle_profile.key.format != profile_key.format
         ):
             raise ValueError(
-                "El perfil principal y el de subtitulos deben compartir plataforma."
+                "El perfil principal y el de subtítulos deben compartir formato."
             )
         if not Path(subtitle_path).is_file():
             raise FileNotFoundError(f"No existe el SRT STUDIO: {subtitle_path}")

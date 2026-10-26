@@ -802,7 +802,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         details = [call.args for call in summary.add_detail.call_args_list]
         self.assertIn(("Entrada", "EXPORTAR SRT"), details)
         self.assertIn(("Modo", "CONVERTIR"), details)
-        self.assertIn(("Formato", "Palabra por palabra"), details)
+        self.assertIn(("Perfil de subtítulos", "Palabra por palabra"), details)
         self.assertIn(("SRT generado", result.output_path), details)
 
     def test_transcribe_summary_does_not_invent_a_profile(self):
@@ -826,9 +826,9 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             main._print_studio_subtitle_export_summary(options, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
-        self.assertNotIn(("Perfil / plataforma", ""), details)
+        self.assertNotIn(("Perfil / formato", ""), details)
         self.assertFalse(
-            any(name == "Perfil / plataforma" for name, _ in details)
+            any(name == "Perfil / formato" for name, _ in details)
         )
 
 

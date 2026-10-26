@@ -156,5 +156,5 @@ def test_minimalista_keeps_its_technical_family_and_uses_the_visible_label():
 
 
 def test_karaoke_keeps_its_technical_family_and_uses_the_visible_label():
-    assert RunController._family_label("karaoke") == "FORMATO KARAOKE"
+    assert RunController._family_label("karaoke") == "ESTILO KARAOKE"
     assert _subtitle_profile("continuous_karaoke", family="karaoke").key.family == "karaoke"

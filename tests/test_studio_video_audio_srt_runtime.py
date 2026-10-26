@@ -394,24 +394,25 @@ def test_audio_tail_selection_only_prompts_when_audio_is_shorter(
 def test_video_audio_srt_subtitle_selection_uses_real_profiles_without_original():
     profile_key, _, _ = _profile_and_subtitles()
     controller = RunController()
-    family = controller.subtitle_profile_resolver.discover_families(
-        profile_key.component,
-        profile_key.format,
-    )[0]
-    descriptors = controller.subtitle_profile_resolver.discover_profiles_for_family(
-        profile_key.component,
-        profile_key.format,
-        family,
+    family = "design"
+    descriptor = next(
+        item
+        for item in controller.subtitle_profile_resolver.discover_profiles_for_family(
+            profile_key.component,
+            profile_key.format,
+            family,
+        )
+        if item.display_name == "Modo Conciencia | Línea única"
     )
     messages = []
     controller._print = messages.append
-    controller._select_from_list = Mock(side_effect=(family, descriptors[-1]))
+    controller._select_from_list = Mock(side_effect=(family, descriptor))
 
     selected = controller._select_studio_video_audio_srt_subtitle_profile(
         profile_key
     )
 
-    assert selected == descriptors[-1].key
+    assert selected == descriptor.key
     assert "ORIGINAL" not in "\n".join(messages)
 
 
@@ -722,7 +723,7 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
 
     details = [call.args for call in summary.add_detail.call_args_list]
     assert ("Proyecto", "video-audio-srt") in details
-    assert ("Perfil / plataforma", "studio_horizontal / Horizontal") in details
+    assert ("Perfil / formato", "studio_horizontal / Horizontal 16:9") in details
     assert ("Video fuente", plan.video_path) in details
     assert ("Audio nuevo", plan.audio_path) in details
     assert ("Subtítulos", "Sí") in details

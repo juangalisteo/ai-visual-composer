@@ -171,7 +171,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                 family="estandar",
             )
 
-        with self.assertRaisesRegex(ValueError, "Plataforma"):
+        with self.assertRaisesRegex(ValueError, "Formato"):
             SubtitleProfileKey(
                 component="video",
                 format="formato invalido",

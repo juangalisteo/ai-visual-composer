@@ -3,6 +3,8 @@ import traceback
 from pathlib import Path
 
 from app.cli.error_presenter import ErrorPresenter
+from app.controllers.interaction import labels
+from app.controllers.interaction.format_catalog import FormatCatalog
 from app.controllers.run_controller import RunController
 from app.core.execution_request import (
     StudioExecutionRequest,
@@ -193,6 +195,13 @@ def _subtitle_display_name(options):
         return selected_key.profile_id
 
 
+def _format_label(profile_format):
+    try:
+        return FormatCatalog().label(profile_format)
+    except OperationalError:
+        return labels.label(profile_format)
+
+
 def _print_studio_summary(options, result, elapsed_seconds):
     summary = PipelineSummary(
         options["project_name"],
@@ -216,10 +225,10 @@ def _print_studio_summary(options, result, elapsed_seconds):
     )
 
     summary.add_detail(
-        "Perfil / plataforma",
+        "Perfil / formato",
         (
             f"{options['profile_id']} / "
-            f"{options['profile_format'].title()}"
+            f"{_format_label(options['profile_format'])}"
         ),
     )
     summary.add_detail(
@@ -331,8 +340,8 @@ def _print_studio_intro_outro_summary(options, result, elapsed_seconds):
     summary = PipelineSummary(options["project_name"], include_visual_metrics=False)
     plan = options["studio_intro_outro_plan"]
     summary.add_detail(
-        "Perfil / plataforma",
-        f"{options['profile_id']} / {options['profile_format'].title()}",
+        "Perfil / formato",
+        f"{options['profile_id']} / {_format_label(options['profile_format'])}",
     )
     summary.add_detail("Entrada", "INTRO / OUTRO")
     summary.add_detail("Video fuente", plan.source_path)
@@ -366,15 +375,15 @@ def _print_studio_subtitle_export_summary(
     profile_format = options.get("profile_format")
     if profile_id and profile_format:
         summary.add_detail(
-            "Perfil / plataforma",
-            f"{profile_id} / {profile_format.title()}",
+            "Perfil / formato",
+            f"{profile_id} / {_format_label(profile_format)}",
         )
     summary.add_detail("Entrada", "EXPORTAR SRT")
     summary.add_detail("Modo", mode_labels[plan.mode])
     summary.add_detail("Fuente", plan.source_path)
     if plan.mode is StudioSubtitleExportMode.CONVERTIR:
         summary.add_detail(
-            "Formato",
+            "Perfil de subtítulos",
             _subtitle_display_name(options),
         )
     summary.add_detail("SRT generado", result.output_path)
@@ -400,10 +409,10 @@ def _print_studio_montage_summary(options, result, elapsed_seconds):
         include_visual_metrics=False,
     )
     summary.add_detail(
-        "Perfil / plataforma",
+        "Perfil / formato",
         (
             f"{options['profile_id']} / "
-            f"{options['profile_format'].title()}"
+            f"{_format_label(options['profile_format'])}"
         ),
     )
     summary.add_detail("Entrada", "MONTAJE DE VIDEOS")

@@ -76,6 +76,7 @@ def test_profile_coordinators_compose_extracted_operational_and_subtitle_selecto
         writer=writer,
         selector=selector,
         label=controller._label,
+        order=controller._format_order,
     )
     subtitle_selection.select_profile_subtitle_profile.assert_called_once_with(
         ProfileComponent.IMAGEN,

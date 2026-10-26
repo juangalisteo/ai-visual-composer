@@ -18,6 +18,7 @@ from app.modules.studio import (
 from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
 from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import OperationalProfileDescriptor
+from tests.test_menu_helpers import MenuAnswers
 
 
 class StudioIntroOutroTest(unittest.TestCase):
@@ -41,15 +42,16 @@ class StudioIntroOutroTest(unittest.TestCase):
     def test_menu_maps_intro_outro_to_the_third_mode(self):
         controller = RunController()
         expected = (
-            StudioInputMode.VIDEO.value,
-            StudioInputMode.SRT_VIDEO.value,
-            StudioInputMode.INTRO_OUTRO.value,
-            StudioInputMode.MONTAJE_VIDEOS.value,
-            StudioInputMode.VIDEO_AUDIO_SRT.value,
-            StudioInputMode.EXPORTAR_SRT.value,
+            ("SOLO VIDEO", StudioInputMode.VIDEO.value),
+            ("SRT + VIDEO", StudioInputMode.SRT_VIDEO.value),
+            ("INTRO / OUTRO", StudioInputMode.INTRO_OUTRO.value),
+            ("MONTAJE VÍDEOS", StudioInputMode.MONTAJE_VIDEOS.value),
+            ("VIDEO + AUDIO | SRT", StudioInputMode.VIDEO_AUDIO_SRT.value),
+            ("EXPORTAR SRT ➜  VIDEO", StudioInputMode.EXPORTAR_SRT.value),
         )
-        for selection, mode in enumerate(expected, 1):
-            with self.subTest(selection=selection), patch("builtins.input", return_value=str(selection)), patch("app.controllers.interaction.terminal.ProgressLogger.info") as logger:
+        for selection, mode in expected:
+            answers = MenuAnswers(selection)
+            with self.subTest(selection=selection), patch("builtins.input", side_effect=answers.input), patch("app.controllers.interaction.terminal.ProgressLogger.info", side_effect=answers.print) as logger:
                 self.assertEqual(mode, controller.select_studio_input_mode())
                 self.assertIn("3. INTRO / OUTRO", "\n".join(call.args[0] for call in logger.call_args_list))
 
@@ -74,8 +76,9 @@ class StudioIntroOutroTest(unittest.TestCase):
                 else (outro,)
             )
             controller._select_intro_outro_asset = Mock(side_effect=lambda assets, position: intro if position == "INTRO" else outro)
-            for answers, want_intro, want_outro in ((["1"], True, False), (["2"], False, True), (["3"], True, True)):
-                with self.subTest(answers=answers), patch("builtins.input", side_effect=answers):
+            for label, want_intro, want_outro in (("SOLO INTRO", True, False), ("SOLO OUTRO", False, True), ("INTRO + OUTRO", True, True)):
+                answers = MenuAnswers(label)
+                with self.subTest(label=label), patch("builtins.input", side_effect=answers.input), patch("builtins.print", side_effect=answers.print):
                     plan = controller.select_studio_intro_outro_plan(profile_key)
                 self.assertEqual(source, plan.source_path)
                 self.assertEqual(want_intro, plan.intro_outro_plan.intro is not None)

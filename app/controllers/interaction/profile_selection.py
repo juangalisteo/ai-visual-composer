@@ -44,6 +44,7 @@ class ProfileSelection:
         writer=None,
         selector=None,
         label=None,
+        order=None,
     ):
         profiles_by_format = {}
         for profile_format in self._profile_resolver.discover_formats(component):
@@ -54,14 +55,14 @@ class ProfileSelection:
             if descriptors:
                 profiles_by_format[profile_format] = descriptors
 
-        profile_formats = tuple(sorted(profiles_by_format))
+        profile_formats = tuple((order or sorted)(profiles_by_format))
         if not profile_formats:
             raise FileNotFoundError(
                 "No hay perfiles operacionales validos para el componente "
                 "seleccionado."
             )
         label = label or (lambda value: value)
-        self._write("\nPLATAFORMA\n", writer)
+        self._write("\nFORMATO\n", writer)
         for index, profile_format in enumerate(profile_formats, start=1):
             self._write(f"{index}. {label(profile_format)}", writer)
         profile_format = self._select(profile_formats, selector)
@@ -85,14 +86,15 @@ class ProfileSelection:
         writer=None,
         selector=None,
         label=None,
+        order=None,
     ):
-        profile_formats = tuple(sorted(profiles_by_format))
+        profile_formats = tuple((order or sorted)(profiles_by_format))
         if not profile_formats:
             raise FileNotFoundError(
                 "No hay perfiles operacionales STUDIO disponibles."
             )
         label = label or (lambda value: value)
-        self._write("\nPLATAFORMA\n", writer)
+        self._write("\nFORMATO\n", writer)
         for index, profile_format in enumerate(profile_formats, start=1):
             self._write(f"{index}. {label(profile_format)}", writer)
         return self._select(profile_formats, selector)
@@ -119,7 +121,7 @@ class ProfileSelection:
 
         if profile_format not in profiles_by_format:
             raise FileNotFoundError(
-                "No hay perfiles operacionales STUDIO para la plataforma "
+                "No hay perfiles operacionales STUDIO para el formato "
                 f"{profile_format}."
             )
         descriptors = profiles_by_format[profile_format]

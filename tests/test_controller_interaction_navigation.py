@@ -8,24 +8,11 @@ from app.modules.studio import (
     StudioInputMode,
     StudioSubtitleExportMode,
 )
-
-
-class RecordingTerminal:
-    def __init__(self, positions):
-        self._positions = iter(positions)
-        self.messages = []
-        self.selections = []
-
-    def write(self, message):
-        self.messages.append(message)
-
-    def select_from_list(self, items, on_cancel):
-        self.selections.append((items, on_cancel))
-        return items[next(self._positions) - 1]
+from tests.test_menu_helpers import MenuAnswers
 
 
 def test_navigation_keeps_simple_pipeline_and_design_menu_contracts():
-    terminal = RecordingTerminal((1, 3, 2))
+    terminal = MenuAnswers("Guion", "Diseño", "Video")
     navigation = Navigation(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert navigation.select_visual_pipeline() == "script"
@@ -48,7 +35,7 @@ def test_navigation_keeps_simple_pipeline_and_design_menu_contracts():
 
 
 def test_navigation_keeps_pipeline_mode_condition_and_technical_values():
-    terminal = RecordingTerminal((5,))
+    terminal = MenuAnswers("Proyecto completo sin subtítulos")
     navigation = Navigation(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert navigation.select_pipeline_mode(
@@ -65,7 +52,7 @@ def test_navigation_keeps_pipeline_mode_condition_and_technical_values():
 
 
 def test_navigation_keeps_studio_menu_order_and_return_types():
-    terminal = RecordingTerminal((6, 2, 1))
+    terminal = MenuAnswers("EXPORTAR SRT ➜  VIDEO", "CONVERTIR", "Sí")
     navigation = Navigation(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert navigation.select_studio_input_mode() == (

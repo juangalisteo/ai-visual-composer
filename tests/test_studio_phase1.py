@@ -29,6 +29,7 @@ from app.shared.profile_identity import (
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
 STUDIO_VERTICAL_THREE_TWO_PROFILE_ID = (
@@ -304,8 +305,9 @@ class StudioPhase1Test(unittest.TestCase):
                     StudioInputPreparationService(root)
                 )
             )
-            with patch("builtins.input", return_value="2"), patch.object(
-                controller, "_print"
+            answers = MenuAnswers("second.mp4")
+            with patch("builtins.input", side_effect=answers.input), patch.object(
+                controller, "_print", side_effect=answers.write
             ) as printed:
                 prepared = controller.select_studio_input_files(
                     self.profile,
@@ -341,8 +343,9 @@ class StudioPhase1Test(unittest.TestCase):
                     StudioInputPreparationService(root)
                 )
             )
-            with patch("builtins.input", side_effect=("2", "1")), patch.object(
-                controller, "_print"
+            answers = MenuAnswers("second.mp4", "captions.srt")
+            with patch("builtins.input", side_effect=answers.input), patch.object(
+                controller, "_print", side_effect=answers.write
             ) as printed:
                 prepared = controller.select_studio_input_files(
                     self.profile,
@@ -540,8 +543,9 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual(["input", "subtitle"], order)
 
     def test_studio_profile_menu_lists_formats_without_video_profile_label(self):
-        with patch("builtins.input", side_effect=("2", "2", "1")), patch(
-            "builtins.print"
+        answers = MenuAnswers("Vertical 9:16", "ESTILO ESTÁNDAR", "Doble línea")
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
         ) as print_mock:
             selected = RunController().select_profile("studio")
 
@@ -551,8 +555,8 @@ class StudioPhase1Test(unittest.TestCase):
             if call.args
         )
         self.assertEqual(ProfileComponent.STUDIO, selected["profile_key"].component)
-        self.assertIn("1. Horizontal", printed)
-        self.assertIn("2. Vertical", printed)
+        self.assertIn("1. Vertical 9:16", printed)
+        self.assertIn("2. Horizontal 16:9", printed)
         self.assertIn("Línea única", printed)
 
     def test_main_transports_studio_identity_without_resetting_output(self):

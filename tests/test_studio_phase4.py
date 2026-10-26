@@ -26,6 +26,7 @@ from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
 def _operational_key(profile_key):
@@ -106,7 +107,10 @@ class StudioPhase4Test(unittest.TestCase):
     def test_controller_skips_catalog_when_music_is_disabled(self):
         selector = Mock()
         controller = RunController(studio_music_selector=selector)
-        with patch("builtins.input", return_value="2"):
+        answers = MenuAnswers("No")
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
+        ):
             self.assertIsNone(controller.select_studio_music())
         selector.select.assert_not_called()
         selector.discover_tracks.assert_not_called()
@@ -123,10 +127,13 @@ class StudioPhase4Test(unittest.TestCase):
             controller = RunController(
                 studio_music_selector=MusicSelector(root)
             )
-            with patch("builtins.input", return_value="1"), patch(
+            answers = MenuAnswers("Sí")
+            with patch("builtins.input", side_effect=answers.input), patch(
                 "app.modules.audio.music_selector.random.choice",
                 side_effect=lambda candidates: candidates[-1],
-            ), patch.object(controller, "_print") as print_mock:
+            ), patch.object(
+                controller, "_print", side_effect=answers.write
+            ) as print_mock:
                 self.assertEqual(second, controller.select_studio_music())
 
         printed = "\n".join(

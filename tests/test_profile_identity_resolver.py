@@ -18,6 +18,7 @@ from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
 OPERATIONAL_PROFILE_IDS = {
@@ -112,7 +113,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
         with self.assertRaisesRegex(
             ValueError,
-            "Plataforma de perfil no soportado"
+            "Formato de perfil no soportado"
         ):
             OperationalProfileKey(
                 "video",
@@ -501,10 +502,17 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "studio": ProfileComponent.STUDIO,
         }
         for scope, component in cases.items():
-            design = "2" if component is ProfileComponent.STUDIO else "1"
+            design = (
+                "Modo Conciencia | Podcast"
+                if component is ProfileComponent.STUDIO
+                else "Modo Conciencia | Palabra única"
+            )
+            answers = MenuAnswers("Vertical 9:16", "MODO CONCIENCIA", design)
             with self.subTest(scope=scope), patch(
-                "builtins.input", side_effect=("2", "1", design)
-            ), patch("builtins.print") as print_mock:
+                "builtins.input", side_effect=answers.input
+            ), patch(
+                "builtins.print", side_effect=answers.print
+            ) as print_mock:
                 selected = RunController().select_profile(scope)
 
             printed = "\n".join(
@@ -518,14 +526,21 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertIn("SUBTÍTULOS", printed)
             self.assertIn("FAMILIA", printed)
             self.assertIn("1. MODO CONCIENCIA", printed)
-            self.assertIn("2. FORMATO ESTÁNDAR", printed)
+            self.assertIn("2. ESTILO ESTÁNDAR", printed)
             self.assertNotIn("SYSTEM", printed)
 
     def test_horizontal_shows_the_discovered_design_and_standard_families(self):
         for scope in ("script", "image", "video", "studio"):
+            answers = MenuAnswers(
+                "Horizontal 16:9",
+                "MODO CONCIENCIA",
+                "Modo Conciencia | Línea única",
+            )
             with self.subTest(scope=scope), patch(
-                "builtins.input", side_effect=("1", "1", "1")
-            ), patch("builtins.print") as print_mock:
+                "builtins.input", side_effect=answers.input
+            ), patch(
+                "builtins.print", side_effect=answers.print
+            ) as print_mock:
                 selected = RunController().select_profile(scope)
 
             printed = "\n".join(
@@ -537,7 +552,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertEqual("design", selected["subtitle_profile_key"].family)
             self.assertIn("SUBTÍTULOS", printed)
             self.assertIn("1. MODO CONCIENCIA", printed)
-            self.assertIn("2. FORMATO ESTÁNDAR", printed)
+            self.assertIn("2. ESTILO ESTÁNDAR", printed)
 
     def test_image_and_video_keep_distinct_identity_and_physical_files(self):
         image_key = OperationalProfileKey(
@@ -757,10 +772,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         }
 
         for scope, expected_component in expected_components.items():
+            answers = MenuAnswers(
+                "Vertical 9:16",
+                "MODO CONCIENCIA",
+                "Modo Conciencia | Palabra única",
+            )
             with self.subTest(scope=scope), patch(
                 "builtins.input",
-                side_effect=("2", "1", "1")
-            ):
+                side_effect=answers.input
+            ), patch("builtins.print", side_effect=answers.print):
                 selected = RunController().select_profile(
                     scope
                 )
@@ -776,8 +796,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_run_controller_selects_design_only_after_family_and_design_choice(self):
         controller = RunController()
-        with patch("builtins.input", side_effect=("2", "1", "1")), patch(
-            "builtins.print"
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile("video")
 
@@ -797,12 +822,17 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         )
         self.assertIn("SUBTÍTULOS", printed)
         self.assertIn("1. MODO CONCIENCIA", printed)
-        self.assertIn("2. FORMATO ESTÁNDAR", printed)
+        self.assertIn("2. ESTILO ESTÁNDAR", printed)
 
     def test_run_controller_selects_horizontal_design_when_discovered(self):
         controller = RunController()
-        with patch("builtins.input", side_effect=("1", "1", "1")), patch(
-            "builtins.print"
+        answers = MenuAnswers(
+            "Horizontal 16:9",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Línea única",
+        )
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile("studio")
 
@@ -815,7 +845,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         self.assertIn("SUBTÍTULOS", printed)
         self.assertEqual("design", selected["subtitle_profile_key"].family)
         self.assertIn("1. MODO CONCIENCIA", printed)
-        self.assertIn("2. FORMATO ESTÁNDAR", printed)
+        self.assertIn("2. ESTILO ESTÁNDAR", printed)
 
     def test_run_controller_transports_selected_profile_key(self):
         controller = RunController()

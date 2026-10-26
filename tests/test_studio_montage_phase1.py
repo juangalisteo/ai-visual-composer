@@ -25,6 +25,7 @@ from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
 )
+from tests.test_menu_helpers import MenuAnswers, Typed
 
 
 class StudioMontagePhase1Test(unittest.TestCase):
@@ -51,8 +52,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
     def test_fourth_studio_input_mode_is_montage_videos(self):
         controller = RunController()
-        with patch("builtins.input", return_value="4"), patch(
-            "app.controllers.interaction.terminal.ProgressLogger.info"
+        answers = MenuAnswers("MONTAJE VÍDEOS")
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "app.controllers.interaction.terminal.ProgressLogger.info",
+            side_effect=answers.print,
         ) as logger:
             selected = controller.select_studio_input_mode()
 
@@ -200,11 +203,13 @@ class StudioMontagePhase1Test(unittest.TestCase):
             controller = RunController(
                 studio_input_preparation_service=StudioInputPreparationService(root)
             )
+            answers = MenuAnswers(Typed("1 3 2"), "Sí")
             with patch(
                 "builtins.input",
-                side_effect=("1 3 2", "1"),
+                side_effect=answers.input,
             ), patch(
-                "app.controllers.interaction.terminal.ProgressLogger.info"
+                "app.controllers.interaction.terminal.ProgressLogger.info",
+                side_effect=answers.print,
             ) as logger:
                 plan = controller.select_studio_montage_plan(
                     self.profile_key,
@@ -234,7 +239,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
             controller = RunController(
                 studio_input_preparation_service=StudioInputPreparationService(root)
             )
-            with patch("builtins.input", side_effect=("1 2", "2")):
+            answers = MenuAnswers(Typed("1 2"), "No")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ):
                 plan = controller.select_studio_montage_plan(
                     self.profile_key,
                     self.profile,

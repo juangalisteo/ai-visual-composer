@@ -20,6 +20,7 @@ from app.modules.video.intro_outro import (
 from app.modules.video.video_build_context import VideoBuildArtifacts
 from app.modules.video.video_render_service import VideoRenderService
 from app.shared.operational_error import OperationalError
+from tests.test_menu_helpers import MenuAnswers
 
 
 class IntroOutroTest(unittest.TestCase):
@@ -171,9 +172,13 @@ class IntroOutroTest(unittest.TestCase):
                 intro_outro_catalog=catalog
             )
 
+            answers = MenuAnswers("SOLO INTRO")
             with patch(
                 "builtins.input",
-                side_effect=["2"],
+                side_effect=answers.input,
+            ), patch(
+                "builtins.print",
+                side_effect=answers.print,
             ), self.assertRaisesRegex(
                 FileNotFoundError,
                 "vertical/intro/",
@@ -190,7 +195,10 @@ class IntroOutroTest(unittest.TestCase):
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
 
-            with patch("builtins.input", side_effect=["3"]), self.assertRaisesRegex(
+            answers = MenuAnswers("SOLO OUTRO")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ), self.assertRaisesRegex(
                 FileNotFoundError,
                 "vertical/outro/",
             ):
@@ -202,10 +210,11 @@ class IntroOutroTest(unittest.TestCase):
             intro_outro_catalog=catalog
         )
 
+        answers = MenuAnswers("NINGUNO")
         with patch(
             "builtins.input",
-            side_effect=["1"],
-        ), patch.object(controller, "_print"):
+            side_effect=answers.input,
+        ), patch.object(controller, "_print", side_effect=answers.write):
             selection = controller.select_intro_outro("vertical")
 
         self.assertIsNone(selection)
@@ -228,10 +237,15 @@ class IntroOutroTest(unittest.TestCase):
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
 
+            answers = MenuAnswers(
+                "INTRO + OUTRO",
+                "second intro.mp4",
+                "closing reel.mp4",
+            )
             with patch(
                 "builtins.input",
-                side_effect=["4", "2", "1"],
-            ), patch.object(controller, "_print"):
+                side_effect=answers.input,
+            ), patch.object(controller, "_print", side_effect=answers.write):
                 plan = controller.select_intro_outro("vertical")
 
         self.assertEqual(second, plan.intro.asset_path)

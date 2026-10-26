@@ -480,8 +480,8 @@ class ProfileResolver:
                 "No existe un componente Wan declarativo para el perfil solicitado."
             ),
             recommended_action=(
-                "Cree exactamente un documento video_component valido en el "
-                "directorio de la plataforma solicitada."
+                "Cree exactamente un documento video_component válido en el "
+                "directorio del formato solicitado."
             ),
             operation="Resolver componente Wan declarativo",
             resource=str(directory),

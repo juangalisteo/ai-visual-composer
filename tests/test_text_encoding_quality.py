@@ -10,6 +10,7 @@ from app.managers.pipeline_summary import PipelineSummary
 from app.modules.video.video_validator import VideoValidator
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
+from tests.test_menu_helpers import MenuAnswers
 
 
 class Cp1252Stdout:
@@ -253,6 +254,14 @@ class TextEncodingQualityTest(unittest.TestCase):
     def test_run_controller_menus_write_unicode_through_utf8_stdout_boundary(self):
         stream = ReconfigurableBytesStdout()
         controller = RunController()
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+            "Aleatoria",
+            "Sí",
+            screen=stream.get_utf8_output,
+        )
 
         with patch.object(
             sys,
@@ -260,7 +269,7 @@ class TextEncodingQualityTest(unittest.TestCase):
             stream
         ), patch(
             "builtins.input",
-            side_effect=("2", "1", "1", "1", "1")
+            side_effect=answers.input
         ):
             controller.select_profile("image")
             controller.select_music_category()
@@ -273,7 +282,7 @@ class TextEncodingQualityTest(unittest.TestCase):
             output
         )
         self.assertIn(
-            "FORMATO ESTÁNDAR",
+            "ESTILO ESTÁNDAR",
             output
         )
         self.assertIn(
@@ -378,6 +387,7 @@ class TextEncodingQualityTest(unittest.TestCase):
     def test_run_controller_unicode_output_still_supports_stringio_capture(self):
         stream = io.StringIO()
         controller = RunController()
+        answers = MenuAnswers("Sí", screen=stream.getvalue)
 
         with patch.object(
             sys,
@@ -385,7 +395,7 @@ class TextEncodingQualityTest(unittest.TestCase):
             stream
         ), patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ):
             controller.select_overlays_mode()
 

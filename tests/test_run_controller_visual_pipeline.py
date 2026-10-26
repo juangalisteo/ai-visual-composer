@@ -10,6 +10,7 @@ from app.shared.profile_identity import (
     ProfileComponent,
 )
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from tests.test_menu_helpers import MenuAnswers
 
 
 class RunControllerVisualPipelineTest(unittest.TestCase):
@@ -17,10 +18,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_selects_image_pipeline(self):
         controller = RunController()
 
+        answers = MenuAnswers("Imagen")
         with patch(
             "builtins.input",
-            return_value="2"
-        ):
+            side_effect=answers.input
+        ), patch("builtins.print", side_effect=answers.print):
             self.assertEqual(
                 "image",
                 controller.select_visual_pipeline()
@@ -29,11 +31,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_selects_script_pipeline_from_main_menu(self):
         controller = RunController()
 
+        answers = MenuAnswers("Guion")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_visual_pipeline()
 
@@ -62,11 +66,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_selects_video_pipeline_from_main_menu(self):
         controller = RunController()
 
+        answers = MenuAnswers("Video")
         with patch(
             "builtins.input",
-            return_value="3"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_visual_pipeline()
 
@@ -91,11 +97,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_script_destination_video_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Video")
         with patch(
             "builtins.input",
-            return_value="2"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_script_destination()
 
@@ -132,11 +140,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_script_destination_design_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Diseño")
         with patch(
             "builtins.input",
-            return_value="3"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_script_destination()
 
@@ -169,11 +179,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_design_target_image_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Imagen")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_design_target()
 
@@ -203,11 +215,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_design_target_video_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Video")
         with patch(
             "builtins.input",
-            return_value="2"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_design_target()
 
@@ -268,29 +282,30 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 "design_image",
                 ProfileComponent.IMAGEN,
                 "vertical",
-                ("2",),
+                ("Vertical 9:16",),
             ),
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
                 "horizontal",
-                ("1",),
+                ("Horizontal 16:9",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
                 "vertical",
-                ("2",),
+                ("Vertical 9:16",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
                 "horizontal",
-                ("1",),
+                ("Horizontal 16:9",),
             ),
         )
 
         for scope, component, profile_format, selections in cases:
+            answers = MenuAnswers(*selections)
             with self.subTest(scope=scope, profile_format=profile_format):
                 with patch.object(
                     controller.subtitle_profile_resolver,
@@ -298,8 +313,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     side_effect=AssertionError(
                         "Diseño no debe descubrir subtítulos."
                     ),
-                ), patch("builtins.input", side_effect=selections), patch(
-                    "builtins.print"
+                ), patch("builtins.input", side_effect=answers.input), patch(
+                    "builtins.print", side_effect=answers.print
                 ) as print_mock:
                     selected = controller.select_profile(
                         scope
@@ -332,9 +347,14 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_normal_script_selection_still_discovers_and_transports_subtitles(self):
         controller = RunController()
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
 
-        with patch("builtins.input", side_effect=("2", "1", "1")), patch(
-            "builtins.print"
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile("script")
 
@@ -351,11 +371,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_image_modes_exclude_legacy_script_mode(self):
         controller = RunController()
 
+        answers = MenuAnswers("Proyecto completo")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_pipeline_mode()
 
@@ -396,11 +418,17 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_video_profile_selection_uses_main_visual_profiles(self):
         controller = RunController()
 
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
         with patch(
             "builtins.input",
-            side_effect=("2", "1", "1")
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile(
                 "video"
@@ -423,16 +451,16 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             selected["path"]
         )
         self.assertIn(
-            "PLATAFORMA",
+            "FORMATO",
             printed
         )
 
     def test_existing_modes_keep_internal_identifiers(self):
         cases = (
-            ("1", "full"),
-            ("2", "audio"),
-            ("3", "subtitles"),
-            ("4", "storyboard"),
+            ("Proyecto completo", "full"),
+            ("Solo audio", "audio"),
+            ("Audio + subtítulos", "subtitles"),
+            ("Audio + subtítulos + storyboard", "storyboard"),
         )
 
         for option, expected_mode in cases:
@@ -440,11 +468,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 option=option
             ):
                 controller = RunController()
+                answers = MenuAnswers(option)
 
                 with patch(
                     "builtins.input",
-                    return_value=option
-                ):
+                    side_effect=answers.input
+                ), patch("builtins.print", side_effect=answers.print):
                     self.assertEqual(
                         expected_mode,
                         controller.select_pipeline_mode()
@@ -453,11 +482,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_script_modes_include_secondary_full_without_subtitles(self):
         controller = RunController()
 
+        answers = MenuAnswers("Proyecto completo sin subtítulos")
         with patch(
             "builtins.input",
-            return_value="5",
+            side_effect=answers.input,
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print,
         ) as print_mock:
             selected = controller.select_pipeline_mode(
                 include_full_without_subtitles=True,
@@ -1131,11 +1162,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_music_menu_only_exposes_disabled_or_random_selection(self):
         controller = RunController()
 
+        answers = MenuAnswers("Aleatoria")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_music_category()
 
@@ -1172,10 +1205,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_music_menu_without_music_returns_none(self):
         controller = RunController()
 
+        answers = MenuAnswers("Sin música")
         with patch(
             "builtins.input",
-            return_value="2"
-        ):
+            side_effect=answers.input
+        ), patch("builtins.print", side_effect=answers.print):
             self.assertIsNone(
                 controller.select_music_category()
             )
@@ -1330,11 +1364,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     ):
         controller = RunController()
 
+        answers = MenuAnswers("Sí")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_overlays_mode()
 
@@ -1365,10 +1401,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     ):
         controller = RunController()
 
+        answers = MenuAnswers("No")
         with patch(
             "builtins.input",
-            return_value="2"
-        ):
+            side_effect=answers.input
+        ), patch("builtins.print", side_effect=answers.print):
             self.assertEqual(
                 "off",
                 controller.select_overlays_mode()

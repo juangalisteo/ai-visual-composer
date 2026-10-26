@@ -62,6 +62,7 @@ def test_run_controller_delegates_phase_seven_selection_facades():
         writer=writer,
         selector=selector,
         label=controller._label,
+        order=controller._format_order,
     )
     profile_call = profiles.select_studio_operational_profile.call_args
     assert profile_call.kwargs["profile_format"] == "vertical"
@@ -76,6 +77,7 @@ def test_run_controller_delegates_phase_seven_selection_facades():
         label=controller._label,
         family_label=controller._family_label,
         presentation_families=controller._presentation_families,
+        order=controller._format_order,
     )
     subtitles.select_studio_video_audio_srt_subtitle_profile.assert_called_once_with(
         profile_key,
@@ -128,11 +130,15 @@ def test_extracted_selectors_preserve_operational_and_subtitle_identities():
         profile_format="vertical",
         profiles_by_format=profiles_by_format,
     )
-    descriptor = subtitle_resolver.discover_profiles_for_family(
-        "studio",
-        "vertical",
-        "estandar",
-    )[0]
+    descriptor = next(
+        item
+        for item in subtitle_resolver.discover_profiles_for_family(
+            "studio",
+            "vertical",
+            "estandar",
+        )
+        if item.display_name == "Doble línea"
+    )
     subtitle_key, original = subtitle_selector.select_studio_subtitle_profile(
         StudioInputMode.SRT_VIDEO.value,
         profile_format="vertical",

@@ -557,9 +557,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         messages = []
         controller._print = messages.append
         resolver = SubtitleProfileResolver()
-        design = resolver.discover_profiles_for_family(
-            "studio", "vertical", "design",
-        )[1]
+        design = next(
+            item
+            for item in resolver.discover_profiles_for_family(
+                "studio", "vertical", "design",
+            )
+            if item.display_name == "Modo Conciencia | Podcast"
+        )
         standard = resolver.discover_profiles_for_family(
             "studio", "vertical", "estandar",
         )
@@ -575,7 +579,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertFalse(original)
         self.assertIn("SUBTÍTULOS", "\n".join(messages))
         self.assertIn("1. MODO CONCIENCIA", messages)
-        self.assertIn("2. FORMATO ESTÁNDAR", messages)
+        self.assertIn("2. ESTILO ESTÁNDAR", messages)
         self.assertIn("1. Modo Conciencia | Palabra única", messages)
         self.assertTrue(
             {
@@ -629,9 +633,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         controller = RunController()
         messages = []
         controller._print = messages.append
-        descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "vertical", "primado_negativo",
-        )[0]
+        descriptor = next(
+            item
+            for item in SubtitleProfileResolver().discover_profiles_for_family(
+                "studio", "vertical", "primado_negativo",
+            )
+            if item.display_name == "Primado Negativo | Marco"
+        )
         controller._select_from_list = Mock(
             side_effect=("primado_negativo", descriptor),
         )
@@ -643,9 +651,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertEqual("primado_negativo", selected.family)
         self.assertEqual(descriptor.key, selected)
         self.assertIn("1. MODO CONCIENCIA", messages)
-        self.assertIn("2. FORMATO ESTÁNDAR", messages)
+        self.assertIn("2. ESTILO ESTÁNDAR", messages)
         self.assertIn("3. MODO MINIMALISTA", messages)
-        self.assertIn("4. FORMATO KARAOKE", messages)
+        self.assertIn("4. ESTILO KARAOKE", messages)
         self.assertIn("5. PRIMADO NEGATIVO", messages)
 
     def test_srt_video_original_standard_profiles_preserve_human_structure(self):

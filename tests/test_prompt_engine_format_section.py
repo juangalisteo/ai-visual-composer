@@ -1,3 +1,4 @@
+import re
 import unittest
 
 from app.core.prompt_engine import PromptEngine
@@ -17,6 +18,11 @@ FORMAT_SENTENCES = {
         "El objetivo es construir una explicación completa del tema.",
     ),
 }
+
+
+# Cabecera que precede a FORMATO: la sección que se unió en R1 iba entre ambas.
+HEADER_BEFORE_FORMAT = {"script": "TAREA", "storyboard": "TAREA VISUAL"}
+HEADER = re.compile(r"^([A-ZÁÉÍÓÚÑ0-9 /]+):\s*$", re.MULTILINE)
 
 
 def build_prompts(profile_format):
@@ -45,7 +51,11 @@ class PromptEngineFormatSectionTest(unittest.TestCase):
                     section = prompt.split("\nFORMATO:\n", 1)[1]
                     positions = [section.index(text) for text in sentences]
                     self.assertEqual(sorted(positions), positions)
-                    self.assertNotIn("PLATAFORMA:", prompt)
+                    headers = HEADER.findall(prompt)
+                    self.assertEqual(
+                        HEADER_BEFORE_FORMAT[kind],
+                        headers[headers.index("FORMATO") - 1],
+                    )
                     self.assertNotIn("destinado a", prompt)
 
     def test_profile_without_format_fails_as_before(self):
