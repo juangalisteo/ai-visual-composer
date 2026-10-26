@@ -110,12 +110,7 @@ class RollUpModel(BaseSubtitleModel):
         lines = []
         current = []
         for word in words:
-            text = self._word_text(word)
-            if len(text) > self.max_chars_per_line:
-                raise ValueError(
-                    "Una palabra supera cue_policy.max_chars_per_line: "
-                    f"{text}"
-                )
+            # A word longer than the limit goes alone on its line.
             candidate = (*current, word)
             if current and len(self._join_words(candidate)) > self.max_chars_per_line:
                 lines.append(tuple(current))

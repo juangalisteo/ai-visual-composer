@@ -174,7 +174,6 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
                     )
                     regular_group = []
 
-                self._validate_single_word(word)
                 chunks.append((word,))
                 continue
 
@@ -228,7 +227,8 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
                 chunk.append(word)
 
             if not chunk:
-                self._validate_single_word(words[cursor])
+                # A word longer than the limit goes alone in its cue.
+                chunk.append(words[cursor])
 
             chunks.append(tuple(chunk))
             cursor += len(chunk)
@@ -237,15 +237,6 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         if self.fixed_chunk_size is not None:
             return chunks
         return self._avoid_final_orphan(chunks)
-
-    def _validate_single_word(self, word):
-        text = self._word_text(word)
-
-        if len(text) > self.max_chars_per_line:
-            raise ValueError(
-                "Una palabra supera cue_policy.max_chars_per_line: "
-                f"{text}"
-            )
 
     def _is_mente_word(self, word):
         text = self._word_text(word).strip().lower()

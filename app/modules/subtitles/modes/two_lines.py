@@ -69,10 +69,6 @@ class TwoLineModel(ThreeTwoWordsModel):
                     selected_end = end
                     break
 
-            if selected_end is None:
-                self._validate_single_word(words[cursor])
-                selected_end = cursor + 1
-
             chunks.append(words[cursor:selected_end])
             cursor = selected_end
 
@@ -92,7 +88,8 @@ class TwoLineModel(ThreeTwoWordsModel):
             return None
 
         text = self._join_words(words)
-        if len(text) <= self.max_chars_per_line:
+        # A word longer than the limit goes alone on its line.
+        if len(text) <= self.max_chars_per_line or len(words) == 1:
             return (text,)
 
         candidates = []
