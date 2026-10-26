@@ -131,10 +131,17 @@ class SubtitleStyleBuilder:
             optional_ass.append(f"MarginL={subtitle_style['margin_l']}")
         if "margin_r" in subtitle_style:
             optional_ass.append(f"MarginR={subtitle_style['margin_r']}")
+        # Profiles declare scale as a percentage (100 = normal size), as in an
+        # ASS style line; libass reads ScaleX/ScaleY in force_style as a
+        # fraction (1 = normal size).
         if "scale_x" in subtitle_style:
-            optional_ass.append(f"ScaleX={subtitle_style['scale_x']}")
+            optional_ass.append(
+                f"ScaleX={float(subtitle_style['scale_x']) / 100:g}"
+            )
         if "scale_y" in subtitle_style:
-            optional_ass.append(f"ScaleY={subtitle_style['scale_y']}")
+            optional_ass.append(
+                f"ScaleY={float(subtitle_style['scale_y']) / 100:g}"
+            )
         if "spacing" in subtitle_style:
             optional_ass.append(f"Spacing={subtitle_style['spacing']}")
 

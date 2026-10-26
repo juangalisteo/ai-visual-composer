@@ -69,8 +69,8 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
             "SecondaryColour=&H80ABCDEF",
             "MarginL=0",
             "MarginR=40",
-            "ScaleX=100",
-            "ScaleY=110.5",
+            "ScaleX=1,",
+            "ScaleY=1.105,",
             "Spacing=2.0",
         ):
             with self.subTest(expected=expected):
@@ -124,7 +124,7 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
         self.assertTrue(style["italic"])
         self.assertEqual("&H80ABCDEF", style["secondary_colour"])
         self.assertEqual(40, style["margin_r"])
-        self.assertIn("ScaleY=110.5", SubtitleStyleBuilder().build(style))
+        self.assertIn("ScaleY=1.105", SubtitleStyleBuilder().build(style))
 
     def test_optional_booleans_require_real_booleans(self):
         for field in ("italic", "underline", "strikeout"):
