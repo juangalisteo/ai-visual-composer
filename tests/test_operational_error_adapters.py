@@ -40,13 +40,13 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_invalid_operational_profile_json_preserves_path_and_cause(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "video/instagram/broken.json"
+            path = root / "video/vertical/broken.json"
             path.parent.mkdir(parents=True)
             path.write_text("{invalid", encoding="utf-8")
 
             with self.assertRaises(OperationalError) as caught:
                 ProfileResolver(root).resolve_operational(
-                    OperationalProfileKey("video", "instagram", "test_profile")
+                    OperationalProfileKey("video", "vertical", "test_profile")
                 )
 
         self.assertEqual("CONFIG", caught.exception.context.family)
@@ -57,10 +57,10 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             operational_key = OperationalProfileKey(
-                "video", "instagram", "test_profile"
+                "video", "vertical", "test_profile"
             )
             subtitle_key = SubtitleProfileKey(
-                "video", "instagram", "test_profile", "estandar"
+                "video", "vertical", "test_profile", "estandar"
             )
 
             with self.assertRaises(OperationalError) as operational:
@@ -78,12 +78,12 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_duplicate_operational_profiles_are_ambiguity_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            folder = root / "video/instagram"
+            folder = root / "video/vertical"
             folder.mkdir(parents=True)
-            key = OperationalProfileKey("video", "instagram", "test_profile")
+            key = OperationalProfileKey("video", "vertical", "test_profile")
             data = {
                 "component": "video",
-                "platform": "instagram",
+                "platform": "vertical",
                 "profile_id": "test_profile",
             }
             for name in ("first.json", "second.json"):
@@ -100,7 +100,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             key = SubtitleProfileKey(
-                "video", "instagram", "test_profile", "estandar"
+                "video", "vertical", "test_profile", "estandar"
             )
             path = root / key.relative_path
             path.parent.mkdir(parents=True)
@@ -108,7 +108,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "video",
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "family": "estandar",
                         "profile_id": "test_profile",
                         "display_name": "Test profile",
@@ -131,14 +131,14 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
             error = None
             try:
                 ProfileResolver(Path(directory)).resolve_operational(
-                    OperationalProfileKey("video", "instagram", "test_profile")
+                    OperationalProfileKey("video", "vertical", "test_profile")
                 )
             except OperationalError as caught:
                 error = caught
 
             options = {
                 "profile_component": "video",
-                "profile_platform": "instagram",
+                "profile_platform": "vertical",
                 "profile_id": "test_profile",
                 "voice_config": "",
                 "music_category": None,

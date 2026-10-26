@@ -176,8 +176,8 @@ def _write_operational_profile(root, component, profile_id, display_name):
 
 def _write_subtitle_profile(root, component, profile_id, family, display_name):
     source = Path(
-        "config/profiles/guion/instagram/estandar/subtitulos/"
-        "subtitulo_guion_instagram_linea_unica.json"
+        "config/profiles/guion/vertical/estandar/subtitulos/"
+        "subtitulo_guion_vertical_linea_unica.json"
     )
     data = json.loads(source.read_text(encoding="utf-8"))
     data.update(

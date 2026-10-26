@@ -1,0 +1,23 @@
+{
+  "component": "imagen",
+  "platform": "vertical",
+  "family": "minimalista",
+  "profile_id": "subtitulo_imagen_vertical_gravity_drop",
+  "display_name": "Caída de palabras",
+  "cue_policy": {
+    "mode": "word_by_word",
+    "text_case": "uppercase",
+    "min_duration": 0.4,
+    "max_duration": 1.5,
+    "significant_gap_threshold": 0.35,
+    "micro_cues": {"enabled": false, "min_frames": 1.0, "min_display_seconds": 0.05, "merge_preference": "next"},
+    "punctuation": {"remove_commas": true, "remove_periods": true, "remove_colons": true, "remove_semicolons": true, "remove_question_marks": false, "remove_exclamation_marks": false, "remove_ellipsis": true, "remove_hyphens": true, "remove_em_dashes": true, "remove_double_quotes": true, "remove_single_quotes": true, "remove_parentheses": true}
+  },
+  "render_style": {
+    "font": "unisans", "font_size": 10, "bold": false,
+    "primary_colour": "&H00FFFFFF", "outline_colour": "&H80000000", "back_colour": "&H00000000",
+    "border_style": 1, "outline": 0, "shadow": 1, "alignment": 2, "margin_v": 55, "offset": 0.0,
+    "dynamic": true, "cue_effect": "gravity_drop", "word_effect": "none",
+    "drop_height_px": 100, "bounce_elasticity": 0.30
+  }
+}

@@ -17,27 +17,27 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 OPERATIONAL_PROFILE_IDS = {
-    (ProfileComponent.GUION, "instagram"): "guion_instagram",
-    (ProfileComponent.GUION, "youtube"): "guion_youtube",
-    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
-    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
-    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
-    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
 }
 
 OFFICIAL_SUBTITLE_PROFILE_IDS = {
-    (ProfileComponent.GUION, "instagram"): (
-        "subtitulo_guion_instagram_palabra_por_palabra"
+    (ProfileComponent.GUION, "vertical"): (
+        "subtitulo_guion_vertical_palabra_por_palabra"
     ),
-    (ProfileComponent.GUION, "youtube"): "subtitulo_guion_youtube_linea_unica",
-    (ProfileComponent.IMAGEN, "instagram"): (
-        "subtitulo_imagen_instagram_palabra_por_palabra"
+    (ProfileComponent.GUION, "horizontal"): "subtitulo_guion_horizontal_linea_unica",
+    (ProfileComponent.IMAGEN, "vertical"): (
+        "subtitulo_imagen_vertical_palabra_por_palabra"
     ),
-    (ProfileComponent.IMAGEN, "youtube"): "subtitulo_imagen_youtube_linea_unica",
-    (ProfileComponent.VIDEO, "instagram"): (
-        "subtitulo_video_instagram_palabra_por_palabra"
+    (ProfileComponent.IMAGEN, "horizontal"): "subtitulo_imagen_horizontal_linea_unica",
+    (ProfileComponent.VIDEO, "vertical"): (
+        "subtitulo_video_vertical_palabra_por_palabra"
     ),
-    (ProfileComponent.VIDEO, "youtube"): "subtitulo_video_youtube_linea_unica",
+    (ProfileComponent.VIDEO, "horizontal"): "subtitulo_video_horizontal_linea_unica",
 }
 
 
@@ -77,7 +77,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
     )
 
     PLATFORM_EXPECTATIONS = {
-        "instagram": {
+        "vertical": {
             "format": "vertical",
             "width": 1080,
             "height": 1920,
@@ -89,7 +89,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_offset": -0.06,
             "seconds_per_image": 20,
         },
-        "youtube": {
+        "horizontal": {
             "format": "horizontal",
             "width": 1920,
             "height": 1080,
@@ -243,8 +243,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_video_wan_profiles_keep_current_parameters(self):
         expected_by_platform = {
-            "instagram": (448, 800),
-            "youtube": (800, 448),
+            "vertical": (448, 800),
+            "horizontal": (800, 448),
         }
 
         for platform, dimensions in expected_by_platform.items():
@@ -312,31 +312,40 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 )
 
     def test_structured_identity_controls_wan_profile_resolution(self):
-        instagram_key = OperationalProfileKey(
+        vertical_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
 
         self.assertEqual(
-            self.resolver.load_video_component(instagram_key),
+            self.resolver.load_video_component(vertical_key),
             load_video_component_parameters(
-                instagram_key
+                vertical_key
             )
         )
 
     def test_wan_profile_rejects_legacy_platform_and_format_inference(self):
-        for legacy_profile in (
-            {
-                "platform": "instagram"
-            },
-            {
-                "format": "youtube"
-            },
+        video_formats = self.resolver.discover_platforms(
+            ProfileComponent.VIDEO
+        )
+        self.assertTrue(video_formats)
+        legacy_profiles = [
             {
                 "video_component": {}
             },
-        ):
+        ]
+        for video_format in video_formats:
+            legacy_profiles.extend((
+                {
+                    "platform": video_format
+                },
+                {
+                    "format": video_format
+                },
+            ))
+
+        for legacy_profile in legacy_profiles:
             with self.subTest(
                 legacy_profile=legacy_profile
             ), self.assertRaisesRegex(
@@ -358,8 +367,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
         image_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         )
         with self.assertRaisesRegex(
             ValueError,

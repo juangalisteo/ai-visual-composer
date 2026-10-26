@@ -94,9 +94,9 @@ def test_pop_in_sentence_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
-            profile_id=f"subtitulo_{component.value}_instagram_pop_in_sentence",
+            profile_id=f"subtitulo_{component.value}_vertical_pop_in_sentence",
         )
         profile = resolver.load(key)
         render_style = SubtitleConfigLoader().load_render_style(profile.render_style)

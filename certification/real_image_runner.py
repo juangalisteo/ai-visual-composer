@@ -16,7 +16,7 @@ from certification.models import CertificationScenario
 class RealImageRunnerConfig:
     campaign_id: str = "rc0_quick"
     base_output_dir: Path = Path("output") / "certification"
-    platform: str = "youtube"
+    platform: str = "horizontal"
     image_format: str = "horizontal"
     image_width: int = 1920
     image_height: int = 1080

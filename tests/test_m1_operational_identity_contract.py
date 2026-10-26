@@ -19,10 +19,10 @@ def _canonical_operational_identity(profile_key):
 
 
 def test_m1_canonical_operational_identity_excludes_legacy_family():
-    key = OperationalProfileKey("guion", "instagram", "guion_instagram")
+    key = OperationalProfileKey("guion", "vertical", "guion_vertical")
 
     assert _canonical_operational_identity(key) == (
-        "guion", "instagram", "guion_instagram",
+        "guion", "vertical", "guion_vertical",
     )
     assert not hasattr(key, "family")
 
@@ -53,8 +53,8 @@ def test_m1_root_operational_document_uses_canonical_discovery_only(tmp_path):
 
 def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
     source = Path(
-        "config/profiles/guion/instagram/estandar/subtitulos/"
-        "subtitulo_guion_instagram_linea_unica.json"
+        "config/profiles/guion/vertical/estandar/subtitulos/"
+        "subtitulo_guion_vertical_linea_unica.json"
     )
     data = json.loads(source.read_text(encoding="utf-8"))
     data.update(
@@ -89,23 +89,23 @@ def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
 
 def test_m1_subtitle_key_family_is_independent_of_operational_legacy_family():
     operational_key = OperationalProfileKey(
-        "studio", "instagram", "studio_instagram",
+        "studio", "vertical", "studio_vertical",
     )
     subtitle_key = SubtitleProfileKey(
-        "studio", "instagram", "modo_conciencia_reels", "design",
+        "studio", "vertical", "modo_conciencia_reels", "design",
     )
 
     resolved = SubtitleProfileResolver().load(subtitle_key)
 
     assert _canonical_operational_identity(operational_key) == (
-        "studio", "instagram", "studio_instagram",
+        "studio", "vertical", "studio_vertical",
     )
     assert subtitle_key.family == "design"
     assert resolved.key == subtitle_key
 
 
 def test_m1_studio_baseline_uses_general_operational_payload():
-    key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+    key = OperationalProfileKey("studio", "vertical", "studio_vertical")
     profile = ProfileResolver().load_operational(key)
     resolved = StudioProfileLoader().load(profile, key)
 
@@ -119,16 +119,16 @@ def test_m1_studio_baseline_uses_general_operational_payload():
 def test_m1_guion_video_bridge_remains_explicit_and_unambiguous():
     key = _resolve_single_video_operational_key(
         ProfileResolver(),
-        "instagram",
+        "vertical",
     )
 
     assert _canonical_operational_identity(key) == (
-        "video", "instagram", "video_instagram",
+        "video", "vertical", "video_vertical",
     )
 
 
 def test_m1_wan_i2v_remains_outside_operational_profile_contract():
-    video_key = OperationalProfileKey("video", "instagram", "video_instagram")
+    video_key = OperationalProfileKey("video", "vertical", "video_vertical")
     document = ProfileResolver().load_video_component(video_key)
 
     assert document["kind"] == "video_component"

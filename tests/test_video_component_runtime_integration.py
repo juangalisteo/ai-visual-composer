@@ -118,7 +118,7 @@ class FakeProject:
 def FakeResult(
     output_clip,
     source_image=None,
-    profile_name="Instagram",
+    profile_name="Vertical",
     seed=123,
 ):
     return VideoClipGenerationResult(
@@ -202,7 +202,7 @@ class FakeVideoComponentBuilder:
             source_image=source_path,
             profile_name=overrides.get(
                 "profile_name",
-                "Instagram"
+                "Vertical"
             ),
             seed=overrides.get(
                 "seed",
@@ -251,8 +251,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     project=project,
                     profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
+                        "vertical",
+                        "video_vertical",
                     ),
                     source_path=root / "source.png",
                     video_builder=builder,
@@ -339,8 +339,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
             source_path = root / "source.png"
 
@@ -384,8 +384,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         project=FakeProject(root / "output"),
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                         source_path=root / "source.png",
                         video_builder=FakeVideoComponentBuilder(
@@ -432,8 +432,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     ),
                     profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
+                        "vertical",
+                        "video_vertical",
                     ),
                     source_path=missing,
                 )
@@ -441,13 +441,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
     def test_video_profiles_exist_with_validated_parameters(self):
         cases = (
             (
-                "config/profiles/video/instagram/wan_i2v_instagram.json",
+                "config/profiles/video/vertical/wan_i2v_vertical.json",
                 448,
                 800,
                 20,
             ),
             (
-                "config/profiles/video/youtube/wan_i2v_youtube.json",
+                "config/profiles/video/horizontal/wan_i2v_horizontal.json",
                 800,
                 448,
                 20,
@@ -522,12 +522,12 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_active_video_profiles_keep_quality_encoding_settings(self):
         profile_paths = (
-            "config/profiles/guion/instagram/perfil_guion_instagram.json",
-            "config/profiles/guion/youtube/perfil_guion_youtube.json",
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json",
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json",
-            "config/profiles/video/instagram/perfil_video_instagram.json",
-            "config/profiles/video/youtube/perfil_video_youtube.json",
+            "config/profiles/guion/vertical/perfil_guion_vertical.json",
+            "config/profiles/guion/horizontal/perfil_guion_horizontal.json",
+            "config/profiles/imagen/vertical/perfil_imagen_vertical.json",
+            "config/profiles/imagen/horizontal/perfil_imagen_horizontal.json",
+            "config/profiles/video/vertical/perfil_video_vertical.json",
+            "config/profiles/video/horizontal/perfil_video_horizontal.json",
         )
 
         for profile_path in profile_paths:
@@ -541,7 +541,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_random_seed_mode_resolves_single_valid_seed(self):
         profile = _video_profile(
-            "Instagram"
+            "Vertical"
         )
 
         with patch(
@@ -581,7 +581,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         self
     ):
         profile = _video_profile(
-            "Instagram",
+            "Vertical",
             seed_mode="fixed",
             seed=123456789
         )
@@ -630,7 +630,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ("savevideo_h264", WanIntermediateOutput.SAVEVIDEO_H264),
         ):
             with self.subTest(intermediate_output=intermediate_output):
-                profile = _video_profile("Instagram")
+                profile = _video_profile("Vertical")
                 profile["video_component"]["delivery"] = {
                     "intermediate_output": intermediate_output,
                 }
@@ -657,7 +657,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 self.assertEqual("simple", prompt.scheduler)
 
     def test_i2v_overrides_preserve_legacy_intermediate_output_default(self):
-        profile = _video_profile("Instagram")
+        profile = _video_profile("Vertical")
 
         with patch(
             "app.modules.video_component.profile_parameters._random_video_seed",
@@ -696,7 +696,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             requested_subtitle_keys = []
             subtitle_key = SubtitleProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
+                "vertical",
                 "test_subtitle_profile",
                 "test_family",
             )
@@ -710,15 +710,15 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
+                        "vertical",
+                        "video_vertical",
                     )
 
                 def get_profile_config(
                     self
                 ):
                     return {
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "builders": {
                             "script": True,
                             "voice": True,
@@ -799,8 +799,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         pipeline_mode="full",
                         operational_profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                         subtitle_profile_key=subtitle_key,
                         intro_outro_plan=intro_outro_selection,
@@ -856,8 +856,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.GUION,
-                        "instagram",
-                        "guion_instagram",
+                        "vertical",
+                        "guion_vertical",
                     )
 
                 def get_profile_config(self):
@@ -920,8 +920,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         pipeline_mode="full_without_subtitles",
                         operational_profile_key=OperationalProfileKey(
                             ProfileComponent.GUION,
-                            "instagram",
-                            "guion_instagram",
+                            "vertical",
+                            "guion_vertical",
                         ),
                     ),
                 )
@@ -933,8 +933,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         self.assertEqual(
             OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             ),
             clips_builder.call_args.kwargs["profile_key"],
         )
@@ -1059,8 +1059,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         video_builder=builder,
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                     )
                     manifest = json.loads(
@@ -1233,8 +1233,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         video_builder=builder,
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                     )
 
@@ -1422,8 +1422,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 video_builder=LosslessBuilder(root / "unused.mkv"),
                 profile_key=OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
-                    "video_instagram",
+                    "vertical",
+                    "video_vertical",
                 ),
             )
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -1438,12 +1438,12 @@ def _video_profile(
     seed_mode="random",
     seed=None
 ):
-    if name == "YouTube":
+    if name == "Horizontal":
         profile = {
             "platform": "video",
-            "format": "youtube",
+            "format": "horizontal",
             "video_component": {
-                "profile": "YouTube",
+                "profile": "Horizontal",
                 "generation": {
                     "width": 672,
                     "height": 384,
@@ -1465,9 +1465,9 @@ def _video_profile(
 
     profile = {
         "platform": "video",
-        "format": "instagram",
+        "format": "vertical",
         "video_component": {
-            "profile": "Instagram",
+            "profile": "Vertical",
             "generation": {
                 "width": 384,
                 "height": 672,

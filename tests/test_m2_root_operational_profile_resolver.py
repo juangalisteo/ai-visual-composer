@@ -105,11 +105,11 @@ def test_duplicate_root_profiles_are_never_selected_by_filesystem_order(tmp_path
 def test_root_technical_wan_document_is_not_an_operational_profile():
     descriptors = ProfileResolver().discover_operational_profiles(
         "video",
-        "instagram",
+        "vertical",
     )
 
     assert tuple(descriptor.key.profile_id for descriptor in descriptors) == (
-        "video_instagram",
+        "video_vertical",
     )
 
 

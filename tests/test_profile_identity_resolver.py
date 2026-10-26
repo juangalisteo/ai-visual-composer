@@ -21,43 +21,43 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 OPERATIONAL_PROFILE_IDS = {
-    (ProfileComponent.GUION, "instagram"): "guion_instagram",
-    (ProfileComponent.GUION, "youtube"): "guion_youtube",
-    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
-    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
-    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
-    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
-    (ProfileComponent.STUDIO, "instagram"): "studio_instagram",
-    (ProfileComponent.STUDIO, "youtube"): "studio_youtube",
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
+    (ProfileComponent.STUDIO, "vertical"): "studio_vertical",
+    (ProfileComponent.STUDIO, "horizontal"): "studio_horizontal",
 }
 
 
 class ProfileIdentityResolverTest(unittest.TestCase):
 
     EXPECTED_PATHS = {
-        "guion_instagram": Path(
-            "config/profiles/guion/instagram/perfil_guion_instagram.json"
+        "guion_vertical": Path(
+            "config/profiles/guion/vertical/perfil_guion_vertical.json"
         ),
-        "guion_youtube": Path(
-            "config/profiles/guion/youtube/perfil_guion_youtube.json"
+        "guion_horizontal": Path(
+            "config/profiles/guion/horizontal/perfil_guion_horizontal.json"
         ),
-        "imagen_instagram": Path(
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json"
+        "imagen_vertical": Path(
+            "config/profiles/imagen/vertical/perfil_imagen_vertical.json"
         ),
-        "imagen_youtube": Path(
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json"
+        "imagen_horizontal": Path(
+            "config/profiles/imagen/horizontal/perfil_imagen_horizontal.json"
         ),
-        "video_instagram": Path(
-            "config/profiles/video/instagram/perfil_video_instagram.json"
+        "video_vertical": Path(
+            "config/profiles/video/vertical/perfil_video_vertical.json"
         ),
-        "video_youtube": Path(
-            "config/profiles/video/youtube/perfil_video_youtube.json"
+        "video_horizontal": Path(
+            "config/profiles/video/horizontal/perfil_video_horizontal.json"
         ),
-        "studio_instagram": Path(
-            "config/profiles/studio/instagram/perfil_studio_instagram.json"
+        "studio_vertical": Path(
+            "config/profiles/studio/vertical/perfil_studio_vertical.json"
         ),
-        "studio_youtube": Path(
-            "config/profiles/studio/youtube/perfil_studio_youtube.json"
+        "studio_horizontal": Path(
+            "config/profiles/studio/horizontal/perfil_studio_horizontal.json"
         ),
     }
 
@@ -66,7 +66,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_resolves_complete_valid_matrix_exactly(self):
         for component in ProfileComponent:
-            for platform in ("instagram", "youtube"):
+            for platform in ("horizontal", "vertical"):
                 profile_key = OperationalProfileKey(
                     component,
                     platform,
@@ -84,10 +84,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_accepts_opaque_profile_ids_across_contexts(self):
         opaque_cases = (
-            ("video", "instagram", "video_youtube"),
-            ("imagen", "instagram", "video_instagram"),
-            ("guion", "youtube", "guion_instagram"),
-            ("video", "youtube", "unknown_profile"),
+            ("video", "vertical", "video_horizontal"),
+            ("imagen", "vertical", "video_vertical"),
+            ("guion", "horizontal", "guion_vertical"),
+            ("video", "horizontal", "unknown_profile"),
         )
 
         for component, platform, profile_id in opaque_cases:
@@ -106,8 +106,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         ):
             OperationalProfileKey(
                 "design",
-                "instagram",
-                "design_instagram",
+                "vertical",
+                "design_vertical",
             )
 
         with self.assertRaisesRegex(
@@ -116,18 +116,18 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         ):
             OperationalProfileKey(
                 "video",
-                "Instagram Reels",
-                "video_instagram",
+                "Vertical Reels",
+                "video_vertical",
             )
 
     def test_platform_is_a_normalized_technical_id(self):
-        self.assertEqual("instagram", coerce_profile_platform(" Instagram "))
-        self.assertEqual("youtube", coerce_profile_platform("youtube"))
+        self.assertEqual("vertical", coerce_profile_platform(" Vertical "))
+        self.assertEqual("horizontal", coerce_profile_platform("horizontal"))
         self.assertEqual("test_platform", coerce_profile_platform("test_platform"))
         with self.assertRaises(ValueError):
             coerce_profile_platform(None)
         with self.assertRaises(ValueError):
-            coerce_profile_platform("youtube!")
+            coerce_profile_platform("horizontal!")
 
         key = OperationalProfileKey("guion", " Test_Platform ", "test_profile")
         self.assertEqual("test_platform", key.platform)
@@ -137,18 +137,18 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             component_root = root / "guion"
-            for name in ("youtube", "instagram", "test_platform", "invalid platform"):
+            for name in ("horizontal", "vertical", "test_platform", "invalid platform"):
                 (component_root / name).mkdir(parents=True)
             (component_root / "ignored.json").write_text("{}", encoding="utf-8")
             resolver = ProfileResolver(root)
 
             self.assertEqual(
-                ("instagram", "test_platform", "youtube"),
+                ("horizontal", "test_platform", "vertical"),
                 resolver.discover_platforms("guion"),
             )
             (component_root / "test_platform").rmdir()
             self.assertEqual(
-                ("instagram", "youtube"),
+                ("horizontal", "vertical"),
                 resolver.discover_platforms("guion"),
             )
 
@@ -201,7 +201,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             legacy_path = (
                 Path(directory)
-                / "instagram"
+                / "vertical"
                 / "modo_conciencia.json"
             )
             legacy_path.parent.mkdir(parents=True)
@@ -209,8 +209,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             resolver = ProfileResolver(directory)
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
 
             with self.assertRaises(OperationalError) as caught:
@@ -222,13 +222,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_base_resolution_uses_declared_identity_not_filename(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            target = root / "guion/instagram/random_test_file.json"
+            target = root / "guion/vertical/random_test_file.json"
             target.parent.mkdir(parents=True)
             target.write_text(
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "profile_id": "test_profile",
                     }
                 ),
@@ -236,7 +236,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             )
 
             resolved = ProfileResolver(root).resolve_operational(
-                OperationalProfileKey("guion", "instagram", "test_profile")
+                OperationalProfileKey("guion", "vertical", "test_profile")
             )
 
         self.assertEqual(target, resolved)
@@ -244,18 +244,18 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_base_resolution_requires_one_direct_identity_match(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            direct = root / "guion/instagram"
+            direct = root / "guion/vertical"
             nested = direct / "subtitulos"
             direct.mkdir(parents=True)
             nested.mkdir()
-            key = OperationalProfileKey("guion", "instagram", "test_profile")
+            key = OperationalProfileKey("guion", "vertical", "test_profile")
 
             (direct / "without_id.json").write_text("{}", encoding="utf-8")
             (direct / "other.json").write_text(
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "profile_id": "other_profile",
                     }
                 ),
@@ -265,7 +265,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "profile_id": "test_profile",
                     }
                 ),
@@ -283,7 +283,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                     json.dumps(
                         {
                             "component": "guion",
-                            "platform": "instagram",
+                            "platform": "vertical",
                             "profile_id": "test_profile",
                         }
                     ),
@@ -299,13 +299,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_base_resolution_rejects_matching_id_with_wrong_context(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            target = root / "guion/instagram/wrong_context.json"
+            target = root / "guion/vertical/wrong_context.json"
             target.parent.mkdir(parents=True)
             target.write_text(
                 json.dumps(
                     {
                         "component": "video",
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "profile_id": "test_profile",
                     }
                 ),
@@ -314,20 +314,20 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
             with self.assertRaises(OperationalError) as caught:
                 ProfileResolver(root).resolve_operational(
-                    OperationalProfileKey("guion", "instagram", "test_profile")
+                    OperationalProfileKey("guion", "vertical", "test_profile")
                 )
 
         self.assertEqual("PROFILE", caught.exception.context.family)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
     def _write_format_profile(self, root, profile_format, width, height):
-        target = root / "guion/instagram/test_profile.json"
+        target = root / "guion/vertical/test_profile.json"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(
             json.dumps(
                 {
                     "component": "guion",
-                    "platform": "instagram",
+                    "platform": "vertical",
                     "profile_id": "test_profile",
                     "format": profile_format,
                     "video_style": {"width": width, "height": height},
@@ -335,7 +335,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-        return OperationalProfileKey("guion", "instagram", "test_profile")
+        return OperationalProfileKey("guion", "vertical", "test_profile")
 
     def test_load_operational_accepts_format_matching_video_style(self):
         for (component, platform), profile_id in OPERATIONAL_PROFILE_IDS.items():
@@ -392,15 +392,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             legacy_path = (
                 Path(directory)
                 / "video"
-                / "instagram.json"
+                / "vertical.json"
             )
             legacy_path.parent.mkdir(parents=True)
             legacy_path.write_text("{}", encoding="utf-8")
             resolver = ProfileResolver(directory)
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
 
             with self.assertRaises(OperationalError) as caught:
@@ -408,33 +408,33 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
         self.assertEqual("CONFIG", caught.exception.context.family)
         self.assertEqual(
-            str(Path(directory) / "video" / "instagram"),
+            str(Path(directory) / "video" / "vertical"),
             caught.exception.context.resource,
         )
 
     def test_platform_resolution_never_crosses_platforms(self):
         for component in ProfileComponent:
-            instagram_key = OperationalProfileKey(
-                component, "instagram", f"{component.value}_instagram"
+            vertical_key = OperationalProfileKey(
+                component, "vertical", f"{component.value}_vertical"
             )
-            youtube_key = OperationalProfileKey(
-                component, "youtube", f"{component.value}_youtube"
+            horizontal_key = OperationalProfileKey(
+                component, "horizontal", f"{component.value}_horizontal"
             )
 
-            instagram_path = self.resolver.resolve_operational(
-                instagram_key
+            vertical_path = self.resolver.resolve_operational(
+                vertical_key
             )
-            youtube_path = self.resolver.resolve_operational(
-                youtube_key
+            horizontal_path = self.resolver.resolve_operational(
+                horizontal_key
             )
 
             self.assertNotIn(
-                "youtube",
-                instagram_path.parts
+                "horizontal",
+                vertical_path.parts
             )
             self.assertNotIn(
-                "instagram",
-                youtube_path.parts
+                "vertical",
+                horizontal_path.parts
             )
 
     def test_design_subtitle_discovery_is_component_scoped_for_both_platforms(self):
@@ -442,7 +442,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             with self.subTest(component=component.value):
                 designs = SubtitleProfileResolver().discover_profiles_for_family(
                     component,
-                    "instagram",
+                    "vertical",
                     "design",
                 )
                 self.assertTrue(designs)
@@ -461,40 +461,40 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 )
                 self.assertEqual("Modo Conciencia | Reels", display_name)
                 self.assertEqual(
-                    Path("config/profiles") / component.value / "instagram"
+                    Path("config/profiles") / component.value / "vertical"
                     / "design" / "subtitulos" / "modo_conciencia_reels.json",
                     SubtitleProfileResolver().resolve(key),
                 )
-                youtube_designs = (
+                horizontal_designs = (
                     SubtitleProfileResolver().discover_profiles_for_family(
                         component,
-                        "youtube",
+                        "horizontal",
                         "design",
                     )
                 )
-                self.assertEqual(1, len(youtube_designs))
-                youtube_key = youtube_designs[0].key
-                self.assertEqual(component, youtube_key.component)
-                self.assertEqual("youtube", youtube_key.platform)
-                self.assertEqual("design", youtube_key.family)
+                self.assertEqual(1, len(horizontal_designs))
+                horizontal_key = horizontal_designs[0].key
+                self.assertEqual(component, horizontal_key.component)
+                self.assertEqual("horizontal", horizontal_key.platform)
+                self.assertEqual("design", horizontal_key.family)
                 self.assertEqual(
                     "modo_conciencia_youtube",
-                    youtube_key.profile_id,
+                    horizontal_key.profile_id,
                 )
                 self.assertEqual(
                     "Modo Conciencia | YouTube",
-                    youtube_designs[0].display_name,
+                    horizontal_designs[0].display_name,
                 )
 
     def test_design_subtitle_family_needs_no_operational_profile(self):
-        root = Path("config/profiles/video/instagram/design")
+        root = Path("config/profiles/video/vertical/design")
         self.assertFalse(any(root.glob("*.json")))
         descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-            "video", "instagram", "design",
+            "video", "vertical", "design",
         )[0]
         self.assertEqual("modo_conciencia_reels", descriptor.profile_id)
 
-    def test_design_selector_uses_visible_labels_for_all_instagram_components(self):
+    def test_design_selector_uses_visible_labels_for_all_vertical_components(self):
         cases = {
             "script": ProfileComponent.GUION,
             "image": ProfileComponent.IMAGEN,
@@ -503,7 +503,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         }
         for scope, component in cases.items():
             with self.subTest(scope=scope), patch(
-                "builtins.input", side_effect=("1", "1", "1")
+                "builtins.input", side_effect=("2", "1", "1")
             ), patch("builtins.print") as print_mock:
                 selected = RunController().select_profile(scope)
 
@@ -521,10 +521,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertIn("2. FORMATO ESTÁNDAR", printed)
             self.assertNotIn("SYSTEM", printed)
 
-    def test_youtube_shows_the_discovered_design_and_standard_families(self):
+    def test_horizontal_shows_the_discovered_design_and_standard_families(self):
         for scope in ("script", "image", "video", "studio"):
             with self.subTest(scope=scope), patch(
-                "builtins.input", side_effect=("2", "1", "1")
+                "builtins.input", side_effect=("1", "1", "1")
             ), patch("builtins.print") as print_mock:
                 selected = RunController().select_profile(scope)
 
@@ -542,13 +542,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_image_and_video_keep_distinct_identity_and_physical_files(self):
         image_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         )
         video_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
 
         self.assertNotEqual(
@@ -567,8 +567,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_wan_resolution_requires_video_identity(self):
         image_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         )
         with self.assertRaisesRegex(
             ValueError,
@@ -589,23 +589,23 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         cases = (
             (
                 ProfileComponent.IMAGEN,
-                "instagram",
-                "imagen_instagram",
+                "vertical",
+                "imagen_vertical",
             ),
             (
                 ProfileComponent.IMAGEN,
-                "youtube",
-                "imagen_youtube",
+                "horizontal",
+                "imagen_horizontal",
             ),
             (
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             ),
             (
                 ProfileComponent.VIDEO,
-                "youtube",
-                "video_youtube",
+                "horizontal",
+                "video_horizontal",
             ),
         )
         for component, platform, profile_id in cases:
@@ -633,7 +633,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_config_manager_identity_matches_component_profile_files(self):
         for component in ProfileComponent:
-            for platform in ("instagram", "youtube"):
+            for platform in ("horizontal", "vertical"):
                 with self.subTest(
                     component=component.value,
                     platform=platform
@@ -658,7 +658,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_config_manager_loads_design_subtitle_key_as_given(self):
         design_key = SubtitleProfileResolver().discover_profiles_for_family(
-            "video", "instagram", "design",
+            "video", "vertical", "design",
         )[0].key
         self.assertEqual(
             SubtitleProfileResolver().load(design_key),
@@ -667,7 +667,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_official_identity_does_not_require_profile_path_adapter(self):
         for component in ProfileComponent:
-            for platform in ("instagram", "youtube"):
+            for platform in ("horizontal", "vertical"):
                 with self.subTest(
                     component=component.value,
                     platform=platform
@@ -691,8 +691,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_external_profile_path_cannot_override_identity(self):
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
         with patch.dict(
             os.environ,
@@ -759,7 +759,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         for scope, expected_component in expected_components.items():
             with self.subTest(scope=scope), patch(
                 "builtins.input",
-                return_value="1"
+                side_effect=("2", "1", "1")
             ):
                 selected = RunController().select_profile(
                     scope
@@ -770,20 +770,20 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 selected["profile_key"].component
             )
             self.assertEqual(
-                "instagram",
+                "vertical",
                 selected["profile_key"].platform
             )
 
     def test_run_controller_selects_design_only_after_family_and_design_choice(self):
         controller = RunController()
-        with patch("builtins.input", side_effect=("1", "1", "1")), patch(
+        with patch("builtins.input", side_effect=("2", "1", "1")), patch(
             "builtins.print"
         ) as print_mock:
             selected = controller.select_profile("video")
 
         self.assertIsInstance(selected["profile_key"], OperationalProfileKey)
         self.assertEqual(
-            "video_instagram",
+            "video_vertical",
             selected["profile_key"].profile_id,
         )
         self.assertEqual(
@@ -799,9 +799,9 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         self.assertIn("1. MODO CONCIENCIA", printed)
         self.assertIn("2. FORMATO ESTÁNDAR", printed)
 
-    def test_run_controller_selects_youtube_design_when_discovered(self):
+    def test_run_controller_selects_horizontal_design_when_discovered(self):
         controller = RunController()
-        with patch("builtins.input", side_effect=("2", "1", "1")), patch(
+        with patch("builtins.input", side_effect=("1", "1", "1")), patch(
             "builtins.print"
         ) as print_mock:
             selected = controller.select_profile("studio")
@@ -821,8 +821,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
 
         with patch.object(
@@ -864,11 +864,11 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             options["profile_component"]
         )
         self.assertEqual(
-            "instagram",
+            "vertical",
             options["profile_platform"]
         )
         self.assertEqual(
-            "video_instagram",
+            "video_vertical",
             options["profile_id"]
         )
         self.assertNotIn("profile_path", options)
@@ -876,8 +876,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_main_transports_only_structured_profile_identity(self):
         options = {
             "profile_component": "video",
-            "profile_platform": "instagram",
-            "profile_id": "video_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "video_vertical",
             "voice_config": "femenina",
             "music_category": None,
             "overlays_mode": "off",
@@ -905,8 +905,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertNotIn("MC_PROFILE_FAMILY", os.environ)
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
             self.assertEqual(
                 self.resolver.load_operational(profile_key),
@@ -924,12 +924,12 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
 
     def test_main_transports_design_subtitle_identity_without_a_profile_path(self):
-        subtitle_profile_key = SubtitleProfileKey("imagen", "instagram", "modo_conciencia_reels", "design",
+        subtitle_profile_key = SubtitleProfileKey("imagen", "vertical", "modo_conciencia_reels", "design",
         )
         options = {
             "profile_component": "imagen",
-            "profile_platform": "instagram",
-            "profile_id": "imagen_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "imagen_vertical",
             "profile_family": "system",
             "subtitle_profile_key": subtitle_profile_key,
             "voice_config": "",

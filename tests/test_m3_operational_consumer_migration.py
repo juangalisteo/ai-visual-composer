@@ -44,8 +44,8 @@ def test_explicit_operational_key_is_returned_as_the_same_object():
     resolver = ProfileResolver()
     explicit_key = OperationalProfileKey(
         "guion",
-        "instagram",
-        "guion_instagram",
+        "vertical",
+        "guion_vertical",
     )
 
     manager = ConfigManager(
@@ -77,23 +77,23 @@ def test_m3_run_controller_selects_operational_key_without_family():
 
 def test_m3_studio_loader_and_guion_video_bridge_transport_operational_keys():
     resolver = ProfileResolver()
-    studio_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+    studio_key = OperationalProfileKey("studio", "vertical", "studio_vertical")
     studio = StudioProfileLoader().load(
         resolver.load_operational(studio_key),
         studio_key,
     )
-    video_key = _resolve_single_video_operational_key(resolver, "instagram")
+    video_key = _resolve_single_video_operational_key(resolver, "vertical")
 
     assert studio.profile_id == studio_key.profile_id
     assert video_key == OperationalProfileKey(
         "video",
-        "instagram",
-        "video_instagram",
+        "vertical",
+        "video_vertical",
     )
 
 
 def test_m3_wan_loader_remains_dedicated_but_accepts_operational_identity():
-    key = OperationalProfileKey("video", "instagram", "video_instagram")
+    key = OperationalProfileKey("video", "vertical", "video_vertical")
     document = ProfileResolver().load_video_component(
         key,
     )

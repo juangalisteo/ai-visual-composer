@@ -372,7 +372,7 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                     cfg=5.0,
                     sampler="uni_pc",
                     scheduler="simple",
-                    profile_name="Instagram",
+                    profile_name="Vertical",
                 ),
                 source_image_name="source.png",
                 output_prefix="vc1/clip_001",
@@ -415,7 +415,7 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                 result.workflow,
             )
             self.assertEqual(
-                "Instagram",
+                "Vertical",
                 result.profile_name
             )
             self.assertEqual(

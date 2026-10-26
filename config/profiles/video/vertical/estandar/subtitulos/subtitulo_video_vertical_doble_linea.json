@@ -1,0 +1,45 @@
+{
+    "component": "video",
+    "platform": "vertical",
+    "family": "estandar",
+    "profile_id": "subtitulo_video_vertical_doble_linea",
+    "display_name": "Doble línea",
+    "cue_policy": {
+        "mode": "two_lines",
+        "max_chars_per_line": 20,
+        "max_lines": 2,
+        "balance_ratio_threshold": 0.75,
+        "min_duration": 1.2,
+        "max_duration": 6.0,
+        "significant_gap_threshold": 0.35,
+        "text_case": "original",
+        "punctuation": {
+            "remove_commas": false,
+            "remove_periods": false,
+            "remove_colons": false,
+            "remove_semicolons": false,
+            "remove_question_marks": false,
+            "remove_exclamation_marks": false,
+            "remove_ellipsis": false,
+            "remove_hyphens": false,
+            "remove_em_dashes": false,
+            "remove_double_quotes": false,
+            "remove_single_quotes": false,
+            "remove_parentheses": false
+        }
+    },
+    "render_style": {
+        "font": "unisans",
+        "font_size": 14,
+        "bold": false,
+        "primary_colour": "&H00FFFFFF",
+        "outline_colour": "&H80000000",
+        "back_colour": "&H00000000",
+        "border_style": 1,
+        "outline": 0,
+        "shadow": 1,
+        "alignment": 2,
+        "margin_v": 55,
+        "offset": -0.06
+    }
+}

@@ -70,7 +70,7 @@ class FakeConfigManager:
     ):
         return {
             "tone": "modo_conciencia",
-            "platform": "youtube",
+            "platform": "horizontal",
             "format": "horizontal",
             "duration": 10,
             "builders": {
@@ -513,8 +513,8 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "script_source": "manual",
                         "pipeline_mode": "full",
                         "profile_path": (
-                            "config/profiles/guion/instagram/estandar/"
-                            "perfil_guion_instagram.json"
+                            "config/profiles/guion/vertical/estandar/"
+                            "perfil_guion_vertical.json"
                         ),
                         "subtitle_profile_key": (
                             FakeConfigManager.subtitle_profile_key

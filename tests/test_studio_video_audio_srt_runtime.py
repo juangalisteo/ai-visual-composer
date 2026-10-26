@@ -61,23 +61,23 @@ def _media_info(duration):
     )
 
 
-STUDIO_YOUTUBE_SUBTITLE_PROFILE_IDS = {
-    "single_line": "subtitulo_studio_youtube_linea_unica",
-    "word_by_word": "subtitulo_studio_youtube_palabra_por_palabra",
+STUDIO_HORIZONTAL_SUBTITLE_PROFILE_IDS = {
+    "single_line": "subtitulo_studio_horizontal_linea_unica",
+    "word_by_word": "subtitulo_studio_horizontal_palabra_por_palabra",
 }
 
 
 def _standard_subtitle_key(style):
     return SubtitleProfileKey(
         "studio",
-        "youtube",
-        STUDIO_YOUTUBE_SUBTITLE_PROFILE_IDS[style],
+        "horizontal",
+        STUDIO_HORIZONTAL_SUBTITLE_PROFILE_IDS[style],
         "estandar",
     )
 
 
 def _profile_and_subtitles():
-    operational_key = OperationalProfileKey("studio", "youtube", "studio_youtube")
+    operational_key = OperationalProfileKey("studio", "horizontal", "studio_horizontal")
     profile = StudioProfileLoader().load(
         ProfileResolver().load_operational(operational_key),
         operational_key,
@@ -657,7 +657,7 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
 def test_subtitle_display_name_falls_back_when_profile_does_not_exist():
     missing_key = SubtitleProfileKey(
         "studio",
-        "youtube",
+        "horizontal",
         "dummy_profile",
         "test_family",
     )
@@ -700,8 +700,8 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
     )
     options = {
         "project_name": "video-audio-srt",
-        "profile_id": "studio_youtube",
-        "profile_platform": "youtube",
+        "profile_id": "studio_horizontal",
+        "profile_platform": "horizontal",
         "studio_input_mode": "video_audio_srt",
         "studio_video_audio_srt_plan": plan,
         "subtitle_profile_key": _standard_subtitle_key("single_line"),
@@ -722,7 +722,7 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
 
     details = [call.args for call in summary.add_detail.call_args_list]
     assert ("Proyecto", "video-audio-srt") in details
-    assert ("Perfil / plataforma", "studio_youtube / Youtube") in details
+    assert ("Perfil / plataforma", "studio_horizontal / Horizontal") in details
     assert ("Video fuente", plan.video_path) in details
     assert ("Audio nuevo", plan.audio_path) in details
     assert ("Subtítulos", "Sí") in details

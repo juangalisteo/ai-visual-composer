@@ -21,15 +21,15 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 def _operational_key():
     return OperationalProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="instagram",
-        profile_id="studio_instagram",
+        platform="vertical",
+        profile_id="studio_vertical",
     )
 
 
 def _subtitle_key():
     return SubtitleProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="instagram",
+        platform="vertical",
         profile_id="subtitle_fixture",
         family="fixture_family",
     )

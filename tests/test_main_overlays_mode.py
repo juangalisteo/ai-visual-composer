@@ -14,8 +14,8 @@ class MainOverlaysModeTest(
     ):
         options = {
             "profile_component": "imagen",
-            "profile_platform": "youtube",
-            "profile_id": "imagen_youtube",
+            "profile_platform": "horizontal",
+            "profile_id": "imagen_horizontal",
             "voice_config": "masculina",
             "music_category": None,
             "overlays_mode": "smart",
@@ -46,7 +46,7 @@ class MainOverlaysModeTest(
         iniciar_mock.assert_called_once()
         request = iniciar_mock.call_args.kwargs["request"]
         self.assertEqual("smart", request.route.overlays_mode)
-        self.assertEqual("imagen_youtube", request.operational_profile_key.profile_id)
+        self.assertEqual("imagen_horizontal", request.operational_profile_key.profile_id)
         self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
         self.assertNotIn(
             "MC_SUBTITLE_CONFIG",

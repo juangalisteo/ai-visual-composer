@@ -260,7 +260,7 @@ class TextEncodingQualityTest(unittest.TestCase):
             stream
         ), patch(
             "builtins.input",
-            return_value="1"
+            side_effect=("2", "1", "1", "1", "1")
         ):
             controller.select_profile("image")
             controller.select_music_category()

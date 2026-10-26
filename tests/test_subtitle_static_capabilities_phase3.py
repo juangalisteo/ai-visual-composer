@@ -23,7 +23,7 @@ OPTIONAL_FORCE_STYLE_FIELDS = (
 
 
 @pytest.mark.parametrize("component", tuple(ProfileComponent))
-@pytest.mark.parametrize("platform", ("instagram", "youtube"))
+@pytest.mark.parametrize("platform", ("horizontal", "vertical"))
 def test_phase3_official_standard_baseline_uses_the_static_srt_engine(
     component,
     platform,
@@ -53,7 +53,7 @@ def test_phase3_official_standard_baseline_uses_the_static_srt_engine(
 @pytest.mark.parametrize("component", tuple(ProfileComponent))
 def test_phase3_official_design_baseline_is_static_and_pure(component):
     subtitle_key = SubtitleProfileResolver().discover_profiles_for_family(
-        component, "instagram", "design",
+        component, "vertical", "design",
     )[0].key
     resolved = SubtitleProfileResolver().load(subtitle_key)
     raw = resolved.path.read_text(encoding="utf-8")

@@ -35,7 +35,7 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             ],
             profile={
                 "tone": "modo_conciencia",
-                "platform": "instagram",
+                "platform": "vertical",
                 "format": "vertical",
             },
         )

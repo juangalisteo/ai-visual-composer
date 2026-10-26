@@ -96,14 +96,14 @@ def test_acoustic_burst_preserves_real_word_timing_boundaries():
     assert "00:00:00,750 --> 00:00:00,900" in blocks[1]
 
 
-def test_instagram_minimalista_profiles_resolve_declaratively():
+def test_vertical_minimalista_profiles_resolve_declaratively():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
-        profile_id = f"subtitulo_{component.value}_instagram_acoustic_burst"
+        profile_id = f"subtitulo_{component.value}_vertical_acoustic_burst"
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
             profile_id=profile_id,
         )
@@ -111,7 +111,7 @@ def test_instagram_minimalista_profiles_resolve_declaratively():
         descriptor = next(
             item
             for item in resolver.discover_profiles_for_family(
-                component, "instagram", "minimalista"
+                component, "vertical", "minimalista"
             )
             if item.key == key
         )

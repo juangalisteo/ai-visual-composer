@@ -21,7 +21,7 @@ from app.shared.profile_identity import OperationalProfileKey
 class StudioMontagePhase4Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+        self.profile_key = OperationalProfileKey("studio", "vertical", "studio_vertical")
         self.profile = SimpleNamespace(fps=30, max_duration_difference=0.2)
 
     def _plan(self, root, transitions_enabled=False):
@@ -144,8 +144,8 @@ class StudioMontagePhase4Test(unittest.TestCase):
             )
             result = StudioMontageRenderResult(montage, rendered)
             options = {
-                "project_name": "demo", "profile_id": "studio_instagram",
-                "profile_platform": "instagram", "studio_montage_plan": plan,
+                "project_name": "demo", "profile_id": "studio_vertical",
+                "profile_platform": "vertical", "studio_montage_plan": plan,
                 "studio_music_path": None, "intro_outro_selection": None,
             }
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:

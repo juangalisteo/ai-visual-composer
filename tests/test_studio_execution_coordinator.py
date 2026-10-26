@@ -117,8 +117,8 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         self.coordinator = StudioExecutionCoordinator()
         self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "instagram",
-            "studio_instagram",
+            "vertical",
+            "studio_vertical",
         )
         self.subtitle_key = object()
         self.profile = SimpleNamespace(fps=30)

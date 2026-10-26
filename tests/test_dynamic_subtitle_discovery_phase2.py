@@ -60,15 +60,15 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "perfil_../escape",
                 "test_family",
             )
         with self.assertRaises(ValueError):
             SubtitleProfileKey(
                 component="guion",
-                platform="instagram",
-                profile_id="guion_instagram_1_prueba",
+                platform="vertical",
+                profile_id="guion_vertical_1_prueba",
                 family=1,
             )
 
@@ -81,7 +81,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             SubtitleProfileKey(
                 component="guion",
-                platform="instagram",
+                platform="vertical",
                 profile_id="subtitulo_../escape",
                 family="test_family",
             )
@@ -90,7 +90,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def _write_profile(
         root,
         component="guion",
-        platform="instagram",
+        platform="vertical",
         family_name="test_family",
         profile_id="perfil_prueba",
     ):
@@ -114,14 +114,14 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def _write_subtitle_profile(
         root,
         component="guion",
-        platform="instagram",
+        platform="vertical",
         profile_id="subtitulo_prueba",
         filename="subtitulo.json",
         changes=None,
     ):
         source = Path(
-            "config/profiles/guion/instagram/estandar/subtitulos/"
-            "subtitulo_guion_instagram_linea_unica.json"
+            "config/profiles/guion/vertical/estandar/subtitulos/"
+            "subtitulo_guion_vertical_linea_unica.json"
         )
         payload = json.loads(source.read_text(encoding="utf-8"))
         payload.update(
@@ -157,11 +157,11 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             resolver = SubtitleProfileResolver(root)
 
             descriptors = resolver.discover_profiles_for_family(
-                "guion", "instagram", "test_family"
+                "guion", "vertical", "test_family"
             )
             resolved = resolver.load(
                 SubtitleProfileKey(
-                    "guion", "instagram", "perfil_prueba", "test_family"
+                    "guion", "vertical", "perfil_prueba", "test_family"
                 )
             )
 
@@ -178,7 +178,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             )
             self._assert_operational_error(
                 lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "guion", "instagram", "test_family",
+                    "guion", "vertical", "test_family",
                 ),
                 "VALIDATION",
                 TypeError,
@@ -195,7 +195,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 )
                 self._assert_operational_error(
                     lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
-                        "guion", "instagram", "test_family",
+                        "guion", "vertical", "test_family",
                     ),
                     "VALIDATION",
                     TypeError,
@@ -210,7 +210,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             path.write_text(json.dumps(payload), encoding="utf-8")
 
             discovered = ProfileResolver(root).discover_operational_profiles(
-                "guion", "instagram"
+                "guion", "vertical"
             )
 
         self.assertEqual("subtitulo_prueba", discovered[0].key.profile_id)
@@ -234,7 +234,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             )
 
             discovered = SubtitleProfileResolver(root).discover_profiles_for_family(
-                "guion", "instagram", "test_family"
+                "guion", "vertical", "test_family"
             )
 
         self.assertEqual(1, len(discovered))
@@ -250,7 +250,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             data["display_name"] = "Otro nombre visible"
             path.write_text(json.dumps(data), encoding="utf-8")
             key = SubtitleProfileKey(
-                "guion", "instagram", "perfil_prueba", "test_family"
+                "guion", "vertical", "perfil_prueba", "test_family"
             )
 
             resolved = SubtitleProfileResolver(root).resolve(key)
@@ -261,8 +261,8 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = Path(
-                "config/profiles/guion/instagram/estandar/subtitulos/"
-                "subtitulo_guion_instagram_linea_unica.json"
+                "config/profiles/guion/vertical/estandar/subtitulos/"
+                "subtitulo_guion_vertical_linea_unica.json"
             )
             payload = json.loads(source.read_text(encoding="utf-8"))
             payload.update(
@@ -304,13 +304,13 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 profile_id="perfil_prueba",
                 changes={"family": "other_test_family"},
             )
-            original = root / "guion" / "instagram" / "test_family" / "subtitulos" / "subtitulo.json"
-            moved = root / "guion" / "instagram" / "other_test_family" / "subtitulos" / "subtitulo.json"
+            original = root / "guion" / "vertical" / "test_family" / "subtitulos" / "subtitulo.json"
+            moved = root / "guion" / "vertical" / "other_test_family" / "subtitulos" / "subtitulo.json"
             moved.parent.mkdir(parents=True)
             original.replace(moved)
 
             discovered = SubtitleProfileResolver(root).discover_profiles_for_family(
-                "guion", "instagram", "other_test_family"
+                "guion", "vertical", "other_test_family"
             )
 
         self.assertEqual("other_test_family", discovered[0].key.family)
@@ -319,7 +319,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def test_catalog_discovers_physical_estandar_and_design_families(self):
         families = tuple(
             family
-            for family in SubtitleProfileResolver().discover_families("studio", "instagram")
+            for family in SubtitleProfileResolver().discover_families("studio", "vertical")
         )
 
         self.assertIn("estandar", families)
@@ -333,14 +333,14 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 profile_id="perfil_estandar",
                 changes={"family": "estandar"},
             )
-            original = root / "guion" / "instagram" / "test_family" / "subtitulos" / "subtitulo.json"
-            moved = root / "guion" / "instagram" / "estandar" / "subtitulos" / "subtitulo.json"
+            original = root / "guion" / "vertical" / "test_family" / "subtitulos" / "subtitulo.json"
+            moved = root / "guion" / "vertical" / "estandar" / "subtitulos" / "subtitulo.json"
             moved.parent.mkdir(parents=True)
             original.replace(moved)
             self._write_subtitle_profile(root)
 
             families = SubtitleProfileResolver(root).discover_families(
-                "guion", "instagram"
+                "guion", "vertical"
             )
 
         self.assertEqual(
@@ -359,21 +359,21 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def _write_design_profile(root, payload=None):
         payload = payload or {
             "component": "guion",
-            "platform": "instagram",
+            "platform": "vertical",
             "family": "design",
-            "profile_id": "guion_instagram_design_valido",
+            "profile_id": "guion_vertical_design_valido",
             "display_name": "Diseño válido",
         }
         if "cue_policy" not in payload:
             source = Path(
-                "config/profiles/guion/instagram/estandar/subtitulos/"
-                "subtitulo_guion_instagram_linea_unica.json"
+                "config/profiles/guion/vertical/estandar/subtitulos/"
+                "subtitulo_guion_vertical_linea_unica.json"
             )
             subtitle_payload = json.loads(source.read_text(encoding="utf-8"))
             subtitle_payload.update(payload)
             subtitle_payload["profile_id"] = "perfil_design_prueba"
             payload = subtitle_payload
-        path = root / "guion" / "instagram" / "design" / "subtitulos" / "valido.json"
+        path = root / "guion" / "vertical" / "design" / "subtitulos" / "valido.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload), encoding="utf-8")
         return path
@@ -384,7 +384,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             self._write_design_profile(root)
 
             discovered = SubtitleProfileResolver(root).discover_profiles_for_family(
-                "guion", "instagram", "design"
+                "guion", "vertical", "design"
             )
 
         self.assertEqual(1, len(discovered))
@@ -393,13 +393,13 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def test_malformed_operational_design_json_is_explicit(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "guion" / "instagram" / "design" / "subtitulos" / "roto.json"
+            path = root / "guion" / "vertical" / "design" / "subtitulos" / "roto.json"
             path.parent.mkdir(parents=True)
             path.write_text("{", encoding="utf-8")
 
             self._assert_operational_error(
                 lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "guion", "instagram", "design"
+                    "guion", "vertical", "design"
                 ),
                 "CONFIG",
                 json.JSONDecodeError,
@@ -412,16 +412,16 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 root,
                 {
                     "component": "guion",
-                    "platform": "youtube",
+                    "platform": "horizontal",
                     "family": "design",
-                    "profile_id": "guion_instagram_design_valido",
+                    "profile_id": "guion_vertical_design_valido",
                     "display_name": "Diseño inválido",
                 },
             )
 
             self._assert_operational_error(
                 lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "guion", "instagram", "design"
+                    "guion", "vertical", "design"
                 ),
                 "PROFILE",
                 ValueError,
@@ -430,18 +430,18 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def test_design_subtitle_domain_json_is_not_scanned_as_a_subtitle_tree(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "guion" / "instagram" / "design" / "subtitulos" / "subtitulo.json"
+            path = root / "guion" / "vertical" / "design" / "subtitulos" / "subtitulo.json"
             path.parent.mkdir(parents=True)
             path.write_text(
                 json.dumps(
-                    {"profile_id": "subtitulo_guion_instagram_design_linea_unica"}
+                    {"profile_id": "subtitulo_guion_vertical_design_linea_unica"}
                 ),
                 encoding="utf-8",
             )
 
             self._assert_operational_error(
                 lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "guion", "instagram", "design"
+                    "guion", "vertical", "design"
                 ),
                 "PROFILE",
                 ValueError,
@@ -456,7 +456,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
 
             self._assert_operational_error(
                 lambda: SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "guion", "instagram", "test_family"
+                    "guion", "vertical", "test_family"
                 ),
                 "AMBIGUITY",
                 ValueError,
@@ -467,12 +467,12 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             root = Path(directory)
             path = self._write_subtitle_profile(root)
             payload = json.loads(path.read_text(encoding="utf-8"))
-            payload["platform"] = "youtube"
+            payload["platform"] = "horizontal"
             path.write_text(json.dumps(payload), encoding="utf-8")
 
             self._assert_operational_error(
                 lambda: SubtitleProfileResolver(root).discover_families(
-                    "guion", "instagram"
+                    "guion", "vertical"
                 ),
                 "PROFILE",
                 ValueError,
@@ -486,7 +486,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
 
             self.assertEqual(
                 ("test_family",),
-                tuple(family for family in resolver.discover_families("guion", "instagram")),
+                tuple(family for family in resolver.discover_families("guion", "vertical")),
             )
 
             path.unlink()
@@ -495,7 +495,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
 
             self.assertEqual(
                 (),
-                resolver.discover_families("guion", "instagram"),
+                resolver.discover_families("guion", "vertical"),
             )
 
     def test_selector_shows_dynamic_family_and_returns_technical_identity(self):
@@ -505,7 +505,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             self._write_profile(
                 root,
                 family_name="estandar",
-                profile_id="guion_instagram",
+                profile_id="guion_vertical",
             )
             self._write_subtitle_profile(root, profile_id="perfil_prueba")
             controller = RunController(
@@ -527,13 +527,13 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         self.assertIn("TEST FAMILY", printed)
         self.assertNotIn("\\nTEST FAMILY", printed)
         self.assertEqual(
-            OperationalProfileKey("guion", "instagram", "guion_instagram"),
+            OperationalProfileKey("guion", "vertical", "guion_vertical"),
             selected["profile_key"],
         )
         self.assertEqual("test_family", selected["subtitle_profile_key"].family)
-        self.assertEqual("guion_instagram", selected["profile_key"].profile_id)
+        self.assertEqual("guion_vertical", selected["profile_key"].profile_id)
         self.assertEqual(
-            root / "guion" / "instagram" / "perfil.json",
+            root / "guion" / "vertical" / "perfil.json",
             selected["path"],
         )
         subtitle_key = resolved_subtitle.key
@@ -559,25 +559,25 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             resolver = SubtitleProfileResolver(root)
             missing = SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "ausente",
                 "test_family",
             )
             cross_platform = SubtitleProfileKey(
                 "guion",
-                "youtube",
+                "horizontal",
                 "perfil_prueba",
                 "test_family",
             )
             cross_component = SubtitleProfileKey(
                 "imagen",
-                "instagram",
+                "vertical",
                 "perfil_prueba",
                 "test_family",
             )
             absent_family = SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "perfil_prueba",
                 "inexistente",
             )
@@ -599,7 +599,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             path.write_text(json.dumps(payload), encoding="utf-8")
             key = SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "perfil_prueba",
                 "test_family",
             )
@@ -616,7 +616,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             path = self._write_subtitle_profile(root, profile_id="perfil_prueba")
             key = SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "perfil_prueba",
                 "test_family",
             )
@@ -633,7 +633,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             duplicate.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
             key = SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "perfil_prueba",
                 "test_family",
             )
@@ -648,11 +648,11 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self._write_subtitle_profile(root, profile_id="perfil_prueba")
-            corrupt = root / "guion" / "instagram" / "test_family" / "subtitulos" / "roto.json"
+            corrupt = root / "guion" / "vertical" / "test_family" / "subtitulos" / "roto.json"
             corrupt.write_text("{", encoding="utf-8")
             key = SubtitleProfileKey(
                 "guion",
-                "instagram",
+                "vertical",
                 "perfil_prueba",
                 "test_family",
             )
@@ -670,8 +670,8 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             self._write_subtitle_profile(root)
             other_family_key = SubtitleProfileKey(
                 component="guion",
-                platform="instagram",
-                profile_id="subtitulo_guion_instagram_otra_linea_unica",
+                platform="vertical",
+                profile_id="subtitulo_guion_vertical_otra_linea_unica",
                 family="otra",
             )
 
@@ -684,7 +684,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def test_autonomous_design_selection_is_capability_driven(self):
         subtitle_resolver = SubtitleProfileResolver()
         design_selection = subtitle_resolver.discover_profiles_for_family(
-            "guion", "instagram", "design",
+            "guion", "vertical", "design",
         )[0].key
 
         self.assertEqual(
@@ -699,7 +699,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def test_generic_resolution_checks_the_profiles_root_boundary_for_design(self):
         resolver = SubtitleProfileResolver()
         design_key = resolver.discover_profiles_for_family(
-            "guion", "instagram", "design",
+            "guion", "vertical", "design",
         )[0].key
 
         with patch.object(

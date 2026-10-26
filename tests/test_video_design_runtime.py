@@ -167,7 +167,7 @@ class FakeVideoComponentBuilder:
             ),
             profile_name=overrides.get(
                 "profile_name",
-                "instagram"
+                "vertical"
             ),
             duration_seconds=2.0,
             fingerprint="fake-fingerprint"
@@ -514,7 +514,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             },
             profile={
                 "tone": "modo_conciencia",
-                "platform": "instagram",
+                "platform": "vertical",
                 "format": "vertical",
             },
             ai_builder_factory=DegenerateAIBuilder
@@ -546,8 +546,8 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             )
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
             profile = profile_resolver.load_operational(
                 profile_key

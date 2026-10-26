@@ -52,14 +52,14 @@ class StudioPhase5Test(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "instagram",
-                "subtitulo_studio_instagram_linea_unica",
+                "vertical",
+                "subtitulo_studio_vertical_linea_unica",
                 "estandar",
             )
         )
@@ -87,7 +87,7 @@ class StudioPhase5Test(unittest.TestCase):
     def test_none_keeps_phase_four_controller_contract(self):
         controller = RunController()
         subtitle_key = controller.subtitle_profile_resolver.discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )[0].key
         with patch.object(
             controller, "select_visual_pipeline", return_value="studio"
@@ -128,8 +128,8 @@ class StudioPhase5Test(unittest.TestCase):
     def test_studio_menu_selects_intro_outro_and_allows_same_asset(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            intro = root / "instagram" / "intro"
-            outro = root / "instagram" / "outro"
+            intro = root / "vertical" / "intro"
+            outro = root / "vertical" / "outro"
             intro.mkdir(parents=True)
             outro.mkdir(parents=True)
             intro_asset = intro / "brand.mp4"
@@ -148,8 +148,8 @@ class StudioPhase5Test(unittest.TestCase):
     def test_studio_menu_selects_single_positions_dynamically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            intro_directory = root / "instagram" / "intro"
-            outro_directory = root / "instagram" / "outro"
+            intro_directory = root / "vertical" / "intro"
+            outro_directory = root / "vertical" / "outro"
             intro_directory.mkdir(parents=True)
             outro_directory.mkdir(parents=True)
             first = intro_directory / "a.mp4"
@@ -183,14 +183,14 @@ class StudioPhase5Test(unittest.TestCase):
 
     def test_main_and_start_transport_structured_plan(self):
         intro = self._selection(
-            "assets/videos/intro_outro/instagram/intro/a.mp4",
+            "assets/videos/intro_outro/vertical/intro/a.mp4",
             "intro",
         )
         plan = IntroOutroPlan(intro=intro)
         options = {
             "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio intro outro",
@@ -530,7 +530,7 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         profile = _load_studio_profile(self.profile_key)
         self.profile = replace(
@@ -543,8 +543,8 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "instagram",
-                "subtitulo_studio_instagram_linea_unica",
+                "vertical",
+                "subtitulo_studio_vertical_linea_unica",
                 "estandar",
             )
         )

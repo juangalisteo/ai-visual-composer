@@ -11,8 +11,7 @@ from app.modules.video_component.contracts import WanIntermediateOutput
 
 class WanDeclarativeResolutionTest(unittest.TestCase):
     LEGACY_COMPONENTS = {
-        "instagram": {
-            "profile": "Instagram",
+        "vertical": {
             "generation": {"width": 448, "height": 800},
             "delivery": {"intermediate_output": "lossless_ffv1"},
             "frames": 49,
@@ -25,8 +24,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 "scheduler": "simple",
             },
         },
-        "youtube": {
-            "profile": "YouTube",
+        "horizontal": {
             "generation": {"width": 800, "height": 448},
             "delivery": {"intermediate_output": "lossless_ffv1"},
             "frames": 49,
@@ -78,15 +76,15 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             root = Path(directory)
             expected = self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "arbitrary-document-name.json",
-                self._document("opaque_video_identity", "instagram"),
+                self._document("opaque_video_identity", "vertical"),
             )
 
             resolved = ProfileResolver(root).resolve_video_component(
                 OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
+                    "vertical",
                     "opaque_video_identity",
                 )
             )
@@ -96,65 +94,65 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_declarative_resolution_isolated_by_platform(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            instagram = self._write_document(
+            vertical = self._write_document(
                 root,
-                "instagram",
-                "instagram-document.json",
-                self._document("shared_opaque_identity", "instagram"),
+                "vertical",
+                "vertical-document.json",
+                self._document("shared_opaque_identity", "vertical"),
             )
-            youtube = self._write_document(
+            horizontal = self._write_document(
                 root,
-                "youtube",
-                "youtube-document.json",
-                self._document("shared_opaque_identity", "youtube"),
+                "horizontal",
+                "horizontal-document.json",
+                self._document("shared_opaque_identity", "horizontal"),
             )
             resolver = ProfileResolver(root)
 
-            instagram_resolved = resolver.resolve_video_component(
+            vertical_resolved = resolver.resolve_video_component(
                 OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
+                    "vertical",
                     "shared_opaque_identity",
                 )
             )
-            youtube_resolved = resolver.resolve_video_component(
+            horizontal_resolved = resolver.resolve_video_component(
                 OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    "youtube",
+                    "horizontal",
                     "shared_opaque_identity",
                 )
             )
 
-        self.assertEqual(instagram, instagram_resolved)
-        self.assertEqual(youtube, youtube_resolved)
+        self.assertEqual(vertical, vertical_resolved)
+        self.assertEqual(horizontal, horizontal_resolved)
 
     def test_legacy_filename_without_declarative_contract_raises_configuration_error(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             legacy = self._write_document(
                 root,
-                "instagram",
-                "wan_i2v_instagram.json",
+                "vertical",
+                "wan_i2v_vertical.json",
                 {"platform": "video", "video_component": {}},
             )
             self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "other-declarative-document.json",
-                self._document("different_opaque_identity", "instagram"),
+                self._document("different_opaque_identity", "vertical"),
             )
 
             with self.assertRaises(OperationalError) as caught:
                 ProfileResolver(root).resolve_video_component(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
+                        "vertical",
                         "requested_opaque_identity",
                     )
                 )
 
         self.assertEqual("CONFIG", caught.exception.context.family)
-        self.assertEqual(str(root / "video" / "instagram"), caught.exception.context.resource)
+        self.assertEqual(str(root / "video" / "vertical"), caught.exception.context.resource)
         self.assertEqual(
             "requested_opaque_identity",
             caught.exception.context.technical_metadata["profile_id"],
@@ -165,22 +163,22 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             root = Path(directory)
             self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "first.json",
-                self._document("duplicate_identity", "instagram"),
+                self._document("duplicate_identity", "vertical"),
             )
             self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "second.json",
-                self._document("duplicate_identity", "instagram"),
+                self._document("duplicate_identity", "vertical"),
             )
 
             with self.assertRaises(OperationalError) as caught:
                 ProfileResolver(root).resolve_video_component(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
+                        "vertical",
                         "duplicate_identity",
                     )
                 )
@@ -196,18 +194,18 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             root = Path(directory)
             self._write_document(
                 root,
-                "instagram",
-                "wan_i2v_instagram.json",
+                "vertical",
+                "wan_i2v_vertical.json",
                 {"platform": "video", "video_component": {}},
             )
             invalid = self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "invalid-declarative-document.json",
                 {
                     "kind": "video_component",
                     "operational_profile_id": "opaque_identity",
-                    "platform": "instagram",
+                    "platform": "vertical",
                 },
             )
 
@@ -215,7 +213,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 ProfileResolver(root).resolve_video_component(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
+                        "vertical",
                         "opaque_identity",
                     )
                 )
@@ -229,7 +227,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             resolver = ProfileResolver(root)
             key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
+                "vertical",
                 "opaque_identity",
             )
 
@@ -240,14 +238,14 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 with self.subTest(intermediate_output=value):
                     document = self._document(
                         "opaque_identity",
-                        "instagram",
+                        "vertical",
                     )
                     document["video_component"]["delivery"] = {
                         "intermediate_output": value,
                     }
                     path = self._write_document(
                         root,
-                        "instagram",
+                        "vertical",
                         f"delivery-{value}.json",
                         document,
                     )
@@ -265,11 +263,11 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_missing_delivery_raises_configuration_error_without_legacy_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            document = self._document("opaque_identity", "instagram")
+            document = self._document("opaque_identity", "vertical")
             del document["video_component"]["delivery"]
             invalid = self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "missing-delivery.json",
                 document,
             )
@@ -278,7 +276,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 ProfileResolver(root).resolve_video_component(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
+                        "vertical",
                         "opaque_identity",
                     )
                 )
@@ -293,11 +291,11 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_missing_intermediate_output_raises_configuration_error_without_legacy_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            document = self._document("opaque_identity", "instagram")
+            document = self._document("opaque_identity", "vertical")
             document["video_component"]["delivery"] = {}
             invalid = self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "missing-intermediate-output.json",
                 document,
             )
@@ -306,7 +304,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 ProfileResolver(root).resolve_video_component(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
+                        "vertical",
                         "opaque_identity",
                     )
                 )
@@ -321,13 +319,13 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_invalid_intermediate_output_raises_without_legacy_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            document = self._document("opaque_identity", "instagram")
+            document = self._document("opaque_identity", "vertical")
             document["video_component"]["delivery"] = {
                 "intermediate_output": "unsupported_output",
             }
             invalid = self._write_document(
                 root,
-                "instagram",
+                "vertical",
                 "invalid-delivery.json",
                 document,
             )
@@ -336,7 +334,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 ProfileResolver(root).resolve_video_component(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
+                        "vertical",
                         "opaque_identity",
                     )
                 )
@@ -349,7 +347,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             ProfileResolver().resolve_video_component(
                 OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "instagram",
+                    "vertical",
                     "opaque_image_identity",
                 )
             )
@@ -357,8 +355,8 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_official_wan_documents_resolve_declaratively_without_fallback(self):
         resolver = ProfileResolver()
         cases = (
-            ("instagram", "video_instagram", "wan_i2v_instagram.json"),
-            ("youtube", "video_youtube", "wan_i2v_youtube.json"),
+            ("vertical", "video_vertical", "wan_i2v_vertical.json"),
+            ("horizontal", "video_horizontal", "wan_i2v_horizontal.json"),
         )
 
         for platform, profile_id, filename in cases:
@@ -394,7 +392,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             ProfileResolver().resolve_video_component(
                 OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
+                    "vertical",
                     "wrong_opaque_identity",
                 )
             )

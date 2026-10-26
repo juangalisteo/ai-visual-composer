@@ -207,12 +207,12 @@ class VideoTransitionsContractTest(
     ):
         profile_paths = (
             Path(
-                "config/profiles/video/youtube/"
-                "perfil_video_youtube.json"
+                "config/profiles/video/horizontal/"
+                "perfil_video_horizontal.json"
             ),
             Path(
-                "config/profiles/video/instagram/"
-                "perfil_video_instagram.json"
+                "config/profiles/video/vertical/"
+                "perfil_video_vertical.json"
             )
         )
 

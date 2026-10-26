@@ -22,8 +22,8 @@ class MainErrorHandlingTest(unittest.TestCase):
     def design_options(self):
         return {
             "profile_component": "video",
-            "profile_platform": "instagram",
-            "profile_id": "video_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "video_vertical",
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",
@@ -225,7 +225,7 @@ class MainErrorHandlingTest(unittest.TestCase):
         for family, resource in (
             ("FFMPEG", "output/studio/ffmpeg_diagnostics.json"),
             ("SUBTITLES", "input/studio/source.srt"),
-            ("PROFILE", "studio/instagram/estandar"),
+            ("PROFILE", "studio/vertical/estandar"),
             ("FILESYSTEM", "input/studio/source.mp4"),
         ):
             with self.subTest(family=family):
@@ -251,7 +251,7 @@ class MainErrorHandlingTest(unittest.TestCase):
                     options = self.design_options()
                     options.update(
                         profile_component="studio",
-                        profile_id="studio_instagram",
+                        profile_id="studio_vertical",
                         pipeline_mode="studio",
                         studio_input_mode="srt_video",
                     )
@@ -330,7 +330,7 @@ class MainErrorHandlingTest(unittest.TestCase):
                 options = self.design_options()
                 options.update(
                     profile_component="studio",
-                    profile_id="studio_instagram",
+                    profile_id="studio_vertical",
                     pipeline_mode="studio",
                     studio_input_mode="srt_video",
                 )
@@ -380,8 +380,8 @@ class MainErrorHandlingTest(unittest.TestCase):
     def test_studio_solo_video_input_error_is_user_visible(self):
         options = {
             "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio silent video",
@@ -416,8 +416,8 @@ class MainErrorHandlingTest(unittest.TestCase):
     def test_output_reset_blocked_error_stops_pipeline_cleanly(self):
         options = {
             "profile_component": "video",
-            "profile_platform": "instagram",
-            "profile_id": "video_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "video_vertical",
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",
@@ -456,8 +456,8 @@ class MainErrorHandlingTest(unittest.TestCase):
     def test_output_reset_normal_path_continues_to_runtime(self):
         options = {
             "profile_component": "video",
-            "profile_platform": "instagram",
-            "profile_id": "video_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "video_vertical",
             "voice_config": "",
             "music_category": None,
             "overlays_mode": "off",

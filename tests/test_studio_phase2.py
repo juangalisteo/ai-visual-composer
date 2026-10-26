@@ -33,13 +33,13 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 STUDIO_PROFILE_IDS = {
-    "instagram": "studio_instagram",
-    "youtube": "studio_youtube",
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
 }
 
 STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS = {
-    "instagram": "subtitulo_studio_instagram_linea_unica",
-    "youtube": "subtitulo_studio_youtube_linea_unica",
+    "vertical": "subtitulo_studio_vertical_linea_unica",
+    "horizontal": "subtitulo_studio_horizontal_linea_unica",
 }
 
 
@@ -59,13 +59,13 @@ class StudioPhase2Test(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
-                "studio", "instagram",
-                "subtitulo_studio_instagram_linea_unica", "estandar",
+                "studio", "vertical",
+                "subtitulo_studio_vertical_linea_unica", "estandar",
             )
         )
         self.source_info = MediaInfo(
@@ -265,36 +265,36 @@ class StudioPhase2Test(unittest.TestCase):
         graph = command[command.index("-filter_complex") + 1]
         self.assertIn("[1:a:0]aresample=48000", graph)
 
-    def test_instagram_and_youtube_keep_independent_output_contracts(self):
-        youtube_key = OperationalProfileKey("studio", "youtube", "studio_youtube")
-        youtube_profile = _load_studio_profile(youtube_key)
-        instagram_command = StudioRenderService().build_command(
+    def test_vertical_and_horizontal_keep_independent_output_contracts(self):
+        horizontal_key = OperationalProfileKey("studio", "horizontal", "studio_horizontal")
+        horizontal_profile = _load_studio_profile(horizontal_key)
+        vertical_command = StudioRenderService().build_command(
             "source.mp4",
             "source.srt",
-            "instagram.mp4",
+            "vertical.mp4",
             self.source_info,
             self.profile,
             "FontName=Arial",
         )
-        youtube_command = StudioRenderService().build_command(
+        horizontal_command = StudioRenderService().build_command(
             "source.mp4",
             "source.srt",
-            "youtube.mp4",
+            "horizontal.mp4",
             self.source_info,
-            youtube_profile,
+            horizontal_profile,
             "FontName=Arial",
         )
-        instagram_graph = instagram_command[
-            instagram_command.index("-filter_complex") + 1
+        vertical_graph = vertical_command[
+            vertical_command.index("-filter_complex") + 1
         ]
-        youtube_graph = youtube_command[
-            youtube_command.index("-filter_complex") + 1
+        horizontal_graph = horizontal_command[
+            horizontal_command.index("-filter_complex") + 1
         ]
-        self.assertIn("scale=1080:1920", instagram_graph)
-        self.assertIn("scale=1920:1080", youtube_graph)
-        self.assertEqual("slow", youtube_profile.preset)
-        self.assertEqual(16, youtube_profile.crf)
-        self.assertEqual(30, youtube_profile.fps)
+        self.assertIn("scale=1080:1920", vertical_graph)
+        self.assertIn("scale=1920:1080", horizontal_graph)
+        self.assertEqual("slow", horizontal_profile.preset)
+        self.assertEqual(16, horizontal_profile.crf)
+        self.assertEqual(30, horizontal_profile.fps)
 
     def test_command_uses_render_style_with_supplied_render_srt(self):
         command = StudioRenderService().build_command(
@@ -459,11 +459,11 @@ class StudioPhase2Test(unittest.TestCase):
                 self.assertFalse(root.joinpath("result.rendering.mp4").exists())
 
     def test_profile_and_subtitle_platforms_cannot_cross(self):
-        youtube_subtitles = SubtitleProfileResolver().load(
+        horizontal_subtitles = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "youtube",
-                "subtitulo_studio_youtube_linea_unica",
+                "horizontal",
+                "subtitulo_studio_horizontal_linea_unica",
                 "estandar",
             )
         )
@@ -475,7 +475,7 @@ class StudioPhase2Test(unittest.TestCase):
                     subtitle_path,
                     self.profile_key,
                     self.profile,
-                    youtube_subtitles,
+                    horizontal_subtitles,
                     Path(directory) / "result.mp4",
                 )
 
@@ -557,7 +557,7 @@ class StudioPhase2Test(unittest.TestCase):
 )
 class StudioPhase2RealFFmpegTest(unittest.TestCase):
 
-    def _profile(self, platform="instagram"):
+    def _profile(self, platform="vertical"):
         key = OperationalProfileKey(
             "studio", platform, STUDIO_PROFILE_IDS[platform]
         )

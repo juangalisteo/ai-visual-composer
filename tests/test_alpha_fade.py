@@ -120,9 +120,9 @@ def test_minimalista_alpha_fade_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
-            profile_id=f"subtitulo_{component.value}_instagram_alpha_fade",
+            profile_id=f"subtitulo_{component.value}_vertical_alpha_fade",
         )
         profile = resolver.load(key)
         render_style = SubtitleConfigLoader().load_render_style(profile.render_style)

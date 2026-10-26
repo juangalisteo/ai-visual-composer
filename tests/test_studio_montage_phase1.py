@@ -33,8 +33,8 @@ class StudioMontagePhase1Test(unittest.TestCase):
         self.profile = SimpleNamespace(video_extensions=(".mp4",))
         self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "instagram",
-            "studio_instagram",
+            "vertical",
+            "studio_vertical",
         )
 
     def _service(self, root):
@@ -115,28 +115,28 @@ class StudioMontagePhase1Test(unittest.TestCase):
             tuple(clip.original_name for clip in plan.clips),
         )
         self.assertEqual((1, 3, 2), tuple(clip.temporary_id for clip in plan.clips))
-        self.assertEqual("instagram", plan.platform)
-        self.assertEqual("studio_instagram", plan.profile_id)
+        self.assertEqual("vertical", plan.platform)
+        self.assertEqual("studio_vertical", plan.profile_id)
         self.assertTrue(plan.transitions_enabled)
 
-    def test_plan_preserves_youtube_studio_identity(self):
-        youtube_key = OperationalProfileKey(
+    def test_plan_preserves_horizontal_studio_identity(self):
+        horizontal_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "youtube",
-            "studio_youtube",
+            "horizontal",
+            "studio_horizontal",
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             plan = service.create_plan(
-                youtube_key,
+                horizontal_key,
                 False,
                 service.parse_order("1 2", service.discover(self.profile)),
             )
 
-        self.assertEqual("youtube", plan.platform)
-        self.assertEqual("studio_youtube", plan.profile_id)
+        self.assertEqual("horizontal", plan.platform)
+        self.assertEqual("studio_horizontal", plan.profile_id)
 
     def test_parser_requires_multiple_clips_and_accepts_large_selection(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -343,8 +343,8 @@ class StudioMontagePhase1Test(unittest.TestCase):
             )
             options = {
                 "profile_component": "studio",
-                "profile_platform": "instagram",
-                "profile_id": "studio_instagram",
+                "profile_platform": "vertical",
+                "profile_id": "studio_vertical",
                 "voice_config": "",
                 "music_category": None,
                 "project_name": "montaje",

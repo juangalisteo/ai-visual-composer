@@ -267,26 +267,26 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
-                "instagram",
-                ("1",),
+                "vertical",
+                ("2",),
             ),
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
-                "youtube",
-                ("2",),
-            ),
-            (
-                "design_video",
-                ProfileComponent.VIDEO,
-                "instagram",
+                "horizontal",
                 ("1",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
-                "youtube",
+                "vertical",
                 ("2",),
+            ),
+            (
+                "design_video",
+                ProfileComponent.VIDEO,
+                "horizontal",
+                ("1",),
             ),
         )
 
@@ -333,7 +333,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_normal_script_selection_still_discovers_and_transports_subtitles(self):
         controller = RunController()
 
-        with patch("builtins.input", side_effect=("1", "1", "1")), patch(
+        with patch("builtins.input", side_effect=("2", "1", "1")), patch(
             "builtins.print"
         ) as print_mock:
             selected = controller.select_profile("script")
@@ -398,7 +398,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=("2", "1", "1")
         ), patch(
             "builtins.print"
         ) as print_mock:
@@ -413,12 +413,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertIn(
             selected["profile_key"].platform,
-            ("instagram", "youtube"),
+            ("horizontal", "vertical"),
         )
         self.assertEqual(
             Path(
-                "config/profiles/video/instagram/"
-                "perfil_video_instagram.json"
+                "config/profiles/video/vertical/"
+                "perfil_video_vertical.json"
             ),
             selected["path"]
         )
@@ -482,12 +482,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
-            "instagram",
-            "guion_instagram",
+            "vertical",
+            "guion_vertical",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.GUION,
-            "instagram",
+            "vertical",
             "dummy_subtitle_profile",
             "test_family",
         )
@@ -509,8 +509,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/guion/instagram/estandar/"
-                    "perfil_guion_instagram.json"
+                    "config/profiles/guion/vertical/estandar/"
+                    "perfil_guion_vertical.json"
                 ),
                 "profile_key": profile_key,
                 "subtitle_profile_key": subtitle_key,
@@ -576,12 +576,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "youtube",
-            "imagen_youtube",
+            "horizontal",
+            "imagen_horizontal",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.IMAGEN,
-            "youtube",
+            "horizontal",
             "dummy_subtitle_profile",
             "test_family",
         )
@@ -599,8 +599,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/estandar/"
-                    "perfil_imagen_youtube.json"
+                    "config/profiles/imagen/horizontal/estandar/"
+                    "perfil_imagen_horizontal.json"
                 ),
                 "profile_key": profile_key,
                 "subtitle_profile_key": subtitle_key,
@@ -662,12 +662,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
-            "instagram",
-            "guion_instagram",
+            "vertical",
+            "guion_vertical",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.GUION,
-            "instagram",
+            "vertical",
             "dummy_subtitle_profile",
             "test_family",
         )
@@ -689,8 +689,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/guion/instagram/estandar/"
-                    "perfil_guion_instagram.json"
+                    "config/profiles/guion/vertical/estandar/"
+                    "perfil_guion_vertical.json"
                 ),
                 "profile_key": profile_key,
                 "subtitle_profile_key": subtitle_key,
@@ -762,12 +762,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
         subtitle_key = SubtitleProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
             "dummy_subtitle_profile",
             "test_family",
         )
@@ -785,8 +785,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/video/instagram/"
-                    "perfil_video_instagram.json"
+                    "config/profiles/video/vertical/"
+                    "perfil_video_vertical.json"
                 ),
                 "profile_key": profile_key,
                 "subtitle_profile_key": subtitle_key,
@@ -853,8 +853,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         )
 
         with patch.object(
@@ -949,11 +949,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             options["profile_component"]
         )
         self.assertEqual(
-            "instagram",
+            "vertical",
             options["profile_platform"]
         )
         self.assertEqual(
-            "imagen_instagram",
+            "imagen_vertical",
             options["profile_id"]
         )
 
@@ -961,8 +961,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
 
         with patch.object(
@@ -1057,11 +1057,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             options["profile_component"]
         )
         self.assertEqual(
-            "instagram",
+            "vertical",
             options["profile_platform"]
         )
         self.assertEqual(
-            "video_instagram",
+            "video_vertical",
             options["profile_id"]
         )
 
@@ -1081,8 +1081,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/estandar/"
-                    "perfil_imagen_youtube.json"
+                    "config/profiles/imagen/horizontal/estandar/"
+                    "perfil_imagen_horizontal.json"
                 )
             }
         ), patch.object(
@@ -1194,12 +1194,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 controller = RunController()
                 profile_key = OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "youtube",
-                    "imagen_youtube",
+                    "horizontal",
+                    "imagen_horizontal",
                 )
                 subtitle_key = SubtitleProfileKey(
                     ProfileComponent.IMAGEN,
-                    "youtube",
+                    "horizontal",
                     "dummy_subtitle_profile",
                     "test_family",
                 )
@@ -1217,8 +1217,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/imagen/youtube/estandar/"
-                            "perfil_imagen_youtube.json"
+                            "config/profiles/imagen/horizontal/estandar/"
+                            "perfil_imagen_horizontal.json"
                         ),
                         "profile_key": profile_key,
                         "subtitle_profile_key": subtitle_key,
@@ -1274,8 +1274,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "youtube",
-            "imagen_youtube",
+            "horizontal",
+            "imagen_horizontal",
         )
 
         with patch.object(
@@ -1291,8 +1291,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/estandar/"
-                    "perfil_imagen_youtube.json"
+                    "config/profiles/imagen/horizontal/estandar/"
+                    "perfil_imagen_horizontal.json"
                 ),
                 "profile_key": profile_key,
             },
@@ -1402,8 +1402,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/imagen/youtube/estandar/"
-                            "perfil_imagen_youtube.json"
+                            "config/profiles/imagen/horizontal/estandar/"
+                            "perfil_imagen_horizontal.json"
                         )
                     }
                 ), patch.object(

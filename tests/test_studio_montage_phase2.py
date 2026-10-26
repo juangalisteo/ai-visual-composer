@@ -24,7 +24,7 @@ from app.shared.operational_error import OperationalError
 class StudioMontagePhase2Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+        self.profile_key = OperationalProfileKey("studio", "vertical", "studio_vertical")
         self.input_profile = SimpleNamespace(video_extensions=(".mp4",))
         self.output_profile = SimpleNamespace(
             width=320,
@@ -331,8 +331,8 @@ class StudioMontagePhase2Test(unittest.TestCase):
             )
             options = {
                 "project_name": "montaje",
-                "profile_id": "studio_instagram",
-                "profile_platform": "instagram",
+                "profile_id": "studio_vertical",
+                "profile_platform": "vertical",
                 "studio_montage_plan": plan,
             }
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
@@ -361,8 +361,8 @@ class StudioMontagePhase2Test(unittest.TestCase):
             )
             options = {
                 "project_name": "montaje",
-                "profile_id": "studio_instagram",
-                "profile_platform": "instagram",
+                "profile_id": "studio_vertical",
+                "profile_platform": "vertical",
                 "studio_montage_plan": plan,
             }
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
@@ -421,7 +421,7 @@ class StudioMontagePhase2RealFFmpegTest(unittest.TestCase):
         )
         candidates = planner.discover(profile)
         return planner.create_plan(
-            OperationalProfileKey("studio", "instagram", "studio_instagram"),
+            OperationalProfileKey("studio", "vertical", "studio_vertical"),
             False,
             planner.parse_order(order, candidates),
         )

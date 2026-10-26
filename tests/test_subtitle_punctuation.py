@@ -153,10 +153,10 @@ class SubtitlePunctuationTest(unittest.TestCase):
                 self.assertIn(sign, text)
         self.assertNotIn("Glola", text)
 
-    def test_active_youtube_word_by_word_profile_removes_only_comma_and_period(self):
+    def test_active_horizontal_word_by_word_profile_removes_only_comma_and_period(self):
         profile_path = Path(
-            "config/profiles/guion/youtube/estandar/subtitulos/"
-            "subtitulo_guion_youtube_palabra_por_palabra.json"
+            "config/profiles/guion/horizontal/estandar/subtitulos/"
+            "subtitulo_guion_horizontal_palabra_por_palabra.json"
         )
         cue_policy = json.loads(
             profile_path.read_text(encoding="utf-8")

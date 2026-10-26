@@ -22,12 +22,12 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 def _studio_selection():
     operational_key = OperationalProfileKey(
         "studio",
-        "instagram",
-        "studio_instagram",
+        "vertical",
+        "studio_vertical",
     )
     subtitle_key = SubtitleProfileKey(
         "studio",
-        "instagram",
+        "vertical",
         "subtitle_fixture",
         "estandar",
     )
@@ -43,16 +43,16 @@ def test_profile_coordinators_compose_extracted_operational_and_subtitle_selecto
     subtitle_selection = Mock()
     operational_key = OperationalProfileKey(
         "imagen",
-        "instagram",
-        "imagen_instagram",
+        "vertical",
+        "imagen_vertical",
     )
     operational = {
-        "path": Path("config/profiles/imagen/instagram/perfil.json"),
+        "path": Path("config/profiles/imagen/vertical/perfil.json"),
         "profile_key": operational_key,
     }
     subtitle_key = SubtitleProfileKey(
         "imagen",
-        "instagram",
+        "vertical",
         "subtitle_fixture",
         "estandar",
     )
@@ -79,7 +79,7 @@ def test_profile_coordinators_compose_extracted_operational_and_subtitle_selecto
     )
     subtitle_selection.select_profile_subtitle_profile.assert_called_once_with(
         ProfileComponent.IMAGEN,
-        "instagram",
+        "vertical",
         writer=writer,
         selector=selector,
         family_label=controller._family_label,
@@ -109,8 +109,8 @@ def test_studio_coordinator_transports_contract_to_final_options_without_state()
     options = controller.run()
 
     assert options["profile_component"] == "studio"
-    assert options["profile_platform"] == "instagram"
-    assert options["profile_id"] == "studio_instagram"
+    assert options["profile_platform"] == "vertical"
+    assert options["profile_id"] == "studio_vertical"
     assert options["subtitle_profile_key"].profile_id == "subtitle_fixture"
     assert options["subtitle_profile_key"] is selection.subtitle.subtitle_key
     assert options["studio_subtitle_original"] is True
@@ -129,16 +129,16 @@ def test_studio_profile_options_are_explicit():
         selection.subtitle.subtitle_key,
     ) == {
         "profile_component": "studio",
-        "profile_platform": "instagram",
-        "profile_id": "studio_instagram",
+        "profile_platform": "vertical",
+        "profile_id": "studio_vertical",
         "subtitle_profile_key": selection.subtitle.subtitle_key,
     }
     assert controller._studio_profile_options(
         selection.operational.operational_key
     ) == {
         "profile_component": "studio",
-        "profile_platform": "instagram",
-        "profile_id": "studio_instagram",
+        "profile_platform": "vertical",
+        "profile_id": "studio_vertical",
     }
 
 
@@ -155,11 +155,11 @@ def test_profile_coordinator_can_skip_subtitle_selection():
     profile_selection = Mock()
     subtitle_selection = Mock()
     operational = {
-        "path": Path("config/profiles/imagen/instagram/perfil.json"),
+        "path": Path("config/profiles/imagen/vertical/perfil.json"),
         "profile_key": OperationalProfileKey(
             "imagen",
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         ),
     }
     profile_selection.select_profile_identity.return_value = operational
@@ -180,7 +180,7 @@ def _standard_run_controller(*, visual_pipeline, pipeline_mode):
     subtitle_selection = Mock()
     operational_key = OperationalProfileKey(
         "guion" if visual_pipeline == "script" else "imagen",
-        "youtube",
+        "horizontal",
         "dummy_profile",
     )
     profile_selection.select_profile_identity.return_value = {
@@ -190,7 +190,7 @@ def _standard_run_controller(*, visual_pipeline, pipeline_mode):
     subtitle_selection.select_profile_subtitle_profile.return_value = (
         SubtitleProfileKey(
             operational_key.component,
-            "youtube",
+            "horizontal",
             "test_family",
             "dummy_profile",
         )

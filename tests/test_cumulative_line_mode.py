@@ -145,16 +145,16 @@ def test_cumulative_line_restarts_when_the_semantic_line_reaches_its_limit():
     assert all(len(text) <= 8 for text in _texts(blocks))
 
 
-def test_instagram_minimalista_cumulative_profiles_resolve_declaratively():
+def test_vertical_minimalista_cumulative_profiles_resolve_declaratively():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
             profile_id=(
-                f"subtitulo_{component.value}_instagram_cumulative_line"
+                f"subtitulo_{component.value}_vertical_cumulative_line"
             ),
         )
         profile = resolver.load(key)
@@ -168,9 +168,9 @@ def test_studio_cumulative_uses_static_scale_defaults_without_force_style_overri
     profile = SubtitleProfileResolver().load(
         SubtitleProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
-            profile_id="subtitulo_studio_instagram_cumulative_line",
+            profile_id="subtitulo_studio_vertical_cumulative_line",
         )
     )
 
@@ -203,7 +203,7 @@ def test_static_force_style_writes_scale_as_the_fraction_libass_expects():
 
 
 def test_static_scaled_profiles_are_discovered():
-    # F5b: GUION, IMAGEN and VIDEO Instagram "Palabra por palabra".
+    # F5b: GUION, IMAGEN and VIDEO Vertical "Palabra por palabra".
     assert len(_static_scaled_profiles()) == 3
 
 

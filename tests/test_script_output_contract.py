@@ -359,7 +359,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             "conciencia",
             {
                 "tone": "modo_conciencia",
-                "platform": "youtube",
+                "platform": "horizontal",
                 "format": "horizontal",
                 "duration": 10,
             },
@@ -438,7 +438,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 },
                 profile={
                     "tone": "modo_conciencia",
-                    "platform": "youtube",
+                    "platform": "horizontal",
                     "format": "horizontal",
                     "duration": 10,
                 },
@@ -492,7 +492,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                     },
                     profile={
                         "tone": "modo_conciencia",
-                        "platform": "youtube",
+                        "platform": "horizontal",
                         "format": "horizontal",
                         "duration": 10,
                     },

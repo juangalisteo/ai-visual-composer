@@ -39,17 +39,17 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 STUDIO_PROFILE_IDS = {
-    "instagram": "studio_instagram",
-    "youtube": "studio_youtube",
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
 }
 
 STUDIO_STANDARD_SUBTITLE_PROFILE_IDS = {
-    ("instagram", "single_line"): "subtitulo_studio_instagram_linea_unica",
-    ("instagram", "word_by_word"): (
-        "subtitulo_studio_instagram_palabra_por_palabra"
+    ("vertical", "single_line"): "subtitulo_studio_vertical_linea_unica",
+    ("vertical", "word_by_word"): (
+        "subtitulo_studio_vertical_palabra_por_palabra"
     ),
-    ("youtube", "single_line"): "subtitulo_studio_youtube_linea_unica",
-    ("youtube", "word_by_word"): "subtitulo_studio_youtube_palabra_por_palabra",
+    ("horizontal", "single_line"): "subtitulo_studio_horizontal_linea_unica",
+    ("horizontal", "word_by_word"): "subtitulo_studio_horizontal_palabra_por_palabra",
 }
 
 
@@ -76,7 +76,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     def setUp(self):
         # Solo para los tests del menu heredado (se retiran en L5b/L5c).
         self.operational_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         self.profile = _load_studio_profile(self.operational_key)
 
@@ -84,8 +84,8 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         return SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "instagram",
-                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[("instagram", style)],
+                "vertical",
+                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[("vertical", style)],
                 "estandar",
             )
         )
@@ -93,7 +93,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     @staticmethod
     def _design_subtitle_key():
         descriptors = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "instagram", "design",
+            "studio", "vertical", "design",
         )
         return next(
             descriptor.key
@@ -458,7 +458,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
     def test_original_preserves_srt_base_for_both_studio_platforms(self):
         source = "1\n00:00:00,000 --> 00:00:01,000\nMATEO 13\n"
-        for platform in ("instagram", "youtube"):
+        for platform in ("horizontal", "vertical"):
             with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = OperationalProfileKey(
@@ -558,13 +558,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         controller._print = messages.append
         resolver = SubtitleProfileResolver()
         design = resolver.discover_profiles_for_family(
-            "studio", "instagram", "design",
+            "studio", "vertical", "design",
         )[0]
         standard = resolver.discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )
         controller._select_from_list = Mock(
-            side_effect=("instagram", "design", design),
+            side_effect=("vertical", "design", design),
         )
 
         selected, original = controller._select_studio_subtitle_profile(
@@ -592,10 +592,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     def test_srt_video_selector_uses_real_profiles_and_activates_original_policy(self):
         resolver = SubtitleProfileResolver()
         cases = (
-            ("instagram", "design", "modo_conciencia_reels"),
-            ("instagram", "estandar", "subtitulo_studio_instagram_linea_unica"),
-            ("instagram", "estandar", "subtitulo_studio_instagram_palabra_por_palabra"),
-            ("youtube", "estandar", "subtitulo_studio_youtube_linea_unica"),
+            ("vertical", "design", "modo_conciencia_reels"),
+            ("vertical", "estandar", "subtitulo_studio_vertical_linea_unica"),
+            ("vertical", "estandar", "subtitulo_studio_vertical_palabra_por_palabra"),
+            ("horizontal", "estandar", "subtitulo_studio_horizontal_linea_unica"),
         )
         for platform, family, profile_id in cases:
             with self.subTest(
@@ -630,14 +630,14 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         messages = []
         controller._print = messages.append
         descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "instagram", "primado_negativo",
+            "studio", "vertical", "primado_negativo",
         )[0]
         controller._select_from_list = Mock(
             side_effect=("primado_negativo", descriptor),
         )
 
         selected = controller._select_studio_video_audio_srt_subtitle_profile(
-            OperationalProfileKey("studio", "instagram", "studio_instagram"),
+            OperationalProfileKey("studio", "vertical", "studio_vertical"),
         )
 
         self.assertEqual("primado_negativo", selected.family)
@@ -659,7 +659,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         )
         resolver = SubtitleProfileResolver()
         descriptors = resolver.discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -688,12 +688,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
     def test_srt_video_selected_profile_is_not_taken_from_discovery_order(self):
         source = Path(
-            "config/profiles/studio/instagram/estandar/subtitulos/"
-            "subtitulo_studio_instagram_linea_unica.json"
+            "config/profiles/studio/vertical/estandar/subtitulos/"
+            "subtitulo_studio_vertical_linea_unica.json"
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            subtitle_dir = root / "studio/instagram/test_family/subtitulos"
+            subtitle_dir = root / "studio/vertical/test_family/subtitulos"
             subtitle_dir.mkdir(parents=True)
             for profile_id, display_name in (
                 ("test_profile_first", "First profile"),
@@ -713,7 +713,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
             resolver = SubtitleProfileResolver(root)
             descriptors = resolver.discover_profiles_for_family(
-                "studio", "instagram", "test_family",
+                "studio", "vertical", "test_family",
             )
             selected_descriptor = next(
                 descriptor
@@ -722,10 +722,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             )
             controller = RunController(subtitle_profile_resolver=resolver)
             operational_key = OperationalProfileKey(
-                "studio", "instagram", "test_operational",
+                "studio", "vertical", "test_operational",
             )
             controller._select_from_list = Mock(
-                side_effect=("instagram", "test_family", selected_descriptor),
+                side_effect=("vertical", "test_family", selected_descriptor),
             )
 
             with patch.object(
@@ -753,10 +753,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     def test_design_and_standard_profiles_are_independent_by_identity(self):
         resolver = SubtitleProfileResolver()
         design = resolver.discover_profiles_for_family(
-            "studio", "instagram", "design",
+            "studio", "vertical", "design",
         )
         standard = resolver.discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )
 
         self.assertTrue(design)
@@ -781,12 +781,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     def test_future_family_is_discovered_from_subtitles_without_root_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            subtitle_dir = root / "studio/instagram/test_family/subtitulos"
+            subtitle_dir = root / "studio/vertical/test_family/subtitulos"
             subtitle_dir.mkdir(parents=True)
             payload = json.loads(
                 Path(
-                    "config/profiles/studio/instagram/estandar/subtitulos/"
-                    "subtitulo_studio_instagram_linea_unica.json"
+                    "config/profiles/studio/vertical/estandar/subtitulos/"
+                    "subtitulo_studio_vertical_linea_unica.json"
                 ).read_text(encoding="utf-8")
             )
             payload.update(
@@ -801,9 +801,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             )
 
             resolver = SubtitleProfileResolver(root)
-            families = resolver.discover_families("studio", "instagram")
+            families = resolver.discover_families("studio", "vertical")
             descriptors = resolver.discover_profiles_for_family(
-                "studio", "instagram", "test_family",
+                "studio", "vertical", "test_family",
             )
             self.assertFalse(any(subtitle_dir.parent.glob("*.json")))
 
@@ -823,7 +823,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     def test_discovery_accepts_a_future_profile_with_an_existing_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            subtitle_dir = root / "studio" / "instagram" / "estandar" / "subtitulos"
+            subtitle_dir = root / "studio" / "vertical" / "estandar" / "subtitulos"
             subtitle_dir.mkdir(parents=True)
             for profile_suffix, mode in (
                 ("linea_unica", "single_line"),
@@ -831,13 +831,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 ("modo_conciencia", "word_by_word"),
             ):
                 profile_id = (
-                    "subtitulo_studio_instagram_"
+                    "subtitulo_studio_vertical_"
                     + profile_suffix
                 )
                 (subtitle_dir / f"{profile_id}.json").write_text(
                     json.dumps({
                         "component": "studio",
-                        "platform": "instagram",
+                        "platform": "vertical",
                         "family": "estandar",
                         "profile_id": profile_id,
                         "display_name": profile_id,
@@ -861,7 +861,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 )
 
             descriptors = SubtitleProfileResolver(root).discover_profiles_for_family(
-                "studio", "instagram", "estandar",
+                "studio", "vertical", "estandar",
             )
 
         self.assertEqual(

@@ -96,9 +96,9 @@ def test_typewriter_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
-            profile_id=f"subtitulo_{component.value}_instagram_typewriter",
+            profile_id=f"subtitulo_{component.value}_vertical_typewriter",
         )
         profile = resolver.load(key)
         render_style = SubtitleConfigLoader().load_render_style(profile.render_style)

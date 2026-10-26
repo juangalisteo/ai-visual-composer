@@ -17,16 +17,16 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 def _profile_key(component):
     return OperationalProfileKey(
         component=component,
-        platform="instagram",
-        profile_id=f"{component.value}_instagram",
+        platform="vertical",
+        profile_id=f"{component.value}_vertical",
     )
 
 
 def _subtitle_key():
     return SubtitleProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="instagram",
-        profile_id="subtitulo_studio_instagram_linea_unica",
+        platform="vertical",
+        profile_id="subtitulo_studio_vertical_linea_unica",
         family="estandar",
     )
 

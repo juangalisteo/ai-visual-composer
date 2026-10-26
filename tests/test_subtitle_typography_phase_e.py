@@ -181,8 +181,8 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
             root = Path(directory) / "profiles"
             key = SubtitleProfileKey(
                 "video",
-                "instagram",
-                "subtitulo_video_instagram_linea_unica",
+                "vertical",
+                "subtitulo_video_vertical_linea_unica",
                 "estandar",
             )
             path = root / key.relative_path
@@ -198,13 +198,13 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
             key = SubtitleProfileKey(
-                "video", "instagram", "modo_conciencia_reels", "design",
+                "video", "vertical", "modo_conciencia_reels", "design",
             )
-            path = root / "video/instagram/design/subtitulos/modo_conciencia_reels.json"
+            path = root / "video/vertical/design/subtitulos/modo_conciencia_reels.json"
             path.parent.mkdir(parents=True)
             data = json.loads(
                 Path(
-                    "config/profiles/video/instagram/design/"
+                    "config/profiles/video/vertical/design/"
                     "subtitulos/modo_conciencia_reels.json"
                 ).read_text(encoding="utf-8")
             )
@@ -218,17 +218,17 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
             data = self._source_standard("studio").copy()
-            profile_id = "subtitulo_studio_instagram_linea_unica_tipografico"
+            profile_id = "subtitulo_studio_vertical_linea_unica_tipografico"
             data["profile_id"] = profile_id
             data["display_name"] = "Tipografico"
             data["render_style"].update(self.EXTENDED_STYLE)
-            path = root / "studio/instagram/estandar/subtitulos" / f"{profile_id}.json"
+            path = root / "studio/vertical/estandar/subtitulos" / f"{profile_id}.json"
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps(data), encoding="utf-8")
 
             resolver = SubtitleProfileResolver(root)
             descriptor = resolver.discover_profiles_for_family(
-                "studio", "instagram", "estandar",
+                "studio", "vertical", "estandar",
             )[0]
             resolved = resolver.load(descriptor.key)
             self.assertEqual(profile_id, resolved.key.profile_id)
@@ -246,8 +246,8 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
     @staticmethod
     def _source_standard(component):
         path = Path(
-            f"config/profiles/{component}/instagram/estandar/subtitulos/"
-            f"subtitulo_{component}_instagram_linea_unica.json"
+            f"config/profiles/{component}/vertical/estandar/subtitulos/"
+            f"subtitulo_{component}_vertical_linea_unica.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

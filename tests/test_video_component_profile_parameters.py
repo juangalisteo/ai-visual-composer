@@ -52,8 +52,8 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
 
     def test_official_documents_load_and_preserve_lossless_parameters(self):
         expected = {
-            "instagram": ("video_instagram", 448, 800),
-            "youtube": ("video_youtube", 800, 448),
+            "vertical": ("video_vertical", 448, 800),
+            "horizontal": ("video_horizontal", 800, 448),
         }
 
         for platform, values in expected.items():
@@ -86,7 +86,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
             load_video_component_parameters(
                 OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "instagram",
+                    "vertical",
                     "opaque_image_identity",
                 )
             )

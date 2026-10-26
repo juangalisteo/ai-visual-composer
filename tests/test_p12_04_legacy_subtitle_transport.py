@@ -12,9 +12,9 @@ class LegacySubtitleTransportTest(unittest.TestCase):
         self.current_profile = next(
             item.key
             for item in self.resolver.discover_profiles_for_family(
-                "studio", "instagram", "estandar",
+                "studio", "vertical", "estandar",
             )
-            if item.profile_id == "subtitulo_studio_instagram_linea_unica"
+            if item.profile_id == "subtitulo_studio_vertical_linea_unica"
         )
 
     def test_modern_resolution_requires_and_uses_the_exact_key(self):

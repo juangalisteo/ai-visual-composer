@@ -72,8 +72,8 @@ class IntroOutroTest(unittest.TestCase):
     def test_catalog_lists_only_real_mp4_files_dynamically(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro_directory = root / "instagram" / "intro"
-            outro_directory = root / "instagram" / "outro"
+            intro_directory = root / "vertical" / "intro"
+            outro_directory = root / "vertical" / "outro"
             intro_directory.mkdir(parents=True)
             outro_directory.mkdir(parents=True)
             (intro_directory / "Zulu.MP4").write_bytes(b"z")
@@ -83,7 +83,7 @@ class IntroOutroTest(unittest.TestCase):
             (root / "flat_legacy.mp4").write_bytes(b"legacy")
             (intro_directory / "folder.mp4").mkdir()
 
-            assets = IntroOutroCatalog(root).discover("instagram", "intro")
+            assets = IntroOutroCatalog(root).discover("vertical", "intro")
 
         self.assertEqual(
             ["alpha.mp4", "Zulu.MP4"],
@@ -93,8 +93,8 @@ class IntroOutroTest(unittest.TestCase):
     def test_catalog_discovers_only_the_requested_position(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro = root / "instagram" / "intro"
-            outro = root / "instagram" / "outro"
+            intro = root / "vertical" / "intro"
+            outro = root / "vertical" / "outro"
             intro.mkdir(parents=True)
             outro.mkdir(parents=True)
             (intro / "canal_01.mp4").write_bytes(b"intro")
@@ -104,48 +104,48 @@ class IntroOutroTest(unittest.TestCase):
 
             self.assertEqual(
                 [intro / "canal_01.mp4"],
-                list(catalog.discover("instagram", "intro")),
+                list(catalog.discover("vertical", "intro")),
             )
             self.assertEqual(
                 [outro / "canal_01.mp4"],
-                list(catalog.discover("instagram", "outro")),
+                list(catalog.discover("vertical", "outro")),
             )
 
     def test_catalog_never_mixes_platform_assets(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            instagram_intro = root / "instagram" / "intro"
-            instagram_outro = root / "instagram" / "outro"
-            youtube_intro = root / "youtube" / "intro"
-            youtube_outro = root / "youtube" / "outro"
+            vertical_intro = root / "vertical" / "intro"
+            vertical_outro = root / "vertical" / "outro"
+            horizontal_intro = root / "horizontal" / "intro"
+            horizontal_outro = root / "horizontal" / "outro"
             for directory in (
-                instagram_intro,
-                instagram_outro,
-                youtube_intro,
-                youtube_outro,
+                vertical_intro,
+                vertical_outro,
+                horizontal_intro,
+                horizontal_outro,
             ):
                 directory.mkdir(parents=True)
-            (instagram_intro / "instagram-intro.mp4").write_bytes(b"i")
-            (instagram_outro / "instagram-outro.mp4").write_bytes(b"o")
-            (youtube_intro / "youtube-intro.mp4").write_bytes(b"y")
-            (youtube_outro / "youtube-outro.mp4").write_bytes(b"u")
+            (vertical_intro / "vertical-intro.mp4").write_bytes(b"i")
+            (vertical_outro / "vertical-outro.mp4").write_bytes(b"o")
+            (horizontal_intro / "horizontal-intro.mp4").write_bytes(b"y")
+            (horizontal_outro / "horizontal-outro.mp4").write_bytes(b"u")
             catalog = IntroOutroCatalog(root)
 
             self.assertEqual(
-                [instagram_intro / "instagram-intro.mp4"],
-                list(catalog.discover("instagram", "intro")),
+                [vertical_intro / "vertical-intro.mp4"],
+                list(catalog.discover("vertical", "intro")),
             )
             self.assertEqual(
-                [youtube_intro / "youtube-intro.mp4"],
-                list(catalog.discover("youtube", "intro")),
+                [horizontal_intro / "horizontal-intro.mp4"],
+                list(catalog.discover("horizontal", "intro")),
             )
             self.assertEqual(
-                [instagram_outro / "instagram-outro.mp4"],
-                list(catalog.discover("instagram", "outro")),
+                [vertical_outro / "vertical-outro.mp4"],
+                list(catalog.discover("vertical", "outro")),
             )
             self.assertEqual(
-                [youtube_outro / "youtube-outro.mp4"],
-                list(catalog.discover("youtube", "outro")),
+                [horizontal_outro / "horizontal-outro.mp4"],
+                list(catalog.discover("horizontal", "outro")),
             )
 
     def test_catalog_accepts_a_future_platform_from_structure_only(self):
@@ -162,7 +162,7 @@ class IntroOutroTest(unittest.TestCase):
 
     def test_catalog_rejects_an_invalid_position(self):
         with self.assertRaisesRegex(ValueError, "intro u outro"):
-            IntroOutroCatalog().discover("instagram", "apertura")
+            IntroOutroCatalog().discover("vertical", "apertura")
 
     def test_menu_fails_fast_when_selected_position_is_empty(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -176,14 +176,14 @@ class IntroOutroTest(unittest.TestCase):
                 side_effect=["2"],
             ), self.assertRaisesRegex(
                 FileNotFoundError,
-                "instagram/intro/",
+                "vertical/intro/",
             ):
-                controller.select_intro_outro("instagram")
+                controller.select_intro_outro("vertical")
 
     def test_menu_fails_fast_for_an_empty_outro_without_using_intro_assets(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro_directory = root / "instagram" / "intro"
+            intro_directory = root / "vertical" / "intro"
             intro_directory.mkdir(parents=True)
             (intro_directory / "intro.mp4").write_bytes(b"intro")
             controller = RunController(
@@ -192,9 +192,9 @@ class IntroOutroTest(unittest.TestCase):
 
             with patch("builtins.input", side_effect=["3"]), self.assertRaisesRegex(
                 FileNotFoundError,
-                "instagram/outro/",
+                "vertical/outro/",
             ):
-                controller.select_intro_outro("instagram")
+                controller.select_intro_outro("vertical")
 
     def test_menu_no_keeps_intro_outro_disabled(self):
         catalog = Mock()
@@ -206,7 +206,7 @@ class IntroOutroTest(unittest.TestCase):
             "builtins.input",
             side_effect=["1"],
         ), patch.object(controller, "_print"):
-            selection = controller.select_intro_outro("instagram")
+            selection = controller.select_intro_outro("vertical")
 
         self.assertIsNone(selection)
         catalog.discover.assert_not_called()
@@ -214,8 +214,8 @@ class IntroOutroTest(unittest.TestCase):
     def test_menu_selects_position_specific_assets_for_both_sides(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro_directory = root / "instagram" / "intro"
-            outro_directory = root / "instagram" / "outro"
+            intro_directory = root / "vertical" / "intro"
+            outro_directory = root / "vertical" / "outro"
             intro_directory.mkdir(parents=True)
             outro_directory.mkdir(parents=True)
             first = intro_directory / "brand opening.mp4"
@@ -232,7 +232,7 @@ class IntroOutroTest(unittest.TestCase):
                 "builtins.input",
                 side_effect=["4", "2", "1"],
             ), patch.object(controller, "_print"):
-                plan = controller.select_intro_outro("instagram")
+                plan = controller.select_intro_outro("vertical")
 
         self.assertEqual(second, plan.intro.asset_path)
         self.assertEqual("intro", plan.intro.position)
@@ -241,14 +241,14 @@ class IntroOutroTest(unittest.TestCase):
 
     def test_main_transports_selection_without_environment_fallback(self):
         selection = IntroOutroSelection(
-            Path("assets/videos/intro_outro/instagram/intro/custom.mp4"),
+            Path("assets/videos/intro_outro/vertical/intro/custom.mp4"),
             "intro",
         )
         plan = IntroOutroPlan(intro=selection)
         options = {
             "profile_component": "video",
-            "profile_platform": "instagram",
-            "profile_id": "video_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "video_vertical",
             "voice_config": "masculina",
             "music_category": None,
             "overlays_mode": "off",

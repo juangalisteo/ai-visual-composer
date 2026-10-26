@@ -347,14 +347,14 @@ class ImageDesignRuntimeTest(unittest.TestCase):
     def test_design_uses_target_image_profile_dimensions(self):
         cases = (
             (
-                "config/profiles/imagen/instagram/"
-                "perfil_imagen_instagram.json",
+                "config/profiles/imagen/vertical/"
+                "perfil_imagen_vertical.json",
                 1080,
                 1920
             ),
             (
-                "config/profiles/imagen/youtube/"
-                "perfil_imagen_youtube.json",
+                "config/profiles/imagen/horizontal/"
+                "perfil_imagen_horizontal.json",
                 1920,
                 1080
             ),

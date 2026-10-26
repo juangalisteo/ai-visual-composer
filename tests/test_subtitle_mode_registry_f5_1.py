@@ -46,8 +46,8 @@ def test_registry_extension_requires_one_factory_registration():
 
 def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
     source = (
-        Path("config/profiles/studio/instagram/estandar/subtitulos/")
-        / "subtitulo_studio_instagram_linea_unica.json"
+        Path("config/profiles/studio/vertical/estandar/subtitulos/")
+        / "subtitulo_studio_vertical_linea_unica.json"
     )
     template = json.loads(source.read_text(encoding="utf-8"))
     template.update(
@@ -92,8 +92,8 @@ def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
 
 def test_new_profile_with_existing_mode_is_discovered_without_style_field(tmp_path):
     source = (
-        Path("config/profiles/studio/instagram/estandar/subtitulos/")
-        / "subtitulo_studio_instagram_linea_unica.json"
+        Path("config/profiles/studio/vertical/estandar/subtitulos/")
+        / "subtitulo_studio_vertical_linea_unica.json"
     )
     data = json.loads(source.read_text(encoding="utf-8"))
     data.update(

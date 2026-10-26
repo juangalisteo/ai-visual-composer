@@ -309,19 +309,19 @@ def test_rolling_window_keeps_a_word_longer_than_the_limit_alone():
     _assert_no_overlap(cues)
 
 
-def test_instagram_karaoke_rolling_window_profiles_resolve_declaratively():
+def test_vertical_karaoke_rolling_window_profiles_resolve_declaratively():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="karaoke",
-            profile_id=f"subtitulo_{component.value}_instagram_rolling_window",
+            profile_id=f"subtitulo_{component.value}_vertical_rolling_window",
         )
         descriptors = resolver.discover_profiles_for_family(
             component,
-            "instagram",
+            "vertical",
             "karaoke",
         )
         profile = resolver.load(key)

@@ -16,9 +16,9 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
-STUDIO_INSTAGRAM_SUBTITLE_PROFILE_IDS = {
-    "single_line": "subtitulo_studio_instagram_linea_unica",
-    "word_by_word": "subtitulo_studio_instagram_palabra_por_palabra",
+STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS = {
+    "single_line": "subtitulo_studio_vertical_linea_unica",
+    "word_by_word": "subtitulo_studio_vertical_palabra_por_palabra",
 }
 
 
@@ -51,7 +51,7 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         self.profile = _load_studio_profile(self.profile_key)
 
@@ -59,15 +59,15 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
         if style == "three_two_words":
             return SubtitleProfileResolver().load(
                 SubtitleProfileKey(
-                    "studio", "instagram",
-                    "subtitulo_studio_instagram_linea_unica", "estandar",
+                    "studio", "vertical",
+                    "subtitulo_studio_vertical_linea_unica", "estandar",
                 )
             )
         return SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "instagram",
-                STUDIO_INSTAGRAM_SUBTITLE_PROFILE_IDS[style],
+                "vertical",
+                STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS[style],
                 "estandar",
             )
         )
@@ -273,7 +273,7 @@ class StudioSubtitleAdaptationRealFFmpegTest(unittest.TestCase):
             )
             source_hash = hashlib.sha256(source.read_bytes()).digest()
             subtitle_hash = hashlib.sha256(subtitle.read_bytes()).digest()
-            key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+            key = OperationalProfileKey("studio", "vertical", "studio_vertical")
             profile = _load_studio_profile(key)
             resolver = SubtitleProfileResolver()
             outputs = []
@@ -283,8 +283,8 @@ class StudioSubtitleAdaptationRealFFmpegTest(unittest.TestCase):
                 subtitle_profile = resolver.load(
                     SubtitleProfileKey(
                         "studio",
-                        "instagram",
-                        STUDIO_INSTAGRAM_SUBTITLE_PROFILE_IDS[style],
+                        "vertical",
+                        STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS[style],
                         "estandar",
                     )
                 )

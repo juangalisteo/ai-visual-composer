@@ -6,14 +6,14 @@ from app.shared.profile_resolver import ProfileResolver
 
 
 EXPECTED = {
-    ("guion", "instagram"): "guion_instagram",
-    ("guion", "youtube"): "guion_youtube",
-    ("imagen", "instagram"): "imagen_instagram",
-    ("imagen", "youtube"): "imagen_youtube",
-    ("video", "instagram"): "video_instagram",
-    ("video", "youtube"): "video_youtube",
-    ("studio", "instagram"): "studio_instagram",
-    ("studio", "youtube"): "studio_youtube",
+    ("guion", "vertical"): "guion_vertical",
+    ("guion", "horizontal"): "guion_horizontal",
+    ("imagen", "vertical"): "imagen_vertical",
+    ("imagen", "horizontal"): "imagen_horizontal",
+    ("video", "vertical"): "video_vertical",
+    ("video", "horizontal"): "video_horizontal",
+    ("studio", "vertical"): "studio_vertical",
+    ("studio", "horizontal"): "studio_horizontal",
 }
 
 

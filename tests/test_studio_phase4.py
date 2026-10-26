@@ -48,14 +48,14 @@ class StudioPhase4Test(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "instagram",
-                "subtitulo_studio_instagram_linea_unica",
+                "vertical",
+                "subtitulo_studio_vertical_linea_unica",
                 "estandar",
             )
         )
@@ -72,11 +72,11 @@ class StudioPhase4Test(unittest.TestCase):
         )
 
     def test_music_contract_is_explicit_and_isolated_by_platform(self):
-        for platform in ("instagram", "youtube"):
+        for platform in ("horizontal", "vertical"):
             key = OperationalProfileKey(
                 "studio",
                 platform,
-                {"instagram": "studio_instagram", "youtube": "studio_youtube"}[
+                {"vertical": "studio_vertical", "horizontal": "studio_horizontal"}[
                     platform
                 ],
             )
@@ -145,8 +145,8 @@ class StudioPhase4Test(unittest.TestCase):
         final_output = Path("output/studio/video/studio.mp4")
         options = {
             "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,
             "project_name": "studio music",
@@ -203,14 +203,14 @@ class StudioPhase4Test(unittest.TestCase):
         )
         options = {
             "project_name": "demo",
-            "profile_id": "studio_instagram",
-            "profile_platform": "instagram",
+            "profile_id": "studio_vertical",
+            "profile_platform": "vertical",
             "studio_input_mode": "video",
             "subtitle_profile_key": SubtitleProfileKey(
                 component="studio",
-                platform="instagram",
+                platform="vertical",
                 family="minimalista",
-                profile_id="subtitulo_studio_instagram_cumulative_line",
+                profile_id="subtitulo_studio_vertical_cumulative_line",
             ),
             "studio_music_path": "assets/music/track.mp3",
             "intro_outro_selection": None,
@@ -224,7 +224,7 @@ class StudioPhase4Test(unittest.TestCase):
             if call.args
         )
         self.assertIn("Proyecto", printed)
-        self.assertIn("studio_instagram / Instagram", printed)
+        self.assertIn("studio_vertical / Vertical", printed)
         self.assertIn("Entrada", printed)
         self.assertIn("VIDEO", printed)
         self.assertIn("Palabra por palabra", printed)
@@ -246,8 +246,8 @@ class StudioPhase4Test(unittest.TestCase):
         )
         options = {
             "project_name": "demo",
-            "profile_id": "studio_instagram",
-            "profile_platform": "instagram",
+            "profile_id": "studio_vertical",
+            "profile_platform": "vertical",
             "studio_input_mode": "video",
             "studio_music_path": None,
             "intro_outro_selection": SimpleNamespace(
@@ -287,8 +287,8 @@ class StudioPhase4Test(unittest.TestCase):
         )
         options = {
             "project_name": "demo",
-            "profile_id": "studio_youtube",
-            "profile_platform": "youtube",
+            "profile_id": "studio_horizontal",
+            "profile_platform": "horizontal",
             "studio_input_mode": "srt_video",
             "studio_music_path": None,
             "intro_outro_selection": None,
@@ -314,8 +314,8 @@ class StudioPhase4Test(unittest.TestCase):
         )
         options = {
             "project_name": "demo",
-            "profile_id": "studio_instagram",
-            "profile_platform": "instagram",
+            "profile_id": "studio_vertical",
+            "profile_platform": "vertical",
             "studio_input_mode": "srt_video",
             "studio_music_path": None,
             "intro_outro_selection": None,
@@ -346,8 +346,8 @@ class StudioPhase4Test(unittest.TestCase):
                 )
                 options = {
                     "project_name": "demo",
-                    "profile_id": "studio_instagram",
-                    "profile_platform": "instagram",
+                    "profile_id": "studio_vertical",
+                    "profile_platform": "vertical",
                     "studio_input_mode": "srt_video",
                     "studio_music_path": None,
                     "intro_outro_selection": SimpleNamespace(
@@ -536,7 +536,7 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         profile = _load_studio_profile(self.profile_key)
         self.profile = replace(
@@ -549,8 +549,8 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                "instagram",
-                "subtitulo_studio_instagram_linea_unica",
+                "vertical",
+                "subtitulo_studio_vertical_linea_unica",
                 "estandar",
             )
         )

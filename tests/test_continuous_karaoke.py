@@ -134,14 +134,14 @@ def test_continuous_karaoke_requires_the_declared_syllabification_policy(tmp_pat
         )
 
 
-def test_instagram_karaoke_continuous_profiles_resolve_declaratively():
+def test_vertical_karaoke_continuous_profiles_resolve_declaratively():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
         descriptor = next(
             item
             for item in resolver.discover_profiles_for_family(
-                component, "instagram", "karaoke"
+                component, "vertical", "karaoke"
             )
             if item.profile_id.endswith("continuous_karaoke")
         )

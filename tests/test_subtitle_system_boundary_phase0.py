@@ -27,7 +27,7 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 COMPONENTS = tuple(ProfileComponent)
-PLATFORMS = ("instagram", "youtube")
+PLATFORMS = ("horizontal", "vertical")
 GLOBAL_SUBTITLE_FORBIDDEN_KEYS = frozenset(
     {
         "format",
@@ -46,14 +46,14 @@ GLOBAL_SUBTITLE_FORBIDDEN_KEYS = frozenset(
 
 
 OPERATIONAL_PROFILE_IDS = {
-    (ProfileComponent.GUION, "instagram"): "guion_instagram",
-    (ProfileComponent.GUION, "youtube"): "guion_youtube",
-    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
-    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
-    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
-    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
-    (ProfileComponent.STUDIO, "instagram"): "studio_instagram",
-    (ProfileComponent.STUDIO, "youtube"): "studio_youtube",
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
+    (ProfileComponent.STUDIO, "vertical"): "studio_vertical",
+    (ProfileComponent.STUDIO, "horizontal"): "studio_horizontal",
 }
 
 
@@ -149,12 +149,12 @@ def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
-def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
+def test_phase0_design_vertical_identity_and_subtitle_payload_are_preserved(
     component,
 ):
     subtitle_resolver = SubtitleProfileResolver()
     descriptors = subtitle_resolver.discover_profiles_for_family(
-        component, "instagram", "design",
+        component, "vertical", "design",
     )
     assert descriptors
 
@@ -184,13 +184,13 @@ def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
 def test_phase1_design_selection_keeps_system_operational_projection(
     component,
 ):
-    system_key = _operational_key(component, "instagram")
+    system_key = _operational_key(component, "vertical")
     subtitle_resolver = SubtitleProfileResolver()
     subtitle_key = subtitle_resolver.discover_profiles_for_family(
-        component, "instagram", "design",
+        component, "vertical", "design",
     )[0].key
     standard_key = subtitle_resolver.discover_profiles_for_family(
-        component, "instagram", "estandar",
+        component, "vertical", "estandar",
     )[0].key
 
     manager = ConfigManager(operational_profile_key=system_key)
@@ -209,12 +209,12 @@ def test_phase1_design_selection_keeps_system_operational_projection(
 
 
 def test_phase3_studio_loads_design_subtitle_identity_without_composition():
-    system_key = _operational_key(ProfileComponent.STUDIO, "instagram")
+    system_key = _operational_key(ProfileComponent.STUDIO, "vertical")
     resolver = SubtitleProfileResolver()
     design_subtitle_key = next(
         descriptor.key
         for descriptor in resolver.discover_profiles_for_family(
-            "studio", "instagram", "design",
+            "studio", "vertical", "design",
         )
         if descriptor.profile_id == "modo_conciencia_reels"
     )
@@ -223,17 +223,17 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
     manager = ConfigManager(operational_profile_key=system_key)
     rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
     assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
-    assert manager.get_operational_profile_key().platform == "instagram"
+    assert manager.get_operational_profile_key().platform == "vertical"
 
     assert rendered.cue_policy == design.cue_policy
     assert rendered.render_style == design.render_style
 
 
 def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():
-    system_key = _operational_key(ProfileComponent.STUDIO, "instagram")
+    system_key = _operational_key(ProfileComponent.STUDIO, "vertical")
     resolver = SubtitleProfileResolver()
     descriptors = resolver.discover_profiles_for_family(
-        "studio", "instagram", "design",
+        "studio", "vertical", "design",
     )
     assert descriptors
 
@@ -253,12 +253,12 @@ def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():
     controller = RunController()
     controller._print = Mock()
     descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-        "guion", "instagram", "design",
+        "guion", "vertical", "design",
     )[0]
-    controller._select_from_list = Mock(side_effect=("instagram", "design", descriptor))
+    controller._select_from_list = Mock(side_effect=("vertical", "design", descriptor))
 
     selected = controller._select_profile_identity(ProfileComponent.GUION)
-    expected = OperationalProfileKey("guion", "instagram", "guion_instagram")
+    expected = OperationalProfileKey("guion", "vertical", "guion_vertical")
     assert selected["profile_key"] == expected
     assert selected["subtitle_profile_key"] == descriptor.key
 
@@ -266,8 +266,8 @@ def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():
 def test_phase0_static_srt_renderer_baseline_uses_force_style(tmp_path):
     subtitle_key = SubtitleProfileKey(
         "video",
-        "instagram",
-        "subtitulo_video_instagram_palabra_por_palabra",
+        "vertical",
+        "subtitulo_video_vertical_palabra_por_palabra",
         "estandar",
     )
     subtitle_profile = SubtitleProfileResolver().load(subtitle_key)

@@ -54,5 +54,5 @@ def test_wan_resolver_keeps_its_dedicated_contract_and_rejects_legacy_key():
 
     with pytest.raises(TypeError, match="OperationalProfileKey"):
         resolver.resolve_video_component(
-            SubtitleProfileKey("video", "instagram", "video_instagram", "test_family")
+            SubtitleProfileKey("video", "vertical", "video_vertical", "test_family")
         )

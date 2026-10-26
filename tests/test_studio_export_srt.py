@@ -46,8 +46,8 @@ SRT_CONTENT = (
 
 
 STUDIO_PROFILE_IDS = {
-    "instagram": "studio_instagram",
-    "youtube": "studio_youtube",
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
 }
 
 
@@ -238,7 +238,7 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
 
     def setUp(self):
         self.operational_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         self.profile = StudioProfileLoader().load(
             ProfileResolver().load_operational(self.operational_key),
@@ -249,16 +249,16 @@ class StudioSubtitleExportServiceTest(unittest.TestCase):
         if style == "three_two_words":
             return SubtitleProfileResolver().load(
                 SubtitleProfileKey(
-                    "studio", "instagram",
-                    "subtitulo_studio_instagram_linea_unica", "estandar",
+                    "studio", "vertical",
+                    "subtitulo_studio_vertical_linea_unica", "estandar",
                 )
             )
         profile_id = {
-            "single_line": "subtitulo_studio_instagram_linea_unica",
-            "word_by_word": "subtitulo_studio_instagram_palabra_por_palabra",
+            "single_line": "subtitulo_studio_vertical_linea_unica",
+            "word_by_word": "subtitulo_studio_vertical_palabra_por_palabra",
         }[style]
         return SubtitleProfileResolver().load(
-            SubtitleProfileKey("studio", "instagram", profile_id, "estandar")
+            SubtitleProfileKey("studio", "vertical", profile_id, "estandar")
         )
 
     def _project(self, root, name="exportacion"):
@@ -416,10 +416,10 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         )
         controller = RunController()
         profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         subtitle_key = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )[0].key
         with patch.object(controller, "_select_studio_profile_selection", return_value=_studio_selection(
             profile_key,
@@ -451,11 +451,11 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         )
         resolver = SubtitleProfileResolver()
         cases = (
-            ("instagram", "design", "word_by_word"),
-            ("instagram", "estandar", "three_two_words"),
-            ("instagram", "estandar", "word_by_word"),
-            ("youtube", "estandar", "single_line"),
-            ("youtube", "estandar", "word_by_word"),
+            ("vertical", "design", "word_by_word"),
+            ("vertical", "estandar", "three_two_words"),
+            ("vertical", "estandar", "word_by_word"),
+            ("horizontal", "estandar", "single_line"),
+            ("horizontal", "estandar", "word_by_word"),
         )
         for platform, family, expected_mode in cases:
             with self.subTest(platform=platform, family=family, mode=expected_mode):
@@ -512,8 +512,8 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = Path(
-                "config/profiles/studio/instagram/estandar/subtitulos/"
-                "subtitulo_studio_instagram_linea_unica.json"
+                "config/profiles/studio/vertical/estandar/subtitulos/"
+                "subtitulo_studio_vertical_linea_unica.json"
             )
             payload = json.loads(source.read_text(encoding="utf-8"))
             payload.update({
@@ -650,8 +650,8 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
                 plan,
                 subtitle_profile_key=SubtitleProfileKey(
                     "studio",
-                    "instagram",
-                    "subtitulo_studio_instagram_linea_unica",
+                    "vertical",
+                    "subtitulo_studio_vertical_linea_unica",
                     "estandar",
                 ),
                 config_manager=config,
@@ -663,13 +663,13 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             Path("source.srt"),
         )
         profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
         resolver = SubtitleProfileResolver()
         selected_key = next(
             descriptor.key
             for descriptor in resolver.discover_profiles_for_family(
-                "studio", "instagram", "estandar",
+                "studio", "vertical", "estandar",
             )
             if resolver.load(descriptor.key).cue_policy["mode"] == "word_by_word"
         )
@@ -785,13 +785,13 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         )
         options = {
             "project_name": "demo",
-            "profile_id": "studio_instagram",
-            "profile_platform": "instagram",
+            "profile_id": "studio_vertical",
+            "profile_platform": "vertical",
             "subtitle_profile_key": SubtitleProfileKey(
                 component="studio",
-                platform="instagram",
+                platform="vertical",
                 family="minimalista",
-                profile_id="subtitulo_studio_instagram_cumulative_line",
+                profile_id="subtitulo_studio_vertical_cumulative_line",
             ),
             "studio_subtitle_export_plan": plan,
         }

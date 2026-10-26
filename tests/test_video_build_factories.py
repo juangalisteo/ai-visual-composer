@@ -1079,8 +1079,8 @@ class VideoBuildFactoriesTest(
         self
     ):
         profile_path = Path(
-            "config/profiles/video/youtube/"
-            "perfil_video_youtube.json"
+            "config/profiles/video/horizontal/"
+            "perfil_video_horizontal.json"
         )
         before = profile_path.read_text(
             encoding="utf-8"

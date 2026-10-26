@@ -95,7 +95,7 @@ visual_bible:
 
 PLATFORM_YAML = """
 schema_version: 1
-id: platform.instagram
+id: platform.vertical
 version: "1.0.0"
 type: platform
 title: Platform
@@ -126,7 +126,7 @@ type: sequence
 title: Composed Child
 extends: root
 composes:
-  - reference: platform.instagram
+  - reference: platform.vertical
     role: platform
 metadata:
   owner: Test
@@ -455,7 +455,7 @@ visual_bible:
             self.assertEqual(
                 effective.composed_layers,
                 (
-                    "platform.instagram",
+                    "platform.vertical",
                 )
             )
             self.assertEqual(
@@ -501,7 +501,7 @@ visual_bible:
                 tmp
             )
             first = PLATFORM_YAML.replace(
-                "id: platform.instagram",
+                "id: platform.vertical",
                 "id: platform.one"
             ).replace(
                 "composes:",
@@ -509,7 +509,7 @@ visual_bible:
                 1
             )
             second = PLATFORM_YAML.replace(
-                "id: platform.instagram",
+                "id: platform.vertical",
                 "id: platform.two"
             ).replace(
                 "composes:",
@@ -517,7 +517,7 @@ visual_bible:
                 1
             )
             child = COMPOSED_CHILD_YAML.replace(
-                "platform.instagram",
+                "platform.vertical",
                 "platform.one"
             )
             self._write(

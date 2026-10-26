@@ -59,7 +59,7 @@ class StudioOperationalIdentityTest(unittest.TestCase):
     def test_subtitle_selection_uses_operational_platform_as_discovery_context(self):
         controller = RunController()
         descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )[0]
         messages = []
         controller._print = messages.append
@@ -69,7 +69,7 @@ class StudioOperationalIdentityTest(unittest.TestCase):
 
         selected, original = controller._select_studio_subtitle_profile(
             StudioInputMode.SRT_VIDEO.value,
-            platform="instagram",
+            platform="vertical",
         )
 
         self.assertEqual(descriptor.key, selected)
@@ -79,7 +79,7 @@ class StudioOperationalIdentityTest(unittest.TestCase):
             labels.presentation_families(
                 SubtitleProfileResolver().discover_families(
                     "studio",
-                    "instagram",
+                    "vertical",
                 ),
             ),
         )
@@ -87,11 +87,11 @@ class StudioOperationalIdentityTest(unittest.TestCase):
     @staticmethod
     def _write_dynamic_profiles(root):
         operational_source = Path(
-            "config/profiles/studio/instagram/perfil_studio_instagram.json"
+            "config/profiles/studio/vertical/perfil_studio_vertical.json"
         )
         subtitle_source = Path(
-            "config/profiles/studio/instagram/estandar/subtitulos/"
-            "subtitulo_studio_instagram_linea_unica.json"
+            "config/profiles/studio/vertical/estandar/subtitulos/"
+            "subtitulo_studio_vertical_linea_unica.json"
         )
         operational = json.loads(operational_source.read_text(encoding="utf-8"))
         operational.update({

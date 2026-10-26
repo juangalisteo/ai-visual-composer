@@ -98,10 +98,10 @@ def test_minimalista_highlight_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="instagram",
+            platform="vertical",
             family="minimalista",
             profile_id=(
-                f"subtitulo_{component.value}_instagram_highlight_in_sentence"
+                f"subtitulo_{component.value}_vertical_highlight_in_sentence"
             ),
         )
         profile = resolver.load(key)

@@ -227,12 +227,12 @@ def test_shared_preparation_transports_roll_up_policy_to_dynamic_ass(tmp_path):
         prepared.cleanup()
 
 
-def test_instagram_karaoke_roll_up_profiles_are_discovered_declaratively():
+def test_vertical_karaoke_roll_up_profiles_are_discovered_declaratively():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
         descriptors = resolver.discover_profiles_for_family(
-            component, "instagram", "karaoke"
+            component, "vertical", "karaoke"
         )
         descriptor = next(item for item in descriptors if item.mode == "roll_up")
         profile = resolver.load(descriptor.key)

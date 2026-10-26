@@ -66,7 +66,7 @@ class BackendVideoPromptTest(unittest.TestCase):
             sampler="uni_pc",
             scheduler="simple",
             intermediate_output="lossless_ffv1",
-            profile_name="Instagram",
+            profile_name="Vertical",
         )
 
         self.assertEqual(
@@ -118,7 +118,7 @@ class BackendVideoPromptTest(unittest.TestCase):
             prompt.intermediate_output,
         )
         self.assertEqual(
-            "Instagram",
+            "Vertical",
             prompt.profile_name
         )
         self.assertEqual(

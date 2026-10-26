@@ -146,10 +146,10 @@ def test_official_dynamic_profiles_normalize_without_family_specific_logic(tmp_p
         profile = resolver.load(
             SubtitleProfileKey(
                 component=ProfileComponent.STUDIO,
-                platform="instagram",
+                platform="vertical",
                 family=family,
                 profile_id=(
-                    f"subtitulo_studio_instagram_{technical_name}"
+                    f"subtitulo_studio_vertical_{technical_name}"
                 ),
             )
         )
@@ -186,10 +186,10 @@ def test_official_static_profiles_remain_unscaled_srt(tmp_path):
         profile = resolver.load(
             SubtitleProfileKey(
                 component=ProfileComponent.STUDIO,
-                platform="instagram",
+                platform="vertical",
                 family=family,
                 profile_id=(
-                    f"subtitulo_studio_instagram_{technical_name}"
+                    f"subtitulo_studio_vertical_{technical_name}"
                 ),
             )
         )

@@ -14,29 +14,29 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
     COMPONENTS = ("guion", "imagen", "video")
-    PLATFORMS = ("instagram", "youtube")
+    PLATFORMS = ("horizontal", "vertical")
     MODES = {
         "linea_unica": "single_line",
         "palabra_por_palabra": "word_by_word",
     }
     MAIN_PROFILES = {
-        ("guion", "instagram"): Path(
-            "config/profiles/guion/instagram/perfil_guion_instagram.json"
+        ("guion", "vertical"): Path(
+            "config/profiles/guion/vertical/perfil_guion_vertical.json"
         ),
-        ("guion", "youtube"): Path(
-            "config/profiles/guion/youtube/perfil_guion_youtube.json"
+        ("guion", "horizontal"): Path(
+            "config/profiles/guion/horizontal/perfil_guion_horizontal.json"
         ),
-        ("imagen", "instagram"): Path(
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json"
+        ("imagen", "vertical"): Path(
+            "config/profiles/imagen/vertical/perfil_imagen_vertical.json"
         ),
-        ("imagen", "youtube"): Path(
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json"
+        ("imagen", "horizontal"): Path(
+            "config/profiles/imagen/horizontal/perfil_imagen_horizontal.json"
         ),
-        ("video", "instagram"): Path(
-            "config/profiles/video/instagram/perfil_video_instagram.json"
+        ("video", "vertical"): Path(
+            "config/profiles/video/vertical/perfil_video_vertical.json"
         ),
-        ("video", "youtube"): Path(
-            "config/profiles/video/youtube/perfil_video_youtube.json"
+        ("video", "horizontal"): Path(
+            "config/profiles/video/horizontal/perfil_video_horizontal.json"
         ),
     }
     EXPECTED_CUE_POLICIES = {
@@ -91,7 +91,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         },
     }
     EXPECTED_RENDER_STYLES = {
-        "instagram": {
+        "vertical": {
             "font": "unisans",
             "font_size": 14,
             "bold": False,
@@ -105,7 +105,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "margin_v": 55,
             "offset": -0.06,
         },
-        "youtube": {
+        "horizontal": {
             "font": "gotham",
             "font_size": 16,
             "bold": False,
@@ -122,7 +122,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     }
 
     # F5 (H7): the vertical format fits fewer characters per line.
-    EXPECTED_MAX_CHARS_PER_LINE = {"instagram": 20, "youtube": 60}
+    EXPECTED_MAX_CHARS_PER_LINE = {"vertical": 20, "horizontal": 60}
 
     def test_tree_contains_expected_profiles(self):
         actual = {
@@ -277,7 +277,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     def _display_name_for(platform, mode):
         if mode == "single_line":
             return "Línea única"
-        return "Palabra única" if platform == "instagram" else "Palabra por palabra"
+        return "Palabra única" if platform == "vertical" else "Palabra por palabra"
 
     def _load(self, path):
         return json.loads(Path(path).read_text(encoding="utf-8"))

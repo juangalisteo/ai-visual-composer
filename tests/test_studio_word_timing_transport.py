@@ -54,9 +54,9 @@ def _subtitle_profile(effect, family="minimalista"):
     return SubtitleProfileResolver().load(
         SubtitleProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="instagram",
+            platform="vertical",
             family=family,
-            profile_id=f"subtitulo_studio_instagram_{effect}",
+            profile_id=f"subtitulo_studio_vertical_{effect}",
         )
     )
 
@@ -98,8 +98,8 @@ def _render_ass(tmp_path, effect, family="minimalista"):
         subtitle_path=subtitles,
         profile_key=OperationalProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="instagram",
-            profile_id="studio_instagram",
+            platform="vertical",
+            profile_id="studio_vertical",
         ),
         profile=_profile(),
         subtitle_profile=_subtitle_profile(effect, family),

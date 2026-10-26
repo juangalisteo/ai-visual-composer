@@ -238,12 +238,12 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
 
         for profile_path in (
             Path(
-                "config/profiles/imagen/youtube/"
-                "perfil_imagen_youtube.json"
+                "config/profiles/imagen/horizontal/"
+                "perfil_imagen_horizontal.json"
             ),
             Path(
-                "config/profiles/imagen/instagram/"
-                "perfil_imagen_instagram.json"
+                "config/profiles/imagen/vertical/"
+                "perfil_imagen_vertical.json"
             ),
         ):
             with self.subTest(

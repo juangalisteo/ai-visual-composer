@@ -16,7 +16,7 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
-    def test_instagram_standard_catalog_uses_the_final_visible_names(self):
+    def test_vertical_standard_catalog_uses_the_final_visible_names(self):
         resolver = SubtitleProfileResolver()
         expected_names = [
             "Doble línea",
@@ -30,7 +30,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             with self.subTest(component=component.value):
                 descriptors = resolver.discover_profiles_for_family(
                     component,
-                    "instagram",
+                    "vertical",
                     "estandar",
                 )
                 by_id = {
@@ -45,34 +45,34 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 self.assertEqual(
                     "word_by_word",
                     by_id[
-                        f"subtitulo_{component.value}_instagram_"
+                        f"subtitulo_{component.value}_vertical_"
                         "palabra_por_palabra"
                     ].mode,
                 )
                 self.assertEqual(
                     "three_two_words",
                     by_id[
-                        f"subtitulo_{component.value}_instagram_dos_tres"
+                        f"subtitulo_{component.value}_vertical_dos_tres"
                     ].mode,
                 )
 
-    def test_instagram_standard_two_line_profiles_are_discovered_and_resolved(self):
+    def test_vertical_standard_two_line_profiles_are_discovered_and_resolved(self):
         resolver = SubtitleProfileResolver()
 
         for component in ProfileComponent:
             with self.subTest(component=component.value):
                 profile_id = (
-                    f"subtitulo_{component.value}_instagram_doble_linea"
+                    f"subtitulo_{component.value}_vertical_doble_linea"
                 )
                 key = SubtitleProfileKey(
                     component=component,
-                    platform="instagram",
+                    platform="vertical",
                     family="estandar",
                     profile_id=profile_id,
                 )
                 descriptors = resolver.discover_profiles_for_family(
                     component,
-                    "instagram",
+                    "vertical",
                     "estandar",
                 )
                 descriptor = next(
@@ -89,23 +89,23 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 )
                 self.assertEqual(key, resolved.key)
 
-    def test_instagram_standard_two_word_profiles_are_discovered_and_resolved(self):
+    def test_vertical_standard_two_word_profiles_are_discovered_and_resolved(self):
         resolver = SubtitleProfileResolver()
 
         for component in ProfileComponent:
             with self.subTest(component=component.value):
                 profile_id = (
-                    f"subtitulo_{component.value}_instagram_dos_palabras"
+                    f"subtitulo_{component.value}_vertical_dos_palabras"
                 )
                 key = SubtitleProfileKey(
                     component=component,
-                    platform="instagram",
+                    platform="vertical",
                     family="estandar",
                     profile_id=profile_id,
                 )
                 descriptors = resolver.discover_profiles_for_family(
                     component,
-                    "instagram",
+                    "vertical",
                     "estandar",
                 )
                 descriptor = next(
@@ -118,23 +118,23 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 self.assertEqual(2, resolved.cue_policy["fixed_chunk_size"])
                 self.assertEqual(key, resolved.key)
 
-    def test_instagram_standard_two_three_profiles_use_the_default_rhythm(self):
+    def test_vertical_standard_two_three_profiles_use_the_default_rhythm(self):
         resolver = SubtitleProfileResolver()
 
         for component in ProfileComponent:
             with self.subTest(component=component.value):
                 profile_id = (
-                    f"subtitulo_{component.value}_instagram_dos_tres"
+                    f"subtitulo_{component.value}_vertical_dos_tres"
                 )
                 key = SubtitleProfileKey(
                     component=component,
-                    platform="instagram",
+                    platform="vertical",
                     family="estandar",
                     profile_id=profile_id,
                 )
                 descriptors = resolver.discover_profiles_for_family(
                     component,
-                    "instagram",
+                    "vertical",
                     "estandar",
                 )
                 descriptor = next(
@@ -151,7 +151,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         resolver = SubtitleProfileResolver()
 
         for component in ProfileComponent:
-            for platform in ("instagram", "youtube"):
+            for platform in ("horizontal", "vertical"):
                 with self.subTest(
                     component=component.value,
                     platform=platform,
@@ -162,7 +162,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
                     word_by_word_name = (
                         "Palabra única"
-                        if platform == "instagram"
+                        if platform == "vertical"
                         else "Palabra por palabra"
                     )
                     self.assertTrue(
@@ -182,19 +182,19 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
     def test_copy_paste_profile_with_same_style_is_discovered_selected_and_resolved(self):
         source = Path(
-            "config/profiles/studio/instagram/estandar/subtitulos/"
-            "subtitulo_studio_instagram_linea_unica.json"
+            "config/profiles/studio/vertical/estandar/subtitulos/"
+            "subtitulo_studio_vertical_linea_unica.json"
         )
 
         with tempfile.TemporaryDirectory() as directory:
             config_root = Path(directory) / "config"
             profiles_root = config_root / "profiles"
-            target_directory = profiles_root / "studio/instagram/estandar/subtitulos"
+            target_directory = profiles_root / "studio/vertical/estandar/subtitulos"
             target_directory.mkdir(parents=True)
             copied = target_directory / source.name
             shutil.copyfile(source, copied)
 
-            custom_id = "subtitulo_studio_instagram_linea_unica_personalizado"
+            custom_id = "subtitulo_studio_vertical_linea_unica_personalizado"
             custom = json.loads(copied.read_text(encoding="utf-8"))
             custom["profile_id"] = custom_id
             custom["display_name"] = "Mi subtítulo personalizado"
@@ -206,7 +206,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
             resolver = SubtitleProfileResolver(profiles_root)
             descriptors = resolver.discover_profiles_for_family(
-                "studio", "instagram", "estandar",
+                "studio", "vertical", "estandar",
             )
             by_id = {descriptor.profile_id: descriptor for descriptor in descriptors}
 
@@ -218,7 +218,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             )
             self.assertEqual(
                 "three_two_words",
-                by_id["subtitulo_studio_instagram_linea_unica"].mode,
+                by_id["subtitulo_studio_vertical_linea_unica"].mode,
             )
 
             controller = RunController(subtitle_profile_resolver=resolver)
@@ -229,7 +229,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             )
             selected, original = controller._select_studio_subtitle_profile(
                 StudioInputMode.SRT_VIDEO.value,
-                platform="instagram",
+                platform="vertical",
             )
 
             self.assertEqual(by_id[custom_id].key, selected)
@@ -249,16 +249,16 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
     def test_new_standard_profile_requires_display_name(self):
         source = Path(
-            "config/profiles/studio/instagram/estandar/subtitulos/"
-            "subtitulo_studio_instagram_linea_unica.json"
+            "config/profiles/studio/vertical/estandar/subtitulos/"
+            "subtitulo_studio_vertical_linea_unica.json"
         )
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            target = root / "studio/instagram/estandar/subtitulos"
+            target = root / "studio/vertical/estandar/subtitulos"
             target.mkdir(parents=True)
             data = json.loads(source.read_text(encoding="utf-8"))
-            data["profile_id"] = "subtitulo_studio_instagram_linea_unica_sin_nombre"
+            data["profile_id"] = "subtitulo_studio_vertical_linea_unica_sin_nombre"
             data.pop("display_name")
             (target / f"{data['profile_id']}.json").write_text(
                 json.dumps(data, ensure_ascii=False),
@@ -267,7 +267,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
 
             with self.assertRaises(OperationalError) as captured:
                 SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "studio", "instagram", "estandar",
+                    "studio", "vertical", "estandar",
                 )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
@@ -275,7 +275,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
     def test_original_remains_outside_the_declarative_catalog(self):
         resolver = SubtitleProfileResolver()
         descriptors = resolver.discover_profiles_for_family(
-            "studio", "youtube", "design",
+            "studio", "horizontal", "design",
         )
         profile_ids = {descriptor.profile_id for descriptor in descriptors}
 
@@ -290,7 +290,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         controller._select_from_list = Mock(side_effect=("design", descriptor))
         selected, original = controller._select_studio_subtitle_profile(
             StudioInputMode.SRT_VIDEO.value,
-            platform="youtube",
+            platform="horizontal",
         )
 
         self.assertEqual(descriptor.key, selected)
@@ -300,7 +300,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         resolver = SubtitleProfileResolver()
         descriptor = next(
             item for item in resolver.discover_profiles_for_family(
-                "studio", "instagram", "design",
+                "studio", "vertical", "design",
             )
             if item.profile_id == "modo_conciencia_reels"
         )
@@ -311,7 +311,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             "word_by_word",
             resolver.load(
                 SubtitleProfileKey(
-                    "studio", "instagram", "modo_conciencia_reels", "design",
+                    "studio", "vertical", "modo_conciencia_reels", "design",
                 )
             ).cue_policy["mode"],
         )

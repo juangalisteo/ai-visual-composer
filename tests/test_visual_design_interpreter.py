@@ -255,7 +255,7 @@ def _interpreter_with_raw_response(
         },
         profile={
             "tone": "modo_conciencia",
-            "platform": "instagram",
+            "platform": "vertical",
             "format": "vertical",
         },
         ai_builder_factory=lambda ai_config: FakeAIBuilder(
@@ -274,7 +274,7 @@ def _interpreter_with_error(
         },
         profile={
             "tone": "modo_conciencia",
-            "platform": "instagram",
+            "platform": "vertical",
             "format": "vertical",
         },
         ai_builder_factory=lambda ai_config: FakeAIBuilder(

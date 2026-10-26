@@ -66,7 +66,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                 studio_intro_outro_input_service=service,
             )
             profile_key = OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             )
             controller._require_intro_outro_assets = Mock(
                 side_effect=lambda _, position: (intro,)
@@ -99,7 +99,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             controller._select_from_list = Mock(side_effect=(second, "intro"))
 
             plan = controller.select_studio_intro_outro_plan(
-                OperationalProfileKey("studio", "instagram", "studio_instagram"),
+                OperationalProfileKey("studio", "vertical", "studio_vertical"),
             )
 
         self.assertEqual(second, plan.source_path)
@@ -120,7 +120,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                 subtitle_profile_resolver=subtitle_resolver,
             )
             profile_key = OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             )
             selection_order = []
             controller.select_studio_input_mode = Mock(
@@ -202,11 +202,11 @@ class StudioIntroOutroTest(unittest.TestCase):
                 IntroOutroPlan(outro=IntroOutroSelection(source, "outro")),
             )
             profile_key = OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             )
             config = Mock()
             config.get_operational_profile_key.return_value = OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             )
             config.get_profile_config.return_value = {"profile_id": profile_key.profile_id}
             profile = Mock()
@@ -234,7 +234,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             video_path=source,
             subtitle_path=None,
             profile_key=OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             ),
             profile=profile,
             output_path=output_path,
@@ -249,7 +249,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                 project_name="demo",
                 clear_output=False,
                 operational_profile_key=OperationalProfileKey(
-                    "studio", "instagram", "studio_instagram"
+                    "studio", "vertical", "studio_vertical"
                 ),
                 subtitle_profile_key=None,
                 route=StudioExecutionRequest(

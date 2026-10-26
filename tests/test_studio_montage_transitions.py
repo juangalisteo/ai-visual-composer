@@ -24,8 +24,8 @@ from app.modules.studio import StudioProfileLoader
 
 
 STUDIO_PROFILE_IDS = {
-    "instagram": "studio_instagram",
-    "youtube": "studio_youtube",
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
 }
 
 
@@ -100,7 +100,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
             clips.append(StudioMontageClip(index, path, path.name))
         return StudioMontagePlan(
             profile_key=OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             ),
             transitions_enabled=transitions_enabled,
             clips=tuple(clips),
@@ -383,7 +383,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         )
         return StudioMontagePlan(
             profile_key=OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             ),
             transitions_enabled=True,
             clips=clips,
@@ -591,8 +591,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
     def test_boundary_markers_keep_the_final_audible_samples_across_contracts(self):
         cases = (
             (
-                "compatible_to_compatible_instagram",
-                "instagram",
+                "compatible_to_compatible_vertical",
+                "vertical",
                 (
                     ("red", 600, 1600, "160x90", 24, 48000),
                     ("blue", 880, 1700, "160x90", 24, 48000),
@@ -603,8 +603,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
                 880,
             ),
             (
-                "normalized_to_compatible_instagram",
-                "instagram",
+                "normalized_to_compatible_vertical",
+                "vertical",
                 (
                     ("yellow", 300, 350, "160x90", 24, 48000),
                     ("red", 600, 1600, "320x180", 30, 44100),
@@ -616,8 +616,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
                 880,
             ),
             (
-                "compatible_to_normalized_instagram",
-                "instagram",
+                "compatible_to_normalized_vertical",
+                "vertical",
                 (
                     ("red", 600, 1600, "160x90", 24, 48000),
                     ("blue", 880, 1700, "320x180", 30, 44100),
@@ -628,8 +628,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
                 880,
             ),
             (
-                "compatible_to_compatible_youtube",
-                "youtube",
+                "compatible_to_compatible_horizontal",
+                "horizontal",
                 (
                     ("red", 600, 1600, "160x90", 24, 48000),
                     ("blue", 880, 1700, "160x90", 24, 48000),
@@ -805,8 +805,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
 
     def test_real_transition_duration_uses_each_studio_platform_value(self):
         for platform, expected_transition_duration in (
-            ("instagram", 0.25),
-            ("youtube", 0.50),
+            ("vertical", 0.25),
+            ("horizontal", 0.50),
         ):
             with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)

@@ -144,20 +144,20 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
             root = Path(directory) / "profiles"
             source = self._source_standard()
             data = json.loads(source.read_text(encoding="utf-8"))
-            data["profile_id"] = "subtitulo_guion_instagram_prueba_c"
+            data["profile_id"] = "subtitulo_guion_vertical_prueba_c"
             data["display_name"] = "Prueba C"
             data["render_style"]["shadow"] = -1
             path = (
                 root
-                / "guion/instagram/estandar/subtitulos"
-                / "subtitulo_guion_instagram_prueba_c.json"
+                / "guion/vertical/estandar/subtitulos"
+                / "subtitulo_guion_vertical_prueba_c.json"
             )
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps(data), encoding="utf-8")
 
             with self.assertRaises(OperationalError) as captured:
                 SubtitleProfileResolver(root).discover_profiles_for_family(
-                    "guion", "instagram", "estandar",
+                    "guion", "vertical", "estandar",
                 )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
@@ -167,8 +167,8 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
             root = Path(directory) / "profiles"
             key = SubtitleProfileKey(
                 "guion",
-                "instagram",
-                "subtitulo_guion_instagram_linea_unica",
+                "vertical",
+                "subtitulo_guion_vertical_linea_unica",
                 "estandar",
             )
             path = root / key.relative_path
@@ -186,13 +186,13 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
             key = SubtitleProfileKey(
-                "video", "instagram", "modo_conciencia_reels", "design",
+                "video", "vertical", "modo_conciencia_reels", "design",
             )
-            path = root / "video/instagram/design/subtitulos/modo_conciencia_reels.json"
+            path = root / "video/vertical/design/subtitulos/modo_conciencia_reels.json"
             path.parent.mkdir(parents=True)
             data = json.loads(
                 Path(
-                    "config/profiles/video/instagram/design/"
+                    "config/profiles/video/vertical/design/"
                     "subtitulos/modo_conciencia_reels.json"
                 ).read_text(encoding="utf-8")
             )
@@ -219,8 +219,8 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     @staticmethod
     def _source_standard():
         return Path(
-            "config/profiles/guion/instagram/estandar/subtitulos/"
-            "subtitulo_guion_instagram_linea_unica.json"
+            "config/profiles/guion/vertical/estandar/subtitulos/"
+            "subtitulo_guion_vertical_linea_unica.json"
         )
 
 

@@ -26,16 +26,16 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 def _operational_key(component=ProfileComponent.VIDEO):
     return OperationalProfileKey(
         component=component,
-        platform="instagram",
-        profile_id=f"{component.value}_instagram",
+        platform="vertical",
+        profile_id=f"{component.value}_vertical",
     )
 
 
 def _subtitle_key(component=ProfileComponent.VIDEO):
     return SubtitleProfileKey(
         component=component,
-        platform="instagram",
-        profile_id=f"subtitulo_{component.value}_instagram_linea_unica",
+        platform="vertical",
+        profile_id=f"subtitulo_{component.value}_vertical_linea_unica",
         family="estandar",
     )
 
@@ -197,8 +197,8 @@ def test_adapter_constructs_operational_key_only_at_the_legacy_boundary():
             "visual_pipeline": "image",
             "script_source": "generated",
             "profile_component": "imagen",
-            "profile_platform": "instagram",
-            "profile_id": "imagen_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "imagen_vertical",
             "voice_config": "piper_davefx",
             "music_category": None,
             "overlays_mode": "",
@@ -242,8 +242,8 @@ def test_adapter_preserves_studio_plan_and_normalizes_legacy_paths_to_path():
             "studio_subtitle_path": "input/source.srt",
             "studio_music_path": "input/music.mp3",
             "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "studio_vertical",
             "project_name": "Studio",
             "clear_output": False,
         }
@@ -264,8 +264,8 @@ def test_adapter_ignores_design_target_and_carries_no_legacy_subtitle_fields():
             "script_source": "manual_design",
             "design_target": "image",
             "profile_component": "imagen",
-            "profile_platform": "instagram",
-            "profile_id": "imagen_instagram",
+            "profile_platform": "vertical",
+            "profile_id": "imagen_vertical",
             "project_name": "Diseño",
             "clear_output": False,
         }
@@ -294,8 +294,8 @@ def test_adapter_rejects_legacy_subtitle_string_and_multiple_studio_plans():
         "visual_pipeline": "video",
         "script_source": "generated",
         "profile_component": "video",
-        "profile_platform": "instagram",
-        "profile_id": "video_instagram",
+        "profile_platform": "vertical",
+        "profile_id": "video_vertical",
         "subtitle_profile_key": "word_by_word",
         "project_name": "Proyecto",
         "clear_output": False,
@@ -315,8 +315,8 @@ def test_adapter_rejects_legacy_subtitle_string_and_multiple_studio_plans():
                 "studio_video_audio_srt_plan": video_audio_plan,
                 "studio_intro_outro_plan": object(),
                 "profile_component": "studio",
-                "profile_platform": "instagram",
-                "profile_id": "studio_instagram",
+                "profile_platform": "vertical",
+                "profile_id": "studio_vertical",
                 "project_name": "Studio",
                 "clear_output": False,
             }

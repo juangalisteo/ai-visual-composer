@@ -341,7 +341,7 @@ class DirectI2VRequestTest(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "OperationalProfileKey"):
             DirectI2VRequest(
                 source_image=Path("source.png"),
-                profile_key="video_instagram",
+                profile_key="video_vertical",
                 output_dir=Path("output"),
                 output_stem="clip",
             )

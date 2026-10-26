@@ -24,32 +24,32 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 OPERATIONAL_PROFILE_IDS = {
-    (ProfileComponent.GUION, "instagram"): "guion_instagram",
-    (ProfileComponent.GUION, "youtube"): "guion_youtube",
-    (ProfileComponent.IMAGEN, "instagram"): "imagen_instagram",
-    (ProfileComponent.IMAGEN, "youtube"): "imagen_youtube",
-    (ProfileComponent.VIDEO, "instagram"): "video_instagram",
-    (ProfileComponent.VIDEO, "youtube"): "video_youtube",
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
 }
 
 WORD_BY_WORD_SUBTITLE_PROFILE_IDS = {
-    (ProfileComponent.GUION, "instagram"): (
-        "subtitulo_guion_instagram_palabra_por_palabra"
+    (ProfileComponent.GUION, "vertical"): (
+        "subtitulo_guion_vertical_palabra_por_palabra"
     ),
-    (ProfileComponent.GUION, "youtube"): (
-        "subtitulo_guion_youtube_palabra_por_palabra"
+    (ProfileComponent.GUION, "horizontal"): (
+        "subtitulo_guion_horizontal_palabra_por_palabra"
     ),
-    (ProfileComponent.IMAGEN, "instagram"): (
-        "subtitulo_imagen_instagram_palabra_por_palabra"
+    (ProfileComponent.IMAGEN, "vertical"): (
+        "subtitulo_imagen_vertical_palabra_por_palabra"
     ),
-    (ProfileComponent.IMAGEN, "youtube"): (
-        "subtitulo_imagen_youtube_palabra_por_palabra"
+    (ProfileComponent.IMAGEN, "horizontal"): (
+        "subtitulo_imagen_horizontal_palabra_por_palabra"
     ),
-    (ProfileComponent.VIDEO, "instagram"): (
-        "subtitulo_video_instagram_palabra_por_palabra"
+    (ProfileComponent.VIDEO, "vertical"): (
+        "subtitulo_video_vertical_palabra_por_palabra"
     ),
-    (ProfileComponent.VIDEO, "youtube"): (
-        "subtitulo_video_youtube_palabra_por_palabra"
+    (ProfileComponent.VIDEO, "horizontal"): (
+        "subtitulo_video_horizontal_palabra_por_palabra"
     ),
 }
 
@@ -63,7 +63,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     )
 
     EXPECTED = {
-        "instagram": {
+        "vertical": {
             "format": "vertical",
             "width": 1080,
             "height": 1920,
@@ -77,7 +77,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "audio_codec": "aac",
             "audio_bitrate": "192k",
         },
-        "youtube": {
+        "horizontal": {
             "format": "horizontal",
             "width": 1920,
             "height": 1080,
@@ -144,7 +144,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_video_loader_rejects_every_missing_critical_key(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         critical_paths = (
             ("video_style", "width"),
@@ -173,7 +173,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_visual_loaders_reject_missing_critical_keys(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         critical_paths = {
             "motion": (
@@ -218,7 +218,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_image_storyboard_and_builder_contracts_fail_fast(self):
         _, profile = self._profile(
             ProfileComponent.IMAGEN,
-            "instagram",
+            "vertical",
         )
         builder = ImageBuilder.__new__(ImageBuilder)
         storyboard = StoryboardBuilder.__new__(StoryboardBuilder)
@@ -250,7 +250,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_subtitle_render_style_rejects_missing_critical_keys(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         subtitle = self._subtitle_profile(profile_key, profile)
 
@@ -266,13 +266,13 @@ class RequiredProfileContractsTest(unittest.TestCase):
 
     def test_subtitle_cue_policy_rejects_missing_critical_keys(self):
         for style, subtitle_profile_id in (
-            ("single_line", "subtitulo_video_instagram_linea_unica"),
-            ("word_by_word", "subtitulo_video_instagram_palabra_por_palabra"),
+            ("single_line", "subtitulo_video_vertical_linea_unica"),
+            ("word_by_word", "subtitulo_video_vertical_palabra_por_palabra"),
         ):
             with self.subTest(style=style):
                 subtitle_key = SubtitleProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
+                    "vertical",
                     subtitle_profile_id,
                     "estandar",
                 )
@@ -357,7 +357,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
 
         _, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         self.assertEqual(
             7.5,

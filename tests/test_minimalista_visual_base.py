@@ -25,13 +25,13 @@ def _expected_primary_colour(render_style):
     )
 
 
-def test_instagram_minimalista_profiles_share_the_declared_visual_base():
+def test_vertical_minimalista_profiles_share_the_declared_visual_base():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
         descriptors = resolver.discover_profiles_for_family(
             component,
-            "instagram",
+            "vertical",
             "minimalista",
         )
         assert descriptors
@@ -50,14 +50,14 @@ def test_instagram_minimalista_profiles_share_the_declared_visual_base():
             ), profile.path
 
 
-def test_instagram_minimalista_and_karaoke_profiles_share_10_55_reference():
+def test_vertical_minimalista_and_karaoke_profiles_share_10_55_reference():
     resolver = SubtitleProfileResolver()
 
     for family in ("minimalista", "karaoke"):
         for component in ProfileComponent:
             descriptors = resolver.discover_profiles_for_family(
                 component,
-                "instagram",
+                "vertical",
                 family,
             )
             assert descriptors
