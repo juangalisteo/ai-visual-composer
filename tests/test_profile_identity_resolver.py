@@ -12,7 +12,7 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    coerce_profile_platform,
+    coerce_profile_format,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.operational_error import OperationalError
@@ -66,11 +66,11 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_resolves_complete_valid_matrix_exactly(self):
         for component in ProfileComponent:
-            for platform in ("horizontal", "vertical"):
+            for profile_format in ("horizontal", "vertical"):
                 profile_key = OperationalProfileKey(
                     component,
-                    platform,
-                    OPERATIONAL_PROFILE_IDS[(component, platform)],
+                    profile_format,
+                    OPERATIONAL_PROFILE_IDS[(component, profile_format)],
                 )
                 with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
@@ -90,16 +90,16 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             ("video", "horizontal", "unknown_profile"),
         )
 
-        for component, platform, profile_id in opaque_cases:
+        for component, profile_format, profile_id in opaque_cases:
             with self.subTest(
                 component=component,
-                platform=platform,
+                profile_format=profile_format,
                 profile_id=profile_id
             ):
-                key = OperationalProfileKey(component, platform, profile_id)
+                key = OperationalProfileKey(component, profile_format, profile_id)
                 self.assertEqual(profile_id, key.profile_id)
 
-    def test_rejects_unknown_component_and_invalid_platform(self):
+    def test_rejects_unknown_component_and_invalid_format(self):
         with self.assertRaisesRegex(
             ValueError,
             "Componente de perfil no soportado"
@@ -116,52 +116,52 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         ):
             OperationalProfileKey(
                 "video",
-                "Vertical Reels",
+                "formato invalido",
                 "video_vertical",
             )
 
-    def test_platform_is_a_normalized_technical_id(self):
-        self.assertEqual("vertical", coerce_profile_platform(" Vertical "))
-        self.assertEqual("horizontal", coerce_profile_platform("horizontal"))
-        self.assertEqual("test_platform", coerce_profile_platform("test_platform"))
+    def test_format_is_a_normalized_technical_id(self):
+        self.assertEqual("vertical", coerce_profile_format(" Vertical "))
+        self.assertEqual("horizontal", coerce_profile_format("horizontal"))
+        self.assertEqual("test_format", coerce_profile_format("test_format"))
         with self.assertRaises(ValueError):
-            coerce_profile_platform(None)
+            coerce_profile_format(None)
         with self.assertRaises(ValueError):
-            coerce_profile_platform("horizontal!")
+            coerce_profile_format("horizontal!")
 
-        key = OperationalProfileKey("guion", " Test_Platform ", "test_profile")
-        self.assertEqual("test_platform", key.platform)
-        self.assertFalse(hasattr(profile_identity, "ProfilePlatform"))
+        key = OperationalProfileKey("guion", " Test_Format ", "test_profile")
+        self.assertEqual("test_format", key.format)
+        self.assertFalse(hasattr(profile_identity, "ProfileFormat"))
 
-    def test_discover_platforms_uses_direct_structure_only(self):
+    def test_discover_formats_uses_direct_structure_only(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             component_root = root / "guion"
-            for name in ("horizontal", "vertical", "test_platform", "invalid platform"):
+            for name in ("horizontal", "vertical", "test_format", "invalid format"):
                 (component_root / name).mkdir(parents=True)
             (component_root / "ignored.json").write_text("{}", encoding="utf-8")
             resolver = ProfileResolver(root)
 
             self.assertEqual(
-                ("horizontal", "test_platform", "vertical"),
-                resolver.discover_platforms("guion"),
+                ("horizontal", "test_format", "vertical"),
+                resolver.discover_formats("guion"),
             )
-            (component_root / "test_platform").rmdir()
+            (component_root / "test_format").rmdir()
             self.assertEqual(
                 ("horizontal", "vertical"),
-                resolver.discover_platforms("guion"),
+                resolver.discover_formats("guion"),
             )
 
-    def test_run_controller_offers_discovered_platform_without_enum(self):
+    def test_run_controller_offers_discovered_format_without_enum(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "guion/test_platform/estandar/subtitulos/arbitrary_name.json"
+            path = root / "guion/test_format/estandar/subtitulos/arbitrary_name.json"
             path.parent.mkdir(parents=True)
             path.write_text(
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "test_platform",
+                        "format": "test_format",
                         "family": "estandar",
                     "profile_id": "test_profile",
                     "display_name": "Perfil de prueba",
@@ -171,12 +171,12 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (root / "guion/test_platform/perfil_guion_test_platform.json").write_text(
+            (root / "guion/test_format/perfil_guion_test_format.json").write_text(
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "test_platform",
-                        "profile_id": "guion_test_platform",
+                        "format": "test_format",
+                        "profile_id": "guion_test_format",
                         "display_name": "Perfil técnico",
                     }
                 ),
@@ -194,8 +194,8 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         printed = "\n".join(
             str(call.args[0]) for call in print_mock.call_args_list if call.args
         )
-        self.assertEqual("test_platform", selected["profile_key"].platform)
-        self.assertIn("Test Platform", printed)
+        self.assertEqual("test_format", selected["profile_key"].format)
+        self.assertIn("Test Format", printed)
 
     def test_missing_official_file_fails_without_legacy_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -228,7 +228,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "vertical",
+                        "format": "vertical",
                         "profile_id": "test_profile",
                     }
                 ),
@@ -255,7 +255,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "vertical",
+                        "format": "vertical",
                         "profile_id": "other_profile",
                     }
                 ),
@@ -265,7 +265,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "guion",
-                        "platform": "vertical",
+                        "format": "vertical",
                         "profile_id": "test_profile",
                     }
                 ),
@@ -283,7 +283,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                     json.dumps(
                         {
                             "component": "guion",
-                            "platform": "vertical",
+                            "format": "vertical",
                             "profile_id": "test_profile",
                         }
                     ),
@@ -305,7 +305,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "video",
-                        "platform": "vertical",
+                        "format": "vertical",
                         "profile_id": "test_profile",
                     }
                 ),
@@ -321,27 +321,26 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
     def _write_format_profile(self, root, profile_format, width, height):
-        target = root / "guion/vertical/test_profile.json"
+        target = root / "guion" / profile_format / "test_profile.json"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(
             json.dumps(
                 {
                     "component": "guion",
-                    "platform": "vertical",
-                    "profile_id": "test_profile",
                     "format": profile_format,
+                    "profile_id": "test_profile",
                     "video_style": {"width": width, "height": height},
                 }
             ),
             encoding="utf-8",
         )
-        return OperationalProfileKey("guion", "vertical", "test_profile")
+        return OperationalProfileKey("guion", profile_format, "test_profile")
 
     def test_load_operational_accepts_format_matching_video_style(self):
-        for (component, platform), profile_id in OPERATIONAL_PROFILE_IDS.items():
+        for (component, profile_format), profile_id in OPERATIONAL_PROFILE_IDS.items():
             with self.subTest(profile_id=profile_id):
                 self.resolver.load_operational(
-                    OperationalProfileKey(component, platform, profile_id)
+                    OperationalProfileKey(component, profile_format, profile_id)
                 )
 
         cases = (
@@ -412,7 +411,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             caught.exception.context.resource,
         )
 
-    def test_platform_resolution_never_crosses_platforms(self):
+    def test_format_resolution_never_crosses_formats(self):
         for component in ProfileComponent:
             vertical_key = OperationalProfileKey(
                 component, "vertical", f"{component.value}_vertical"
@@ -437,7 +436,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 horizontal_path.parts
             )
 
-    def test_design_subtitle_discovery_is_component_scoped_for_both_platforms(self):
+    def test_design_subtitle_discovery_is_component_scoped_for_both_formats(self):
         for component in ProfileComponent:
             with self.subTest(component=component.value):
                 designs = SubtitleProfileResolver().discover_profiles_for_family(
@@ -475,7 +474,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 self.assertEqual(1, len(horizontal_designs))
                 horizontal_key = horizontal_designs[0].key
                 self.assertEqual(component, horizontal_key.component)
-                self.assertEqual("horizontal", horizontal_key.platform)
+                self.assertEqual("horizontal", horizontal_key.format)
                 self.assertEqual("design", horizontal_key.family)
                 self.assertEqual(
                     "modo_conciencia_linea_unica",
@@ -609,10 +608,10 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 "video_horizontal",
             ),
         )
-        for component, platform, profile_id in cases:
+        for component, profile_format, profile_id in cases:
             with self.subTest(profile_id=profile_id):
                 profile_key = OperationalProfileKey(
-                    component, platform, profile_id,
+                    component, profile_format, profile_id,
                 )
                 self.assertEqual(
                     profile_id,
@@ -634,15 +633,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_config_manager_identity_matches_component_profile_files(self):
         for component in ProfileComponent:
-            for platform in ("horizontal", "vertical"):
+            for profile_format in ("horizontal", "vertical"):
                 with self.subTest(
                     component=component.value,
-                    platform=platform
+                    profile_format=profile_format
                 ):
                     profile_key = OperationalProfileKey(
                         component,
-                        platform,
-                        OPERATIONAL_PROFILE_IDS[(component, platform)],
+                        profile_format,
+                        OPERATIONAL_PROFILE_IDS[(component, profile_format)],
                     )
                     expected_profile = self.resolver.load_operational(
                         profile_key
@@ -668,15 +667,15 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_official_identity_does_not_require_profile_path_adapter(self):
         for component in ProfileComponent:
-            for platform in ("horizontal", "vertical"):
+            for profile_format in ("horizontal", "vertical"):
                 with self.subTest(
                     component=component.value,
-                    platform=platform
+                    profile_format=profile_format
                 ):
                     profile_key = OperationalProfileKey(
                         component,
-                        platform,
-                        OPERATIONAL_PROFILE_IDS[(component, platform)],
+                        profile_format,
+                        OPERATIONAL_PROFILE_IDS[(component, profile_format)],
                     )
                     profile = ConfigManager(
                         operational_profile_key=profile_key
@@ -772,7 +771,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             )
             self.assertEqual(
                 "vertical",
-                selected["profile_key"].platform
+                selected["profile_key"].format
             )
 
     def test_run_controller_selects_design_only_after_family_and_design_choice(self):
@@ -866,7 +865,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         )
         self.assertEqual(
             "vertical",
-            options["profile_platform"]
+            options["profile_format"]
         )
         self.assertEqual(
             "video_vertical",
@@ -877,7 +876,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_main_transports_only_structured_profile_identity(self):
         options = {
             "profile_component": "video",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "video_vertical",
             "voice_config": "femenina",
             "music_category": None,
@@ -929,7 +928,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         )
         options = {
             "profile_component": "imagen",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "imagen_vertical",
             "profile_family": "system",
             "subtitle_profile_key": subtitle_profile_key,

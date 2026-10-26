@@ -718,7 +718,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     self
                 ):
                     return {
-                        "platform": "vertical",
+                        "format": "vertical",
                         "builders": {
                             "script": True,
                             "voice": True,
@@ -1440,7 +1440,6 @@ def _video_profile(
 ):
     if name == "Horizontal":
         profile = {
-            "platform": "video",
             "format": "horizontal",
             "video_component": {
                 "profile": "Horizontal",
@@ -1464,7 +1463,6 @@ def _video_profile(
         return profile
 
     profile = {
-        "platform": "video",
         "format": "vertical",
         "video_component": {
             "profile": "Vertical",

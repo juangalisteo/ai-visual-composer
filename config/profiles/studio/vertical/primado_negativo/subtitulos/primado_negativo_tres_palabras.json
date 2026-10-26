@@ -1,6 +1,6 @@
 {
   "component": "studio",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "primado_negativo",
   "profile_id": "primado_negativo_tres_palabras",
   "display_name": "Primado Negativo | Tres palabras",

@@ -42,7 +42,7 @@ def test_generic_selector_discovers_independent_complete_keys_for_components(
             selected = controller._select_profile_identity(component)
 
         assert selected["profile_key"] == OperationalProfileKey(
-            component, "test_platform", "test_profile",
+            component, "test_format", "test_profile",
         )
         assert selected["path"] == _resolver(tmp_path).resolve_operational(
             selected["profile_key"],
@@ -84,7 +84,7 @@ def test_generic_selector_uses_the_explicit_operational_choice_not_display_name(
         selected = controller._select_profile_identity(ProfileComponent.GUION)
 
     assert selected["profile_key"] == OperationalProfileKey(
-        ProfileComponent.GUION, "test_platform", "test_profile_first",
+        ProfileComponent.GUION, "test_format", "test_profile_first",
     )
     assert selected["profile_key"].profile_id == "test_profile_first"
 
@@ -99,11 +99,11 @@ def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
 
     resolved = start._resolve_single_video_operational_key(
         _resolver(tmp_path),
-        "test_platform",
+        "test_format",
     )
 
     assert resolved == OperationalProfileKey(
-        ProfileComponent.VIDEO, "test_platform", "test_profile",
+        ProfileComponent.VIDEO, "test_format", "test_profile",
     )
 
 
@@ -111,7 +111,7 @@ def test_guion_video_bridge_rejects_missing_video_candidate(tmp_path):
     with pytest.raises(FileNotFoundError, match="perfil operacional VIDEO"):
         start._resolve_single_video_operational_key(
             _resolver(tmp_path),
-            "test_platform",
+            "test_format",
         )
 
 
@@ -132,7 +132,7 @@ def test_guion_video_bridge_rejects_ambiguous_video_candidates(tmp_path):
     with pytest.raises(ValueError, match="ambigua"):
         start._resolve_single_video_operational_key(
             _resolver(tmp_path),
-            "test_platform",
+            "test_format",
         )
 
 
@@ -150,13 +150,13 @@ def _resolver(root):
 def _write_operational_profile(root, component, profile_id, display_name):
     key = OperationalProfileKey(
         component,
-        "test_platform",
+        "test_format",
         profile_id,
     )
     path = (
         Path(root)
         / key.component.value
-        / key.platform
+        / key.format
         / f"{key.profile_id}.json"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,7 +164,7 @@ def _write_operational_profile(root, component, profile_id, display_name):
         json.dumps(
             {
                 "component": key.component.value,
-                "platform": key.platform,
+                "format": key.format,
                 "profile_id": key.profile_id,
                 "display_name": display_name,
             }
@@ -183,7 +183,7 @@ def _write_subtitle_profile(root, component, profile_id, family, display_name):
     data.update(
         {
             "component": component.value,
-            "platform": "test_platform",
+            "format": "test_format",
             "family": family,
             "profile_id": profile_id,
             "display_name": display_name,
@@ -191,14 +191,14 @@ def _write_subtitle_profile(root, component, profile_id, family, display_name):
     )
     key = SubtitleProfileKey(
         component,
-        "test_platform",
+        "test_format",
         profile_id,
         family,
     )
     path = (
         Path(root)
         / key.component.value
-        / key.platform
+        / key.format
         / key.family
         / "subtitulos"
         / f"{key.profile_id}.json"

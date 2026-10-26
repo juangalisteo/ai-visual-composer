@@ -127,7 +127,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                 return_value=StudioInputMode.INTRO_OUTRO.value,
             )
             controller._select_studio_operational_profile = Mock(
-                side_effect=lambda: selection_order.append("platform")
+                side_effect=lambda: selection_order.append("format")
                 or (profile_key, Mock()),
             )
             controller.select_studio_intro_outro_plan = Mock(
@@ -145,22 +145,22 @@ class StudioIntroOutroTest(unittest.TestCase):
         self.assertIs(plan, options["studio_intro_outro_plan"])
         self.assertNotIn("subtitle_config", options)
         self.assertNotIn("subtitle_profile_key", options)
-        self.assertEqual(profile_key.platform, options["profile_platform"])
+        self.assertEqual(profile_key.format, options["profile_format"])
         self.assertNotIn("SUBTÍTULOS", "\n".join(messages))
         subtitle_resolver.assert_not_called()
         controller.select_studio_intro_outro_plan.assert_called_once_with(
             profile_key,
         )
-        self.assertEqual(["platform", "intro_outro"], selection_order)
+        self.assertEqual(["format", "intro_outro"], selection_order)
 
     def test_operational_profile_discovery_does_not_use_subtitle_profiles(self):
         profile_key = OperationalProfileKey(
             "studio",
-            "test_platform",
+            "test_format",
             "test_profile",
         )
         profile_resolver = Mock()
-        profile_resolver.discover_platforms.return_value = ("test_platform",)
+        profile_resolver.discover_formats.return_value = ("test_format",)
         profile_resolver.discover_operational_profiles.return_value = (
             OperationalProfileDescriptor(
                 key=profile_key,
@@ -181,7 +181,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             studio_profile_loader=loader,
         )
         controller._print = Mock()
-        controller._select_from_list = Mock(return_value="test_platform")
+        controller._select_from_list = Mock(return_value="test_format")
 
         selected_key, selected_profile = controller._select_studio_operational_profile()
 
@@ -190,7 +190,7 @@ class StudioIntroOutroTest(unittest.TestCase):
         subtitle_resolver.assert_not_called()
         profile_resolver.discover_operational_profiles.assert_called_once_with(
             "studio",
-            "test_platform",
+            "test_format",
         )
 
     def test_intro_outro_execution_passes_no_subtitle_to_renderer(self):

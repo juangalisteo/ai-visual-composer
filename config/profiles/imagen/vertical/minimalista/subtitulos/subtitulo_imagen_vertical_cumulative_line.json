@@ -1,6 +1,6 @@
 {
     "component": "imagen",
-    "platform": "vertical",
+    "format": "vertical",
     "family": "minimalista",
     "profile_id": "subtitulo_imagen_vertical_cumulative_line",
     "display_name": "Palabra por palabra",

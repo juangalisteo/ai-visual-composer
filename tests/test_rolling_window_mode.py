@@ -315,7 +315,7 @@ def test_vertical_karaoke_rolling_window_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="vertical",
+            format="vertical",
             family="karaoke",
             profile_id=f"subtitulo_{component.value}_vertical_rolling_window",
         )

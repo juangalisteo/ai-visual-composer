@@ -1,6 +1,6 @@
 {
     "component": "imagen",
-    "platform": "vertical",
+    "format": "vertical",
     "family": "estandar",
     "profile_id": "subtitulo_imagen_vertical_dos_palabras",
     "display_name": "Dos palabras",

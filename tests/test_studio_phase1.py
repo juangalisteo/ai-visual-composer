@@ -107,17 +107,17 @@ class StudioPhase1Test(unittest.TestCase):
     def test_studio_subtitle_profiles_are_exact_and_independent(self):
         resolver = SubtitleProfileResolver()
         resolved = []
-        for platform in ("horizontal", "vertical"):
+        for profile_format in ("horizontal", "vertical"):
             profile_key = OperationalProfileKey(
-                "studio", platform, STUDIO_PROFILE_IDS[platform]
+                "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
             )
             for descriptor in resolver.discover_profiles_for_family(
-                "studio", platform, "estandar",
+                "studio", profile_format, "estandar",
             ):
                 profile = resolver.load(descriptor.key)
                 resolved.append(profile.path)
                 self.assertEqual(profile_key.component, profile.key.component)
-                self.assertEqual(profile_key.platform, profile.key.platform)
+                self.assertEqual(profile_key.format, profile.key.format)
         self.assertEqual(len(resolved), len(set(resolved)))
 
     def test_studio_subtitle_discovery_rejects_an_unregistered_future_mode(self):
@@ -127,7 +127,7 @@ class StudioPhase1Test(unittest.TestCase):
             subtitle_dir.mkdir(parents=True)
             data = {
                 "component": "studio",
-                "platform": "vertical",
+                "format": "vertical",
                 "family": "estandar",
                 "profile_id": "subtitulo_studio_vertical_cinematografico",
                 "display_name": "Cinematografico",
@@ -383,10 +383,10 @@ class StudioPhase1Test(unittest.TestCase):
             StudioProfileLoader().load(incomplete, self.profile_key)
 
     def test_video_extensions_accept_what_every_studio_mode_supports(self):
-        for platform in ("horizontal", "vertical"):
-            with self.subTest(platform=platform):
+        for profile_format in ("horizontal", "vertical"):
+            with self.subTest(profile_format=profile_format):
                 key = OperationalProfileKey(
-                    "studio", platform, f"studio_{platform}"
+                    "studio", profile_format, f"studio_{profile_format}"
                 )
                 profile = StudioProfileLoader().load(
                     ProfileResolver().load_operational(key),
@@ -421,7 +421,7 @@ class StudioPhase1Test(unittest.TestCase):
         )
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
-    def test_transition_duration_is_isolated_by_studio_platform(self):
+    def test_transition_duration_is_isolated_by_studio_format(self):
         horizontal_operational_key = OperationalProfileKey(
             "studio", "horizontal", "studio_horizontal"
         )
@@ -539,7 +539,7 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertIsNone(options["intro_outro_selection"])
         self.assertEqual(["input", "subtitle"], order)
 
-    def test_studio_profile_menu_lists_platforms_without_video_profile_label(self):
+    def test_studio_profile_menu_lists_formats_without_video_profile_label(self):
         with patch("builtins.input", side_effect=("2", "2", "1")), patch(
             "builtins.print"
         ) as print_mock:
@@ -558,7 +558,7 @@ class StudioPhase1Test(unittest.TestCase):
     def test_main_transports_studio_identity_without_resetting_output(self):
         options = {
             "profile_component": "studio",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,
@@ -599,7 +599,7 @@ class StudioPhase1Test(unittest.TestCase):
     def test_main_resets_output_for_studio_when_selected(self):
         options = {
             "profile_component": "studio",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,

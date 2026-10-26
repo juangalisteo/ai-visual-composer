@@ -332,7 +332,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
             options = {
                 "project_name": "montaje",
                 "profile_id": "studio_vertical",
-                "profile_platform": "vertical",
+                "profile_format": "vertical",
                 "studio_montage_plan": plan,
             }
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
@@ -362,7 +362,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
             options = {
                 "project_name": "montaje",
                 "profile_id": "studio_vertical",
-                "profile_platform": "vertical",
+                "profile_format": "vertical",
                 "studio_montage_plan": plan,
             }
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:

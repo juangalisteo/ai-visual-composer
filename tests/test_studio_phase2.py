@@ -46,7 +46,7 @@ STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS = {
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -458,7 +458,7 @@ class StudioPhase2Test(unittest.TestCase):
                 self.assertFalse(output_path.exists())
                 self.assertFalse(root.joinpath("result.rendering.mp4").exists())
 
-    def test_profile_and_subtitle_platforms_cannot_cross(self):
+    def test_profile_and_subtitle_formats_cannot_cross(self):
         horizontal_subtitles = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
@@ -557,16 +557,16 @@ class StudioPhase2Test(unittest.TestCase):
 )
 class StudioPhase2RealFFmpegTest(unittest.TestCase):
 
-    def _profile(self, platform="vertical"):
+    def _profile(self, profile_format="vertical"):
         key = OperationalProfileKey(
-            "studio", platform, STUDIO_PROFILE_IDS[platform]
+            "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
         )
         profile = _load_studio_profile(key)
         subtitles = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                platform,
-                STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS[platform],
+                profile_format,
+                STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS[profile_format],
                 "estandar",
             )
         )

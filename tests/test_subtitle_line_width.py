@@ -51,9 +51,9 @@ def _subtitle_profiles():
     return sorted(PROFILES_ROOT.glob("*/*/*/subtitulos/*.json"))
 
 
-def _frame_size(component, platform):
+def _frame_size(component, profile_format):
     sizes = set()
-    for path in (PROFILES_ROOT / component / platform).glob("*.json"):
+    for path in (PROFILES_ROOT / component / profile_format).glob("*.json"):
         profile = json.loads(path.read_text(encoding="utf-8"))
         for section in (
             profile.get("video_style"),
@@ -61,7 +61,7 @@ def _frame_size(component, platform):
         ):
             if section and "width" in section and "height" in section:
                 sizes.add((section["width"], section["height"]))
-    assert len(sizes) == 1, (component, platform, sizes)
+    assert len(sizes) == 1, (component, profile_format, sizes)
     return sizes.pop()
 
 
@@ -123,7 +123,7 @@ def _effect_extra(style, font, line):
 
 def _widest_line(path):
     profile = json.loads(path.read_text(encoding="utf-8"))
-    width, height = _frame_size(profile["component"], profile["platform"])
+    width, height = _frame_size(profile["component"], profile["format"])
     style = SubtitleConfigLoader().load_render_style(profile["render_style"])
     if SubtitleRenderBackendResolver().resolve(style) is SubtitleRenderBackend.DYNAMIC:
         style = AssVisualScaleNormalizer().normalize(style, width, height)

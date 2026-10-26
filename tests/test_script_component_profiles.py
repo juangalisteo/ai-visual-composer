@@ -168,7 +168,7 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             "horizontal",
-            profile["platform"]
+            profile["format"]
         )
         self.assertEqual(
             "horizontal",

@@ -9,13 +9,13 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 def _write_operational_profile(root):
-    path = root / "guion" / "test_platform" / "profile.json"
+    path = root / "guion" / "test_format" / "profile.json"
     path.parent.mkdir(parents=True)
     path.write_text(
         json.dumps(
             {
                 "component": "guion",
-                "platform": "test_platform",
+                "format": "test_format",
                 "profile_id": "test_profile",
                 "display_name": "Test profile",
             }
@@ -28,7 +28,7 @@ def _write_operational_profile(root):
 def test_operational_resolver_exposes_only_canonical_operational_apis(tmp_path):
     path = _write_operational_profile(tmp_path)
     resolver = ProfileResolver(tmp_path)
-    key = OperationalProfileKey("guion", "test_platform", "test_profile")
+    key = OperationalProfileKey("guion", "test_format", "test_profile")
 
     assert resolver.resolve_operational(key) == path
     assert resolver.load_operational(key)["profile_id"] == "test_profile"
@@ -41,7 +41,7 @@ def test_operational_resolver_rejects_family_bearing_legacy_key(tmp_path):
 
     with pytest.raises(TypeError, match="OperationalProfileKey"):
         ProfileResolver(tmp_path).resolve_operational(
-            SubtitleProfileKey("guion", "test_platform", "test_profile", "test_family")
+            SubtitleProfileKey("guion", "test_format", "test_profile", "test_family")
         )
 
 

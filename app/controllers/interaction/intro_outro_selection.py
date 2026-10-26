@@ -29,7 +29,7 @@ class IntroOutroSelector:
             return selector(items)
         return self._terminal.select_from_list(items, self._on_cancel)
 
-    def select_intro_outro(self, platform, writer=None, selector=None):
+    def select_intro_outro(self, profile_format, writer=None, selector=None):
         modes = ("none", "intro", "outro", "both")
         self._write("\nINTRO / OUTRO\n", writer)
         self._write("1. NINGUNO", writer)
@@ -43,13 +43,13 @@ class IntroOutroSelector:
         intro = None
         outro = None
         if mode in {"intro", "both"}:
-            assets = self.require_assets(platform, "intro")
+            assets = self.require_assets(profile_format, "intro")
             intro = IntroOutroSelection(
                 self.select_asset(assets, "INTRO", writer, selector),
                 "intro",
             )
         if mode in {"outro", "both"}:
-            assets = self.require_assets(platform, "outro")
+            assets = self.require_assets(profile_format, "outro")
             outro = IntroOutroSelection(
                 self.select_asset(assets, "OUTRO", writer, selector),
                 "outro",
@@ -58,18 +58,18 @@ class IntroOutroSelector:
 
     def select_studio_intro_outro(self, profile_key, writer=None, selector=None):
         return self.select_intro_outro(
-            profile_key.platform,
+            profile_key.format,
             writer=writer,
             selector=selector,
         )
 
-    def require_assets(self, platform, position):
-        assets = self._intro_outro_catalog.discover(platform, position)
+    def require_assets(self, profile_format, position):
+        assets = self._intro_outro_catalog.discover(profile_format, position)
         if not assets:
             raise FileNotFoundError(
                 "No hay archivos MP4 disponibles para "
                 f"{position.upper()} en assets/videos/intro_outro/"
-                f"{platform}/{position}/."
+                f"{profile_format}/{position}/."
             )
         return assets
 

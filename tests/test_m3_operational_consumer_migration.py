@@ -16,13 +16,13 @@ class _OperationalResolver:
     def __init__(self, key):
         self.key = key
 
-    def discover_platforms(self, component):
+    def discover_formats(self, component):
         assert component is self.key.component
-        return (self.key.platform,)
+        return (self.key.format,)
 
-    def discover_operational_profiles(self, component, platform):
+    def discover_operational_profiles(self, component, profile_format):
         assert component is self.key.component
-        assert platform == self.key.platform
+        assert profile_format == self.key.format
         return (
             OperationalProfileDescriptor(
                 key=self.key,
@@ -58,7 +58,7 @@ def test_explicit_operational_key_is_returned_as_the_same_object():
 
 
 def test_m3_run_controller_selects_operational_key_without_family():
-    key = OperationalProfileKey("imagen", "test_platform", "test_profile")
+    key = OperationalProfileKey("imagen", "test_format", "test_profile")
     controller = RunController(profile_resolver=_OperationalResolver(key))
     controller._select_from_list = lambda values: tuple(values)[0]
     controller._print = lambda _message: None
@@ -100,5 +100,5 @@ def test_m3_wan_loader_remains_dedicated_but_accepts_operational_identity():
 
     assert document["kind"] == "video_component"
     assert document["operational_profile_id"] == key.profile_id
-    assert document["platform"] == key.platform
+    assert document["format"] == key.format
     assert "video_component" in document

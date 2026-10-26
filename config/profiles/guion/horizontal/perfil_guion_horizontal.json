@@ -1,6 +1,5 @@
 {
     "component": "guion",
-    "platform": "horizontal",
     "profile_id": "guion_horizontal",
     "format": "horizontal",
     "tone": "modo_conciencia",

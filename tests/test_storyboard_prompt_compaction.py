@@ -197,7 +197,6 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
     def _profile(self):
         return {
             "tone": "modo_conciencia",
-            "platform": "vertical",
             "format": "vertical",
             "video_style": {
                 "storyboard": {

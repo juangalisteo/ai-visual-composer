@@ -47,7 +47,7 @@ STUDIO_STANDARD_SUBTITLE_PROFILE_IDS = {
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -88,12 +88,12 @@ class StudioFinalContractTest(unittest.TestCase):
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()
 
-        for platform, profile_id, dimensions in (
+        for profile_format, profile_id, dimensions in (
             ("vertical", "studio_vertical", (1080, 1920)),
             ("horizontal", "studio_horizontal", (1920, 1080)),
         ):
-            with self.subTest(platform=platform):
-                key = OperationalProfileKey("studio", platform, profile_id)
+            with self.subTest(profile_format=profile_format):
+                key = OperationalProfileKey("studio", profile_format, profile_id)
                 profile = _load_studio_profile(key)
                 self.assertEqual(dimensions, (profile.width, profile.height))
                 self.assertEqual(30, profile.fps)
@@ -105,7 +105,7 @@ class StudioFinalContractTest(unittest.TestCase):
                     profile.audio_channels,
                 ))
                 descriptors = resolver.discover_profiles_for_family(
-                    "studio", platform, "estandar",
+                    "studio", profile_format, "estandar",
                 )
                 self.assertTrue(descriptors)
                 for descriptor in descriptors:
@@ -188,16 +188,16 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
     def _run(command):
         subprocess.run(command, capture_output=True, check=True)
 
-    def _context(self, platform, style="single_line"):
+    def _context(self, profile_format, style="single_line"):
         key = OperationalProfileKey(
-            "studio", platform, STUDIO_PROFILE_IDS[platform]
+            "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
         )
         profile = _load_studio_profile(key)
         subtitle = SubtitleProfileResolver().load(
             SubtitleProfileKey(
                 "studio",
-                platform,
-                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[(platform, style)],
+                profile_format,
+                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[(profile_format, style)],
                 "estandar",
             )
         )
@@ -360,7 +360,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
     def _render(
         self,
         root,
-        platform,
+        profile_format,
         duration,
         style="single_line",
         source_audio=True,
@@ -369,7 +369,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         outro=False,
         special_names=False,
     ):
-        key, profile, subtitle_profile = self._context(platform, style)
+        key, profile, subtitle_profile = self._context(profile_format, style)
         source_name = "Vídeo prueba (01).mp4" if special_names else "source.mp4"
         subtitle_name = (
             "Subtítulos vídeo 01.srt" if special_names else "source.srt"

@@ -1,6 +1,6 @@
 {
     "component": "studio",
-    "platform": "vertical",
+    "format": "vertical",
     "family": "estandar",
     "profile_id": "subtitulo_studio_vertical_dos_palabras",
     "display_name": "Dos palabras",

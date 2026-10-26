@@ -13,7 +13,7 @@ def _canonical_operational_identity(profile_key):
     """M1 target contract: subtitle family is not operational identity."""
     return (
         profile_key.component.value,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
 
@@ -29,16 +29,16 @@ def test_m1_canonical_operational_identity_excludes_legacy_family():
 
 def test_m1_root_operational_document_uses_canonical_discovery_only(tmp_path):
     path = (
-        tmp_path / "guion" / "test_platform"
-        / "perfil_guion_test_platform.json"
+        tmp_path / "guion" / "test_format"
+        / "perfil_guion_test_format.json"
     )
     path.parent.mkdir(parents=True)
     path.write_text(
         json.dumps(
             {
                 "component": "guion",
-                "platform": "test_platform",
-                "profile_id": "guion_test_platform",
+                "format": "test_format",
+                "profile_id": "guion_test_format",
                 "display_name": "Technical test profile",
             }
         ),
@@ -47,7 +47,7 @@ def test_m1_root_operational_document_uses_canonical_discovery_only(tmp_path):
 
     resolver = ProfileResolver(tmp_path)
 
-    assert resolver.discover_operational_profiles("guion", "test_platform")[0].path == path
+    assert resolver.discover_operational_profiles("guion", "test_format")[0].path == path
     assert not hasattr(resolver, "discover_families")
 
 
@@ -60,14 +60,14 @@ def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
     data.update(
         {
             "component": "guion",
-            "platform": "test_platform",
+            "format": "test_format",
             "family": "test_family",
             "profile_id": "test_profile",
             "display_name": "Technical test subtitle",
         }
     )
     path = (
-        tmp_path / "guion" / "test_platform" / "test_family"
+        tmp_path / "guion" / "test_format" / "test_family"
         / "subtitulos" / "test_profile.json"
     )
     path.parent.mkdir(parents=True)
@@ -75,14 +75,14 @@ def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
 
     resolver = SubtitleProfileResolver(tmp_path)
 
-    assert resolver.discover_families("guion", "test_platform") == (
+    assert resolver.discover_families("guion", "test_format") == (
         "test_family",
     )
     descriptor = resolver.discover_profiles_for_family(
-        "guion", "test_platform", "test_family",
+        "guion", "test_format", "test_family",
     )[0]
     assert descriptor.key == SubtitleProfileKey(
-        "guion", "test_platform", "test_profile", "test_family",
+        "guion", "test_format", "test_profile", "test_family",
     )
     assert resolver.load(descriptor.key).path == path
 
@@ -133,7 +133,7 @@ def test_m1_wan_i2v_remains_outside_operational_profile_contract():
 
     assert document["kind"] == "video_component"
     assert document["operational_profile_id"] == video_key.profile_id
-    assert document["platform"] == video_key.platform
+    assert document["format"] == video_key.format
     assert "video_component" in document
     assert "component" not in document
     assert "family" not in document

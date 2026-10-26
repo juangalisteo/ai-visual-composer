@@ -241,7 +241,7 @@ class SubtitlePunctuationTest(unittest.TestCase):
             subtitle_profile = resolver.load(
                 SubtitleProfileKey(
                     component=data["component"],
-                    platform=data["platform"],
+                    format=data["format"],
                     family=data["family"],
                     profile_id=data["profile_id"],
                 )

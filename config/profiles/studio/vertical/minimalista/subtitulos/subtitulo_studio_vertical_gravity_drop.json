@@ -1,6 +1,6 @@
 {
   "component": "studio",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "minimalista",
   "profile_id": "subtitulo_studio_vertical_gravity_drop",
   "display_name": "Caída de palabras",

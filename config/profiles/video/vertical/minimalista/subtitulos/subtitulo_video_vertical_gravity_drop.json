@@ -1,6 +1,6 @@
 {
   "component": "video",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "minimalista",
   "profile_id": "subtitulo_video_vertical_gravity_drop",
   "display_name": "Caída de palabras",

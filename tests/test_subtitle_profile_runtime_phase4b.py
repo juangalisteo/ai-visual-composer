@@ -46,7 +46,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         ProfileComponent.IMAGEN,
         ProfileComponent.VIDEO,
     )
-    PLATFORMS = ("horizontal", "vertical")
+    FORMATS = ("horizontal", "vertical")
     STYLES = ("single_line", "word_by_word")
     PROFILE_IDS = {
         (ProfileComponent.GUION, "vertical", "single_line"):
@@ -83,13 +83,13 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         resolved_paths = set()
         profile_ids = set()
 
-        for component, platform, style in self._cases():
-            key = self._key(component, platform, style)
+        for component, profile_format, style in self._cases():
+            key = self._key(component, profile_format, style)
             resolved = self.subtitle_resolver.load(key)
 
             with self.subTest(profile_id=key.profile_id):
                 self.assertEqual(
-                    self._expected_path(component, platform, style),
+                    self._expected_path(component, profile_format, style),
                     resolved.path
                 )
                 self.assertEqual(key, resolved.key)
@@ -162,11 +162,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     self.assertEqual("design", subtitle.key.family)
                     self.assertEqual(descriptor.mode, subtitle.cue_policy["mode"])
 
-    def test_rejects_invalid_component_platform_and_profile_id(self):
+    def test_rejects_invalid_component_format_and_profile_id(self):
         with self.assertRaisesRegex(ValueError, "Componente"):
             SubtitleProfileKey(
                 component="design",
-                platform="vertical",
+                format="vertical",
                 profile_id="invalid",
                 family="estandar",
             )
@@ -174,7 +174,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Plataforma"):
             SubtitleProfileKey(
                 component="video",
-                platform="vertical reels",
+                format="formato invalido",
                 profile_id="invalid",
                 family="estandar",
             )
@@ -182,7 +182,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "profile_id"):
             SubtitleProfileKey(
                 component="video",
-                platform="vertical",
+                format="vertical",
                 profile_id="invalid profile",
                 family="estandar",
             )
@@ -190,7 +190,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
     def test_accepts_opaque_subtitle_profile_id(self):
         key = SubtitleProfileKey(
             component="video",
-            platform="vertical",
+            format="vertical",
             profile_id="test_profile",
             family="estandar",
         )
@@ -210,14 +210,14 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     "vertical",
                 ),
             )
-            for component, platform in alternatives:
-                alternative_key = self._key(component, platform, "single_line")
+            for component, profile_format in alternatives:
+                alternative_key = self._key(component, profile_format, "single_line")
                 alternative_path = root / alternative_key.relative_path
                 alternative_path.parent.mkdir(parents=True)
                 alternative_path.write_text(
                     self._expected_path(
                         component,
-                        platform,
+                        profile_format,
                         "single_line"
                     ).read_text(encoding="utf-8"),
                     encoding="utf-8"
@@ -268,7 +268,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             data = self._load(
                 self._expected_path(
                     key.component,
-                    key.platform,
+                    key.format,
                     "word_by_word",
                 )
             )
@@ -285,13 +285,13 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
     def test_official_config_manager_never_loads_legacy_subtitle_json(self):
-        for component, platform, style in self._cases():
+        for component, profile_format, style in self._cases():
             with self.subTest(
                 component=component.value,
-                platform=platform,
+                profile_format=profile_format,
                 style=style
             ):
-                manager = self._config_manager(component, platform)
+                manager = self._config_manager(component, profile_format)
                 with patch.object(
                     manager,
                     "load_json",
@@ -300,11 +300,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     )
                 ):
                     resolved = manager.get_subtitle_profile_by_key(
-                        self._key(component, platform, style)
+                        self._key(component, profile_format, style)
                     )
 
             self.assertEqual(
-                self._expected_path(component, platform, style),
+                self._expected_path(component, profile_format, style),
                 resolved.path
             )
 
@@ -313,17 +313,17 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
             font_manager=_FontManager()
         )
 
-        for component, platform, style in self._cases():
-            config = self._config_manager(component, platform)
+        for component, profile_format, style in self._cases():
+            config = self._config_manager(component, profile_format)
             main_profile = self.profile_resolver.load_operational(
                 OperationalProfileKey(
                     component,
-                    platform,
-                    f"{component.value}_{platform}",
+                    profile_format,
+                    f"{component.value}_{profile_format}",
                 )
             )
             expected_profile = self._load(
-                self._expected_path(component, platform, style)
+                self._expected_path(component, profile_format, style)
             )
             expected_cue = expected_profile["cue_policy"]
             expected_render = expected_profile["render_style"]
@@ -331,11 +331,11 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
             with self.subTest(
                 component=component.value,
-                platform=platform,
+                profile_format=profile_format,
                 style=style
             ):
                 resolved = config.get_subtitle_profile_by_key(
-                    self._key(component, platform, style)
+                    self._key(component, profile_format, style)
                 )
                 optimizer = SrtOptimizer(
                     subtitle_profile=resolved,
@@ -430,43 +430,43 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
     def _cases(self):
         for component in self.COMPONENTS:
-            for platform in self.PLATFORMS:
+            for profile_format in self.FORMATS:
                 for style in self.STYLES:
-                    yield component, platform, style
+                    yield component, profile_format, style
 
     def _config_manager(
         self,
         component,
-        platform
+        profile_format
     ):
         return ConfigManager(
             operational_profile_key=OperationalProfileKey(
                 component,
-                platform,
-                f"{component.value}_{platform}",
+                profile_format,
+                f"{component.value}_{profile_format}",
             )
         )
 
     def _key(
         self,
         component,
-        platform,
+        profile_format,
         style
     ):
         return SubtitleProfileKey(
             component=component,
-            platform=platform,
-            profile_id=self.PROFILE_IDS[(component, platform, style)],
+            format=profile_format,
+            profile_id=self.PROFILE_IDS[(component, profile_format, style)],
             family="estandar",
         )
 
     def _expected_path(
         self,
         component,
-        platform,
+        profile_format,
         style
     ):
-        key = self._key(component, platform, style)
+        key = self._key(component, profile_format, style)
         return Path("config/profiles") / key.relative_path
 
     def _assert_model_equivalent(

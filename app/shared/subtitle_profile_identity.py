@@ -5,7 +5,7 @@ import re
 from app.shared.profile_identity import (
     ProfileComponent,
     coerce_profile_component,
-    coerce_profile_platform,
+    coerce_profile_format,
     coerce_profile_family,
 )
 
@@ -13,7 +13,7 @@ from app.shared.profile_identity import (
 @dataclass(frozen=True)
 class SubtitleProfileKey:
     component: ProfileComponent
-    platform: str
+    format: str
     profile_id: str
     family: str
 
@@ -21,8 +21,8 @@ class SubtitleProfileKey:
         component = coerce_profile_component(
             self.component
         )
-        platform = coerce_profile_platform(
-            self.platform
+        profile_format = coerce_profile_format(
+            self.format
         )
         family = coerce_profile_family(self.family)
         profile_id = str(
@@ -38,13 +38,13 @@ class SubtitleProfileKey:
             )
 
         object.__setattr__(self, "component", component)
-        object.__setattr__(self, "platform", platform)
+        object.__setattr__(self, "format", profile_format)
         object.__setattr__(self, "profile_id", profile_id)
         object.__setattr__(self, "family", family)
 
     @property
     def relative_path(self):
-        return Path(self.component.value) / self.platform / self.family / "subtitulos" / f"{self.profile_id}.json"
+        return Path(self.component.value) / self.format / self.family / "subtitulos" / f"{self.profile_id}.json"
 
 
 @dataclass(frozen=True)
@@ -71,5 +71,5 @@ class SubtitleProfileDescriptor:
         return self.key.component
 
     @property
-    def platform(self):
-        return self.key.platform
+    def format(self):
+        return self.key.format

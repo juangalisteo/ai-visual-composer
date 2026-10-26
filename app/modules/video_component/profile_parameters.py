@@ -56,7 +56,7 @@ def build_video_backend_overrides(profile):
             video_component.get(
                 "profile",
                 profile.get(
-                    "platform",
+                    "format",
                     ""
                 )
             )

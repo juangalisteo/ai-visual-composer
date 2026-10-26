@@ -145,7 +145,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
             result = StudioMontageRenderResult(montage, rendered)
             options = {
                 "project_name": "demo", "profile_id": "studio_vertical",
-                "profile_platform": "vertical", "studio_montage_plan": plan,
+                "profile_format": "vertical", "studio_montage_plan": plan,
                 "studio_music_path": None, "intro_outro_selection": None,
             }
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:

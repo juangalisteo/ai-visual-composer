@@ -66,7 +66,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 )
                 key = SubtitleProfileKey(
                     component=component,
-                    platform="vertical",
+                    format="vertical",
                     family="estandar",
                     profile_id=profile_id,
                 )
@@ -99,7 +99,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 )
                 key = SubtitleProfileKey(
                     component=component,
-                    platform="vertical",
+                    format="vertical",
                     family="estandar",
                     profile_id=profile_id,
                 )
@@ -128,7 +128,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
                 )
                 key = SubtitleProfileKey(
                     component=component,
-                    platform="vertical",
+                    format="vertical",
                     family="estandar",
                     profile_id=profile_id,
                 )
@@ -151,18 +151,18 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         resolver = SubtitleProfileResolver()
 
         for component in ProfileComponent:
-            for platform in ("horizontal", "vertical"):
+            for profile_format in ("horizontal", "vertical"):
                 with self.subTest(
                     component=component.value,
-                    platform=platform,
+                    profile_format=profile_format,
                 ):
                     descriptors = resolver.discover_profiles_for_family(
-                        component, platform, "estandar",
+                        component, profile_format, "estandar",
                     )
 
                     word_by_word_name = (
                         "Palabra única"
-                        if platform == "vertical"
+                        if profile_format == "vertical"
                         else "Palabra por palabra"
                     )
                     self.assertTrue(
@@ -229,7 +229,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             )
             selected, original = controller._select_studio_subtitle_profile(
                 StudioInputMode.SRT_VIDEO.value,
-                platform="vertical",
+                profile_format="vertical",
             )
 
             self.assertEqual(by_id[custom_id].key, selected)
@@ -290,7 +290,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         controller._select_from_list = Mock(side_effect=("design", descriptor))
         selected, original = controller._select_studio_subtitle_profile(
             StudioInputMode.SRT_VIDEO.value,
-            platform="horizontal",
+            profile_format="horizontal",
         )
 
         self.assertEqual(descriptor.key, selected)

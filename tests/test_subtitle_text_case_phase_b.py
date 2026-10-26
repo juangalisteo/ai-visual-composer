@@ -56,13 +56,13 @@ def test_design_and_standard_profiles_use_the_common_policy_without_original_pat
     resolver = SubtitleProfileResolver()
     standard = resolver.load(SubtitleProfileKey(
         component="guion",
-        platform="vertical",
+        format="vertical",
         family="estandar",
         profile_id="subtitulo_guion_vertical_linea_unica",
     ))
     design = resolver.load(SubtitleProfileKey(
         component="studio",
-        platform="vertical",
+        format="vertical",
         family="design",
         profile_id="modo_conciencia_palabra_unica",
     ))

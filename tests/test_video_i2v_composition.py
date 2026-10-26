@@ -80,7 +80,7 @@ class I2VCompositionTest(unittest.TestCase):
         self.assertEqual(
             {
                 "component": "video",
-                "platform": "vertical",
+                "format": "vertical",
                 "profile_id": "video_vertical",
                 "path": str(
                     ProfileResolver().resolve_operational(profile_key)

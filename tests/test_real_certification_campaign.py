@@ -481,8 +481,7 @@ class RealCertificationCampaignTest(unittest.TestCase):
             config = RealImageRunnerConfig(
                 campaign_id="explicit_profile",
                 base_output_dir=root / "certification",
-                platform="horizontal",
-                image_format="horizontal",
+                format="horizontal",
                 image_width=640,
                 image_height=360,
                 workflow_path=root / "workflow.json",
@@ -541,7 +540,6 @@ class RealCertificationCampaignTest(unittest.TestCase):
             self.assertTrue(
                 injected_profile["visual_director"]["enabled"]
             )
-            self.assertEqual("horizontal", injected_profile["platform"])
             self.assertEqual("horizontal", injected_profile["format"])
             self.assertEqual("640x360", injected_profile["resolution"])
             self.assertEqual(
@@ -582,7 +580,6 @@ class RealCertificationCampaignTest(unittest.TestCase):
 
         self.assertEqual(
             {
-                "platform": "horizontal",
                 "format": "horizontal",
                 "resolution": "1920x1080",
                 "video_style": {

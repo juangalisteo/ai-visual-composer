@@ -115,7 +115,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             tuple(clip.original_name for clip in plan.clips),
         )
         self.assertEqual((1, 3, 2), tuple(clip.temporary_id for clip in plan.clips))
-        self.assertEqual("vertical", plan.platform)
+        self.assertEqual("vertical", plan.format)
         self.assertEqual("studio_vertical", plan.profile_id)
         self.assertTrue(plan.transitions_enabled)
 
@@ -135,7 +135,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 service.parse_order("1 2", service.discover(self.profile)),
             )
 
-        self.assertEqual("horizontal", plan.platform)
+        self.assertEqual("horizontal", plan.format)
         self.assertEqual("studio_horizontal", plan.profile_id)
 
     def test_parser_requires_multiple_clips_and_accepts_large_selection(self):
@@ -343,7 +343,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             )
             options = {
                 "profile_component": "studio",
-                "profile_platform": "vertical",
+                "profile_format": "vertical",
                 "profile_id": "studio_vertical",
                 "voice_config": "",
                 "music_category": None,

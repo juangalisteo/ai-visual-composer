@@ -39,12 +39,12 @@ def test_current_subtitle_catalog_remains_discoverable_and_resolvable():
         data = json.loads(path.read_text(encoding="utf-8"))
         key = SubtitleProfileKey(
             component=ProfileComponent(data["component"]),
-            platform=data["platform"],
+            format=data["format"],
             family=data["family"],
             profile_id=data["profile_id"],
         )
         descriptors = resolver.discover_profiles_for_family(
-            key.component, key.platform, key.family,
+            key.component, key.format, key.family,
         )
 
         assert key in {descriptor.key for descriptor in descriptors}

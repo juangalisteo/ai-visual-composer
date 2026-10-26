@@ -1,6 +1,6 @@
 {
   "component": "studio",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "design",
   "profile_id": "modo_conciencia_palabra_unica",
   "display_name": "Modo Conciencia | Palabra única",

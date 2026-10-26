@@ -18,7 +18,7 @@ def coerce_profile_component(value):
     )
 
 
-def coerce_profile_platform(value):
+def coerce_profile_format(value):
     if not isinstance(value, str):
         raise ValueError(
             f"Plataforma de perfil no soportado: {value}"
@@ -68,12 +68,12 @@ class OperationalProfileKey:
     """
 
     component: ProfileComponent
-    platform: str
+    format: str
     profile_id: str
 
     def __post_init__(self):
         component = coerce_profile_component(self.component)
-        platform = coerce_profile_platform(self.platform)
+        profile_format = coerce_profile_format(self.format)
         if not isinstance(self.profile_id, str):
             raise ValueError("profile_id invalido: debe ser texto.")
         profile_id = self.profile_id.strip().lower()
@@ -83,5 +83,5 @@ class OperationalProfileKey:
                 f"seguro, se recibio {self.profile_id}"
             )
         object.__setattr__(self, "component", component)
-        object.__setattr__(self, "platform", platform)
+        object.__setattr__(self, "format", profile_format)
         object.__setattr__(self, "profile_id", profile_id)

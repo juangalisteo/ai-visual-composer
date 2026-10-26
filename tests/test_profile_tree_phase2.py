@@ -102,7 +102,7 @@ class ProfileTreePhase2Test(unittest.TestCase):
                 path = self.COMPONENT_PATHS[profile_id]
                 data = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual(expected[0], data["component"])
-                self.assertEqual(expected[1], data["platform"])
+                self.assertEqual(expected[1], data["format"])
                 self.assertEqual(expected[2], data["profile_id"])
 
     def test_component_profiles_can_diverge_independently(self):
@@ -122,7 +122,7 @@ class ProfileTreePhase2Test(unittest.TestCase):
             self.assertNotEqual(image_copy.read_bytes(), video_copy.read_bytes())
             self.assertEqual(original_video, video_copy.read_bytes())
 
-    def test_platform_profiles_can_diverge_independently(self):
+    def test_format_profiles_can_diverge_independently(self):
         vertical_source = self.COMPONENT_PATHS["imagen_vertical"]
         horizontal_source = self.COMPONENT_PATHS["imagen_horizontal"]
 
@@ -146,11 +146,11 @@ class ProfileTreePhase2Test(unittest.TestCase):
         resolver = ProfileResolver()
 
         for component in ProfileComponent:
-            for platform in ("horizontal", "vertical"):
+            for profile_format in ("horizontal", "vertical"):
                 profile_key = OperationalProfileKey(
                     component,
-                    platform,
-                    f"{component.value}_{platform}",
+                    profile_format,
+                    f"{component.value}_{profile_format}",
                 )
                 with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
@@ -161,13 +161,13 @@ class ProfileTreePhase2Test(unittest.TestCase):
     def test_profile_resolver_uses_component_scoped_wan_paths(self):
         resolver = ProfileResolver()
 
-        for platform, expected_path in self.WAN_PATHS.items():
+        for profile_format, expected_path in self.WAN_PATHS.items():
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                platform,
-                f"video_{platform}",
+                profile_format,
+                f"video_{profile_format}",
             )
-            with self.subTest(platform=platform):
+            with self.subTest(profile_format=profile_format):
                 self.assertEqual(
                     expected_path,
                     resolver.resolve_video_component(profile_key),

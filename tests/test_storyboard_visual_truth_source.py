@@ -35,7 +35,6 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
             ],
             profile={
                 "tone": "modo_conciencia",
-                "platform": "vertical",
                 "format": "vertical",
             },
         )

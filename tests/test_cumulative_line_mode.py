@@ -151,7 +151,7 @@ def test_vertical_minimalista_cumulative_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="vertical",
+            format="vertical",
             family="minimalista",
             profile_id=(
                 f"subtitulo_{component.value}_vertical_cumulative_line"
@@ -168,7 +168,7 @@ def test_studio_cumulative_uses_static_scale_defaults_without_force_style_overri
     profile = SubtitleProfileResolver().load(
         SubtitleProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="vertical",
+            format="vertical",
             family="minimalista",
             profile_id="subtitulo_studio_vertical_cumulative_line",
         )

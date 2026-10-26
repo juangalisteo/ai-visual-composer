@@ -103,7 +103,7 @@ def test_vertical_minimalista_profiles_resolve_declaratively():
         profile_id = f"subtitulo_{component.value}_vertical_acoustic_burst"
         key = SubtitleProfileKey(
             component=component,
-            platform="vertical",
+            format="vertical",
             family="minimalista",
             profile_id=profile_id,
         )

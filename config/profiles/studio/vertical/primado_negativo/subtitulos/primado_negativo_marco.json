@@ -1,6 +1,6 @@
 {
   "component": "studio",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "primado_negativo",
   "profile_id": "primado_negativo_marco",
   "display_name": "Primado Negativo | Marco",

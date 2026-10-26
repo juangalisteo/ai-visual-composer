@@ -29,7 +29,7 @@ cada archivo modificado.
 - El código implementa capacidades genéricas; la configuración declara entidades,
   familias, perfiles, variantes y valores.
 - La estructura es el contexto:
-  `config/profiles/<componente>/<plataforma>/[<familia>/]<perfil>.json`.
+  `config/profiles/<componente>/<formato>/[<familia>/]<perfil>.json`.
   Se descubre dinámicamente donde la arquitectura lo permite; Python no registra
   de antemano nombres de familias o perfiles futuros.
 - Los IDs técnicos (`profile_id` y equivalentes) son identidad opaca: no se analizan
@@ -43,8 +43,8 @@ cada archivo modificado.
 - Flujo correcto: estructura/configuración → descubrimiento → identidad técnica →
   validación → capacidades → ejecución.
 - Componentes fijos: GUION, IMAGEN, VIDEO, STUDIO.
-- `OperationalProfileKey(component, platform, profile_id)` y
-  `SubtitleProfileKey(component, platform, family, profile_id)` son dominios
+- `OperationalProfileKey(component, format, profile_id)` y
+  `SubtitleProfileKey(component, format, family, profile_id)` son dominios
   separados; no se fusionan.
 - Fixtures de test con nombres técnicos (`test_family`, `dummy_profile`), nunca
   nombres que parezcan de producto.

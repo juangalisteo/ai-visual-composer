@@ -27,10 +27,9 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 COMPONENTS = tuple(ProfileComponent)
-PLATFORMS = ("horizontal", "vertical")
+FORMATS = ("horizontal", "vertical")
 GLOBAL_SUBTITLE_FORBIDDEN_KEYS = frozenset(
     {
-        "format",
         "resolution",
         "duration",
         "tone",
@@ -57,11 +56,11 @@ OPERATIONAL_PROFILE_IDS = {
 }
 
 
-def _operational_key(component, platform):
+def _operational_key(component, profile_format):
     return OperationalProfileKey(
         component,
-        platform,
-        OPERATIONAL_PROFILE_IDS[(component, platform)],
+        profile_format,
+        OPERATIONAL_PROFILE_IDS[(component, profile_format)],
     )
 
 
@@ -89,17 +88,17 @@ def _operational_projection(profile, component):
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
-@pytest.mark.parametrize("platform", PLATFORMS)
+@pytest.mark.parametrize("profile_format", FORMATS)
 def test_phase0_standard_selection_preserves_system_operational_projection(
     component,
-    platform,
+    profile_format,
 ):
     """A STANDARD selection may resolve subtitle data, never mutate SYSTEM data."""
-    operational_key = _operational_key(component, platform)
+    operational_key = _operational_key(component, profile_format)
     manager = ConfigManager(operational_profile_key=operational_key)
     resolver = SubtitleProfileResolver()
     descriptor = resolver.discover_profiles_for_family(
-        component, platform, "estandar",
+        component, profile_format, "estandar",
     )[0]
 
     before = _operational_projection(
@@ -114,17 +113,17 @@ def test_phase0_standard_selection_preserves_system_operational_projection(
 
     assert resolved.key.family == "estandar"
     assert resolved.key.component is component
-    assert resolved.key.platform == platform
+    assert resolved.key.format == profile_format
     assert before == after
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
-@pytest.mark.parametrize("platform", PLATFORMS)
-def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
+@pytest.mark.parametrize("profile_format", FORMATS)
+def test_phase0_standard_profiles_are_subtitle_specialists(component, profile_format):
     resolver = SubtitleProfileResolver()
 
     descriptors = resolver.discover_profiles_for_family(
-        component, platform, "estandar",
+        component, profile_format, "estandar",
     )
     assert descriptors
 
@@ -135,7 +134,7 @@ def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
         assert resolved.path.parts[-3:-1] == ("estandar", "subtitulos")
         assert raw.keys() == {
             "component",
-            "platform",
+            "format",
             "family",
             "profile_id",
             "display_name",
@@ -166,7 +165,7 @@ def test_phase0_design_vertical_identity_and_subtitle_payload_are_preserved(
         assert resolved.path.parts[-3:-1] == ("design", "subtitulos")
         assert raw.keys() == {
             "component",
-            "platform",
+            "format",
             "family",
             "profile_id",
             "display_name",
@@ -223,7 +222,7 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
     manager = ConfigManager(operational_profile_key=system_key)
     rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
     assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
-    assert manager.get_operational_profile_key().platform == "vertical"
+    assert manager.get_operational_profile_key().format == "vertical"
 
     assert rendered.cue_policy == design.cue_policy
     assert rendered.render_style == design.render_style

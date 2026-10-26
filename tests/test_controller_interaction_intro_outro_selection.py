@@ -28,7 +28,7 @@ def test_intro_outro_keeps_menu_order_assets_and_original_paths():
     intro_second = Path("assets/vertical/intro/b.mp4")
     outro = Path("assets/vertical/outro/c.mp4")
     catalog = Mock()
-    catalog.discover.side_effect = lambda platform, position: {
+    catalog.discover.side_effect = lambda profile_format, position: {
         "intro": (intro_first, intro_second),
         "outro": (outro,),
     }[position]
@@ -87,13 +87,13 @@ def test_intro_outro_keeps_the_existing_missing_assets_error():
         _selector(catalog, iter(("2",)), []).select_intro_outro("vertical")
 
 
-def test_studio_adapter_derives_the_platform_from_profile_key():
+def test_studio_adapter_derives_the_format_from_profile_key():
     intro = Path("assets/horizontal/intro/a.mp4")
     catalog = Mock()
     catalog.discover.return_value = (intro,)
 
     plan = _selector(catalog, iter(("2", "1")), []).select_studio_intro_outro(
-        SimpleNamespace(platform="horizontal")
+        SimpleNamespace(format="horizontal")
     )
 
     assert plan.intro.asset_path == intro
@@ -127,7 +127,7 @@ def test_run_controller_delegates_all_phase_four_responsibilities():
     selector = Mock()
     controller._print = writer
     controller._select_from_list = selector
-    profile_key = SimpleNamespace(platform="vertical")
+    profile_key = SimpleNamespace(format="vertical")
 
     assert controller.select_intro_outro("vertical") is plan
     assert controller.select_studio_intro_outro(profile_key) is plan

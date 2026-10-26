@@ -114,7 +114,7 @@ class WanVideoComponentDocument:
 
     kind: str
     operational_profile: OperationalProfileKey
-    platform: str
+    format: str
     generation: WanGenerationParameters
     delivery: WanDeliveryParameters
     sampling: WanSamplingParameters
@@ -124,10 +124,10 @@ class WanVideoComponentDocument:
             raise ValueError("kind must be video_component.")
         if self.operational_profile.component is not ProfileComponent.VIDEO:
             raise ValueError("WAN documents require a VIDEO operational identity.")
-        platform = _required_text(self.platform, "platform").lower()
-        if platform != self.operational_profile.platform:
-            raise ValueError("platform must match the operational identity.")
-        object.__setattr__(self, "platform", platform)
+        profile_format = _required_text(self.format, "format").lower()
+        if profile_format != self.operational_profile.format:
+            raise ValueError("format must match the operational identity.")
+        object.__setattr__(self, "format", profile_format)
 
 
 @dataclass(frozen=True)

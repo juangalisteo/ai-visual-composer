@@ -25,7 +25,7 @@ STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS = {
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(

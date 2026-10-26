@@ -39,18 +39,18 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
         },
     }
 
-    def _write_document(self, root, platform, filename, document):
-        path = root / "video" / platform / filename
+    def _write_document(self, root, profile_format, filename, document):
+        path = root / "video" / profile_format / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(document), encoding="utf-8")
         return path
 
     @staticmethod
-    def _document(profile_id, platform, **overrides):
+    def _document(profile_id, profile_format, **overrides):
         document = {
             "kind": "video_component",
             "operational_profile_id": profile_id,
-            "platform": platform,
+            "format": profile_format,
             "display_name": "Etiqueta que no participa en la resolucion",
             "video_component": {
                 "generation": {"width": 448, "height": 800},
@@ -91,7 +91,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
 
         self.assertEqual(expected, resolved)
 
-    def test_declarative_resolution_isolated_by_platform(self):
+    def test_declarative_resolution_isolated_by_format(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             vertical = self._write_document(
@@ -133,7 +133,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 root,
                 "vertical",
                 "wan_i2v_vertical.json",
-                {"platform": "video", "video_component": {}},
+                {"format": "video", "video_component": {}},
             )
             self._write_document(
                 root,
@@ -196,7 +196,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 root,
                 "vertical",
                 "wan_i2v_vertical.json",
-                {"platform": "video", "video_component": {}},
+                {"format": "video", "video_component": {}},
             )
             invalid = self._write_document(
                 root,
@@ -205,7 +205,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 {
                     "kind": "video_component",
                     "operational_profile_id": "opaque_identity",
-                    "platform": "vertical",
+                    "format": "vertical",
                 },
             )
 
@@ -359,11 +359,11 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             ("horizontal", "video_horizontal", "wan_i2v_horizontal.json"),
         )
 
-        for platform, profile_id, filename in cases:
-            with self.subTest(platform=platform):
+        for profile_format, profile_id, filename in cases:
+            with self.subTest(profile_format=profile_format):
                 key = OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    platform,
+                    profile_format,
                     profile_id,
                 )
                 path = resolver.resolve_video_component(key)
@@ -377,9 +377,9 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
                 self.assertEqual(filename, path.name)
                 self.assertEqual("video_component", component["kind"])
                 self.assertEqual(profile_id, component["operational_profile_id"])
-                self.assertEqual(platform, component["platform"])
+                self.assertEqual(profile_format, component["format"])
                 self.assertEqual(
-                    self.LEGACY_COMPONENTS[platform],
+                    self.LEGACY_COMPONENTS[profile_format],
                     component["video_component"],
                 )
                 self.assertEqual(
@@ -406,19 +406,19 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_custom_declarative_savevideo_document_resolves_without_filename_convention(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            document = self._document("custom_opaque_identity", "test_platform")
+            document = self._document("custom_opaque_identity", "test_format")
             document["video_component"]["delivery"] = {
                 "intermediate_output": "savevideo_h264",
             }
             expected = self._write_document(
                 root,
-                "test_platform",
+                "test_format",
                 "arbitrary-custom-name.json",
                 document,
             )
             key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "test_platform",
+                "test_format",
                 "custom_opaque_identity",
             )
 

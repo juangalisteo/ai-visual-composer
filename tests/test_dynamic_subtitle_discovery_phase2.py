@@ -67,7 +67,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             SubtitleProfileKey(
                 component="guion",
-                platform="vertical",
+                format="vertical",
                 profile_id="guion_vertical_1_prueba",
                 family=1,
             )
@@ -81,7 +81,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             SubtitleProfileKey(
                 component="guion",
-                platform="vertical",
+                format="vertical",
                 profile_id="subtitulo_../escape",
                 family="test_family",
             )
@@ -90,18 +90,18 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def _write_profile(
         root,
         component="guion",
-        platform="vertical",
+        profile_format="vertical",
         family_name="test_family",
         profile_id="perfil_prueba",
     ):
-        directory = root / component / platform
+        directory = root / component / profile_format
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / "perfil.json"
         path.write_text(
             json.dumps(
                 {
                     "component": component,
-                    "platform": platform,
+                    "format": profile_format,
                     "profile_id": profile_id,
                     "display_name": "Perfil de prueba",
                 }
@@ -114,7 +114,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def _write_subtitle_profile(
         root,
         component="guion",
-        platform="vertical",
+        profile_format="vertical",
         profile_id="subtitulo_prueba",
         filename="subtitulo.json",
         changes=None,
@@ -127,7 +127,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         payload.update(
             {
                 "component": component,
-                "platform": platform,
+                "format": profile_format,
                 "family": "test_family",
                 "profile_id": profile_id,
             }
@@ -137,7 +137,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         path = (
             root
             / component
-            / platform
+            / profile_format
             / "test_family"
             / "subtitulos"
             / filename
@@ -257,7 +257,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
 
         self.assertEqual(path, resolved)
 
-    def test_copy_paste_platform_family_and_profile_need_no_python_registry(self):
+    def test_copy_paste_format_family_and_profile_need_no_python_registry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = Path(
@@ -268,27 +268,27 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             payload.update(
                 {
                     "component": "guion",
-                    "platform": "test_platform",
+                    "format": "test_format",
                     "family": "minimalista",
                     "profile_id": "nuevo_perfil",
                     "display_name": "Minimal Clean",
                 }
             )
             profile_path = (
-                root / "guion" / "test_platform" / "minimalista"
+                root / "guion" / "test_format" / "minimalista"
                 / "subtitulos" / "archivo_copiado.json"
             )
             profile_path.parent.mkdir(parents=True)
             profile_path.write_text(json.dumps(payload), encoding="utf-8")
 
             resolver = SubtitleProfileResolver(root)
-            self.assertEqual(("test_platform",), resolver.discover_platforms("guion"))
+            self.assertEqual(("test_format",), resolver.discover_formats("guion"))
             self.assertEqual(
                 ("minimalista",),
-                resolver.discover_families("guion", "test_platform"),
+                resolver.discover_families("guion", "test_format"),
             )
             descriptors = resolver.discover_profiles_for_family(
-                "guion", "test_platform", "minimalista",
+                "guion", "test_format", "minimalista",
             )
 
             self.assertEqual(1, len(descriptors))
@@ -359,7 +359,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
     def _write_design_profile(root, payload=None):
         payload = payload or {
             "component": "guion",
-            "platform": "vertical",
+            "format": "vertical",
             "family": "design",
             "profile_id": "guion_vertical_design_valido",
             "display_name": "Diseño válido",
@@ -412,7 +412,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 root,
                 {
                     "component": "guion",
-                    "platform": "horizontal",
+                    "format": "horizontal",
                     "family": "design",
                     "profile_id": "guion_vertical_design_valido",
                     "display_name": "Diseño inválido",
@@ -467,7 +467,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             root = Path(directory)
             path = self._write_subtitle_profile(root)
             payload = json.loads(path.read_text(encoding="utf-8"))
-            payload["platform"] = "horizontal"
+            payload["format"] = "horizontal"
             path.write_text(json.dumps(payload), encoding="utf-8")
 
             self._assert_operational_error(
@@ -563,7 +563,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 "ausente",
                 "test_family",
             )
-            cross_platform = SubtitleProfileKey(
+            cross_format = SubtitleProfileKey(
                 "guion",
                 "horizontal",
                 "perfil_prueba",
@@ -582,7 +582,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                 "inexistente",
             )
 
-            for key in (missing, cross_platform, cross_component, absent_family):
+            for key in (missing, cross_format, cross_component, absent_family):
                 with self.subTest(profile_id=key.profile_id):
                     self._assert_operational_error(
                         lambda key=key: resolver.resolve(key),
@@ -670,7 +670,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
             self._write_subtitle_profile(root)
             other_family_key = SubtitleProfileKey(
                 component="guion",
-                platform="vertical",
+                format="vertical",
                 profile_id="subtitulo_guion_vertical_otra_linea_unica",
                 family="otra",
             )

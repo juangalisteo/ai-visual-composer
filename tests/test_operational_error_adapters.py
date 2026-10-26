@@ -83,7 +83,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
             key = OperationalProfileKey("video", "vertical", "test_profile")
             data = {
                 "component": "video",
-                "platform": "vertical",
+                "format": "vertical",
                 "profile_id": "test_profile",
             }
             for name in ("first.json", "second.json"):
@@ -108,7 +108,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "video",
-                        "platform": "vertical",
+                        "format": "vertical",
                         "family": "estandar",
                         "profile_id": "test_profile",
                         "display_name": "Test profile",
@@ -138,7 +138,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
 
             options = {
                 "profile_component": "video",
-                "profile_platform": "vertical",
+                "profile_format": "vertical",
                 "profile_id": "test_profile",
                 "voice_config": "",
                 "music_category": None,

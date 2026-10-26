@@ -290,8 +290,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             ),
         )
 
-        for scope, component, platform, selections in cases:
-            with self.subTest(scope=scope, platform=platform):
+        for scope, component, profile_format, selections in cases:
+            with self.subTest(scope=scope, profile_format=profile_format):
                 with patch.object(
                     controller.subtitle_profile_resolver,
                     "discover_families",
@@ -307,8 +307,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
                 profile_key = OperationalProfileKey(
                     component,
-                    platform,
-                    f"{component.value}_{platform}",
+                    profile_format,
+                    f"{component.value}_{profile_format}",
                 )
                 printed = "\n".join(
                     str(call.args[0])
@@ -412,7 +412,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             if call.args
         )
         self.assertIn(
-            selected["profile_key"].platform,
+            selected["profile_key"].format,
             ("horizontal", "vertical"),
         )
         self.assertEqual(
@@ -950,7 +950,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertEqual(
             "vertical",
-            options["profile_platform"]
+            options["profile_format"]
         )
         self.assertEqual(
             "imagen_vertical",
@@ -1058,7 +1058,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         self.assertEqual(
             "vertical",
-            options["profile_platform"]
+            options["profile_format"]
         )
         self.assertEqual(
             "video_vertical",

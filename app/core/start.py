@@ -493,7 +493,7 @@ def iniciar(request):
         ):
             profile_key = _resolve_single_video_operational_key(
                 config.profile_resolver,
-                profile_key.platform,
+                profile_key.format,
             )
         video_clips_manifest_path, video_i2v_elapsed = (
             _PIPELINE_TELEMETRY.measure_stage(
@@ -674,25 +674,25 @@ def _normalise_subtitle_profile_key(
     return subtitle_profile_key
 
 
-def _resolve_single_video_operational_key(profile_resolver, platform):
+def _resolve_single_video_operational_key(profile_resolver, profile_format):
     """Resolve the only applicable VIDEO operational identity for I2V."""
     candidates = []
     candidates.extend(
         descriptor.key
         for descriptor in profile_resolver.discover_operational_profiles(
             ProfileComponent.VIDEO,
-            platform,
+            profile_format,
         )
     )
     if not candidates:
         raise FileNotFoundError(
             "No existe un perfil operacional VIDEO para la plataforma: "
-            f"{platform}."
+            f"{profile_format}."
         )
     if len(candidates) > 1:
         raise ValueError(
             "La identidad operacional VIDEO es ambigua para la plataforma: "
-            f"{platform}."
+            f"{profile_format}."
         )
     return candidates[0]
 

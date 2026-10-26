@@ -114,7 +114,7 @@ class ConfigManager:
             family="CONFIG",
             user_message="Falta la identidad estructurada de perfil.",
             recommended_action=(
-                "Configure component, platform y profile_id antes de iniciar "
+                "Configure component, format y profile_id antes de iniciar "
                 "la operación."
             ),
             operation="Resolver configuración de perfil",

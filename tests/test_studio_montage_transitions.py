@@ -32,7 +32,7 @@ STUDIO_PROFILE_IDS = {
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -642,7 +642,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         )
         for (
             label,
-            platform,
+            profile_format,
             source_specs,
             expected_normalized_count,
             boundary,
@@ -652,7 +652,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
             with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = OperationalProfileKey(
-                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                    "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
                 )
                 loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
@@ -803,15 +803,15 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
             for path, digest in hashes.items():
                 self.assertEqual(digest, hashlib.sha256(path.read_bytes()).digest())
 
-    def test_real_transition_duration_uses_each_studio_platform_value(self):
-        for platform, expected_transition_duration in (
+    def test_real_transition_duration_uses_each_studio_format_value(self):
+        for profile_format, expected_transition_duration in (
             ("vertical", 0.25),
             ("horizontal", 0.50),
         ):
-            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
+            with self.subTest(profile_format=profile_format), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = OperationalProfileKey(
-                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                    "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
                 )
                 loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(

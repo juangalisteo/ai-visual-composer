@@ -1,6 +1,6 @@
 {
     "component": "studio",
-    "platform": "horizontal",
+    "format": "horizontal",
     "family": "estandar",
     "profile_id": "subtitulo_studio_horizontal_linea_unica",
     "display_name": "Línea única",

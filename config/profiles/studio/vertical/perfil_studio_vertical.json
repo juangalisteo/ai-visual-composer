@@ -1,6 +1,6 @@
 {
     "component": "studio",
-    "platform": "vertical",
+    "format": "vertical",
     "profile_id": "studio_vertical",
     "studio": {
         "input": {

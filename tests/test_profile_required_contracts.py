@@ -99,14 +99,14 @@ class RequiredProfileContractsTest(unittest.TestCase):
 
     def test_official_profiles_preserve_effective_configuration(self):
         for component in self.RUNTIME_COMPONENTS:
-            for platform, expected in self.EXPECTED.items():
+            for profile_format, expected in self.EXPECTED.items():
                 with self.subTest(
                     component=component.value,
-                    platform=platform,
+                    profile_format=profile_format,
                 ):
                     profile_key, profile = self._profile(
                         component,
-                        platform,
+                        profile_format,
                     )
                     video_config = self._video_config(
                         profile_key,
@@ -365,11 +365,11 @@ class RequiredProfileContractsTest(unittest.TestCase):
             ._resolve_scene_duration(profile, 7.5),
         )
 
-    def _profile(self, component, platform):
+    def _profile(self, component, profile_format):
         key = OperationalProfileKey(
             component,
-            platform,
-            OPERATIONAL_PROFILE_IDS[(component, platform)],
+            profile_format,
+            OPERATIONAL_PROFILE_IDS[(component, profile_format)],
         )
         return key, self.profile_resolver.load_operational(key)
 
@@ -378,9 +378,9 @@ class RequiredProfileContractsTest(unittest.TestCase):
         return self.subtitle_resolver.load(
             SubtitleProfileKey(
                 profile_key.component,
-                profile_key.platform,
+                profile_key.format,
                 WORD_BY_WORD_SUBTITLE_PROFILE_IDS[
-                    (profile_key.component, profile_key.platform)
+                    (profile_key.component, profile_key.format)
                 ],
                 "estandar",
             )

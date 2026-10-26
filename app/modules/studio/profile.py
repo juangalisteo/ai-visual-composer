@@ -30,7 +30,7 @@ class StudioMusicConfig:
 
 @dataclass(frozen=True)
 class StudioProfile:
-    platform: str
+    format: str
     profile_id: str
     video_extensions: tuple[str, ...]
     subtitle_extensions: tuple[str, ...]
@@ -143,7 +143,7 @@ class StudioProfileLoader:
         self._validate_video_extensions(video_extensions, profile_key)
 
         return StudioProfile(
-            platform=require_text(profile, "platform", "platform"),
+            format=require_text(profile, "format", "format"),
             profile_id=require_text(profile, "profile_id", "profile_id"),
             video_extensions=video_extensions,
             subtitle_extensions=self._extensions(
@@ -183,7 +183,7 @@ class StudioProfileLoader:
     def _require_identity(self, profile, profile_key):
         expected = {
             "component": profile_key.component.value,
-            "platform": profile_key.platform,
+            "format": profile_key.format,
             "profile_id": profile_key.profile_id,
         }
         actual = {key: profile.get(key) for key in expected}
@@ -246,7 +246,7 @@ class StudioProfileLoader:
             resource="/".join(
                 (
                     profile_key.component.value,
-                    profile_key.platform,
+                    profile_key.format,
                     profile_key.profile_id,
                 )
             ),

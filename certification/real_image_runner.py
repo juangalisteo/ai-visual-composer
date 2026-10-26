@@ -16,8 +16,7 @@ from certification.models import CertificationScenario
 class RealImageRunnerConfig:
     campaign_id: str = "rc0_quick"
     base_output_dir: Path = Path("output") / "certification"
-    platform: str = "horizontal"
-    image_format: str = "horizontal"
+    format: str = "horizontal"
     image_width: int = 1920
     image_height: int = 1080
     workflow_path: Path = Path(
@@ -171,8 +170,7 @@ class RealImageComponentRunner:
         self
     ) -> dict[str, object]:
         return {
-            "platform": self.config.platform,
-            "format": self.config.image_format,
+            "format": self.config.format,
             "resolution": (
                 f"{self.config.image_width}x"
                 f"{self.config.image_height}"

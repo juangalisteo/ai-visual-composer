@@ -1,6 +1,6 @@
 {
     "component": "video",
-    "platform": "horizontal",
+    "format": "horizontal",
     "family": "estandar",
     "profile_id": "subtitulo_video_horizontal_palabra_por_palabra",
     "display_name": "Palabra por palabra",

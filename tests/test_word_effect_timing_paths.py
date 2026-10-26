@@ -57,7 +57,7 @@ def _subtitle_profile(component, effect, family="minimalista"):
     return SubtitleProfileResolver().load(
         SubtitleProfileKey(
             component=component,
-            platform="vertical",
+            format="vertical",
             family=family,
             profile_id=f"subtitulo_{component.value}_vertical_{effect}",
         )
@@ -176,7 +176,7 @@ def _run_srt_video(tmp_path, subtitle_profile, srt=SRT):
         input_mode="srt_video",
         profile_key=OperationalProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="vertical",
+            format="vertical",
             profile_id="studio_vertical",
         ),
         profile=_studio_profile(),
@@ -217,7 +217,7 @@ def _run_video_audio_srt(tmp_path, subtitle_profile):
     service.FONTS_DIRECTORY = tmp_path
     operational_key = OperationalProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="vertical",
+        format="vertical",
         profile_id="studio_vertical",
     )
     config = Mock()

@@ -107,8 +107,8 @@ class StudioMontagePlan:
         object.__setattr__(self, "clips", tuple(self.clips))
 
     @property
-    def platform(self):
-        return self.profile_key.platform
+    def format(self):
+        return self.profile_key.format
 
     @property
     def profile_id(self):

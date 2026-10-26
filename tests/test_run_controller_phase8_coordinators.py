@@ -109,7 +109,7 @@ def test_studio_coordinator_transports_contract_to_final_options_without_state()
     options = controller.run()
 
     assert options["profile_component"] == "studio"
-    assert options["profile_platform"] == "vertical"
+    assert options["profile_format"] == "vertical"
     assert options["profile_id"] == "studio_vertical"
     assert options["subtitle_profile_key"].profile_id == "subtitle_fixture"
     assert options["subtitle_profile_key"] is selection.subtitle.subtitle_key
@@ -129,7 +129,7 @@ def test_studio_profile_options_are_explicit():
         selection.subtitle.subtitle_key,
     ) == {
         "profile_component": "studio",
-        "profile_platform": "vertical",
+        "profile_format": "vertical",
         "profile_id": "studio_vertical",
         "subtitle_profile_key": selection.subtitle.subtitle_key,
     }
@@ -137,7 +137,7 @@ def test_studio_profile_options_are_explicit():
         selection.operational.operational_key
     ) == {
         "profile_component": "studio",
-        "profile_platform": "vertical",
+        "profile_format": "vertical",
         "profile_id": "studio_vertical",
     }
 

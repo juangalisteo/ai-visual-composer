@@ -219,7 +219,7 @@ def _print_studio_summary(options, result, elapsed_seconds):
         "Perfil / plataforma",
         (
             f"{options['profile_id']} / "
-            f"{options['profile_platform'].title()}"
+            f"{options['profile_format'].title()}"
         ),
     )
     summary.add_detail(
@@ -332,7 +332,7 @@ def _print_studio_intro_outro_summary(options, result, elapsed_seconds):
     plan = options["studio_intro_outro_plan"]
     summary.add_detail(
         "Perfil / plataforma",
-        f"{options['profile_id']} / {options['profile_platform'].title()}",
+        f"{options['profile_id']} / {options['profile_format'].title()}",
     )
     summary.add_detail("Entrada", "INTRO / OUTRO")
     summary.add_detail("Video fuente", plan.source_path)
@@ -363,11 +363,11 @@ def _print_studio_subtitle_export_summary(
         StudioSubtitleExportMode.CONVERTIR: "CONVERTIR",
     }
     profile_id = options.get("profile_id")
-    profile_platform = options.get("profile_platform")
-    if profile_id and profile_platform:
+    profile_format = options.get("profile_format")
+    if profile_id and profile_format:
         summary.add_detail(
             "Perfil / plataforma",
-            f"{profile_id} / {profile_platform.title()}",
+            f"{profile_id} / {profile_format.title()}",
         )
     summary.add_detail("Entrada", "EXPORTAR SRT")
     summary.add_detail("Modo", mode_labels[plan.mode])
@@ -403,7 +403,7 @@ def _print_studio_montage_summary(options, result, elapsed_seconds):
         "Perfil / plataforma",
         (
             f"{options['profile_id']} / "
-            f"{options['profile_platform'].title()}"
+            f"{options['profile_format'].title()}"
         ),
     )
     summary.add_detail("Entrada", "MONTAJE DE VIDEOS")

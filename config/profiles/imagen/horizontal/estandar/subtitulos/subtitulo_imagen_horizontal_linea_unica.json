@@ -1,6 +1,6 @@
 {
     "component": "imagen",
-    "platform": "horizontal",
+    "format": "horizontal",
     "family": "estandar",
     "profile_id": "subtitulo_imagen_horizontal_linea_unica",
     "display_name": "Línea única",

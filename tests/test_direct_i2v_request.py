@@ -21,14 +21,14 @@ from app.shared.profile_identity import (
 def _video_identity():
     return OperationalProfileKey(
         ProfileComponent.VIDEO,
-        "fixture_platform",
+        "fixture_format",
         "fixture_video_profile",
     )
 
 
 def _video_component_profile(intermediate_output):
     return {
-        "platform": "fixture_platform",
+        "format": "fixture_format",
         "video_component": {
             "profile": "technical-profile",
             "generation": {"width": 448, "height": 800},
@@ -199,7 +199,7 @@ class DirectI2VRequestTest(unittest.TestCase):
                     generation=generation,
                     profile_key=OperationalProfileKey(
                         ProfileComponent.IMAGEN,
-                        "fixture_platform",
+                        "fixture_format",
                         "fixture_image_profile",
                     ),
                     intermediate_output=WanIntermediateOutput.LOSSLESS_FFV1,
@@ -299,7 +299,7 @@ class DirectI2VRequestTest(unittest.TestCase):
             tuple(field.name for field in fields(request)),
         )
         self.assertIs(profile_key, request.profile_key)
-        self.assertEqual("fixture_platform", request.profile_key.platform)
+        self.assertEqual("fixture_format", request.profile_key.format)
         self.assertEqual(
             "fixture_video_profile",
             request.profile_key.profile_id,
@@ -351,7 +351,7 @@ class DirectI2VRequestTest(unittest.TestCase):
                 source_image=Path("source.png"),
                 profile_key=OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "fixture_platform",
+                    "fixture_format",
                     "fixture_image_profile",
                 ),
                 output_dir=Path("output"),

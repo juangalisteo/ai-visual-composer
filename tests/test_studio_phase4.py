@@ -31,7 +31,7 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 def _operational_key(profile_key):
     return OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
 
@@ -71,13 +71,13 @@ class StudioPhase4Test(unittest.TestCase):
             audio_channels=2,
         )
 
-    def test_music_contract_is_explicit_and_isolated_by_platform(self):
-        for platform in ("horizontal", "vertical"):
+    def test_music_contract_is_explicit_and_isolated_by_format(self):
+        for profile_format in ("horizontal", "vertical"):
             key = OperationalProfileKey(
                 "studio",
-                platform,
+                profile_format,
                 {"vertical": "studio_vertical", "horizontal": "studio_horizontal"}[
-                    platform
+                    profile_format
                 ],
             )
             raw_profile = ProfileResolver().load_operational(_operational_key(key))
@@ -145,7 +145,7 @@ class StudioPhase4Test(unittest.TestCase):
         final_output = Path("output/studio/video/studio.mp4")
         options = {
             "profile_component": "studio",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,
@@ -204,11 +204,11 @@ class StudioPhase4Test(unittest.TestCase):
         options = {
             "project_name": "demo",
             "profile_id": "studio_vertical",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "studio_input_mode": "video",
             "subtitle_profile_key": SubtitleProfileKey(
                 component="studio",
-                platform="vertical",
+                format="vertical",
                 family="minimalista",
                 profile_id="subtitulo_studio_vertical_cumulative_line",
             ),
@@ -247,7 +247,7 @@ class StudioPhase4Test(unittest.TestCase):
         options = {
             "project_name": "demo",
             "profile_id": "studio_vertical",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "studio_input_mode": "video",
             "studio_music_path": None,
             "intro_outro_selection": SimpleNamespace(
@@ -288,7 +288,7 @@ class StudioPhase4Test(unittest.TestCase):
         options = {
             "project_name": "demo",
             "profile_id": "studio_horizontal",
-            "profile_platform": "horizontal",
+            "profile_format": "horizontal",
             "studio_input_mode": "srt_video",
             "studio_music_path": None,
             "intro_outro_selection": None,
@@ -315,7 +315,7 @@ class StudioPhase4Test(unittest.TestCase):
         options = {
             "project_name": "demo",
             "profile_id": "studio_vertical",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "studio_input_mode": "srt_video",
             "studio_music_path": None,
             "intro_outro_selection": None,
@@ -347,7 +347,7 @@ class StudioPhase4Test(unittest.TestCase):
                 options = {
                     "project_name": "demo",
                     "profile_id": "studio_vertical",
-                    "profile_platform": "vertical",
+                    "profile_format": "vertical",
                     "studio_input_mode": "srt_video",
                     "studio_music_path": None,
                     "intro_outro_selection": SimpleNamespace(

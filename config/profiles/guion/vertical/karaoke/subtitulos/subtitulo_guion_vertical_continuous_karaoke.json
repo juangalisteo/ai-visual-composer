@@ -1,6 +1,6 @@
 {
   "component": "guion",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "karaoke",
   "profile_id": "subtitulo_guion_vertical_continuous_karaoke",
   "display_name": "Karaoke continuo",

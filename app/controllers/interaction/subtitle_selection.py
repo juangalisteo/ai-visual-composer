@@ -24,7 +24,7 @@ class SubtitleSelection:
     def select_profile_subtitle_profile(
         self,
         component,
-        platform,
+        profile_format,
         writer=None,
         selector=None,
         family_label=None,
@@ -35,12 +35,12 @@ class SubtitleSelection:
             presentation_families or labels.presentation_families
         )
         families = presentation_families(
-            self._subtitle_profile_resolver.discover_families(component, platform),
+            self._subtitle_profile_resolver.discover_families(component, profile_format),
         )
         if not families:
             raise FileNotFoundError(
                 "No hay familias de subtitulos para la plataforma "
-                f"{platform}."
+                f"{profile_format}."
             )
         self._write("\nSUBTÍTULOS\n", writer)
         self._write("FAMILIA\n", writer)
@@ -49,7 +49,7 @@ class SubtitleSelection:
         family = self._select(families, selector)
         profiles = self._subtitle_profile_resolver.discover_profiles_for_family(
             component,
-            platform,
+            profile_format,
             family,
         )
         self._write("\nPERFIL\n", writer)
@@ -60,7 +60,7 @@ class SubtitleSelection:
     def select_studio_subtitle_profile(
         self,
         input_mode,
-        platform=None,
+        profile_format=None,
         writer=None,
         selector=None,
         label=None,
@@ -73,28 +73,28 @@ class SubtitleSelection:
         presentation_families = (
             presentation_families or labels.presentation_families
         )
-        if platform is None:
+        if profile_format is None:
             self._write("\nPLATAFORMA\n", writer)
-            platforms = self._subtitle_profile_resolver.discover_platforms(component)
-            if not platforms:
+            profile_formats = self._subtitle_profile_resolver.discover_formats(component)
+            if not profile_formats:
                 raise FileNotFoundError(
                     "No hay perfiles de subtitulos STUDIO disponibles."
                 )
-            for index, candidate in enumerate(platforms, start=1):
+            for index, candidate in enumerate(profile_formats, start=1):
                 self._write(f"{index}. {label(candidate)}", writer)
-            platform = self._select(platforms, selector)
+            profile_format = self._select(profile_formats, selector)
 
         self._write("\nSUBTÍTULOS\n", writer)
         self._write("FAMILIA\n", writer)
         families = presentation_families(
-            self._subtitle_profile_resolver.discover_families(component, platform),
+            self._subtitle_profile_resolver.discover_families(component, profile_format),
         )
         for index, family in enumerate(families, start=1):
             self._write(f"{index}. {family_label(family)}", writer)
         family = self._select(families, selector)
         descriptors = self._subtitle_profile_resolver.discover_profiles_for_family(
             component,
-            platform,
+            profile_format,
             family,
         )
         selections = list(descriptors)
@@ -116,7 +116,7 @@ class SubtitleSelection:
         presentation_families=None,
     ):
         component = ProfileComponent.STUDIO
-        platform = profile_key.platform
+        profile_format = profile_key.format
         family_label = family_label or labels.family_label
         presentation_families = (
             presentation_families or labels.presentation_families
@@ -125,20 +125,20 @@ class SubtitleSelection:
         families = presentation_families(
             self._subtitle_profile_resolver.discover_families(
                 component,
-                platform,
+                profile_format,
             ),
         )
         if not families:
             raise FileNotFoundError(
                 "No hay familias de subtitulos STUDIO para la plataforma "
-                f"{platform}."
+                f"{profile_format}."
             )
         for index, family in enumerate(families, start=1):
             self._write(f"{index}. {family_label(family)}", writer)
         family = self._select(families, selector)
         descriptors = self._subtitle_profile_resolver.discover_profiles_for_family(
             component,
-            platform,
+            profile_format,
             family,
         )
         if not descriptors:

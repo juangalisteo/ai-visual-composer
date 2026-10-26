@@ -1,7 +1,7 @@
 {
     "kind": "video_component",
     "operational_profile_id": "video_vertical",
-    "platform": "vertical",
+    "format": "vertical",
     "video_component": {
         "generation": {
             "width": 448,

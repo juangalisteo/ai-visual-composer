@@ -129,7 +129,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
 
                 operational_profile_key = OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "test_platform",
+                    "test_format",
                     "test_profile",
                 )
                 request = ApplicationExecutionRequest(

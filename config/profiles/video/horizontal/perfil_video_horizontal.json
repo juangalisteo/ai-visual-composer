@@ -1,6 +1,5 @@
 {
     "component": "video",
-    "platform": "horizontal",
     "profile_id": "video_horizontal",
     "format": "horizontal",
     "duration": 10,

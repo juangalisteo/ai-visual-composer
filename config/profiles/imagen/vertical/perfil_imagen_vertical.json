@@ -1,6 +1,5 @@
 {
     "component": "imagen",
-    "platform": "vertical",
     "profile_id": "imagen_vertical",
     "format": "vertical",
     "duration": 10,

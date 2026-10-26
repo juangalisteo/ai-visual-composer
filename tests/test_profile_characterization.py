@@ -41,20 +41,20 @@ OFFICIAL_SUBTITLE_PROFILE_IDS = {
 }
 
 
-def _profile_key(component, platform):
+def _profile_key(component, profile_format):
     return OperationalProfileKey(
         component,
-        platform,
-        OPERATIONAL_PROFILE_IDS[(component, platform)],
+        profile_format,
+        OPERATIONAL_PROFILE_IDS[(component, profile_format)],
     )
 
 
 def _official_subtitle_key(profile_key):
     return SubtitleProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         OFFICIAL_SUBTITLE_PROFILE_IDS[
-            (profile_key.component, profile_key.platform)
+            (profile_key.component, profile_key.format)
         ],
         "estandar",
     )
@@ -63,7 +63,7 @@ def _official_subtitle_key(profile_key):
 def _operational_key(profile_key):
     return OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
 
@@ -76,7 +76,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
         ProfileComponent.VIDEO,
     )
 
-    PLATFORM_EXPECTATIONS = {
+    FORMAT_EXPECTATIONS = {
         "vertical": {
             "format": "vertical",
             "width": 1080,
@@ -109,14 +109,14 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_guion_image_and_video_profiles_keep_effective_behavior(self):
         for component in self.RUNTIME_COMPONENTS:
-            for platform, expected in self.PLATFORM_EXPECTATIONS.items():
+            for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
                 with self.subTest(
                     component=component.value,
-                    platform=platform
+                    profile_format=profile_format
                 ):
                     profile_key = _profile_key(
                         component,
-                        platform
+                        profile_format
                     )
                     profile = self.resolver.load_operational(
                         _operational_key(profile_key)
@@ -131,8 +131,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     subtitles = subtitle_profile.render_style
 
                     self.assertEqual(
-                        platform,
-                        profile["platform"]
+                        profile_format,
+                        profile["format"]
                     )
                     self.assertEqual(
                         expected["format"],
@@ -195,14 +195,14 @@ class ProfileCharacterizationTest(unittest.TestCase):
             ProfileComponent.IMAGEN,
             ProfileComponent.VIDEO,
         ):
-            for platform, expected in self.PLATFORM_EXPECTATIONS.items():
+            for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
                 with self.subTest(
                     target=target_component.value,
-                    platform=platform
+                    profile_format=profile_format
                 ):
                     profile_key = _profile_key(
                         target_component,
-                        platform
+                        profile_format
                     )
                     operational_key = _operational_key(profile_key)
                     path = self.resolver.resolve_operational(
@@ -242,17 +242,17 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     )
 
     def test_video_wan_profiles_keep_current_parameters(self):
-        expected_by_platform = {
+        expected_by_format = {
             "vertical": (448, 800),
             "horizontal": (800, 448),
         }
 
-        for platform, dimensions in expected_by_platform.items():
-            with self.subTest(platform=platform):
+        for profile_format, dimensions in expected_by_format.items():
+            with self.subTest(profile_format=profile_format):
                 profile_key = OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    platform,
-                    f"video_{platform}",
+                    profile_format,
+                    f"video_{profile_format}",
                 )
                 path = self.resolver.resolve_video_component(
                     profile_key
@@ -264,8 +264,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
                 self.assertEqual(
                     Path("config/profiles/video")
-                    / platform
-                    / f"wan_i2v_{platform}.json",
+                    / profile_format
+                    / f"wan_i2v_{profile_format}.json",
                     path
                 )
                 self.assertEqual(
@@ -289,11 +289,11 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 )
 
     def test_official_subtitle_configuration_is_unified_and_equivalent(self):
-        for platform, expected in self.PLATFORM_EXPECTATIONS.items():
-            with self.subTest(platform=platform):
+        for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
+            with self.subTest(profile_format=profile_format):
                 profile_key = _profile_key(
                     ProfileComponent.VIDEO,
-                    platform
+                    profile_format
                 )
                 subtitle_profile = (
                     self._config_manager(profile_key)
@@ -326,7 +326,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
         )
 
     def test_wan_profile_rejects_legacy_platform_and_format_inference(self):
-        video_formats = self.resolver.discover_platforms(
+        video_formats = self.resolver.discover_formats(
             ProfileComponent.VIDEO
         )
         self.assertTrue(video_formats)
@@ -379,11 +379,11 @@ class ProfileCharacterizationTest(unittest.TestCase):
             )
 
     def test_runtime_objects_are_consistent_with_structured_identity(self):
-        for platform, expected in self.PLATFORM_EXPECTATIONS.items():
-            with self.subTest(platform=platform):
+        for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
+            with self.subTest(profile_format=profile_format):
                 profile_key = _profile_key(
                     ProfileComponent.VIDEO,
-                    platform
+                    profile_format
                 )
 
                 config = self._config_manager(profile_key)

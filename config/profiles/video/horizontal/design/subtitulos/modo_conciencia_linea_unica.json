@@ -1,6 +1,6 @@
 {
     "component": "video",
-    "platform": "horizontal",
+    "format": "horizontal",
     "family": "design",
     "profile_id": "modo_conciencia_linea_unica",
     "display_name": "Modo Conciencia | Línea única",

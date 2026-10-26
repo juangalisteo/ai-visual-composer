@@ -14,7 +14,7 @@ class MainOverlaysModeTest(
     ):
         options = {
             "profile_component": "imagen",
-            "profile_platform": "horizontal",
+            "profile_format": "horizontal",
             "profile_id": "imagen_horizontal",
             "voice_config": "masculina",
             "music_category": None,

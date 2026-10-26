@@ -20,11 +20,11 @@ from app.shared.profile_resolver import ProfileResolver
 
 class VideoComponentProfileParametersTest(unittest.TestCase):
 
-    def _document(self, profile_id, platform, intermediate_output):
+    def _document(self, profile_id, profile_format, intermediate_output):
         return {
             "kind": "video_component",
             "operational_profile_id": profile_id,
-            "platform": platform,
+            "format": profile_format,
             "display_name": "Presentation-only label",
             "video_component": {
                 "profile": "Technical profile label",
@@ -44,8 +44,8 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
             },
         }
 
-    def _write_document(self, root, platform, filename, document):
-        path = root / "video" / platform / filename
+    def _write_document(self, root, profile_format, filename, document):
+        path = root / "video" / profile_format / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(document), encoding="utf-8")
         return path
@@ -56,8 +56,8 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
             "horizontal": ("video_horizontal", 800, 448),
         }
 
-        for platform, values in expected.items():
-            with self.subTest(platform=platform), patch(
+        for profile_format, values in expected.items():
+            with self.subTest(profile_format=profile_format), patch(
                 "app.modules.video_component.profile_parameters._random_video_seed",
                 return_value=123,
             ):
@@ -65,7 +65,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
                 profile = load_video_component_parameters(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        platform,
+                        profile_format,
                         profile_id,
                     )
                 )
@@ -96,11 +96,11 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
             root = Path(directory)
             self._write_document(
                 root,
-                "custom_platform",
+                "custom_format",
                 "arbitrary-file-name.json",
                 self._document(
                     "opaque_video_identity",
-                    "custom_platform",
+                    "custom_format",
                     "savevideo_h264",
                 ),
             )
@@ -111,7 +111,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
                 profile = load_video_component_parameters(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "custom_platform",
+                        "custom_format",
                         "opaque_video_identity",
                     ),
                     resolver=ProfileResolver(root),
@@ -128,12 +128,12 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
     def test_random_and_fixed_seed_modes_preserve_current_behavior(self):
         random_profile = self._document(
             "opaque_video_identity",
-            "custom_platform",
+            "custom_format",
             "lossless_ffv1",
         )
         fixed_profile = self._document(
             "opaque_video_identity",
-            "custom_platform",
+            "custom_format",
             "lossless_ffv1",
         )
         fixed_profile["video_component"].update(
@@ -154,7 +154,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
     def test_invalid_seed_mode_preserves_value_error_contract(self):
         profile = self._document(
             "opaque_video_identity",
-            "custom_platform",
+            "custom_format",
             "lossless_ffv1",
         )
         profile["video_component"]["seed_mode"] = "unsupported"
@@ -169,7 +169,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
                 load_video_component_parameters(
                     OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "custom_platform",
+                        "custom_format",
                         "opaque_video_identity",
                     ),
                     resolver=ProfileResolver(root),

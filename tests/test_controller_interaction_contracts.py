@@ -21,7 +21,7 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 def _operational_key():
     return OperationalProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="vertical",
+        format="vertical",
         profile_id="studio_vertical",
     )
 
@@ -29,7 +29,7 @@ def _operational_key():
 def _subtitle_key():
     return SubtitleProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="vertical",
+        format="vertical",
         profile_id="subtitle_fixture",
         family="fixture_family",
     )

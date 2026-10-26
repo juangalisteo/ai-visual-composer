@@ -1,6 +1,6 @@
 {
   "component": "studio",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "karaoke",
   "profile_id": "subtitulo_studio_vertical_rolling_window",
   "display_name": "Ventana deslizante",

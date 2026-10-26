@@ -111,7 +111,7 @@ def test_studio_export_menu_label_changes_without_changing_its_mode_id():
 
 
 @pytest.mark.parametrize("subtitles", (False, True))
-def test_video_audio_srt_menu_uses_operational_platform_and_never_asks_for_music(
+def test_video_audio_srt_menu_uses_operational_format_and_never_asks_for_music(
     subtitles,
 ):
     profile_key, _, _ = _profile_and_subtitles()
@@ -396,11 +396,11 @@ def test_video_audio_srt_subtitle_selection_uses_real_profiles_without_original(
     controller = RunController()
     family = controller.subtitle_profile_resolver.discover_families(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
     )[0]
     descriptors = controller.subtitle_profile_resolver.discover_profiles_for_family(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         family,
     )
     messages = []
@@ -561,7 +561,7 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
         config = Mock()
         config.get_operational_profile_key.return_value = OperationalProfileKey(
             profile_key.component,
-            profile_key.platform,
+            profile_key.format,
             profile_key.profile_id,
         )
         config.get_profile_config.return_value = {}
@@ -621,7 +621,7 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
         config = Mock()
         config.get_operational_profile_key.return_value = OperationalProfileKey(
             profile_key.component,
-            profile_key.platform,
+            profile_key.format,
             profile_key.profile_id,
         )
         config.get_profile_config.return_value = {}
@@ -701,7 +701,7 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
     options = {
         "project_name": "video-audio-srt",
         "profile_id": "studio_horizontal",
-        "profile_platform": "horizontal",
+        "profile_format": "horizontal",
         "studio_input_mode": "video_audio_srt",
         "studio_video_audio_srt_plan": plan,
         "subtitle_profile_key": _standard_subtitle_key("single_line"),

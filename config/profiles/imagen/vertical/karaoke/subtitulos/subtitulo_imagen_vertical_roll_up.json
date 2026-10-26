@@ -1,6 +1,6 @@
 {
   "component": "imagen",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "karaoke",
   "profile_id": "subtitulo_imagen_vertical_roll_up",
   "display_name": "Desplazamiento vertical",

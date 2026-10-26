@@ -23,15 +23,15 @@ OPTIONAL_FORCE_STYLE_FIELDS = (
 
 
 @pytest.mark.parametrize("component", tuple(ProfileComponent))
-@pytest.mark.parametrize("platform", ("horizontal", "vertical"))
+@pytest.mark.parametrize("profile_format", ("horizontal", "vertical"))
 def test_phase3_official_standard_baseline_uses_the_static_srt_engine(
     component,
-    platform,
+    profile_format,
 ):
     resolver = SubtitleProfileResolver()
 
     for descriptor in resolver.discover_profiles_for_family(
-        component, platform, "estandar",
+        component, profile_format, "estandar",
     ):
         resolved = resolver.load(descriptor.key)
         force_style = SubtitleStyleBuilder().build(resolved.render_style)

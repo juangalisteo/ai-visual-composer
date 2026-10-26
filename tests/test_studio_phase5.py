@@ -39,7 +39,7 @@ from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -189,7 +189,7 @@ class StudioPhase5Test(unittest.TestCase):
         plan = IntroOutroPlan(intro=intro)
         options = {
             "profile_component": "studio",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "studio_vertical",
             "voice_config": "",
             "music_category": None,

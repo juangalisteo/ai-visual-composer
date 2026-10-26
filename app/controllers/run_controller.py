@@ -247,7 +247,7 @@ class RunController:
 
         if produces_final_video:
             intro_outro_selection = (
-                self.select_intro_outro(profile_key.platform)
+                self.select_intro_outro(profile_key.format)
             )
 
         project_name = self.ask_project_name()
@@ -262,8 +262,8 @@ class RunController:
                 if profile_key
                 else ""
             ),
-            "profile_platform": (
-                profile_key.platform
+            "profile_format": (
+                profile_key.format
                 if profile_key
                 else ""
             ),
@@ -351,7 +351,7 @@ class RunController:
         selection["subtitle_profile_key"] = (
             self.subtitle_selection.select_profile_subtitle_profile(
                 component,
-                profile_key.platform,
+                profile_key.format,
                 writer=self._print,
                 selector=self._select_from_list,
                 family_label=self._family_label,
@@ -472,15 +472,15 @@ class RunController:
             selector=self._select_from_list,
         )
 
-    def select_intro_outro(self, platform):
+    def select_intro_outro(self, profile_format):
         return self.intro_outro_selection.select_intro_outro(
-            platform,
+            profile_format,
             writer=self._print,
             selector=self._select_from_list,
         )
 
-    def _require_intro_outro_assets(self, platform, position):
-        return self.intro_outro_selection.require_assets(platform, position)
+    def _require_intro_outro_assets(self, profile_format, position):
+        return self.intro_outro_selection.require_assets(profile_format, position)
 
     def _select_intro_outro_asset(self, assets, position):
         return self.intro_outro_selection.select_asset(
@@ -694,17 +694,17 @@ class RunController:
         }
 
     def _select_studio_profile_selection(self, input_mode=None):
-        profiles_by_platform = self._studio_operational_profiles_by_platform()
-        platform = self._select_studio_operational_platform(
-            profiles_by_platform,
+        profiles_by_format = self._studio_operational_profiles_by_format()
+        profile_format = self._select_studio_operational_format(
+            profiles_by_format,
         )
         profile_key, studio_profile = self._select_studio_operational_profile(
-            platform=platform,
-            profiles_by_platform=profiles_by_platform,
+            profile_format=profile_format,
+            profiles_by_format=profiles_by_format,
         )
         subtitle_key, subtitle_original = self._select_studio_subtitle_profile(
             input_mode,
-            platform=platform,
+            profile_format=profile_format,
         )
         return StudioProfileSelection(
             operational=StudioOperationalSelection(
@@ -717,12 +717,12 @@ class RunController:
             ),
         )
 
-    def _studio_operational_profiles_by_platform(self):
-        return self.profile_selection.studio_operational_profiles_by_platform()
+    def _studio_operational_profiles_by_format(self):
+        return self.profile_selection.studio_operational_profiles_by_format()
 
-    def _select_studio_operational_platform(self, profiles_by_platform):
-        return self.profile_selection.select_studio_operational_platform(
-            profiles_by_platform,
+    def _select_studio_operational_format(self, profiles_by_format):
+        return self.profile_selection.select_studio_operational_format(
+            profiles_by_format,
             writer=self._print,
             selector=self._select_from_list,
             label=self._label,
@@ -730,24 +730,24 @@ class RunController:
 
     def _select_studio_operational_profile(
         self,
-        platform=None,
-        profiles_by_platform=None,
+        profile_format=None,
+        profiles_by_format=None,
     ):
         return self.profile_selection.select_studio_operational_profile(
-            platform=platform,
-            profiles_by_platform=profiles_by_platform,
-            profiles_by_platform_provider=(
-                self._studio_operational_profiles_by_platform
+            profile_format=profile_format,
+            profiles_by_format=profiles_by_format,
+            profiles_by_format_provider=(
+                self._studio_operational_profiles_by_format
             ),
-            select_platform=self._select_studio_operational_platform,
+            select_format=self._select_studio_operational_format,
             writer=self._print,
             selector=self._select_from_list,
         )
 
-    def _select_studio_subtitle_profile(self, input_mode, platform=None):
+    def _select_studio_subtitle_profile(self, input_mode, profile_format=None):
         return self.subtitle_selection.select_studio_subtitle_profile(
             input_mode,
-            platform=platform,
+            profile_format=profile_format,
             writer=self._print,
             selector=self._select_from_list,
             label=self._label,
@@ -756,7 +756,7 @@ class RunController:
         )
 
     def _select_studio_video_audio_srt_subtitle_profile(self, profile_key):
-        """Select a real subtitle profile within the chosen STUDIO platform."""
+        """Select a real subtitle profile within the chosen STUDIO format."""
         return self.subtitle_selection.select_studio_video_audio_srt_subtitle_profile(
             profile_key,
             writer=self._print,
@@ -777,7 +777,7 @@ class RunController:
             return {}
         return {
             "profile_component": profile_key.component.value,
-            "profile_platform": profile_key.platform,
+            "profile_format": profile_key.format,
             "profile_id": profile_key.profile_id,
         }
 

@@ -9,7 +9,7 @@ from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoade
 from app.shared.profile_identity import (
     ProfileComponent,
     coerce_profile_family,
-    coerce_profile_platform,
+    coerce_profile_format,
 )
 from app.shared.operational_error import create_operational_error
 from app.shared.subtitle_profile_identity import (
@@ -29,7 +29,7 @@ class SubtitleProfileResolver:
         profile_key = self._require_operational_key(profile_key)
         matches = []
         for path, data in self._profile_documents(
-            profile_key.component, profile_key.platform, profile_key.family
+            profile_key.component, profile_key.format, profile_key.family
         ):
             if data.get("profile_id") == profile_key.profile_id:
                 self._validate_identity(data, profile_key, path)
@@ -85,28 +85,28 @@ class SubtitleProfileResolver:
             render_style=deepcopy(data["render_style"]),
         )
 
-    def discover_platforms(self, component):
+    def discover_formats(self, component):
         component = ProfileComponent(component)
         root = self.profiles_root / component.value
         self._ensure_within_profiles_root(root)
         if not root.is_dir():
             return ()
-        platforms = []
+        profile_formats = []
         for directory in root.iterdir():
             if not directory.is_dir():
                 continue
             try:
-                platform = coerce_profile_platform(directory.name)
+                profile_format = coerce_profile_format(directory.name)
             except ValueError:
                 continue
-            if self.discover_families(component, platform):
-                platforms.append(platform)
-        return tuple(sorted(platforms))
+            if self.discover_families(component, profile_format):
+                profile_formats.append(profile_format)
+        return tuple(sorted(profile_formats))
 
-    def discover_families(self, component, platform):
+    def discover_families(self, component, profile_format):
         component = ProfileComponent(component)
-        platform = coerce_profile_platform(platform)
-        root = self.profiles_root / component.value / platform
+        profile_format = coerce_profile_format(profile_format)
+        root = self.profiles_root / component.value / profile_format
         self._ensure_within_profiles_root(root)
         if not root.is_dir():
             return ()
@@ -118,20 +118,20 @@ class SubtitleProfileResolver:
                 family = coerce_profile_family(directory.name)
             except (TypeError, ValueError):
                 continue
-            if self.discover_profiles_for_family(component, platform, family):
+            if self.discover_profiles_for_family(component, profile_format, family):
                 families.append(family)
         return tuple(families)
 
-    def discover_profiles_for_family(self, component, platform, family):
+    def discover_profiles_for_family(self, component, profile_format, family):
         component = ProfileComponent(component)
-        platform = coerce_profile_platform(platform)
+        profile_format = coerce_profile_format(profile_format)
         family = coerce_profile_family(family)
         discovered = []
         profile_ids = set()
-        for path, data in self._profile_documents(component, platform, family):
+        for path, data in self._profile_documents(component, profile_format, family):
             key = SubtitleProfileKey(
                 component=component,
-                platform=platform,
+                format=profile_format,
                 family=family,
                 profile_id=data.get("profile_id", ""),
             )
@@ -189,9 +189,9 @@ class SubtitleProfileResolver:
             ),
         ))
 
-    def _profile_documents(self, component, platform, family):
+    def _profile_documents(self, component, profile_format, family):
         directory = (
-            self.profiles_root / component.value / platform / family / "subtitulos"
+            self.profiles_root / component.value / profile_format / family / "subtitulos"
         )
         self._ensure_within_profiles_root(directory)
         if not directory.is_dir():
@@ -248,7 +248,7 @@ class SubtitleProfileResolver:
     def _validate_identity(self, data, profile_key, path):
         expected = {
             "component": profile_key.component.value,
-            "platform": profile_key.platform,
+            "format": profile_key.format,
             "family": profile_key.family,
             "profile_id": profile_key.profile_id,
         }
@@ -264,7 +264,7 @@ class SubtitleProfileResolver:
                     "con su ruta."
                 ),
                 recommended_action=(
-                    "Revise component, platform, family y profile_id del "
+                    "Revise component, format, family y profile_id del "
                     "perfil."
                 ),
                 operation="Validar perfil de subtítulos",
@@ -353,7 +353,7 @@ class SubtitleProfileResolver:
         return "/".join(
             (
                 profile_key.component.value,
-                profile_key.platform,
+                profile_key.format,
                 profile_key.family,
                 profile_key.profile_id,
             )

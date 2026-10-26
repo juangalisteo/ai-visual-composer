@@ -1,6 +1,6 @@
 {
   "component": "guion",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "minimalista",
   "profile_id": "subtitulo_guion_vertical_typewriter",
   "display_name": "Máquina de escribir",

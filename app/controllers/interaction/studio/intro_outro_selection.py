@@ -45,10 +45,10 @@ class StudioIntroOutroRouteSelection:
         intro = None
         outro = None
         if mode in {"intro", "both"}:
-            assets = require_assets(profile_key.platform, "intro")
+            assets = require_assets(profile_key.format, "intro")
             intro = IntroOutroSelection(select_asset(assets, "INTRO"), "intro")
         if mode in {"outro", "both"}:
-            assets = require_assets(profile_key.platform, "outro")
+            assets = require_assets(profile_key.format, "outro")
             outro = IntroOutroSelection(select_asset(assets, "OUTRO"), "outro")
         return self._input_service.create_plan(
             IntroOutroPlan(intro=intro, outro=outro),

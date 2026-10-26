@@ -111,7 +111,7 @@ class IntroOutroTest(unittest.TestCase):
                 list(catalog.discover("vertical", "outro")),
             )
 
-    def test_catalog_never_mixes_platform_assets(self):
+    def test_catalog_never_mixes_format_assets(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             vertical_intro = root / "vertical" / "intro"
@@ -148,15 +148,15 @@ class IntroOutroTest(unittest.TestCase):
                 list(catalog.discover("horizontal", "outro")),
             )
 
-    def test_catalog_accepts_a_future_platform_from_structure_only(self):
+    def test_catalog_accepts_a_future_format_from_structure_only(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            future_intro = root / "test_platform" / "intro"
+            future_intro = root / "test_format" / "intro"
             future_intro.mkdir(parents=True)
             asset = future_intro / "future.mp4"
             asset.write_bytes(b"future")
 
-            assets = IntroOutroCatalog(root).discover("test_platform", "intro")
+            assets = IntroOutroCatalog(root).discover("test_format", "intro")
 
         self.assertEqual([asset], list(assets))
 
@@ -247,7 +247,7 @@ class IntroOutroTest(unittest.TestCase):
         plan = IntroOutroPlan(intro=selection)
         options = {
             "profile_component": "video",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "profile_id": "video_vertical",
             "voice_config": "masculina",
             "music_category": None,

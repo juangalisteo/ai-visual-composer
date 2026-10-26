@@ -29,17 +29,17 @@ class FakeConfigManager:
     subtitle_profile = object()
     script_operational_key = OperationalProfileKey(
         ProfileComponent.GUION,
-        "test_platform",
+        "test_format",
         "test_profile",
     )
     video_operational_key = OperationalProfileKey(
         ProfileComponent.VIDEO,
-        "test_platform",
+        "test_format",
         "test_profile",
     )
     subtitle_profile_key = SubtitleProfileKey(
         component=ProfileComponent.GUION,
-        platform="test_platform",
+        format="test_format",
         family="test_family",
         profile_id="test_profile",
     )
@@ -70,7 +70,6 @@ class FakeConfigManager:
     ):
         return {
             "tone": "modo_conciencia",
-            "platform": "horizontal",
             "format": "horizontal",
             "duration": 10,
             "builders": {
@@ -98,10 +97,10 @@ class FakeConfigManager:
 
 
 class FakeProfileResolver:
-    def discover_operational_profiles(self, component, platform):
+    def discover_operational_profiles(self, component, profile_format):
         if (
             component is not ProfileComponent.VIDEO
-            or platform != FakeConfigManager.video_operational_key.platform
+            or profile_format != FakeConfigManager.video_operational_key.format
         ):
             raise AssertionError("La prueba debe conservar la identidad VIDEO.")
         return (
@@ -675,8 +674,8 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "script_source": "manual",
                         "pipeline_mode": "full",
                         "profile_component": "guion",
-                        "profile_platform": (
-                            FakeConfigManager.script_operational_key.platform
+                        "profile_format": (
+                            FakeConfigManager.script_operational_key.format
                         ),
                         "profile_id": (
                             FakeConfigManager.script_operational_key.profile_id

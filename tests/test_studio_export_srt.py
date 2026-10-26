@@ -457,18 +457,18 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             ("horizontal", "estandar", "single_line"),
             ("horizontal", "estandar", "word_by_word"),
         )
-        for platform, family, expected_mode in cases:
-            with self.subTest(platform=platform, family=family, mode=expected_mode):
+        for profile_format, family, expected_mode in cases:
+            with self.subTest(profile_format=profile_format, family=family, mode=expected_mode):
                 descriptor = next(
                     item
                     for item in resolver.discover_profiles_for_family(
-                        "studio", platform, family,
+                        "studio", profile_format, family,
                     )
                     if resolver.load(item.key).cue_policy["mode"] == expected_mode
                 )
                 controller = RunController()
                 profile_key = OperationalProfileKey(
-                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                    "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
                 )
                 with patch.object(
                     controller,
@@ -518,25 +518,25 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             payload = json.loads(source.read_text(encoding="utf-8"))
             payload.update({
                 "component": "studio",
-                "platform": "test_platform",
+                "format": "test_format",
                 "family": "test_family",
                 "profile_id": "test_profile",
                 "display_name": "Test profile",
             })
             path = (
-                root / "studio" / "test_platform" / "test_family"
+                root / "studio" / "test_format" / "test_family"
                 / "subtitulos" / "test_profile.json"
             )
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps(payload), encoding="utf-8")
             resolver = SubtitleProfileResolver(root)
             descriptor = resolver.discover_profiles_for_family(
-                "studio", "test_platform", "test_family",
+                "studio", "test_format", "test_family",
             )[0]
             mode = resolver.load(descriptor.key).cue_policy["mode"]
             controller = RunController(subtitle_profile_resolver=resolver)
             profile_key = OperationalProfileKey(
-                "studio", "test_platform", "test_operational",
+                "studio", "test_format", "test_operational",
             )
             with patch.object(
                 controller,
@@ -599,7 +599,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
 
         profile.assert_not_called()
         self.assertNotIn("profile_component", options)
-        self.assertNotIn("profile_platform", options)
+        self.assertNotIn("profile_format", options)
         self.assertNotIn("profile_id", options)
         self.assertIs(plan, options["studio_subtitle_export_plan"])
 
@@ -786,10 +786,10 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         options = {
             "project_name": "demo",
             "profile_id": "studio_vertical",
-            "profile_platform": "vertical",
+            "profile_format": "vertical",
             "subtitle_profile_key": SubtitleProfileKey(
                 component="studio",
-                platform="vertical",
+                format="vertical",
                 family="minimalista",
                 profile_id="subtitulo_studio_vertical_cumulative_line",
             ),

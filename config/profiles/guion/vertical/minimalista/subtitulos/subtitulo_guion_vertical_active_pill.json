@@ -1,6 +1,6 @@
 {
   "component": "guion",
-  "platform": "vertical",
+  "format": "vertical",
   "family": "minimalista",
   "profile_id": "subtitulo_guion_vertical_active_pill",
   "display_name": "Palabra en recuadro",

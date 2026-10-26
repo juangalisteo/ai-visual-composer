@@ -1,6 +1,6 @@
 {
     "component": "video",
-    "platform": "vertical",
+    "format": "vertical",
     "family": "estandar",
     "profile_id": "subtitulo_video_vertical_palabra_por_palabra",
     "display_name": "Palabra única",

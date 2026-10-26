@@ -56,7 +56,7 @@ STUDIO_STANDARD_SUBTITLE_PROFILE_IDS = {
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -456,21 +456,21 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         subtitle_service.prepare.assert_not_called()
         renderer.render.assert_not_called()
 
-    def test_original_preserves_srt_base_for_both_studio_platforms(self):
+    def test_original_preserves_srt_base_for_both_studio_formats(self):
         source = "1\n00:00:00,000 --> 00:00:01,000\nMATEO 13\n"
-        for platform in ("horizontal", "vertical"):
-            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
+        for profile_format in ("horizontal", "vertical"):
+            with self.subTest(profile_format=profile_format), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 profile_key = OperationalProfileKey(
-                    "studio", platform, STUDIO_PROFILE_IDS[platform]
+                    "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
                 )
                 profile = _load_studio_profile(profile_key)
                 subtitle_profile = SubtitleProfileResolver().load(
                     SubtitleProfileKey(
                         "studio",
-                        platform,
+                        profile_format,
                         STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[
-                            (platform, "word_by_word")
+                            (profile_format, "word_by_word")
                         ],
                         "estandar",
                     )
@@ -597,9 +597,9 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             ("vertical", "estandar", "subtitulo_studio_vertical_palabra_por_palabra"),
             ("horizontal", "estandar", "subtitulo_studio_horizontal_linea_unica"),
         )
-        for platform, family, profile_id in cases:
+        for profile_format, family, profile_id in cases:
             with self.subTest(
-                platform=platform,
+                profile_format=profile_format,
                 family=family,
                 profile_id=profile_id,
             ):
@@ -609,12 +609,12 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 descriptor = next(
                     item
                     for item in resolver.discover_profiles_for_family(
-                        "studio", platform, family,
+                        "studio", profile_format, family,
                     )
                     if item.profile_id == profile_id
                 )
                 controller._select_from_list = Mock(
-                    side_effect=(platform, family, descriptor),
+                    side_effect=(profile_format, family, descriptor),
                 )
 
                 selected, original = controller._select_studio_subtitle_profile(
@@ -837,7 +837,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 (subtitle_dir / f"{profile_id}.json").write_text(
                     json.dumps({
                         "component": "studio",
-                        "platform": "vertical",
+                        "format": "vertical",
                         "family": "estandar",
                         "profile_id": profile_id,
                         "display_name": profile_id,

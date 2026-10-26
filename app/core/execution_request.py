@@ -277,7 +277,7 @@ def _adapt_operational_profile_key(
         _blank_to_none(options.get(name))
         for name in (
             "profile_component",
-            "profile_platform",
+            "profile_format",
             "profile_id",
         )
     )

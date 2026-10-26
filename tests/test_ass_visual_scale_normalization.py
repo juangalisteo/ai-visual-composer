@@ -66,7 +66,7 @@ def test_dynamic_visual_units_are_normalized_from_target_playres():
     }
 
 
-def test_dynamic_visual_normalization_is_resolution_driven_not_platform_named():
+def test_dynamic_visual_normalization_is_resolution_driven_not_format_named():
     style = SubtitleConfigLoader().load_render_style(STYLE)
 
     normalized = AssVisualScaleNormalizer().normalize(style, 1920, 1080)
@@ -146,7 +146,7 @@ def test_official_dynamic_profiles_normalize_without_family_specific_logic(tmp_p
         profile = resolver.load(
             SubtitleProfileKey(
                 component=ProfileComponent.STUDIO,
-                platform="vertical",
+                format="vertical",
                 family=family,
                 profile_id=(
                     f"subtitulo_studio_vertical_{technical_name}"
@@ -186,7 +186,7 @@ def test_official_static_profiles_remain_unscaled_srt(tmp_path):
         profile = resolver.load(
             SubtitleProfileKey(
                 component=ProfileComponent.STUDIO,
-                platform="vertical",
+                format="vertical",
                 family=family,
                 profile_id=(
                     f"subtitulo_studio_vertical_{technical_name}"

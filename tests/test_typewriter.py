@@ -96,7 +96,7 @@ def test_typewriter_profiles_resolve_declaratively():
     for component in ProfileComponent:
         key = SubtitleProfileKey(
             component=component,
-            platform="vertical",
+            format="vertical",
             family="minimalista",
             profile_id=f"subtitulo_{component.value}_vertical_typewriter",
         )
