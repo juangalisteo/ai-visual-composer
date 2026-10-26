@@ -28,6 +28,7 @@ def _config(**changes):
         "mode": "rolling_window",
         "significant_gap_threshold": 0.35,
         "window_size": 5,
+        "max_chars_per_line": 60,
         "punctuation": PUNCTUATION,
     }
     config.update(changes)
@@ -225,11 +226,87 @@ def test_rolling_window_long_group_is_unchanged_by_short_groups_around_it():
     (
         ({"window_size": 1}, "window_size"),
         ({"significant_gap_threshold": 0}, "significant_gap_threshold"),
+        ({"max_chars_per_line": 0}, "max_chars_per_line"),
     ),
 )
 def test_rolling_window_validates_its_declared_limits(changes, message):
     with pytest.raises(ValueError, match=message):
         RollingWindowModel(_config(**changes))
+
+
+def test_rolling_window_requires_a_character_limit():
+    config = _config()
+    del config["max_chars_per_line"]
+
+    with pytest.raises(ValueError, match="max_chars_per_line"):
+        RollingWindowModel(config)
+
+
+WIDE_WORDS = (
+    "la", "responsabilidad", "comprende", "transformaciones",
+    "extraordinariamente", "profundas", "hoy",
+)
+
+
+def _assert_trimmed_windows(cues, limit):
+    texts = [text for _, _, text in cues]
+    # Every window fits (a longer word would stay alone) ...
+    assert all(len(text) <= limit or " " not in text for text in texts)
+    # ... starts with its own word, and the last one reaches the final word,
+    # so no word is lost.
+    assert [text.split()[0] for text in texts] == list(WIDE_WORDS[:len(texts)])
+    assert texts[-1].split()[-1] == WIDE_WORDS[-1]
+    _assert_no_overlap(cues)
+
+
+def test_rolling_window_timed_trims_the_end_of_a_window_that_does_not_fit():
+    timing = _timing(*(
+        WordTiming(word, index * 0.4, index * 0.4 + 0.3)
+        for index, word in enumerate(WIDE_WORDS)
+    ))
+
+    cues = _cues(
+        RollingWindowModel(_config(max_chars_per_line=29)).optimize([], timing=timing)
+    )
+
+    assert cues == [
+        ("00:00:00,000", "00:00:00,400", "la responsabilidad comprende"),
+        ("00:00:00,400", "00:00:00,800", "responsabilidad comprende"),
+        ("00:00:00,800", "00:00:01,200", "comprende transformaciones"),
+        ("00:00:01,200", "00:00:01,600", "transformaciones"),
+        ("00:00:01,600", "00:00:02,000", "extraordinariamente profundas"),
+        ("00:00:02,000", "00:00:02,700", "profundas hoy"),
+    ]
+    _assert_trimmed_windows(cues, 29)
+
+
+def test_rolling_window_untimed_trims_the_end_of_a_window_that_does_not_fit():
+    cues = _cues(RollingWindowModel(_config(max_chars_per_line=29)).optimize([
+        "1\n00:00:00,000 --> 00:00:02,800\n" + " ".join(WIDE_WORDS),
+    ]))
+
+    assert [text for _, _, text in cues] == [
+        "la responsabilidad comprende",
+        "responsabilidad comprende",
+        "comprende transformaciones",
+        "transformaciones",
+        "extraordinariamente profundas",
+        "profundas hoy",
+    ]
+    assert cues[0][:2] == ("00:00:00,000", "00:00:00,400")
+    assert cues[-1][:2] == ("00:00:02,000", "00:00:02,800")
+    _assert_trimmed_windows(cues, 29)
+
+
+def test_rolling_window_keeps_a_word_longer_than_the_limit_alone():
+    cues = _cues(RollingWindowModel(_config(max_chars_per_line=10)).optimize([
+        "1\n00:00:00,000 --> 00:00:01,200\nhoy extraordinariamente bien",
+    ]))
+
+    assert [text for _, _, text in cues] == [
+        "hoy", "extraordinariamente", "bien",
+    ]
+    _assert_no_overlap(cues)
 
 
 def test_instagram_karaoke_rolling_window_profiles_resolve_declaratively():
@@ -254,6 +331,7 @@ def test_instagram_karaoke_rolling_window_profiles_resolve_declaratively():
         assert profile.display_name == "Ventana deslizante"
         assert profile.cue_policy["mode"] == "rolling_window"
         assert profile.cue_policy["window_size"] == 5
+        assert profile.cue_policy["max_chars_per_line"] == 29
         assert render_style.dynamic is False
         assert render_style.cue_effect is None
         assert render_style.word_effect is None

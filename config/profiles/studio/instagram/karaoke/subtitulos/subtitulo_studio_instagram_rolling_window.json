@@ -9,6 +9,7 @@
     "text_case": "original",
     "significant_gap_threshold": 0.35,
     "window_size": 5,
+    "max_chars_per_line": 29,
     "punctuation": {
       "remove_commas": true,
       "remove_periods": true,

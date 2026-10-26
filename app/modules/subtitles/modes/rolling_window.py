@@ -15,6 +15,10 @@ class RollingWindowModel(BaseSubtitleModel):
     Each window ends where the next one of its group starts; the last
     window keeps the end of its final word. A group shorter than the
     window is shown whole in a single cue.
+
+    A window that does not fit in ``max_chars_per_line`` drops its last
+    words (a longer word stays alone), and windows go on until one reaches
+    the end of the group, so every word is shown.
     """
 
     def __init__(self, config):
@@ -27,6 +31,9 @@ class RollingWindowModel(BaseSubtitleModel):
         self.window_size = require_int(
             config, "window_size", "cue_policy.window_size"
         )
+        self.max_chars_per_line = require_int(
+            config, "max_chars_per_line", "cue_policy.max_chars_per_line"
+        )
 
         if self.significant_gap_threshold <= 0:
             raise ValueError(
@@ -34,6 +41,10 @@ class RollingWindowModel(BaseSubtitleModel):
             )
         if self.window_size < 2:
             raise ValueError("cue_policy.window_size debe ser un entero >= 2.")
+        if self.max_chars_per_line <= 0:
+            raise ValueError(
+                "cue_policy.max_chars_per_line debe ser superior a cero."
+            )
 
     def optimize(self, blocks, timing=None):
         if timing is not None and timing.is_usable():
@@ -80,21 +91,19 @@ class RollingWindowModel(BaseSubtitleModel):
                 continue
             start_ms, end_ms, words = parsed
             ranges = self._distribute_word_ranges(start_ms, end_ms, words)
-            size = min(self.window_size, len(words))
-            window_count = len(words) - size + 1 if words else 0
-            for start_index in range(window_count):
-                end_index = start_index + size - 1
+            bounds = self._window_bounds(words)
+            for position, (start_index, end_index) in enumerate(bounds):
                 cue_end = (
                     ranges[start_index + 1][0]
-                    if start_index + 1 < window_count
-                    else ranges[end_index][1]
+                    if position + 1 < len(bounds)
+                    else ranges[end_index - 1][1]
                 )
                 optimized.append(
                     self._format_block(
                         index,
                         self._ms_to_time(ranges[start_index][0]),
                         self._ms_to_time(cue_end),
-                        self._format_words(words[start_index:end_index + 1]),
+                        self._format_words(words[start_index:end_index]),
                     )
                 )
                 index += 1
@@ -116,13 +125,30 @@ class RollingWindowModel(BaseSubtitleModel):
         return groups
 
     def _windows(self, words):
-        if not words:
-            return ()
-        size = min(self.window_size, len(words))
         return tuple(
-            tuple(words[index:index + size])
-            for index in range(len(words) - size + 1)
+            tuple(words[start:end]) for start, end in self._window_bounds(words)
         )
+
+    def _window_bounds(self, words):
+        """Return ``(start, end)`` word slices: one window per first word.
+
+        Each window takes up to ``window_size`` words while its text fits
+        in ``max_chars_per_line``; the last one reaches the final word.
+        """
+        texts = [word.text if hasattr(word, "text") else str(word) for word in words]
+        bounds = []
+        for start in range(len(texts)):
+            end = start + 1
+            while (
+                end < len(texts)
+                and end - start < self.window_size
+                and len(" ".join(texts[start:end + 1])) <= self.max_chars_per_line
+            ):
+                end += 1
+            bounds.append((start, end))
+            if end == len(texts):
+                break
+        return tuple(bounds)
 
     def _format_words(self, words):
         return self.punctuation.apply(

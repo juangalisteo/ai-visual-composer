@@ -34,7 +34,7 @@ CONFIGS = {
         "max_chars_per_line": 60, "min_duration": 0.8, "max_duration": 5.0,
     },
     "roll_up": {"max_chars_per_line": 20, "visible_lines": 3},
-    "rolling_window": {"window_size": 5},
+    "rolling_window": {"window_size": 5, "max_chars_per_line": 60},
     "single_line": {
         "max_chars_per_line": 60, "min_duration": 0.8, "max_duration": 5.0,
     },

@@ -97,6 +97,11 @@ def _candidate_lines(cue_policy):
             max_chars=cue_policy["max_chars_per_line"],
             max_words=cue_policy.get("fixed_chunk_size") or 3,
         )
+    if mode == "rolling_window":
+        return _runs(
+            max_chars=cue_policy["max_chars_per_line"],
+            max_words=cue_policy["window_size"],
+        )
     if mode in ("single_line", "two_lines", "cumulative_line", "roll_up"):
         return _runs(max_chars=cue_policy["max_chars_per_line"])
     raise AssertionError(f"Modo sin regla de ancho: {mode}")
@@ -147,13 +152,7 @@ def _widest_line(path):
 
 @pytest.mark.parametrize(
     "path",
-    [
-        path for path in _subtitle_profiles()
-        # Pending F5b: rolling_window has no character limit yet, so two long
-        # words can overflow with any window_size. F5b removes this exclusion.
-        if json.loads(path.read_text(encoding="utf-8"))["cue_policy"]["mode"]
-        != "rolling_window"
-    ],
+    _subtitle_profiles(),
     ids=lambda path: path.as_posix(),
 )
 def test_widest_line_fits_ninety_percent_of_the_usable_width(path):
