@@ -9,13 +9,13 @@ alike).
 """
 
 import json
-import struct
 from pathlib import Path
 
 import pytest
 from PIL import ImageFont
 
 from app.managers.font_manager import FontManager
+from app.modules.subtitles.rendering.font_metrics import em_per_win_height
 from app.modules.subtitles.policies.text_case import TextCasePolicy
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.subtitles.ass_subtitle_builder import (
@@ -65,22 +65,9 @@ def _frame_size(component, platform):
     return sizes.pop()
 
 
-def _em_per_win_height(font_path):
-    data = font_path.read_bytes()
-    tables = {}
-    for index in range(struct.unpack(">H", data[4:6])[0]):
-        record = data[12 + 16 * index:28 + 16 * index]
-        tag, _, offset, _ = struct.unpack(">4sIII", record)
-        tables[tag] = offset
-    head, os2 = tables[b"head"], tables[b"OS/2"]
-    units_per_em = struct.unpack(">H", data[head + 18:head + 20])[0]
-    win_ascent, win_descent = struct.unpack(">HH", data[os2 + 74:os2 + 78])
-    return units_per_em / (win_ascent + win_descent)
-
-
 def _libass_font(font_name, ass_size):
     path = FontManager().resolve_path(font_name)
-    return ImageFont.truetype(str(path), ass_size * _em_per_win_height(path))
+    return ImageFont.truetype(str(path), ass_size * em_per_win_height(str(path)))
 
 
 def _runs(max_chars=None, max_words=None, exact_words=None):
