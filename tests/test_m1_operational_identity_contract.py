@@ -92,7 +92,7 @@ def test_m1_subtitle_key_family_is_independent_of_operational_legacy_family():
         "studio", "vertical", "studio_vertical",
     )
     subtitle_key = SubtitleProfileKey(
-        "studio", "vertical", "modo_conciencia_reels", "design",
+        "studio", "vertical", "modo_conciencia_palabra_unica", "design",
     )
 
     resolved = SubtitleProfileResolver().load(subtitle_key)

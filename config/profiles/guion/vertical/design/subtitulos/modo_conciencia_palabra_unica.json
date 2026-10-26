@@ -2,8 +2,8 @@
   "component": "guion",
   "platform": "vertical",
   "family": "design",
-  "profile_id": "modo_conciencia_reels",
-  "display_name": "Modo Conciencia | Reels",
+  "profile_id": "modo_conciencia_palabra_unica",
+  "display_name": "Modo Conciencia | Palabra única",
   "cue_policy": {
     "mode": "word_by_word",
     "min_duration": 0.30,

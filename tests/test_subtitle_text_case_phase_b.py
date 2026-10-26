@@ -64,7 +64,7 @@ def test_design_and_standard_profiles_use_the_common_policy_without_original_pat
         component="studio",
         platform="vertical",
         family="design",
-        profile_id="modo_conciencia_reels",
+        profile_id="modo_conciencia_palabra_unica",
     ))
     standard.cue_policy["text_case"] = "lowercase"
     design.cue_policy["text_case"] = "uppercase"

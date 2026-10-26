@@ -449,20 +449,20 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 canonical = next(
                     descriptor
                     for descriptor in designs
-                    if descriptor.profile_id == "modo_conciencia_reels"
+                    if descriptor.profile_id == "modo_conciencia_palabra_unica"
                 )
                 key = canonical.key
                 display_name = canonical.display_name
                 self.assertEqual(component, key.component)
                 self.assertEqual("design", key.family)
                 self.assertEqual(
-                    "modo_conciencia_reels",
+                    "modo_conciencia_palabra_unica",
                     key.profile_id,
                 )
-                self.assertEqual("Modo Conciencia | Reels", display_name)
+                self.assertEqual("Modo Conciencia | Palabra única", display_name)
                 self.assertEqual(
                     Path("config/profiles") / component.value / "vertical"
-                    / "design" / "subtitulos" / "modo_conciencia_reels.json",
+                    / "design" / "subtitulos" / "modo_conciencia_palabra_unica.json",
                     SubtitleProfileResolver().resolve(key),
                 )
                 horizontal_designs = (
@@ -478,11 +478,11 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 self.assertEqual("horizontal", horizontal_key.platform)
                 self.assertEqual("design", horizontal_key.family)
                 self.assertEqual(
-                    "modo_conciencia_youtube",
+                    "modo_conciencia_linea_unica",
                     horizontal_key.profile_id,
                 )
                 self.assertEqual(
-                    "Modo Conciencia | YouTube",
+                    "Modo Conciencia | Línea única",
                     horizontal_designs[0].display_name,
                 )
 
@@ -492,7 +492,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         descriptor = SubtitleProfileResolver().discover_profiles_for_family(
             "video", "vertical", "design",
         )[0]
-        self.assertEqual("modo_conciencia_reels", descriptor.profile_id)
+        self.assertEqual("modo_conciencia_palabra_unica", descriptor.profile_id)
 
     def test_design_selector_uses_visible_labels_for_all_vertical_components(self):
         cases = {
@@ -502,8 +502,9 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "studio": ProfileComponent.STUDIO,
         }
         for scope, component in cases.items():
+            design = "2" if component is ProfileComponent.STUDIO else "1"
             with self.subTest(scope=scope), patch(
-                "builtins.input", side_effect=("2", "1", "1")
+                "builtins.input", side_effect=("2", "1", design)
             ), patch("builtins.print") as print_mock:
                 selected = RunController().select_profile(scope)
 
@@ -787,7 +788,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             selected["profile_key"].profile_id,
         )
         self.assertEqual(
-            "modo_conciencia_reels",
+            "modo_conciencia_palabra_unica",
             selected["subtitle_profile_key"].profile_id,
         )
         printed = "\n".join(
@@ -924,7 +925,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
 
     def test_main_transports_design_subtitle_identity_without_a_profile_path(self):
-        subtitle_profile_key = SubtitleProfileKey("imagen", "vertical", "modo_conciencia_reels", "design",
+        subtitle_profile_key = SubtitleProfileKey("imagen", "vertical", "modo_conciencia_palabra_unica", "design",
         )
         options = {
             "profile_component": "imagen",

@@ -1,18 +1,23 @@
 {
   "component": "studio",
   "platform": "vertical",
-  "family": "primado_negativo",
-  "profile_id": "primado_negativo_reels",
-  "display_name": "Primado Negativo | Reels",
+  "family": "design",
+  "profile_id": "modo_conciencia_palabra_unica",
+  "display_name": "Modo Conciencia | Palabra única",
   "cue_policy": {
-    "mode": "three_two_words",
-    "max_chars_per_line": 23,
+    "mode": "word_by_word",
     "min_duration": 0.30,
     "max_duration": 1.20,
     "significant_gap_threshold": 0.35,
-    "text_case": "original",
+    "micro_cues": {
+      "enabled": true,
+      "min_frames": 1,
+      "min_display_seconds": 0.05,
+      "merge_preference": "next"
+    },
+    "text_case": "uppercase",
     "punctuation": {
-      "remove_commas": false,
+      "remove_commas": true,
       "remove_periods": false,
       "remove_colons": false,
       "remove_semicolons": true,
@@ -27,7 +32,7 @@
     }
   },
   "render_style": {
-    "font": "anton",
+    "font": "oswald",
     "font_size": 22,
     "bold": true,
     "primary_colour": "&H00FFFFFF",

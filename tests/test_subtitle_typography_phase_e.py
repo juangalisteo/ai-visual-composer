@@ -198,14 +198,14 @@ class SubtitleTypographyPhaseETest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
             key = SubtitleProfileKey(
-                "video", "vertical", "modo_conciencia_reels", "design",
+                "video", "vertical", "modo_conciencia_palabra_unica", "design",
             )
-            path = root / "video/vertical/design/subtitulos/modo_conciencia_reels.json"
+            path = root / "video/vertical/design/subtitulos/modo_conciencia_palabra_unica.json"
             path.parent.mkdir(parents=True)
             data = json.loads(
                 Path(
                     "config/profiles/video/vertical/design/"
-                    "subtitulos/modo_conciencia_reels.json"
+                    "subtitulos/modo_conciencia_palabra_unica.json"
                 ).read_text(encoding="utf-8")
             )
             data["render_style"].update(self.EXTENDED_STYLE)

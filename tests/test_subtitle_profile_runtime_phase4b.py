@@ -126,7 +126,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
 
     def test_design_subtitles_do_not_fallback_to_system(self):
         design_key = SubtitleProfileKey(
-            "studio", "vertical", "modo_conciencia_reels", "design",
+            "studio", "vertical", "modo_conciencia_palabra_unica", "design",
         )
         system_source = self._expected_path(
             ProfileComponent.VIDEO,

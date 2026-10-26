@@ -1,23 +1,18 @@
 {
   "component": "studio",
   "platform": "vertical",
-  "family": "design",
-  "profile_id": "modo_conciencia_reels",
-  "display_name": "Modo Conciencia | Reels",
+  "family": "primado_negativo",
+  "profile_id": "primado_negativo_tres_palabras",
+  "display_name": "Primado Negativo | Tres palabras",
   "cue_policy": {
-    "mode": "word_by_word",
+    "mode": "three_two_words",
+    "max_chars_per_line": 23,
     "min_duration": 0.30,
     "max_duration": 1.20,
     "significant_gap_threshold": 0.35,
-    "micro_cues": {
-      "enabled": true,
-      "min_frames": 1,
-      "min_display_seconds": 0.05,
-      "merge_preference": "next"
-    },
-    "text_case": "uppercase",
+    "text_case": "original",
     "punctuation": {
-      "remove_commas": true,
+      "remove_commas": false,
       "remove_periods": false,
       "remove_colons": false,
       "remove_semicolons": true,
@@ -32,7 +27,7 @@
     }
   },
   "render_style": {
-    "font": "oswald",
+    "font": "anton",
     "font_size": 22,
     "bold": true,
     "primary_colour": "&H00FFFFFF",

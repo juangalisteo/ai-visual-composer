@@ -2,8 +2,8 @@
     "component": "guion",
     "platform": "horizontal",
     "family": "design",
-    "profile_id": "modo_conciencia_youtube",
-    "display_name": "Modo Conciencia | YouTube",
+    "profile_id": "modo_conciencia_linea_unica",
+    "display_name": "Modo Conciencia | Línea única",
     "cue_policy": {
         "mode": "single_line",
         "max_chars_per_line": 60,

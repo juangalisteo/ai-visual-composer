@@ -98,7 +98,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         return next(
             descriptor.key
             for descriptor in descriptors
-            if descriptor.profile_id == "modo_conciencia_reels"
+            if descriptor.profile_id == "modo_conciencia_palabra_unica"
         )
 
     def test_selected_srt_video_directory_ignores_video_directory(self):
@@ -559,7 +559,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         resolver = SubtitleProfileResolver()
         design = resolver.discover_profiles_for_family(
             "studio", "vertical", "design",
-        )[0]
+        )[1]
         standard = resolver.discover_profiles_for_family(
             "studio", "vertical", "estandar",
         )
@@ -576,7 +576,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         self.assertIn("SUBTÍTULOS", "\n".join(messages))
         self.assertIn("1. MODO CONCIENCIA", messages)
         self.assertIn("2. FORMATO ESTÁNDAR", messages)
-        self.assertIn("2. Modo Conciencia | Reels", messages)
+        self.assertIn("1. Modo Conciencia | Palabra única", messages)
         self.assertTrue(
             {
                 "Doble línea",
@@ -592,7 +592,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
     def test_srt_video_selector_uses_real_profiles_and_activates_original_policy(self):
         resolver = SubtitleProfileResolver()
         cases = (
-            ("vertical", "design", "modo_conciencia_reels"),
+            ("vertical", "design", "modo_conciencia_palabra_unica"),
             ("vertical", "estandar", "subtitulo_studio_vertical_linea_unica"),
             ("vertical", "estandar", "subtitulo_studio_vertical_palabra_por_palabra"),
             ("horizontal", "estandar", "subtitulo_studio_horizontal_linea_unica"),

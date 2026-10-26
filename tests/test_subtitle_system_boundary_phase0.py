@@ -216,7 +216,7 @@ def test_phase3_studio_loads_design_subtitle_identity_without_composition():
         for descriptor in resolver.discover_profiles_for_family(
             "studio", "vertical", "design",
         )
-        if descriptor.profile_id == "modo_conciencia_reels"
+        if descriptor.profile_id == "modo_conciencia_palabra_unica"
     )
     design = resolver.load(design_subtitle_key)
 

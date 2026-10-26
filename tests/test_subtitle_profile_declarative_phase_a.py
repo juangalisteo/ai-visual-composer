@@ -282,7 +282,7 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
         self.assertNotIn("original", profile_ids)
         descriptor = next(
             item for item in descriptors
-            if item.profile_id == "modo_conciencia_youtube"
+            if item.profile_id == "modo_conciencia_linea_unica"
         )
 
         controller = RunController(subtitle_profile_resolver=resolver)
@@ -302,16 +302,16 @@ class SubtitleProfileDeclarativePhaseATest(unittest.TestCase):
             item for item in resolver.discover_profiles_for_family(
                 "studio", "vertical", "design",
             )
-            if item.profile_id == "modo_conciencia_reels"
+            if item.profile_id == "modo_conciencia_palabra_unica"
         )
 
         self.assertEqual("word_by_word", descriptor.mode)
-        self.assertEqual("Modo Conciencia | Reels", descriptor.display_name)
+        self.assertEqual("Modo Conciencia | Palabra única", descriptor.display_name)
         self.assertEqual(
             "word_by_word",
             resolver.load(
                 SubtitleProfileKey(
-                    "studio", "vertical", "modo_conciencia_reels", "design",
+                    "studio", "vertical", "modo_conciencia_palabra_unica", "design",
                 )
             ).cue_policy["mode"],
         )
