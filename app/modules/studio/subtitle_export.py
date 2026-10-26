@@ -142,9 +142,9 @@ class StudioSubtitleExportInputService:
             else "SRT"
         )
         raise StudioSubtitleExportInputError(
-            f"No se encontro ningun archivo {label} en:\n"
+            f"No se encontró ningún archivo {label} en:\n"
             f"{directory}\n\n"
-            "Anade un archivo valido e intentalo de nuevo."
+            "Añade un archivo válido e inténtalo de nuevo."
         )
 
     @staticmethod
@@ -153,7 +153,7 @@ class StudioSubtitleExportInputService:
             selected_path = Path(selected_path)
             if selected_path not in candidates:
                 raise StudioSubtitleExportInputError(
-                    "La seleccion EXPORTAR SRT no es valida: "
+                    "La selección EXPORTAR SRT no es válida: "
                     f"{selected_path}."
                 )
             return selected_path
@@ -216,7 +216,7 @@ class StudioSubtitleExportService:
     def _convert(self, plan, project, profile, subtitle_profile):
         if profile is None or subtitle_profile is None:
             raise ValueError(
-                "CONVERTIR requiere perfil STUDIO y perfil de subtitulos."
+                "CONVERTIR requiere perfil STUDIO y perfil de subtítulos."
             )
         mode = CueModelRegistry.mode_from(subtitle_profile.cue_policy)
         output_path = project.subtitles_dir() / (
@@ -230,7 +230,7 @@ class StudioSubtitleExportService:
             render_fps=profile.fps,
         ).transform(source_content)
         if not transformed.strip():
-            raise ValueError("La conversion no produjo cues utilizables.")
+            raise ValueError("La conversión no produjo cues utilizables.")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path = output_path.with_suffix(".srt.tmp")
         temporary_path.write_text(transformed, encoding="utf-8")

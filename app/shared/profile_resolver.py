@@ -63,9 +63,9 @@ class ProfileResolver:
             )
             raise create_operational_error(
                 family="PROFILE",
-                user_message="No se encontro el perfil operacional solicitado.",
+                user_message="No se encontró el perfil operacional solicitado.",
                 recommended_action=(
-                    "Revise la identidad seleccionada y la configuracion de "
+                    "Revise la identidad seleccionada y la configuración de "
                     "perfiles."
                 ),
                 operation="Resolver perfil operacional",
@@ -168,7 +168,7 @@ class ProfileResolver:
             data.get(field) != value
             for field, value in expected.items()
         ):
-            error = ValueError(f"Identidad operacional invalida: {path}")
+            error = ValueError(f"Identidad operacional inválida: {path}")
             raise create_operational_error(
                 family="PROFILE",
                 user_message=(
@@ -425,7 +425,7 @@ class ProfileResolver:
         return create_operational_error(
             family="CONFIG",
             user_message=(
-                "El documento declarativo de componente Wan no es valido."
+                "El documento declarativo de componente Wan no es válido."
             ),
             recommended_action=(
                 "Revise kind, operational_profile_id, format y video_component."
@@ -556,7 +556,7 @@ class ProfileResolver:
         if isinstance(profile_key, OperationalProfileKey):
             return profile_key
         raise TypeError(
-            "La resolucion operacional canonica requiere una "
+            "La resolución operacional canónica requiere una "
             "OperationalProfileKey."
         )
 

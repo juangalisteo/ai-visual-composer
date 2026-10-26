@@ -32,7 +32,7 @@ class ConfigManager:
                 raise TypeError("voice_config_id debe ser texto o None.")
             voice_config_id = voice_config_id.strip()
             if not voice_config_id:
-                raise ValueError("voice_config_id no puede estar vacio.")
+                raise ValueError("voice_config_id no puede estar vacío.")
         self.config_path = Path("config")
         self._operational_profile_key = operational_profile_key
         self._voice_config_id = voice_config_id

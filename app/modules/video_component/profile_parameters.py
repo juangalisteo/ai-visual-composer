@@ -13,13 +13,13 @@ def load_video_component_parameters(profile_key, resolver=None):
     """Load one declarative WAN document for an explicit VIDEO identity."""
     if not isinstance(profile_key, OperationalProfileKey):
         raise TypeError(
-            "La configuracion Wan requiere una identidad operacional "
-            "VIDEO explicito."
+            "La configuración Wan requiere una identidad operacional "
+            "VIDEO explícito."
         )
 
     if profile_key.component is not ProfileComponent.VIDEO:
         raise ValueError(
-            "La configuracion Wan requiere identidad del "
+            "La configuración Wan requiere identidad del "
             "componente video."
         )
 

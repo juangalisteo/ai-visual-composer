@@ -56,7 +56,7 @@ class MusicSelector:
         if not tracks:
             raise FileNotFoundError(
                 "No se encontraron pistas musicales "
-                f"validas en: {self.music_path}"
+                f"válidas en: {self.music_path}"
             )
 
         return tuple(tracks)

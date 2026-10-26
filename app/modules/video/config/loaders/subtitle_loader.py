@@ -69,13 +69,13 @@ class SubtitleConfigLoader:
         )
         if (cue_effect is not None or word_effect is not None) and not dynamic:
             raise ValueError(
-                f"{self._context(profile_path)}un efecto dinamico requiere "
+                f"{self._context(profile_path)}un efecto dinámico requiere "
                 "render_style.dynamic=true."
             )
         if cue_effect is not None and word_effect is not None:
             raise ValueError(
                 f"{self._context(profile_path)}effects y word_effects no pueden "
-                "combinarse en la misma representacion."
+                "combinarse en la misma representación."
             )
 
         subtitle_config = SubtitleConfig(
@@ -231,7 +231,7 @@ class SubtitleConfigLoader:
         profile_path,
     ):
         context = (
-            f"Perfil de subtitulos {profile_path}: "
+            f"Perfil de subtítulos {profile_path}: "
             if profile_path is not None
             else ""
         )
@@ -278,7 +278,7 @@ class SubtitleConfigLoader:
 
         if not math.isfinite(subtitle_config.offset):
             raise ValueError(
-                f"{context}render_style.offset debe ser un numero finito "
+                f"{context}render_style.offset debe ser un número finito "
                 "de segundos. "
                 f"Valor recibido: {subtitle_config.offset!r}."
             )
@@ -344,13 +344,13 @@ class SubtitleConfigLoader:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise TypeError(
                 f"{self._context(profile_path)}render_style.{field} "
-                "debe ser numerico. "
+                "debe ser numérico. "
                 f"Valor recibido: {value!r}."
             )
         if not math.isfinite(value):
             raise ValueError(
                 f"{self._context(profile_path)}render_style.{field} debe ser "
-                "numerico finito. "
+                "numérico finito. "
                 f"Valor recibido: {value!r}."
             )
         return float(value)
@@ -365,7 +365,7 @@ class SubtitleConfigLoader:
         if declared_effect is not None:
             raise ValueError(
                 f"{self._context(profile_path)}cue_effect y effects no pueden "
-                "combinarse en la misma representacion."
+                "combinarse en la misma representación."
             )
         effects = render_style["effects"]
         if not isinstance(effects, dict):
@@ -376,7 +376,7 @@ class SubtitleConfigLoader:
         unknown = set(effects) - set(self.EFFECT_FIELDS)
         if unknown:
             raise ValueError(
-                f"{self._context(profile_path)}efecto de subtitulos no "
+                f"{self._context(profile_path)}efecto de subtítulos no "
                 f"soportado: {sorted(unknown)[0]!r}."
             )
         enabled = []
@@ -389,7 +389,7 @@ class SubtitleConfigLoader:
             extra = set(values) - self.EFFECT_FIELDS[name]
             if extra:
                 raise ValueError(
-                    f"{self._context(profile_path)}parametro no soportado para "
+                    f"{self._context(profile_path)}parámetro no soportado para "
                     f"{name}: {sorted(extra)[0]!r}."
                 )
             if "enabled" not in values or not isinstance(values["enabled"], bool):
@@ -453,7 +453,7 @@ class SubtitleConfigLoader:
         ):
             raise ValueError(
                 f"{self._context(profile_path)}render_style.bounce_elasticity "
-                "debe ser un numero entre 0.0 y 1.0."
+                "debe ser un número entre 0.0 y 1.0."
             )
         return {
             "drop_height_px": height,
@@ -529,7 +529,7 @@ class SubtitleConfigLoader:
         if declared_effect is not None:
             raise ValueError(
                 f"{self._context(profile_path)}word_effect y word_effects no "
-                "pueden combinarse en la misma representacion."
+                "pueden combinarse en la misma representación."
             )
         effects = render_style["word_effects"]
         if not isinstance(effects, dict):
@@ -553,7 +553,7 @@ class SubtitleConfigLoader:
             extra = set(values) - self.WORD_EFFECT_FIELDS[name]
             if extra:
                 raise ValueError(
-                    f"{self._context(profile_path)}parametro no soportado para "
+                    f"{self._context(profile_path)}parámetro no soportado para "
                     f"word effect {name}: {sorted(extra)[0]!r}."
                 )
             if "enabled" not in values or not isinstance(values["enabled"], bool):
@@ -616,7 +616,7 @@ class SubtitleConfigLoader:
             if not isinstance(cursor_char, str) or len(cursor_char) != 1:
                 raise ValueError(
                     f"{self._context(profile_path)}render_style.cursor_char "
-                    "debe contener un unico caracter."
+                    "debe contener un único carácter."
                 )
             return {
                 "typewriter_cursor": bool(cursor),
@@ -671,7 +671,7 @@ class SubtitleConfigLoader:
     def _scale(self, value, effect, field, profile_path):
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise TypeError(
-                f"{self._context(profile_path)}efecto {effect}.{field} debe ser numerico."
+                f"{self._context(profile_path)}efecto {effect}.{field} debe ser numérico."
             )
         value = float(value)
         if not math.isfinite(value) or not 1 <= value <= 400:
@@ -684,4 +684,4 @@ class SubtitleConfigLoader:
     def _context(profile_path):
         if profile_path is None:
             return ""
-        return f"Perfil de subtitulos {profile_path}: "
+        return f"Perfil de subtítulos {profile_path}: "

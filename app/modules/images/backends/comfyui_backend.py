@@ -356,7 +356,7 @@ class ComfyUIBackend:
 
         if not image_path.exists():
             raise FileNotFoundError(
-                "No se guardo la imagen esperada: "
+                "No se guardó la imagen esperada: "
                 f"{image_path}"
             )
 
@@ -496,7 +496,7 @@ def _operational_backend_error(
         family="EXTERNAL_SERVICE",
         user_message="ComfyUI no pudo generar la imagen solicitada.",
         recommended_action=(
-            "Comprueba que ComfyUI este disponible y revisa el estado del "
+            "Comprueba que ComfyUI esté disponible y revisa el estado del "
             "backend antes de reintentar."
         ),
         operation=operation,

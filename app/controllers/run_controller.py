@@ -798,9 +798,9 @@ class RunController:
             ErrorContext(
                 family="CANCELLATION",
                 severity=ErrorSeverity.RECOVERABLE,
-                user_message="La operacion fue cancelada por el usuario.",
+                user_message="La operación fue cancelada por el usuario.",
                 exit_kind=ExitKind.CANCELLATION,
-                operation="Seleccion de opciones",
+                operation="Selección de opciones",
             )
         )
 

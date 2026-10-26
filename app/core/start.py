@@ -666,7 +666,7 @@ def _normalise_subtitle_profile_key(
 ):
     """Validate and return the full subtitle identity."""
     if subtitle_profile_key is None:
-        raise ValueError("La ruta de subtitulos requiere una SubtitleProfileKey.")
+        raise ValueError("La ruta de subtítulos requiere una SubtitleProfileKey.")
     if not isinstance(subtitle_profile_key, SubtitleProfileKey):
         raise TypeError(
             "La ruta moderna requiere una SubtitleProfileKey completa."
@@ -1341,7 +1341,7 @@ def _required_render_fps(profile):
     )
     if fps <= 0:
         raise ValueError(
-            "La configuracion video_style.fps debe ser "
+            "La configuración video_style.fps debe ser "
             "superior a cero."
         )
     return fps

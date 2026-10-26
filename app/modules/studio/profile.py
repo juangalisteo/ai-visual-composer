@@ -208,7 +208,7 @@ class StudioProfileLoader:
             or len(set(normalized)) != len(normalized)
         ):
             raise ValueError(
-                f"La configuracion {path} debe contener extensiones unicas."
+                f"La configuración {path} debe contener extensiones únicas."
             )
         return normalized
 

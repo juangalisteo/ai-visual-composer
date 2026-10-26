@@ -33,7 +33,7 @@ class SubtitleProfileKey:
             profile_id,
         ):
             raise ValueError(
-                "profile_id de subtitulos invalido: "
+                "profile_id de subtítulos inválido: "
                 f"{self.profile_id}"
             )
 

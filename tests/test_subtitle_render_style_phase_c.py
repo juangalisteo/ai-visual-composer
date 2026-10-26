@@ -132,7 +132,7 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     def test_offset_is_finite_timing_data(self):
         self.assertEqual(-0.06, self._load(offset=-0.06).offset)
         self.assertEqual(0.0, self._load(offset=0.0).offset)
-        self._assert_invalid("offset", float("nan"), "offset debe ser un numero finito")
+        self._assert_invalid("offset", float("nan"), "offset debe ser un número finito")
         self._assert_invalid("offset", True, "render_style.offset")
 
     def test_standard_and_design_profiles_are_validated_at_resolution(self):

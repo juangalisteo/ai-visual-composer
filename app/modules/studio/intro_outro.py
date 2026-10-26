@@ -20,7 +20,7 @@ class StudioIntroOutroPlan:
                 f"No existe el video para INTRO / OUTRO: {source_path}."
             )
         if not isinstance(self.intro_outro_plan, IntroOutroPlan):
-            raise TypeError("INTRO / OUTRO requiere un plan comun valido.")
+            raise TypeError("INTRO / OUTRO requiere un plan común válido.")
         object.__setattr__(self, "source_path", source_path)
 
 
@@ -78,7 +78,7 @@ class StudioIntroOutroInputService:
         ))
         if not candidates:
             raise StudioIntroOutroInputError(
-                "No se encontro ningun archivo MP4 para INTRO / OUTRO en "
+                "No se encontró ningún archivo MP4 para INTRO / OUTRO en "
                 f"{directory}."
             )
         return candidates

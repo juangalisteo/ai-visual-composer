@@ -36,7 +36,7 @@ class SubtitleProfileResolver:
                 matches.append(path)
         if not matches:
             error = FileNotFoundError(
-                "No existe el perfil de subtitulos: "
+                "No existe el perfil de subtítulos: "
                 f"{profile_key.profile_id}"
             )
             raise create_operational_error(
@@ -51,7 +51,7 @@ class SubtitleProfileResolver:
             ) from error
         if len(matches) > 1:
             error = ValueError(
-                "profile_id de subtitulos duplicado: "
+                "profile_id de subtítulos duplicado: "
                 f"{profile_key.profile_id}"
             )
             raise create_operational_error(
@@ -139,7 +139,7 @@ class SubtitleProfileResolver:
             self._validate_profile_contract(data, path)
             if path != self.resolve(key):
                 error = ValueError(
-                    "La ruta del perfil de subtitulos no coincide "
+                    "La ruta del perfil de subtítulos no coincide "
                     f"con su identidad: {path}."
                 )
                 raise create_operational_error(
@@ -157,7 +157,7 @@ class SubtitleProfileResolver:
                 ) from error
             if key.profile_id in profile_ids:
                 error = ValueError(
-                    "profile_id de subtitulos duplicado: "
+                    "profile_id de subtítulos duplicado: "
                     f"{key.profile_id}"
                 )
                 raise create_operational_error(
@@ -234,7 +234,7 @@ class SubtitleProfileResolver:
             ) from error
         if not isinstance(data, dict):
             error = TypeError(
-                f"El perfil de subtitulos debe ser JSON object: {path}."
+                f"El perfil de subtítulos debe ser JSON object: {path}."
             )
             raise create_operational_error(
                 family="CONFIG",
@@ -254,7 +254,7 @@ class SubtitleProfileResolver:
         }
         if any(data.get(field) != value for field, value in expected.items()):
             error = ValueError(
-                "La identidad interna del perfil de subtitulos "
+                "La identidad interna del perfil de subtítulos "
                 f"no coincide con su ruta: {path}."
             )
             raise create_operational_error(
@@ -279,7 +279,7 @@ class SubtitleProfileResolver:
         if isinstance(display_name, str) and display_name.strip():
             return display_name.strip()
         error = ValueError(
-            "El perfil de subtitulos requiere display_name: "
+            "El perfil de subtítulos requiere display_name: "
             f"{path}."
         )
         raise create_operational_error(
@@ -314,7 +314,7 @@ class SubtitleProfileResolver:
         candidate = Path(path).resolve()
         if candidate != root and root not in candidate.parents:
             raise ValueError(
-                "La ruta de subtitulos queda fuera de config/profiles."
+                "La ruta de subtítulos queda fuera de config/profiles."
             )
         return candidate
 
@@ -323,9 +323,9 @@ class SubtitleProfileResolver:
             cue_policy = data.get("cue_policy")
             render_style = data.get("render_style")
             if not isinstance(cue_policy, dict):
-                raise TypeError(f"cue_policy invalida en {path}.")
+                raise TypeError(f"cue_policy inválida en {path}.")
             if not isinstance(render_style, dict):
-                raise TypeError(f"render_style invalido en {path}.")
+                raise TypeError(f"render_style inválido en {path}.")
             CueModelRegistry().resolve(CueModelRegistry.mode_from(cue_policy))
             TextCasePolicy.from_cue_policy(cue_policy)
             subtitle_style = SubtitleConfigLoader().load_render_style(

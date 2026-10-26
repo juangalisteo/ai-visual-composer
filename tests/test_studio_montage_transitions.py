@@ -220,7 +220,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
                 validator=Mock(),
             )
 
-            with self.assertRaisesRegex(StudioMontageError, "duracion suficiente"):
+            with self.assertRaisesRegex(StudioMontageError, "duración suficiente"):
                 service.compose(plan, root / "output.mp4", self.profile)
 
         runner.run.assert_not_called()

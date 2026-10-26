@@ -156,7 +156,7 @@ class VideoBuilder:
                 raise create_operational_error(
                     family="VIDEO",
                     user_message="No se pudo preparar el render del video final.",
-                    recommended_action="Revisa el diagnostico de FFmpeg y los recursos de entrada.",
+                    recommended_action="Revisa el diagnóstico de FFmpeg y los recursos de entrada.",
                     operation="Preparar render de video",
                     resource=str(build_context.media.output_path),
                     diagnostic_reference=str(diagnostics.path),

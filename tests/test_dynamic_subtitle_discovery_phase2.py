@@ -705,7 +705,7 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
         with patch.object(
             resolver,
             "_ensure_within_profiles_root",
-            side_effect=ValueError("La ruta de subtitulos queda fuera de config/profiles."),
+            side_effect=ValueError("La ruta de subtítulos queda fuera de config/profiles."),
         ):
             with self.assertRaisesRegex(ValueError, "fuera de config/profiles"):
                 resolver.resolve(design_key)

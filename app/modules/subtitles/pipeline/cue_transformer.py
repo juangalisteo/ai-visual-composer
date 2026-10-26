@@ -15,7 +15,7 @@ class SubtitleCueTransformer:
         render_fps = float(render_fps)
         if render_fps <= 0:
             raise ValueError(
-                "La configuracion video_style.fps debe ser "
+                "La configuración video_style.fps debe ser "
                 "superior a cero."
             )
 
@@ -27,7 +27,7 @@ class SubtitleCueTransformer:
 
     def transform(self, content, timing=None, canonical_content=None):
         if not isinstance(content, str) or not content.strip():
-            raise ValueError("El contenido SRT esta vacio.")
+            raise ValueError("El contenido SRT está vacío.")
 
         blocks = re.split(
             r"\n\s*\n",

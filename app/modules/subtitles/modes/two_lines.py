@@ -78,7 +78,7 @@ class TwoLineModel(ThreeTwoWordsModel):
         lines = self._balanced_lines(tuple(words))
         if lines is None:
             raise ValueError(
-                "No se puede equilibrar el cue dentro de dos lineas."
+                "No se puede equilibrar el cue dentro de dos líneas."
             )
         return self.punctuation.apply("\n".join(lines))
 

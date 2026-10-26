@@ -115,11 +115,11 @@ class WhisperDiagnosticsParser:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as error:
-            raise ValueError("Metadata Whisper invalida.") from error
+            raise ValueError("Metadata Whisper inválida.") from error
 
         raw_segments = data.get("segments", [])
         if not isinstance(raw_segments, list):
-            raise ValueError("Metadata Whisper sin segments valido.")
+            raise ValueError("Metadata Whisper sin segments válido.")
 
         segments = tuple(
             self._parse_segment(raw_segment)
@@ -152,7 +152,7 @@ class WhisperDiagnosticsParser:
                 temperature=raw_segment.get("temperature"),
             )
         except (KeyError, TypeError, ValueError) as error:
-            raise ValueError("Segment diagnostics Whisper invalido.") from error
+            raise ValueError("Segment diagnostics Whisper inválido.") from error
 
 
 def resolve_openai_whisper_version() -> str | None:

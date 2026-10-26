@@ -122,7 +122,7 @@ class StudioVideoAudioSrtInputService:
     def _require_candidates(self, candidates, label):
         if not candidates:
             raise StudioVideoAudioSrtInputError(
-                f"No se encontro ningun archivo {label} en {self.directory}."
+                f"No se encontró ningún archivo {label} en {self.directory}."
             )
 
     def _selected_candidate(self, candidates, selected_path, label):
@@ -130,8 +130,8 @@ class StudioVideoAudioSrtInputService:
             selected_path = Path(selected_path)
             if selected_path not in candidates:
                 raise StudioVideoAudioSrtInputError(
-                    "La seleccion VIDEO + AUDIO SRT de "
-                    f"{label} no es valida: {selected_path}."
+                    "La selección VIDEO + AUDIO SRT de "
+                    f"{label} no es válida: {selected_path}."
                 )
             return selected_path
         if len(candidates) > 1:
@@ -172,14 +172,14 @@ class StudioVideoAudioSrtService:
         video_duration = video.duration
         if video_duration <= 0:
             raise StudioVideoAudioSrtError(
-                "La duracion del video debe ser positiva."
+                "La duración del video debe ser positiva."
             )
         try:
             audio_duration = self.probe.get_duration(plan.audio_path)
         except Exception as error:
-            raise StudioVideoAudioSrtError("No se pudo detectar la duracion del audio nuevo.") from error
+            raise StudioVideoAudioSrtError("No se pudo detectar la duración del audio nuevo.") from error
         if audio_duration <= 0:
-            raise StudioVideoAudioSrtError("La duracion del audio nuevo debe ser positiva.")
+            raise StudioVideoAudioSrtError("La duración del audio nuevo debe ser positiva.")
         music_path = self._validated_music_path(plan, audio_duration, video_duration)
         output_path = Path(output_path)
         if output_path.exists():
@@ -282,18 +282,18 @@ class StudioVideoAudioSrtService:
             return None
         if plan.audio_tail_mode not in {"silence", "music"}:
             raise ValueError(
-                "El tratamiento final de audio VIDEO + AUDIO SRT no es valido."
+                "El tratamiento final de audio VIDEO + AUDIO SRT no es válido."
             )
         if plan.audio_tail_mode == "silence":
             return None
         if plan.music_path is None:
             raise ValueError(
-                "COMPLETAR CON MUSICA requiere una pista musical seleccionada."
+                "COMPLETAR CON MÚSICA requiere una pista musical seleccionada."
             )
         music_path = Path(plan.music_path)
         if not music_path.is_file():
             raise FileNotFoundError(
-                f"No existe la musica VIDEO + AUDIO SRT: {music_path}"
+                f"No existe la música VIDEO + AUDIO SRT: {music_path}"
             )
         return music_path
 
@@ -301,12 +301,12 @@ class StudioVideoAudioSrtService:
         if subtitle_path is None:
             if subtitle_profile is not None:
                 raise ValueError(
-                    "VIDEO + AUDIO SRT sin subtitulos no admite perfil de subtitulos."
+                    "VIDEO + AUDIO SRT sin subtítulos no admite perfil de subtítulos."
                 )
             return None
         if subtitle_profile is None:
             raise ValueError(
-                "VIDEO + AUDIO SRT con SRT requiere perfil de subtitulos STUDIO."
+                "VIDEO + AUDIO SRT con SRT requiere perfil de subtítulos STUDIO."
             )
         if not Path(subtitle_path).is_file():
             raise FileNotFoundError(

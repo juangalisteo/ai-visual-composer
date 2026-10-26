@@ -93,7 +93,7 @@ class StoryboardValidator:
 
         if received_numbers != expected_numbers:
             raise ValueError(
-                "La numeracion de escenas devuelta "
+                "La numeración de escenas devuelta "
                 "por Ollama no coincide con la esperada."
             )
 

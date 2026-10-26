@@ -443,7 +443,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
 
         with self.assertRaisesRegex(
             ValueError,
-            "ORIGINAL solo esta disponible para STUDIO SRT \\+ VIDEO",
+            "ORIGINAL solo está disponible para STUDIO SRT \\+ VIDEO",
         ):
             ejecutar_studio(
                 subtitle_profile_key=self._subtitle_profile("single_line").key,

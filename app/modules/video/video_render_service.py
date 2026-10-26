@@ -191,7 +191,7 @@ class VideoRenderService:
                 raise create_operational_error(
                     family="FFMPEG",
                     user_message="FFmpeg no pudo renderizar el video final.",
-                    recommended_action="Revisa el diagnostico de FFmpeg generado para esta ejecucion.",
+                    recommended_action="Revisa el diagnóstico de FFmpeg generado para esta ejecución.",
                     operation="Renderizar video final",
                     resource=str(build_context.media.output_path),
                     diagnostic_reference=str(diagnostics.path),

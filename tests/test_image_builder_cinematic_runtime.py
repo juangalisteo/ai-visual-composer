@@ -515,7 +515,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             caught.exception.context.technical_metadata["validation_status"],
         )
         self.assertIn(
-            "revision manual",
+            "revisión manual",
             caught.exception.context.user_message,
         )
 

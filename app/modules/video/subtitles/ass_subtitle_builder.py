@@ -112,7 +112,7 @@ class AssSubtitleBuilder:
 
     def _document(self, cues, style, width, height, timing=None, cue_policy=None):
         if width <= 0 or height <= 0:
-            raise ValueError("La resolucion ASS debe ser positiva.")
+            raise ValueError("La resolución ASS debe ser positiva.")
         font = self.font_manager.resolve_name(style.font)
         secondary = style.secondary_colour or style.primary_colour
         values = (
@@ -553,7 +553,7 @@ class AssSubtitleBuilder:
             if len(lines) < 3:
                 raise ValueError("El SRT contiene un cue incompleto para ASS.")
             if "-->" not in lines[1]:
-                raise ValueError("El SRT contiene un timing invalido para ASS.")
+                raise ValueError("El SRT contiene un timing inválido para ASS.")
             start, end = (part.strip() for part in lines[1].split("-->", 1))
             cues.append((
                 self._milliseconds(start),
@@ -565,10 +565,10 @@ class AssSubtitleBuilder:
     def _milliseconds(self, value):
         match = self._TIMESTAMP.fullmatch(value)
         if match is None:
-            raise ValueError(f"Timestamp SRT invalido para ASS: {value!r}.")
+            raise ValueError(f"Timestamp SRT inválido para ASS: {value!r}.")
         parts = {key: int(item) for key, item in match.groupdict().items()}
         if parts["minutes"] >= 60 or parts["seconds"] >= 60:
-            raise ValueError(f"Timestamp SRT invalido para ASS: {value!r}.")
+            raise ValueError(f"Timestamp SRT inválido para ASS: {value!r}.")
         return (
             parts["hours"] * 3_600_000
             + parts["minutes"] * 60_000
@@ -598,7 +598,7 @@ class AssSubtitleBuilder:
             return ""
         duration = end - start
         if duration <= 0:
-            raise ValueError("El cue ASS debe tener duracion positiva.")
+            raise ValueError("El cue ASS debe tener duración positiva.")
         name = effect.name
         parameters = effect.parameters
         if name == "fade":
@@ -653,7 +653,7 @@ class AssSubtitleBuilder:
             )
         duration = end - start
         if duration <= 0:
-            raise ValueError("El cue ASS debe tener duracion positiva.")
+            raise ValueError("El cue ASS debe tener duración positiva.")
         if effect.name == "karaoke":
             return f"{{\\kf{self._karaoke_centiseconds(duration)}}}"
         if effect.name == "highlight":
@@ -708,7 +708,7 @@ class AssSubtitleBuilder:
             return x, y - height
         if direction == "down":
             return x, y + height
-        raise ValueError(f"Direccion slide no soportada: {direction!r}.")
+        raise ValueError(f"Dirección slide no soportada: {direction!r}.")
 
     @staticmethod
     def _number(value):

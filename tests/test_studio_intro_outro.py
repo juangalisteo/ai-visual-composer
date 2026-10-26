@@ -31,7 +31,7 @@ class StudioIntroOutroTest(unittest.TestCase):
     def test_input_requires_exactly_one_mp4(self):
         with tempfile.TemporaryDirectory() as directory:
             service = StudioIntroOutroInputService(directory)
-            with self.assertRaisesRegex(StudioIntroOutroInputError, "ningun archivo MP4"):
+            with self.assertRaisesRegex(StudioIntroOutroInputError, "ningún archivo MP4"):
                 service.discover_source()
             source = self._file(directory, "source.mp4")
             self.assertEqual(source, service.discover_source())

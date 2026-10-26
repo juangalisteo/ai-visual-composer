@@ -225,7 +225,7 @@ class VideoConfigLoader:
         if render_subtitles:
             if self.subtitle_profile is None:
                 raise ValueError(
-                    "La renderizacion con subtitulos requiere "
+                    "La renderización con subtítulos requiere "
                     "subtitle_profile."
                 )
             subtitle_config = (

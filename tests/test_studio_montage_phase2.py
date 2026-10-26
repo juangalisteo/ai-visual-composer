@@ -170,7 +170,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
 
     def test_each_required_technical_difference_requires_normalization(self):
         cases = (
-            ("width", 640, "resolucion"),
+            ("width", 640, "resolución"),
             ("nominal_fps", 30.0, "FPS nominal"),
             ("video_codec", "hevc", "codec de video"),
             ("pixel_format", "yuv444p", "pixel format"),
@@ -310,7 +310,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 StudioMontageError,
-                "Comprobacion: .*SAR",
+                "Comprobación: .*SAR",
             ):
                 service.compose(plan, root / "out.mp4", self.output_profile)
 
@@ -340,8 +340,8 @@ class StudioMontagePhase2Test(unittest.TestCase):
 
         rendered = logger.call_args.args[0]
         self.assertIn("MONTAJE DE VIDEOS", rendered)
-        self.assertIn("Preparacion clips", rendered)
-        self.assertIn("Normalizacion clips", rendered)
+        self.assertIn("Preparación clips", rendered)
+        self.assertIn("Normalización clips", rendered)
         self.assertIn("Normalizados", rendered)
         self.assertIn("Montaje de videos", rendered)
         self.assertIn("1.25 s", rendered)
@@ -369,8 +369,8 @@ class StudioMontagePhase2Test(unittest.TestCase):
                 main._print_studio_montage_summary(options, result, 9.0)
 
         rendered = logger.call_args.args[0]
-        self.assertIn("Preparacion clips", rendered)
-        self.assertNotIn("Normalizacion clips", rendered)
+        self.assertIn("Preparación clips", rendered)
+        self.assertNotIn("Normalización clips", rendered)
         self.assertIn("Montaje de videos", rendered)
         self.assertIn("9.00 s", rendered)
 

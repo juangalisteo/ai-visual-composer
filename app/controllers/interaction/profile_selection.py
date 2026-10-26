@@ -58,7 +58,7 @@ class ProfileSelection:
         profile_formats = tuple((order or sorted)(profiles_by_format))
         if not profile_formats:
             raise FileNotFoundError(
-                "No hay perfiles operacionales validos para el componente "
+                "No hay perfiles operacionales válidos para el componente "
                 "seleccionado."
             )
         label = label or (lambda value: value)

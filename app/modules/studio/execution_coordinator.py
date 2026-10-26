@@ -73,7 +73,7 @@ class StudioExecutionCoordinator:
             )
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError(
-                "La ejecucion STUDIO requiere component=studio."
+                "La ejecución STUDIO requiere component=studio."
             )
 
         profile = (profile_loader or StudioProfileLoader()).load(
@@ -112,7 +112,7 @@ class StudioExecutionCoordinator:
             if not media_info.has_audio:
                 raise ValueError(
                     "El video seleccionado no contiene una pista de audio. "
-                    "SOLO VIDEO necesita audio para generar los subtitulos."
+                    "SOLO VIDEO necesita audio para generar los subtítulos."
                 )
 
         return StudioPreparation(
@@ -160,7 +160,7 @@ class StudioExecutionCoordinator:
             and input_mode != StudioInputMode.SRT_VIDEO.value
         ):
             raise ValueError(
-                "ORIGINAL solo esta disponible para STUDIO SRT + VIDEO."
+                "ORIGINAL solo está disponible para STUDIO SRT + VIDEO."
             )
         preparation_options = {"input_mode": input_mode}
         if subtitle_profile_key is not None:
@@ -340,14 +340,14 @@ class StudioExecutionCoordinator:
             and subtitle_profile_key is not None
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT sin SRT no admite estilo de subtitulos."
+                "VIDEO + AUDIO SRT sin SRT no admite estilo de subtítulos."
             )
         if (
             plan.subtitle_path is not None
             and not subtitle_profile_key
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT con SRT requiere un estilo de subtitulos."
+                "VIDEO + AUDIO SRT con SRT requiere un estilo de subtítulos."
             )
 
         project = project or ProjectManager()
@@ -454,7 +454,7 @@ class StudioExecutionCoordinator:
         if export_plan.mode is StudioSubtitleExportMode.TRANSCRIBIR:
             if subtitle_profile_key is not None:
                 raise ValueError(
-                    "TRANSCRIBIR no admite formato de subtitulos."
+                    "TRANSCRIBIR no admite formato de subtítulos."
                 )
             return service.export(
                 plan=export_plan,

@@ -199,7 +199,7 @@ def test_input_requires_required_files_and_ignores_srt_when_disabled():
         assert service.create_plan(True).subtitle_path == subtitle
 
         subtitle.unlink()
-        with pytest.raises(StudioVideoAudioSrtInputError, match="ningun archivo SRT"):
+        with pytest.raises(StudioVideoAudioSrtInputError, match="ningún archivo SRT"):
             service.create_plan(True)
 
         (root / "first.srt").write_text(

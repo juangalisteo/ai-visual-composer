@@ -115,8 +115,8 @@ class OllamaProvider:
                 family="EXTERNAL_SERVICE",
                 user_message="No se pudo completar la solicitud a Ollama.",
                 recommended_action=(
-                    "Comprueba que Ollama este en ejecucion y que el modelo "
-                    "solicitado este disponible."
+                    "Comprueba que Ollama esté en ejecución y que el modelo "
+                    "solicitado esté disponible."
                 ),
                 operation="Generar respuesta con Ollama",
                 resource=self.url,

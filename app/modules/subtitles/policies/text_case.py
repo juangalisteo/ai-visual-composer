@@ -16,7 +16,7 @@ class TextCasePolicy:
         if has_text_case:
             if text_case not in VALID_TEXT_CASES:
                 raise ValueError(
-                    "cue_policy.text_case invalido: "
+                    "cue_policy.text_case inválido: "
                     f"{text_case!r}. Valores permitidos: "
                     f"{', '.join(VALID_TEXT_CASES)}."
                 )

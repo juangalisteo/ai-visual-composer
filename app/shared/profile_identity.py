@@ -75,12 +75,12 @@ class OperationalProfileKey:
         component = coerce_profile_component(self.component)
         profile_format = coerce_profile_format(self.format)
         if not isinstance(self.profile_id, str):
-            raise ValueError("profile_id invalido: debe ser texto.")
+            raise ValueError("profile_id inválido: debe ser texto.")
         profile_id = self.profile_id.strip().lower()
         if not re.fullmatch(r"[a-z0-9]+(?:_[a-z0-9]+)*", profile_id):
             raise ValueError(
-                "profile_id invalido: se requiere un identificador tecnico "
-                f"seguro, se recibio {self.profile_id}"
+                "profile_id inválido: se requiere un identificador técnico "
+                f"seguro, se recibió {self.profile_id}"
             )
         object.__setattr__(self, "component", component)
         object.__setattr__(self, "format", profile_format)

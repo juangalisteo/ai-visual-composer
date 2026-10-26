@@ -38,7 +38,7 @@ class CueModelRegistry:
 
     def resolve(self, mode):
         if not isinstance(mode, str) or not mode.strip():
-            raise ValueError("cue_policy.mode debe ser texto no vacio.")
+            raise ValueError("cue_policy.mode debe ser texto no vacío.")
         normalized = mode.strip().lower()
         try:
             return self._factories[normalized]

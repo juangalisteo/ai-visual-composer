@@ -41,12 +41,12 @@ class MediaProbe:
             raise error
         if isinstance(error, FileNotFoundError):
             family = "FILESYSTEM"
-            message = "No se encontro el archivo multimedia solicitado."
+            message = "No se encontró el archivo multimedia solicitado."
             action = "Comprueba que el archivo exista y sea accesible."
         else:
             family = "FFMPEG"
             message = "No se pudo inspeccionar el archivo multimedia con FFprobe."
-            action = "Comprueba que FFprobe este disponible y que el archivo sea valido."
+            action = "Comprueba que FFprobe esté disponible y que el archivo sea válido."
         metadata = {}
         if command:
             metadata["command"] = tuple(map(str, command))
@@ -102,7 +102,7 @@ class MediaProbe:
                 None,
             )
             if video is None:
-                raise RuntimeError("FFprobe no encontro un stream de video.")
+                raise RuntimeError("FFprobe no encontró un stream de video.")
 
             try:
                 duration = float(data["format"]["duration"])
@@ -112,11 +112,11 @@ class MediaProbe:
                 nominal_fps = float(Fraction(video["r_frame_rate"]))
             except (KeyError, TypeError, ValueError, ZeroDivisionError) as error:
                 raise RuntimeError(
-                    "FFprobe devolvio metadata multimedia incompleta."
+                    "FFprobe devolvió metadata multimedia incompleta."
                 ) from error
 
             if duration <= 0 or width <= 0 or height <= 0 or fps <= 0:
-                raise RuntimeError("FFprobe devolvio metadata multimedia no valida.")
+                raise RuntimeError("FFprobe devolvió metadata multimedia no válida.")
 
             return MediaInfo(
                 duration=duration,

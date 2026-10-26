@@ -210,7 +210,7 @@ class ImageBuilder:
             ):
                 raise ValueError(
                     f"La escena {scene_number} "
-                    f"no contiene informacion visual."
+                    f"no contiene información visual."
                 )
 
             runtime_metadata = (
@@ -344,7 +344,7 @@ class ImageBuilder:
                 if quality_result.status != "approved":
                     raise RuntimeError(
                         "La validación de imagen requiere "
-                        "intervencion antes de continuar: "
+                        "intervención antes de continuar: "
                         f"{quality_result.status}"
                     )
                 accepted_retry_path = retry_paths.get(
@@ -705,7 +705,7 @@ class ImageBuilder:
         if image_format == "horizontal":
             return "wide horizontal 16:9"
         raise ValueError(
-            "La configuracion format debe ser vertical "
+            "La configuración format debe ser vertical "
             "u horizontal."
         )
 
@@ -894,12 +894,12 @@ class ImageBuilder:
                 family="VALIDATION",
                 severity=ErrorSeverity.FATAL_OPERATIONAL,
                 user_message=(
-                    "La imagen candidata requiere revision manual "
+                    "La imagen candidata requiere revisión manual "
                     "antes de continuar."
                 ),
                 recommended_action=(
                     "Revise la imagen candidata y la evidencia de "
-                    "validacion; no se ha aprobado como asset final."
+                    "validación; no se ha aprobado como asset final."
                 ),
                 operation=(
                     "Validar calidad visual de "

@@ -81,7 +81,7 @@ class SubtitleSelection:
             ))
             if not profile_formats:
                 raise FileNotFoundError(
-                    "No hay perfiles de subtitulos STUDIO disponibles."
+                    "No hay perfiles de subtítulos STUDIO disponibles."
                 )
             for index, candidate in enumerate(profile_formats, start=1):
                 self._write(f"{index}. {label(candidate)}", writer)
@@ -146,7 +146,7 @@ class SubtitleSelection:
         )
         if not descriptors:
             raise FileNotFoundError(
-                "No hay perfiles de subtitulos STUDIO para la familia "
+                "No hay perfiles de subtítulos STUDIO para la familia "
                 f"{family}."
             )
         self._write("\nPERFIL\n", writer)

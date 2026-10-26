@@ -33,7 +33,7 @@ class FFmpegDiagnostics:
             "peak_rss_bytes": None,
             "peak_rss_note": (
                 "No se mide RSS para evitar dependencias "
-                "adicionales o una medicion fragil."
+                "adicionales o una medición frágil."
             ),
         }
         self._persist()

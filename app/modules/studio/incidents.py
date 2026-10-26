@@ -11,7 +11,7 @@ def adapt_legacy_studio_error(error, mode, resource=None):
         family="STUDIO",
         user_message=str(error),
         recommended_action="Revisa los recursos de STUDIO y vuelve a intentarlo.",
-        operation=f"STUDIO/{mode or 'ejecucion'}",
+        operation=f"STUDIO/{mode or 'ejecución'}",
         resource=str(resource) if resource is not None else None,
         technical_metadata={"legacy_exception_type": type(error).__name__},
     )

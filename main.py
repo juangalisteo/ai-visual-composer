@@ -37,14 +37,14 @@ def main():
         return _run_main()
     except KeyboardInterrupt:
         _present_cancellation(
-            "La operacion fue interrumpida por el usuario.",
-            operation="Ejecucion principal",
+            "La operación fue interrumpida por el usuario.",
+            operation="Ejecución principal",
         )
         return 130
     except EOFError:
         _present_cancellation(
-            "La entrada de terminal finalizo antes de completar la seleccion.",
-            operation="Seleccion de opciones",
+            "La entrada de terminal finalizó antes de completar la selección.",
+            operation="Selección de opciones",
         )
         return 0
     except OperationalError as error:
@@ -345,12 +345,12 @@ def _print_studio_intro_outro_summary(options, result, elapsed_seconds):
     )
     summary.add_detail("Entrada", "INTRO / OUTRO")
     summary.add_detail("Video fuente", plan.source_path)
-    summary.add_detail("Intro", "Si" if plan.intro_outro_plan.intro else "No")
-    summary.add_detail("Outro", "Si" if plan.intro_outro_plan.outro else "No")
+    summary.add_detail("Intro", "Sí" if plan.intro_outro_plan.intro else "No")
+    summary.add_detail("Outro", "Sí" if plan.intro_outro_plan.outro else "No")
     summary.add_detail("Video final", result.output_path)
     summary.add_detail("Estado final", "INTRO / OUTRO COMPLETADO")
     summary.set_media_duration(result.generated_duration)
-    for label, attribute in (("Preparacion video", "render_duration"), ("Intro / Outro", "intro_outro_duration")):
+    for label, attribute in (("Preparación video", "render_duration"), ("Intro / Outro", "intro_outro_duration")):
         duration = _recorded_stage_duration(result, attribute)
         if duration is not None:
             summary.add_stage(label, duration)
@@ -390,9 +390,9 @@ def _print_studio_subtitle_export_summary(
     summary.add_detail("Estado final", "EXPORTAR SRT COMPLETADO")
     summary.add_stage(
         (
-            "Transcripcion"
+            "Transcripción"
             if plan.mode is StudioSubtitleExportMode.TRANSCRIBIR
-            else "Conversion SRT"
+            else "Conversión SRT"
         ),
         result.operation_duration,
     )
@@ -421,7 +421,7 @@ def _print_studio_montage_summary(options, result, elapsed_seconds):
         summary.add_detail("Normalizados", montage_result.normalized_clip_count)
     summary.add_detail(
         "Transiciones",
-        "Si" if plan.transitions_enabled else "No",
+        "Sí" if plan.transitions_enabled else "No",
     )
     if render_result is not None:
         summary.add_detail(
@@ -436,13 +436,13 @@ def _print_studio_montage_summary(options, result, elapsed_seconds):
     summary.add_detail("Video final", result.output_path)
     summary.add_detail("Estado final", "STUDIO COMPLETADO")
     summary.set_media_duration(result.generated_duration)
-    summary.add_stage("Preparacion clips", montage_result.preparation_duration)
+    summary.add_stage("Preparación clips", montage_result.preparation_duration)
     normalization_duration = _recorded_stage_duration(
         montage_result,
         "normalization_duration",
     )
     if normalization_duration is not None:
-        summary.add_stage("Normalizacion clips", normalization_duration)
+        summary.add_stage("Normalización clips", normalization_duration)
     summary.add_stage("Montaje de videos", montage_result.montage_duration)
     if render_result is not None:
         render_duration = _recorded_stage_duration(

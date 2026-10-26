@@ -90,8 +90,8 @@ class SubtitleBuilder:
             except subprocess.CalledProcessError as error:
                 raise create_operational_error(
                     family="SUBTITLES",
-                    user_message="Whisper no pudo generar los subtitulos temporales.",
-                    recommended_action="Comprueba la instalacion de Whisper y el audio de entrada.",
+                    user_message="Whisper no pudo generar los subtítulos temporales.",
+                    recommended_action="Comprueba la instalación de Whisper y el audio de entrada.",
                     operation="Transcribir audio con Whisper",
                     resource=str(audio_path),
                     technical_metadata={

@@ -67,17 +67,17 @@ class VisualDesignInterpreter:
             raise
         except TimeoutError as error:
             raise self._external_service_error(
-                "La interpretacion visual no pudo completarse.",
+                "La interpretación visual no pudo completarse.",
                 error,
             ) from error
         except VisualDesignInterpretationError as error:
             raise self._external_service_error(
-                "La interpretacion visual no pudo completarse.",
+                "La interpretación visual no pudo completarse.",
                 error,
             ) from error
         except Exception as error:
             raise self._external_service_error(
-                "La interpretacion visual no pudo completarse.",
+                "La interpretación visual no pudo completarse.",
                 error,
             ) from error
 
@@ -87,10 +87,10 @@ class VisualDesignInterpreter:
             family="EXTERNAL_SERVICE",
             user_message=user_message,
             recommended_action=(
-                "Comprueba la disponibilidad del proveedor de diseno visual "
-                "e intentalo de nuevo."
+                "Comprueba la disponibilidad del proveedor de diseño visual "
+                "e inténtalo de nuevo."
             ),
-            operation="Interpretar diseno visual",
+            operation="Interpretar diseño visual",
             technical_metadata={
                 "service": "visual_design",
                 "provider_error": type(error).__name__,
@@ -194,7 +194,7 @@ class VisualDesignInterpreter:
             for value in field_values
         ):
             raise VisualDesignInterpretationError(
-                "La interpretacion visual no puede copiar "
+                "La interpretación visual no puede copiar "
                 "el texto de entrada en todos los campos "
                 "Visual Truth."
             )

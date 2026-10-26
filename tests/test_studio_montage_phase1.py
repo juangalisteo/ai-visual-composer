@@ -96,7 +96,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             (root / "montaje_videos").mkdir()
             with self.assertRaisesRegex(
                 StudioMontageInputError,
-                "No se encontro ningun archivo MP4",
+                "No se encontró ningún archivo MP4",
             ):
                 self._service(root).discover(self.profile)
 
@@ -387,13 +387,13 @@ class StudioMontagePhase1Test(unittest.TestCase):
             "builtins.print"
         ) as printer:
             controller.return_value.run.side_effect = StudioMontageInputError(
-                "No se encontro ningun archivo MP4."
+                "No se encontró ningún archivo MP4."
             )
             result = main.main()
 
         self.assertEqual(1, result)
         printer.assert_called_once_with(
-            "ERROR: No se encontro ningun archivo MP4."
+            "ERROR: No se encontró ningún archivo MP4."
         )
 
 

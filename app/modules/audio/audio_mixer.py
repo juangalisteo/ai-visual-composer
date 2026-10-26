@@ -176,9 +176,9 @@ class AudioMixer:
                 metadata["stderr_summary"] = stderr
             raise create_operational_error(
                 family="AUDIO",
-                user_message="FFmpeg no pudo mezclar la voz y la musica.",
-                recommended_action="Comprueba los archivos de audio y el diagnostico del proceso.",
-                operation="Mezclar voz y musica",
+                user_message="FFmpeg no pudo mezclar la voz y la música.",
+                recommended_action="Comprueba los archivos de audio y el diagnóstico del proceso.",
+                operation="Mezclar voz y música",
                 resource=str(output_path),
                 technical_metadata=metadata,
             ) from error

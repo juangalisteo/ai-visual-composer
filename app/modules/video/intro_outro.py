@@ -30,7 +30,7 @@ class IntroOutroSelection:
 
         if position not in {"intro", "outro"}:
             raise ValueError(
-                "La posicion INTRO / OUTRO debe ser intro u outro."
+                "La posición INTRO / OUTRO debe ser intro u outro."
             )
 
         object.__setattr__(self, "asset_path", asset_path)
@@ -54,7 +54,7 @@ class IntroOutroPlan:
                 or self.intro.position != "intro"
             )
         ):
-            raise ValueError("El recurso INTRO debe ocupar la posicion intro.")
+            raise ValueError("El recurso INTRO debe ocupar la posición intro.")
         if (
             self.outro is not None
             and (
@@ -62,7 +62,7 @@ class IntroOutroPlan:
                 or self.outro.position != "outro"
             )
         ):
-            raise ValueError("El recurso OUTRO debe ocupar la posicion outro.")
+            raise ValueError("El recurso OUTRO debe ocupar la posición outro.")
 
     @property
     def selections(self):
@@ -94,7 +94,7 @@ class IntroOutroCatalog:
         position = str(position).strip().lower()
         if position not in INTRO_OUTRO_POSITIONS:
             raise ValueError(
-                "La posicion del catalogo INTRO / OUTRO debe ser intro u outro."
+                "La posición del catálogo INTRO / OUTRO debe ser intro u outro."
             )
 
         directory = self.directory / profile_format / position
@@ -192,12 +192,12 @@ class IntroOutroMediaProbe:
             fps = float(Fraction(video["avg_frame_rate"]))
         except (KeyError, TypeError, ValueError, ZeroDivisionError) as error:
             raise RuntimeError(
-                "FFprobe devolvio metadata incompleta para INTRO / OUTRO."
+                "FFprobe devolvió metadata incompleta para INTRO / OUTRO."
             ) from error
 
         if duration <= 0 or width <= 0 or height <= 0 or fps <= 0:
             raise RuntimeError(
-                "El recurso INTRO / OUTRO tiene metadata no valida."
+                "El recurso INTRO / OUTRO tiene metadata no válida."
             )
 
         return IntroOutroMediaInfo(
@@ -321,7 +321,7 @@ class IntroOutroComposer:
                     ):
                         raise RuntimeError(
                             "El recurso INTRO / OUTRO normalizado no cumple "
-                            "el contrato tecnico del video final."
+                            "el contrato técnico del video final."
                         )
                     prepared_asset_path = normalized_path
                     normalized_positions.append(item.position)
@@ -545,7 +545,7 @@ class IntroOutroComposer:
     def _require_selection(self, selection):
         if not isinstance(selection, IntroOutroSelection):
             raise TypeError(
-                "La seleccion INTRO / OUTRO no es valida."
+                "La selección INTRO / OUTRO no es válida."
             )
         if not selection.asset_path.is_file():
             raise FileNotFoundError(
@@ -558,7 +558,7 @@ class IntroOutroComposer:
         if isinstance(selection, IntroOutroSelection):
             return (self._require_selection(selection),)
         if not isinstance(selection, IntroOutroPlan):
-            raise TypeError("La seleccion INTRO / OUTRO no es valida.")
+            raise TypeError("La selección INTRO / OUTRO no es válida.")
         return tuple(
             self._require_selection(item)
             for item in selection.selections
@@ -587,7 +587,7 @@ class IntroOutroComposer:
         if channels == 2:
             return "stereo"
         raise RuntimeError(
-            "El audio principal debe ser mono o estereo para INTRO / OUTRO."
+            "El audio principal debe ser mono o estéreo para INTRO / OUTRO."
         )
 
     def _normalized_path(self, final_path, position=None):

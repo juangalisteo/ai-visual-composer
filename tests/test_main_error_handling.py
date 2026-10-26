@@ -41,10 +41,10 @@ class MainErrorHandlingTest(unittest.TestCase):
             ErrorContext(
                 family="EXTERNAL_SERVICE",
                 severity=ErrorSeverity.FATAL_OPERATIONAL,
-                user_message="La interpretacion visual no pudo completarse.",
+                user_message="La interpretación visual no pudo completarse.",
                 exit_kind=ExitKind.OPERATIONAL_ERROR,
-                operation="Interpretar diseno visual",
-                recommended_action="Comprueba el proveedor e intentalo de nuevo.",
+                operation="Interpretar diseño visual",
+                recommended_action="Comprueba el proveedor e inténtalo de nuevo.",
                 technical_metadata={"service": "visual_design"},
             )
         )
@@ -71,9 +71,9 @@ class MainErrorHandlingTest(unittest.TestCase):
         )
         print_mock.assert_called_once_with(
             "ERROR\n"
-            "La interpretacion visual no pudo completarse.\n"
-            "Operación: Interpretar diseno visual\n"
-            "Acción recomendada: Comprueba el proveedor e intentalo de nuevo."
+            "La interpretación visual no pudo completarse.\n"
+            "Operación: Interpretar diseño visual\n"
+            "Acción recomendada: Comprueba el proveedor e inténtalo de nuevo."
         )
 
     def test_operational_error_uses_the_presenter_with_controlled_output(self):
@@ -118,7 +118,7 @@ class MainErrorHandlingTest(unittest.TestCase):
                 family="VALIDATION",
                 severity=ErrorSeverity.FATAL_OPERATIONAL,
                 user_message=(
-                    "La imagen candidata requiere revision manual "
+                    "La imagen candidata requiere revisión manual "
                     "antes de continuar."
                 ),
                 exit_kind=ExitKind.OPERATIONAL_ERROR,
@@ -126,7 +126,7 @@ class MainErrorHandlingTest(unittest.TestCase):
                 resource="output/images/scene_001.png",
                 recommended_action=(
                     "Revise la imagen candidata y la evidencia de "
-                    "validacion; no se ha aprobado como asset final."
+                    "validación; no se ha aprobado como asset final."
                 ),
                 diagnostic_reference=(
                     "output/images/evidence/scene_001/"
@@ -147,7 +147,7 @@ class MainErrorHandlingTest(unittest.TestCase):
         self.assertEqual(1, result)
         output = print_mock.call_args.args[0]
         self.assertTrue(output.startswith("ERROR\n"))
-        self.assertIn("revision manual", output)
+        self.assertIn("revisión manual", output)
         self.assertIn("no se ha aprobado como asset final", output)
         self.assertIn("visual_quality_result.json", output)
         self.assertNotIn("ERROR INTERNO", output)
@@ -158,9 +158,9 @@ class MainErrorHandlingTest(unittest.TestCase):
             ErrorContext(
                 family="CANCELLATION",
                 severity=ErrorSeverity.RECOVERABLE,
-                user_message="La operacion fue cancelada por el usuario.",
+                user_message="La operación fue cancelada por el usuario.",
                 exit_kind=ExitKind.CANCELLATION,
-                operation="Seleccion de opciones",
+                operation="Selección de opciones",
             )
         )
         with patch("main.RunController") as controller_mock, patch(
@@ -361,9 +361,9 @@ class MainErrorHandlingTest(unittest.TestCase):
         ) as iniciar_mock, patch("builtins.print") as print_mock:
             controller_mock.return_value.run.side_effect = (
                 StudioSubtitleExportInputError(
-                    "No se encontro ningun archivo MP4 o MP3 en:\n"
+                    "No se encontró ningún archivo MP4 o MP3 en:\n"
                     "input/studio/exportar_srt/transcribir/\n\n"
-                    "Anade un archivo valido e intentalo de nuevo."
+                    "Añade un archivo válido e inténtalo de nuevo."
                 )
             )
 
@@ -372,9 +372,9 @@ class MainErrorHandlingTest(unittest.TestCase):
         self.assertEqual(1, result)
         iniciar_mock.assert_not_called()
         print_mock.assert_called_once_with(
-            "ERROR: No se encontro ningun archivo MP4 o MP3 en:\n"
+            "ERROR: No se encontró ningún archivo MP4 o MP3 en:\n"
             "input/studio/exportar_srt/transcribir/\n\n"
-            "Anade un archivo valido e intentalo de nuevo."
+            "Añade un archivo válido e inténtalo de nuevo."
         )
 
     def test_studio_solo_video_input_error_is_user_visible(self):
@@ -399,7 +399,7 @@ class MainErrorHandlingTest(unittest.TestCase):
             "main.iniciar",
             side_effect=ValueError(
                 "El video seleccionado no contiene una pista de audio. "
-                "SOLO VIDEO necesita audio para generar los subtitulos."
+                "SOLO VIDEO necesita audio para generar los subtítulos."
             ),
         ), patch("builtins.print") as print_mock:
             controller_mock.return_value.run.return_value = options
@@ -438,7 +438,7 @@ class MainErrorHandlingTest(unittest.TestCase):
             output_manager.return_value.reset.side_effect = (
                 OutputResetBlockedError(
                     "No se puede eliminar OUTPUT porque uno de sus archivos "
-                    "esta siendo utilizado por otro programa.\n\n"
+                    "está siendo utilizado por otro programa.\n\n"
                     "Cierra el archivo y vuelve a intentarlo."
                 )
             )
@@ -449,7 +449,7 @@ class MainErrorHandlingTest(unittest.TestCase):
         iniciar_mock.assert_not_called()
         print_mock.assert_called_once_with(
             "ERROR: No se puede eliminar OUTPUT porque uno de sus archivos "
-            "esta siendo utilizado por otro programa.\n\n"
+            "está siendo utilizado por otro programa.\n\n"
             "Cierra el archivo y vuelve a intentarlo."
         )
 

@@ -59,19 +59,19 @@ class ExternalMediaSubtitlePreparationService:
     ):
         if media_path is not None and video_path is not None:
             raise ValueError(
-                "La preparacion externa recibe un unico medio fuente."
+                "La preparación externa recibe un único medio fuente."
             )
         source_path = Path(media_path or video_path)
         working_directory = Path(working_directory)
         if not source_path.is_file():
             raise FileNotFoundError(
-                f"No existe el medio de subtitulos: {source_path}"
+                f"No existe el medio de subtítulos: {source_path}"
             )
 
         extension = source_path.suffix.lower()
         if extension not in self.SUPPORTED_EXTENSIONS:
             raise ValueError(
-                "El medio de subtitulos debe ser MP4 o MP3: "
+                "El medio de subtítulos debe ser MP4 o MP3: "
                 f"{source_path}"
             )
 
@@ -97,7 +97,7 @@ class ExternalMediaSubtitlePreparationService:
             ])
             if not audio_path.is_file() or audio_path.stat().st_size <= 0:
                 raise RuntimeError(
-                    "No se genero el audio de trabajo para Whisper."
+                    "No se generó el audio de trabajo para Whisper."
                 )
         else:
             audio_path = source_path
@@ -154,12 +154,12 @@ class ExternalMediaSubtitlePreparationService:
             raise create_operational_error(
                 family="FILESYSTEM",
                 user_message=(
-                    "No se pudo guardar el diagnostico Whisper solicitado."
+                    "No se pudo guardar el diagnóstico Whisper solicitado."
                 ),
                 recommended_action=(
-                    "Comprueba la ruta elegida para el diagnostico."
+                    "Comprueba la ruta elegida para el diagnóstico."
                 ),
-                operation="Guardar diagnostico Whisper",
+                operation="Guardar diagnóstico Whisper",
                 resource=str(output_path),
                 technical_metadata={
                     "phase": "whisper_diagnostics",

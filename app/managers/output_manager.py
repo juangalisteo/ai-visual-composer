@@ -38,7 +38,7 @@ class OutputManager:
                 raise
             raise OutputResetBlockedError(
                 "No se puede eliminar OUTPUT porque uno de sus archivos "
-                "esta siendo utilizado por otro programa.\n\n"
+                "está siendo utilizado por otro programa.\n\n"
                 "Cierra el archivo y vuelve a intentarlo."
             ) from error
 

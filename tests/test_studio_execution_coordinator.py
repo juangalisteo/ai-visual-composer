@@ -282,7 +282,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
             self.assertEqual("texto humano", persisted.read_text(encoding="utf-8"))
 
     def test_run_standard_rejects_original_outside_srt_video(self):
-        with self.assertRaisesRegex(ValueError, "ORIGINAL solo esta disponible"):
+        with self.assertRaisesRegex(ValueError, "ORIGINAL solo está disponible"):
             self.coordinator.run_standard(
                 input_mode=StudioInputMode.VIDEO.value,
                 subtitle_original=True,
