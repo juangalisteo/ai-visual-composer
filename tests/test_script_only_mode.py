@@ -658,7 +658,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as storyboard_builder, patch(
                     "app.core.start.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.generar_video_clips_i2v"
+                    "app.core.start.generate_video_clips"
                 ) as video_clips_builder, patch(
                     "app.core.start.VideoBuilder"
                 ) as video_builder, patch(

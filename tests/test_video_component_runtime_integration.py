@@ -28,6 +28,8 @@ from app.modules.video_component import (
     VideoClipGenerationResult,
     WanIntermediateOutput,
 )
+from app.modules.video_component import clip_batch
+from app.modules.video_component.direct_i2v import run_direct_i2v
 from app.modules.video_component.profile_parameters import (
     build_video_backend_overrides,
 )
@@ -222,7 +224,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "source_path",
                 "video_builder",
             ),
-            tuple(inspect.signature(start.ejecutar_video_i2v).parameters),
+            tuple(inspect.signature(run_direct_i2v).parameters),
+        )
+        self.assertIs(
+            inspect.Parameter.empty,
+            inspect.signature(run_direct_i2v).parameters["source_path"].default,
         )
 
     def test_video_i2v_runtime_dispatches_to_video_component(self):
@@ -246,7 +252,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "app.modules.video_component.profile_parameters._random_video_seed",
                 return_value=847291635
             ):
-                result = start.ejecutar_video_i2v(
+                result = run_direct_i2v(
                     pipeline_start=0,
                     project=project,
                     profile_key=OperationalProfileKey(
@@ -345,10 +351,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             source_path = root / "source.png"
 
             with patch(
-                "app.core.start.DirectI2VGenerationService",
+                "app.modules.video_component.direct_i2v.DirectI2VGenerationService",
                 return_value=service,
             ) as service_type:
-                result = start.ejecutar_video_i2v(
+                result = run_direct_i2v(
                     pipeline_start=0,
                     project=project,
                     profile_key=profile_key,
@@ -373,14 +379,14 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             service.generate.side_effect = RuntimeError("direct service failure")
 
             with patch(
-                "app.core.start.DirectI2VGenerationService",
+                "app.modules.video_component.direct_i2v.DirectI2VGenerationService",
                 return_value=service,
             ):
                 with self.assertRaisesRegex(
                     RuntimeError,
                     "direct service failure",
                 ):
-                    start.ejecutar_video_i2v(
+                    run_direct_i2v(
                         project=FakeProject(root / "output"),
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
@@ -409,7 +415,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         }
 
         self.assertNotIn("video_i2v", mode_literals)
-        self.assertNotIn("ejecutar_video_i2v", called_names)
+        self.assertNotIn("run_direct_i2v", called_names)
 
     def test_video_i2v_missing_source_path_fails_cleanly(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -423,7 +429,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             with self.assertRaises(
                 FileNotFoundError
             ):
-                start.ejecutar_video_i2v(
+                run_direct_i2v(
                     project=FakeProject(
                         Path(
                             temp_dir
@@ -764,7 +770,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ) as storyboard_builder, patch(
                 "app.core.start.ImageBuilder"
             ) as image_builder, patch(
-                "app.core.start.generar_video_clips_i2v",
+                "app.core.start.generate_video_clips",
                 return_value=video_clips_manifest
             ) as clips_builder, patch(
                 "app.core.start.VideoBuilder"
@@ -901,7 +907,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ) as storyboard_builder, patch(
                 "app.core.start.ImageBuilder"
             ) as image_builder, patch(
-                "app.core.start.generar_video_clips_i2v",
+                "app.core.start.generate_video_clips",
                 return_value=clips_manifest,
             ) as clips_builder, patch(
                 "app.core.start.VideoBuilder"
@@ -1045,14 +1051,14 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with patch(
-                "app.core.start.os.replace",
+                "app.modules.video_component.clip_batch.os.replace",
                 wraps=os.replace,
             ) as replace_file:
                 with patch(
                     "app.modules.video_component.profile_parameters._random_video_seed",
                     return_value=847291635
                 ):
-                    manifest_path = start.generar_video_clips_i2v(
+                    manifest_path = clip_batch.generate_video_clips(
                         storyboard_path=storyboard_path,
                         images_manifest_path=images_manifest_path,
                         project=project,
@@ -1220,13 +1226,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             builder = FailingSecondSceneBuilder(output_dir / "unused.mp4")
 
             with patch(
-                "app.core.start._publish_video_clips_manifest_atomically",
+                "app.modules.video_component.clip_batch._publish_video_clips_manifest_atomically",
             ) as publish_manifest:
                 with self.assertRaisesRegex(
                     RuntimeError,
                     "middle scene generation failed",
                 ):
-                    start.generar_video_clips_i2v(
+                    clip_batch.generate_video_clips(
                         storyboard_path=storyboard_path,
                         images_manifest_path=images_manifest_path,
                         project=project,
@@ -1274,7 +1280,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             final_output.parent.mkdir()
             final_output.write_bytes(b"public-final")
 
-            lease = start._I2VArtifactLease.from_manifest(manifest_path)
+            lease = clip_batch.I2VArtifactLease.from_manifest(manifest_path)
             failures = lease.cleanup_after_successful_public_render(final_output)
 
             self.assertEqual((owned_lossless,), lease.owned_lossless_paths)
@@ -1302,7 +1308,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            lease = start._I2VArtifactLease.from_manifest(manifest_path)
+            lease = clip_batch.I2VArtifactLease.from_manifest(manifest_path)
             failures = lease.cleanup_after_successful_public_render(
                 root / "video" / "missing-final.mp4"
             )
@@ -1331,7 +1337,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(RuntimeError, "final render failed"):
-                start._build_i2v_public_video(
+                clip_batch.build_public_video(
                     video_builder=FailingVideoBuilder(),
                     video_clips_manifest_path=manifest_path,
                 )
@@ -1365,7 +1371,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with patch.object(Path, "unlink", side_effect=OSError("locked")):
-                result = start._build_i2v_public_video(
+                result = clip_batch.build_public_video(
                     video_builder=SuccessfulVideoBuilder(output_path),
                     video_clips_manifest_path=manifest_path,
                 )
@@ -1415,7 +1421,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            manifest_path = start.generar_video_clips_i2v(
+            manifest_path = clip_batch.generate_video_clips(
                 storyboard_path=storyboard_path,
                 images_manifest_path=images_manifest_path,
                 project=project,

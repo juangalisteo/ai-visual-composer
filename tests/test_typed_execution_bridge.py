@@ -378,9 +378,9 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key():
     ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
         start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
     ), patch.object(
-        start, "generar_video_clips_i2v", return_value=manifest
+        start, "generate_video_clips", return_value=manifest
     ) as generate_i2v, patch.object(
-        start, "_build_i2v_public_video", return_value=final_video
+        start, "build_public_video", return_value=final_video
     ), patch.object(start, "VideoBuilder") as video_builder:
         result = start.iniciar(request=request)
 

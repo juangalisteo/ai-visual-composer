@@ -20,6 +20,7 @@ from app.modules.video_component import (
     VideoDesignPreparationService,
     VideoDesignVisualTruthAdapter,
 )
+from app.modules.video_component import clip_batch
 from app.shared.config_manager import ConfigManager
 from app.modules.visual_design import VisualDesignInterpreter
 
@@ -180,6 +181,14 @@ class DesignExecutionCoordinator:
         video_builder = (
             video_builder
             or VideoComponentBuilder()
+        )
+        generate_i2v_batch = (
+            generate_i2v_batch
+            or clip_batch.generate_video_clips
+        )
+        scene_clip_identity = (
+            scene_clip_identity
+            or clip_batch.scene_clip_identity
         )
         prepared_design = preparation_service.prepare(
             input_path=(

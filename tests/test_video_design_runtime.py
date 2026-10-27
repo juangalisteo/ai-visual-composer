@@ -12,6 +12,7 @@ from app.modules.video_component import (
     VideoDesignPreparationService,
     VideoDesignVisualTruthAdapter,
 )
+from app.modules.video_component import clip_batch
 from app.modules.visual_design import VisualDesignInterpreter
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
@@ -267,7 +268,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
 
             result = DesignExecutionCoordinator.ensure_single_video_design_clip(
                 manifest_path,
-                scene_clip_identity=start._scene_clip_identity,
+                scene_clip_identity=clip_batch.scene_clip_identity,
             )
 
         self.assertEqual(clip, result)
@@ -288,7 +289,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "scene_001"):
                 DesignExecutionCoordinator.ensure_single_video_design_clip(
                     manifest_path,
-                    scene_clip_identity=start._scene_clip_identity,
+                    scene_clip_identity=clip_batch.scene_clip_identity,
                 )
 
     def test_video_design_preparation_reads_only_guion_video(self):
