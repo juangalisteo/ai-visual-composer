@@ -1,3 +1,4 @@
+from collections import Counter
 from pathlib import Path
 import shutil
 import subprocess
@@ -6,6 +7,8 @@ import time
 
 from app.managers.project_manager import ProjectManager
 from app.modules.subtitles.io.whisper_segment_filter import (
+    REPETITION_IN_SILENCE,
+    REPETITION_WITHOUT_SPEECH,
     WhisperRepetitionFilter,
 )
 from app.modules.subtitles.io.whisper_transcription_config import (
@@ -17,6 +20,11 @@ from app.shared.operational_error import create_operational_error
 
 
 class SubtitleBuilder:
+
+    DISCARD_REASON_LABELS = {
+        REPETITION_IN_SILENCE: "repetición en silencio",
+        REPETITION_WITHOUT_SPEECH: "repetición sin voz",
+    }
 
     def __init__(
         self,
@@ -145,7 +153,7 @@ class SubtitleBuilder:
             if discarded:
                 ProgressLogger.info(
                     self._discarded_message(
-                        len(discarded)
+                        discarded
                     )
                 )
 
@@ -205,14 +213,30 @@ class SubtitleBuilder:
 
         return output_path
 
-    @staticmethod
-    def _discarded_message(count):
+    @classmethod
+    def _discarded_message(cls, discarded):
+        count = len(discarded)
         noun = (
             "segmento descartado"
             if count == 1
             else "segmentos descartados"
         )
+        reasons = Counter(
+            cls.DISCARD_REASON_LABELS.get(
+                entry["reason"],
+                entry["reason"],
+            )
+            for entry in discarded
+        )
+        detail = (
+            next(iter(reasons))
+            if len(reasons) == 1
+            else ", ".join(
+                f"{number} por {label}"
+                for label, number in reasons.items()
+            )
+        )
         return (
             f"Whisper: {count} {noun} "
-            "(repetición en silencio)"
+            f"({detail})"
         )
