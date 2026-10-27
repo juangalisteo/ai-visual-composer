@@ -3,6 +3,7 @@ import json
 import os
 import inspect
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,6 +20,7 @@ from app.shared.profile_identity import (
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from app.modules.standard import StandardExecutionCoordinator
 from app.modules.video_component import (
     BackendVideoPrompt,
     MinimalVisualContext,
@@ -400,7 +402,10 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     )
 
     def test_iniciar_has_no_video_i2v_special_dispatch(self):
-        iniciar_tree = ast.parse(inspect.getsource(start.iniciar))
+        iniciar_tree = ast.parse(
+            inspect.getsource(start.iniciar)
+            + textwrap.dedent(inspect.getsource(StandardExecutionCoordinator.run))
+        )
         mode_literals = {
             node.value
             for node in ast.walk(iniciar_tree)
@@ -749,7 +754,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "app.core.start.ConfigManager",
                 return_value=FakeConfig()
             ), patch(
-                "app.core.start.ejecutar_guion",
+                "app.modules.standard.execution_coordinator.ScriptOperation.execute",
                 return_value=type(
                     "PreparedScript",
                     (),
@@ -758,22 +763,22 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     }
                 )()
             ), patch(
-                "app.core.start.VoiceBuilder"
+                "app.modules.standard.execution_coordinator.VoiceBuilder"
             ) as voice_builder, patch(
-                "app.core.start.AudioMixer"
+                "app.modules.standard.execution_coordinator.AudioMixer"
             ) as audio_mixer, patch(
-                "app.core.start.SubtitleBuilder"
+                "app.modules.standard.execution_coordinator.SubtitleBuilder"
             ) as subtitle_builder, patch(
-                "app.core.start.SrtOptimizer"
+                "app.modules.standard.execution_coordinator.SrtOptimizer"
             ) as srt_optimizer, patch(
-                "app.core.start.StoryboardBuilder"
+                "app.modules.standard.execution_coordinator.StoryboardBuilder"
             ) as storyboard_builder, patch(
-                "app.core.start.ImageBuilder"
+                "app.modules.standard.execution_coordinator.ImageBuilder"
             ) as image_builder, patch(
-                "app.core.start.generate_video_clips",
+                "app.modules.standard.execution_coordinator.generate_video_clips",
                 return_value=video_clips_manifest
             ) as clips_builder, patch(
-                "app.core.start.VideoBuilder"
+                "app.modules.standard.execution_coordinator.VideoBuilder"
             ) as video_builder, patch(
                 "app.shared.media_probe.MediaProbe.get_duration",
                 return_value=4.0
@@ -892,25 +897,25 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "app.core.start.ConfigManager",
                 return_value=config,
             ), patch(
-                "app.core.start.ejecutar_guion",
+                "app.modules.standard.execution_coordinator.ScriptOperation.execute",
                 return_value=type("Prepared", (), {"text": "Guion."})(),
             ), patch(
-                "app.core.start.VoiceBuilder"
+                "app.modules.standard.execution_coordinator.VoiceBuilder"
             ) as voice_builder, patch(
-                "app.core.start.AudioMixer"
+                "app.modules.standard.execution_coordinator.AudioMixer"
             ) as audio_mixer, patch(
-                "app.core.start.SubtitleBuilder"
+                "app.modules.standard.execution_coordinator.SubtitleBuilder"
             ) as subtitle_builder, patch(
-                "app.core.start.SrtOptimizer"
+                "app.modules.standard.execution_coordinator.SrtOptimizer"
             ) as srt_optimizer, patch(
-                "app.core.start.StoryboardBuilder"
+                "app.modules.standard.execution_coordinator.StoryboardBuilder"
             ) as storyboard_builder, patch(
-                "app.core.start.ImageBuilder"
+                "app.modules.standard.execution_coordinator.ImageBuilder"
             ) as image_builder, patch(
-                "app.core.start.generate_video_clips",
+                "app.modules.standard.execution_coordinator.generate_video_clips",
                 return_value=clips_manifest,
             ) as clips_builder, patch(
-                "app.core.start.VideoBuilder"
+                "app.modules.standard.execution_coordinator.VideoBuilder"
             ) as video_builder, patch(
                 "app.shared.media_probe.MediaProbe.get_duration",
                 return_value=4.0,

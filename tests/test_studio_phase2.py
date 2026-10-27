@@ -162,8 +162,8 @@ class StudioPhase2Test(unittest.TestCase):
         )
         with patch.object(StudioExecutionCoordinator, "run_standard") as studio, patch(
             "app.core.start.ProjectManager"
-        ) as projects, patch("app.core.start.VideoBuilder") as video, patch(
-            "app.core.start.SrtOptimizer"
+        ) as projects, patch("app.modules.standard.execution_coordinator.VideoBuilder") as video, patch(
+            "app.modules.standard.execution_coordinator.SrtOptimizer"
         ) as optimizer:
             iniciar(request=request)
 

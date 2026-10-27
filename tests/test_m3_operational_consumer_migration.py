@@ -1,5 +1,5 @@
 from app.controllers.run_controller import RunController
-from app.core.start import _resolve_single_video_operational_key
+from app.modules.standard.execution_coordinator import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (

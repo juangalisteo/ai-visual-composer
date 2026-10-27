@@ -2,7 +2,7 @@ import unittest
 from copy import deepcopy
 from types import SimpleNamespace
 
-from app.core.start import _required_builders
+from app.modules.standard.execution_coordinator import _required_builders
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.subtitles.modes.single_line import SingleLineModel

@@ -7,6 +7,7 @@ from unittest.mock import patch
 import main
 from app.controllers.run_controller import RunController
 from app.core import start
+from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import (
     StudioMontageError,
     StudioSubtitleExportInputError,
@@ -348,6 +349,7 @@ class MainErrorHandlingTest(unittest.TestCase):
     def test_run_controller_and_start_remain_outside_presentation(self):
         self.assertNotIn("ErrorPresenter", inspect.getsource(RunController))
         self.assertNotIn("ErrorPresenter", inspect.getsource(start))
+        self.assertNotIn("ErrorPresenter", inspect.getsource(standard))
         boundary_source = (
             inspect.getsource(main.main)
             + inspect.getsource(main._present_unexpected_error)

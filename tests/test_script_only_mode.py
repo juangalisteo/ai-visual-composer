@@ -239,7 +239,7 @@ class FakeScriptOperation:
         )
 
 
-def fake_ejecutar_guion(
+def fake_script_execute(
     *,
     output_script_path,
     **_
@@ -301,32 +301,32 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     side_effect=AssertionError(
                         "VoiceBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer",
+                    "app.modules.standard.execution_coordinator.AudioMixer",
                     side_effect=AssertionError(
                         "AudioMixer must not run"
                     )
                 ), patch(
-                    "app.core.start.SubtitleBuilder",
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder",
                     side_effect=AssertionError(
                         "SubtitleBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.StoryboardBuilder",
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder",
                     side_effect=AssertionError(
                         "StoryboardBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.ImageBuilder",
+                    "app.modules.standard.execution_coordinator.ImageBuilder",
                     side_effect=AssertionError(
                         "ImageBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.VideoBuilder",
+                    "app.modules.standard.execution_coordinator.VideoBuilder",
                     side_effect=AssertionError(
                         "VideoBuilder must not run"
                     )
@@ -480,25 +480,25 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "ScriptBuilder must not run for manual source"
                     )
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
                     "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
@@ -640,27 +640,27 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "ScriptBuilder must not run for manual source"
                     )
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.generate_video_clips"
+                    "app.modules.standard.execution_coordinator.generate_video_clips"
                 ) as video_clips_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
                     "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
@@ -779,28 +779,28 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "Subtitle profile must not be resolved"
                     ),
                 ), patch(
-                    "app.core.start.ejecutar_guion",
-                    side_effect=fake_ejecutar_guion,
+                    "app.modules.standard.execution_coordinator.ScriptOperation.execute",
+                    side_effect=fake_script_execute,
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder,
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     ),
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
                     "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None,
@@ -876,28 +876,28 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
-                    "app.core.start.ejecutar_guion",
-                    side_effect=fake_ejecutar_guion
+                    "app.modules.standard.execution_coordinator.ScriptOperation.execute",
+                    side_effect=fake_script_execute
                 ) as script_operation, patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
                     "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
@@ -987,28 +987,28 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
-                    "app.core.start.ScriptOperation",
+                    "app.modules.standard.execution_coordinator.ScriptOperation",
                     FakeScriptOperation
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
                     "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None

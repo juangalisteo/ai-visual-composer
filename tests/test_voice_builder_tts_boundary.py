@@ -209,6 +209,7 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
 
         for component_path in (
             Path("app/core/start.py"),
+            Path("app/modules/standard/execution_coordinator.py"),
             Path("app/modules/images/image_builder.py"),
             Path("app/modules/video/video_builder.py"),
         ):

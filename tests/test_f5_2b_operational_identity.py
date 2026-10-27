@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from app.controllers.run_controller import RunController
-from app.core import start
+from app.modules.standard import execution_coordinator as standard
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -103,7 +103,7 @@ def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
         display_name="Technical video profile",
     )
 
-    resolved = start._resolve_single_video_operational_key(
+    resolved = standard._resolve_single_video_operational_key(
         _resolver(tmp_path),
         "test_format",
     )
@@ -115,7 +115,7 @@ def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
 
 def test_guion_video_bridge_rejects_missing_video_candidate(tmp_path):
     with pytest.raises(FileNotFoundError, match="perfil operacional VIDEO"):
-        start._resolve_single_video_operational_key(
+        standard._resolve_single_video_operational_key(
             _resolver(tmp_path),
             "test_format",
         )
@@ -136,7 +136,7 @@ def test_guion_video_bridge_rejects_ambiguous_video_candidates(tmp_path):
     )
 
     with pytest.raises(ValueError, match="ambigua"):
-        start._resolve_single_video_operational_key(
+        standard._resolve_single_video_operational_key(
             _resolver(tmp_path),
             "test_format",
         )

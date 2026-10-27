@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from app.core.start import _resolve_single_video_operational_key
+from app.modules.standard.execution_coordinator import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
 from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver

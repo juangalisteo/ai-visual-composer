@@ -10,6 +10,7 @@ from app.core.execution_request import (
 )
 from app.core import start
 from app.modules.design import DesignExecutionCoordinator
+from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import StudioInputMode, StudioVideoAudioSrtPlan
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
@@ -96,16 +97,18 @@ def test_typed_standard_script_uses_request_source():
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         start, "ConfigManager", return_value=config
     ) as config_manager_class, patch.object(
-        start, "_required_builders", return_value={}
+        standard, "_required_builders", return_value={}
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=prepared_script
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=prepared_script
     ) as execute:
         result = start.iniciar(request=request)
 
     assert result == project.script_path.return_value
-    assert execute.call_args.kwargs["script_source"] == "manual"
+    assert execute.call_args.kwargs["source_mode"] == "manual"
     projects.assert_called_once_with(project_name=request.project_name)
     assert config_manager_class.call_args.kwargs["operational_profile_key"] is (
         request.operational_profile_key
@@ -129,13 +132,15 @@ def test_typed_standard_music_category_uses_request_value():
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
-    ), patch.object(start, "_required_builders", return_value={"voice": True}), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder, patch.object(
-        start, "MusicSelector"
-    ) as music_selector, patch.object(start, "AudioMixer") as audio_mixer:
+    ), patch.object(standard, "_required_builders", return_value={"voice": True}), patch.object(
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "MusicSelector"
+    ) as music_selector, patch.object(standard, "AudioMixer") as audio_mixer:
         voice_builder.return_value.build.return_value = Path("voz.mp3")
         music_selector.return_value.select.return_value = Path("calm.mp3")
         audio_mixer.return_value.build.return_value = Path("final.mp3")
@@ -169,16 +174,18 @@ def test_typed_standard_injects_its_explicit_config_into_profile_consumers():
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ), patch.object(
-        start,
+        standard,
         "_required_builders",
         return_value={"storyboard": True, "images": True, "video": True},
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "StoryboardBuilder") as storyboard_builder, patch.object(
-        start, "ImageBuilder"
-    ) as image_builder, patch.object(start, "VideoBuilder") as video_builder:
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "StoryboardBuilder") as storyboard_builder, patch.object(
+        standard, "ImageBuilder"
+    ) as image_builder, patch.object(standard, "VideoBuilder") as video_builder:
         storyboard_builder.return_value.build.return_value = Path("storyboard.json")
         image_builder.return_value.build.return_value = Path("images.json")
         video_builder.return_value.build.return_value = Path("final.mp4")
@@ -220,17 +227,19 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ), patch.object(
-        start, "_required_builders", return_value={"voice": True, "subtitles": True}
+        standard, "_required_builders", return_value={"voice": True, "subtitles": True}
     ), patch.object(
-        start, "_required_render_fps", return_value=30
+        standard, "_required_render_fps", return_value=30
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder, patch.object(
-        start, "AudioMixer"
-    ) as audio_mixer, patch.object(start, "SubtitleBuilder") as subtitle_builder, patch.object(
-        start, "SrtOptimizer"
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "AudioMixer"
+    ) as audio_mixer, patch.object(standard, "SubtitleBuilder") as subtitle_builder, patch.object(
+        standard, "SrtOptimizer"
     ) as optimizer:
         voice_builder.return_value.build.return_value = project.audio_path.return_value
         audio_mixer.return_value.build.return_value = project.final_audio_path.return_value
@@ -261,13 +270,15 @@ def test_typed_standard_voice_config_id_is_injected_into_config_manager():
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ) as config_manager_class, patch.object(
-        start, "_required_builders", return_value={"voice": True}
+        standard, "_required_builders", return_value={"voice": True}
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder, patch.object(
-        start, "AudioMixer"
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "AudioMixer"
     ) as audio_mixer:
         voice_builder.return_value.build.return_value = project.audio_path.return_value
         audio_mixer.return_value.build.return_value = project.final_audio_path.return_value
@@ -304,14 +315,16 @@ def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
         with patch.object(start, "ProjectManager", return_value=project), patch.object(
             start, "ConfigManager", return_value=config
         ), patch.object(
-            start, "_required_builders", return_value=builders
+            standard, "_required_builders", return_value=builders
         ), patch.object(
-            start, "_pipeline_telemetry_artifacts", return_value=Mock()
-        ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-            start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-        ), patch.object(start, "VoiceBuilder"), patch.object(
-            start, "AudioMixer"
-        ), patch.object(start, "StoryboardBuilder"):
+            standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+        ), patch.object(
+            start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+        ), patch.object(
+            standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+        ), patch.object(standard, "VoiceBuilder"), patch.object(
+            standard, "AudioMixer"
+        ), patch.object(standard, "StoryboardBuilder"):
             start.iniciar(
                 request=_standard_request(pipeline_mode=pipeline_mode)
             )
@@ -341,11 +354,13 @@ def test_typed_standard_voice_requires_voice_config_id():
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
-    ), patch.object(start, "_required_builders", return_value={"voice": True}), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder:
+    ), patch.object(standard, "_required_builders", return_value={"voice": True}), patch.object(
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder:
         try:
             start.iniciar(request=request)
         except ValueError as error:
@@ -374,16 +389,18 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key():
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ) as config_manager_class, patch.object(
-        start, "_required_builders", return_value={}
+        standard, "_required_builders", return_value={}
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
     ), patch.object(
-        start, "generate_video_clips", return_value=manifest
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(
+        standard, "generate_video_clips", return_value=manifest
     ) as generate_i2v, patch.object(
-        start, "build_public_video", return_value=final_video
-    ), patch.object(start, "VideoBuilder") as video_builder:
+        standard, "build_public_video", return_value=final_video
+    ), patch.object(standard, "VideoBuilder") as video_builder:
         result = start.iniciar(request=request)
 
     assert result == final_video
