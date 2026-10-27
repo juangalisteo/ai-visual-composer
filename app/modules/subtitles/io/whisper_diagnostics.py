@@ -61,6 +61,20 @@ class WhisperSegmentDiagnostics:
 
 
 @dataclass(frozen=True)
+class WhisperDiscardedSegmentDiagnostics:
+    """A native Whisper segment removed after transcription, and why."""
+
+    segment: WhisperSegmentDiagnostics
+    reason: str
+
+    def __post_init__(self):
+        if not isinstance(self.segment, WhisperSegmentDiagnostics):
+            raise TypeError("segment must be WhisperSegmentDiagnostics")
+        if not isinstance(self.reason, str) or not self.reason:
+            raise ValueError("reason must be a non-empty string")
+
+
+@dataclass(frozen=True)
 class WhisperTranscriptionDiagnostics:
     """Auxiliary native-Whisper metadata, separate from subtitle timing."""
 
@@ -68,6 +82,7 @@ class WhisperTranscriptionDiagnostics:
     backend_version: str | None
     transcription_config: WhisperTranscriptionConfig
     segments: tuple[WhisperSegmentDiagnostics, ...]
+    discarded_segments: tuple[WhisperDiscardedSegmentDiagnostics, ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.backend, str) or not self.backend:
@@ -87,6 +102,14 @@ class WhisperTranscriptionDiagnostics:
         ):
             raise TypeError(
                 "segments must be a tuple of WhisperSegmentDiagnostics"
+            )
+        if not isinstance(self.discarded_segments, tuple) or not all(
+            isinstance(segment, WhisperDiscardedSegmentDiagnostics)
+            for segment in self.discarded_segments
+        ):
+            raise TypeError(
+                "discarded_segments must be a tuple of "
+                "WhisperDiscardedSegmentDiagnostics"
             )
 
 
@@ -126,6 +149,15 @@ class WhisperDiagnosticsParser:
             for raw_segment in raw_segments
             if isinstance(raw_segment, dict)
         )
+        raw_discarded = data.get("discarded_segments", [])
+        if not isinstance(raw_discarded, list):
+            raise ValueError("Metadata Whisper sin discarded_segments válido.")
+
+        discarded_segments = tuple(
+            self._parse_discarded(raw_entry)
+            for raw_entry in raw_discarded
+            if isinstance(raw_entry, dict)
+        )
         try:
             backend_version = self.backend_version_resolver()
         except (OSError, ValueError):
@@ -136,6 +168,7 @@ class WhisperDiagnosticsParser:
             backend_version=backend_version,
             transcription_config=transcription_config,
             segments=segments,
+            discarded_segments=discarded_segments,
         )
 
     @staticmethod
@@ -153,6 +186,19 @@ class WhisperDiagnosticsParser:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError("Segment diagnostics Whisper inválido.") from error
+
+    @classmethod
+    def _parse_discarded(cls, raw_entry) -> WhisperDiscardedSegmentDiagnostics:
+        raw_segment = raw_entry.get("segment")
+        if not isinstance(raw_segment, dict):
+            raise ValueError("Segmento descartado Whisper inválido.")
+        try:
+            return WhisperDiscardedSegmentDiagnostics(
+                segment=cls._parse_segment(raw_segment),
+                reason=raw_entry.get("reason"),
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError("Segmento descartado Whisper inválido.") from error
 
 
 def resolve_openai_whisper_version() -> str | None:

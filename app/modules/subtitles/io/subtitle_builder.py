@@ -5,6 +5,9 @@ import tempfile
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.subtitles.io.whisper_segment_filter import (
+    WhisperRepetitionFilter,
+)
 from app.modules.subtitles.io.whisper_transcription_config import (
     WhisperTranscriptionConfig,
 )
@@ -18,11 +21,17 @@ class SubtitleBuilder:
     def __init__(
         self,
         transcription_config: WhisperTranscriptionConfig | None = None,
+        segment_filter: WhisperRepetitionFilter | None = None,
     ):
         self.transcription_config = (
             transcription_config
             if transcription_config is not None
             else WhisperTranscriptionConfig()
+        )
+        self.segment_filter = (
+            segment_filter
+            if segment_filter is not None
+            else WhisperRepetitionFilter()
         )
 
     def build(
@@ -122,14 +131,27 @@ class SubtitleBuilder:
                     technical_metadata={"phase": "transcription_output"},
                 ) from error
 
-            shutil.move(
-                str(generated_srt),
-                str(output_path)
-            )
-
             generated_json = (
                 temp_output_dir
                 / f"{audio_path.stem}.json"
+            )
+
+            discarded = self.segment_filter.apply(
+                generated_srt,
+                generated_json,
+                self.transcription_config.no_speech_threshold,
+            )
+
+            if discarded:
+                ProgressLogger.info(
+                    self._discarded_message(
+                        len(discarded)
+                    )
+                )
+
+            shutil.move(
+                str(generated_srt),
+                str(output_path)
             )
 
             if generated_json.exists():
@@ -182,3 +204,15 @@ class SubtitleBuilder:
         )
 
         return output_path
+
+    @staticmethod
+    def _discarded_message(count):
+        noun = (
+            "segmento descartado"
+            if count == 1
+            else "segmentos descartados"
+        )
+        return (
+            f"Whisper: {count} {noun} "
+            "(repetición en silencio)"
+        )

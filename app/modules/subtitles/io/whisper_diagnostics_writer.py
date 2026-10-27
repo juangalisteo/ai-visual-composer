@@ -9,7 +9,7 @@ from app.modules.subtitles.io.whisper_diagnostics import (
 class WhisperDiagnosticsWriter:
     """Persist explicitly requested Whisper diagnostics as deterministic JSON."""
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
 
     def write(
         self,
@@ -55,17 +55,15 @@ class WhisperDiagnosticsWriter:
                 "output_format": diagnostics.transcription_config.output_format,
             },
             "segments": [
-                {
-                    "segment_id": segment.segment_id,
-                    "seek": segment.seek,
-                    "start": segment.start,
-                    "end": segment.end,
-                    "no_speech_prob": segment.no_speech_prob,
-                    "avg_logprob": segment.avg_logprob,
-                    "compression_ratio": segment.compression_ratio,
-                    "temperature": segment.temperature,
-                }
+                self._segment_payload(segment)
                 for segment in diagnostics.segments
+            ],
+            "discarded_segments": [
+                {
+                    **self._segment_payload(discarded.segment),
+                    "reason": discarded.reason,
+                }
+                for discarded in diagnostics.discarded_segments
             ],
         }
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -79,3 +77,16 @@ class WhisperDiagnosticsWriter:
             encoding="utf-8",
         )
         return output_path
+
+    @staticmethod
+    def _segment_payload(segment):
+        return {
+            "segment_id": segment.segment_id,
+            "seek": segment.seek,
+            "start": segment.start,
+            "end": segment.end,
+            "no_speech_prob": segment.no_speech_prob,
+            "avg_logprob": segment.avg_logprob,
+            "compression_ratio": segment.compression_ratio,
+            "temperature": segment.temperature,
+        }
