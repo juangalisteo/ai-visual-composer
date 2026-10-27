@@ -500,7 +500,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as image_builder, patch(
                     "app.core.start.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ), patch.dict(
                     os.environ,
@@ -662,7 +662,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as video_clips_builder, patch(
                     "app.core.start.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ), patch.dict(
                     os.environ,
@@ -802,7 +802,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as image_builder, patch(
                     "app.core.start.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None,
                 ):
                     final_video = Path(
@@ -899,7 +899,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as image_builder, patch(
                     "app.core.start.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
                     audio_mixer.return_value.build.return_value = Path(
@@ -1010,7 +1010,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as image_builder, patch(
                     "app.core.start.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
                     audio_mixer.return_value.build.return_value = Path(

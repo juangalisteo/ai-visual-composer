@@ -16,7 +16,8 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio, iniciar
+from app.core.start import iniciar
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioOutputPathResolver,
     StudioProfileLoader,
@@ -223,7 +224,7 @@ class StudioPhase5Test(unittest.TestCase):
         self.assertEqual("srt_video", request.route.input_mode.value)
         self.assertEqual({"request"}, set(start.call_args.kwargs))
 
-        with patch("app.core.start.ejecutar_studio") as studio, patch(
+        with patch.object(StudioExecutionCoordinator, "run_standard") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects:
             iniciar(request=request)
@@ -251,16 +252,18 @@ class StudioPhase5Test(unittest.TestCase):
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
         project = Mock()
-        with patch(
-            "app.core.start._persist_studio_subtitle_base",
+        with patch.object(
+            StudioExecutionCoordinator,
+            "persist_subtitle_base",
             return_value=Path("output/studio/subtitles/result.srt"),
-        ), patch(
-            "app.core.start._persist_studio_render_subtitle",
+        ), patch.object(
+            StudioExecutionCoordinator,
+            "persist_render_subtitle",
             return_value=Path(
                 "output/studio/subtitles/result_single_line.srt"
             ),
         ):
-            result = ejecutar_studio(
+            result = StudioExecutionCoordinator().run_standard(
                 subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 intro_outro_selection=plan,

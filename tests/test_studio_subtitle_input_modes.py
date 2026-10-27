@@ -13,10 +13,7 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import (
-    _persist_studio_render_subtitle,
-    ejecutar_studio,
-)
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioInputMode,
     StudioInputPreparationService,
@@ -223,7 +220,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             ), patch(
                 "app.modules.studio.execution_coordinator.ProgressLogger"
             ) as progress_logger:
-                result = ejecutar_studio(
+                result = StudioExecutionCoordinator().run_standard(
                     subtitle_profile_key=preparation.subtitle_profile.key,
                     input_mode="video",
                     preparation_service=Mock(return_value=preparation),
@@ -279,7 +276,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             output_path = root / "demo" / "video" / "demo.mp4"
             resolver = Mock(resolve=Mock(return_value=output_path))
 
-            result = ejecutar_studio(
+            result = StudioExecutionCoordinator().run_standard(
                 subtitle_profile_key=preparation.subtitle_profile.key,
                 input_mode="srt_video",
                 preparation_service=Mock(return_value=preparation),
@@ -327,7 +324,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             with patch(
                 "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
             ) as transformer:
-                ejecutar_studio(
+                StudioExecutionCoordinator().run_standard(
                     subtitle_profile_key=preparation.subtitle_profile.key,
                     input_mode="srt_video",
                     preparation_service=Mock(return_value=preparation),
@@ -364,7 +361,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             with patch(
                 "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
             ) as transformer:
-                rendered_path = _persist_studio_render_subtitle(
+                rendered_path = StudioExecutionCoordinator.persist_render_subtitle(
                     base_subtitle_path=base,
                     output_path=root / "demo" / "video" / "demo.mp4",
                     subtitle_profile=subtitle_profile,
@@ -425,7 +422,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             with patch(
                 "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
             ) as transformer:
-                rendered_path = _persist_studio_render_subtitle(
+                rendered_path = StudioExecutionCoordinator.persist_render_subtitle(
                     base_subtitle_path=base,
                     output_path=root / "demo" / "video" / "demo.mp4",
                     subtitle_profile=subtitle_profile,
@@ -445,7 +442,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             ValueError,
             "ORIGINAL solo está disponible para STUDIO SRT \\+ VIDEO",
         ):
-            ejecutar_studio(
+            StudioExecutionCoordinator().run_standard(
                 subtitle_profile_key=self._subtitle_profile("single_line").key,
                 input_mode="video",
                 subtitle_original=True,
@@ -493,7 +490,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 with patch(
                     "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
                 ) as transformer:
-                    ejecutar_studio(
+                    StudioExecutionCoordinator().run_standard(
                         subtitle_profile_key=subtitle_profile.key,
                         input_mode="srt_video",
                         subtitle_original=True,
@@ -678,7 +675,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 with self.subTest(profile_id=descriptor.profile_id), patch(
                     "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
                 ) as transformer:
-                    rendered_path = _persist_studio_render_subtitle(
+                    rendered_path = StudioExecutionCoordinator.persist_render_subtitle(
                         base_subtitle_path=base,
                         output_path=root / "demo" / "video" / "demo.mp4",
                         subtitle_profile=resolver.load(descriptor.key),

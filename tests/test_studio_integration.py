@@ -18,6 +18,7 @@ from app.modules.studio import (
     StudioProfileLoader,
     StudioRenderService,
 )
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
@@ -165,8 +166,11 @@ class StudioFinalContractTest(unittest.TestCase):
         )
 
     def test_runtime_scaffolding_names_are_retired(self):
-        self.assertTrue(hasattr(start, "preparar_studio"))
-        self.assertTrue(hasattr(start, "ejecutar_studio"))
+        self.assertTrue(hasattr(StudioExecutionCoordinator, "run_route"))
+        self.assertTrue(hasattr(StudioExecutionCoordinator, "prepare_standard"))
+        self.assertTrue(hasattr(StudioExecutionCoordinator, "run_standard"))
+        self.assertFalse(hasattr(start, "preparar_studio"))
+        self.assertFalse(hasattr(start, "ejecutar_studio"))
         self.assertFalse(hasattr(start, "ejecutar_studio_fase_1"))
         self.assertFalse(hasattr(start, "ejecutar_studio_fase_2"))
 

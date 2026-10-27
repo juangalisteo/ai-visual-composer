@@ -775,7 +775,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ) as clips_builder, patch(
                 "app.core.start.VideoBuilder"
             ) as video_builder, patch(
-                "app.core.start.MediaProbe.get_duration",
+                "app.shared.media_probe.MediaProbe.get_duration",
                 return_value=4.0
             ):
                 voice_builder.return_value.build.return_value = (
@@ -912,7 +912,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ) as clips_builder, patch(
                 "app.core.start.VideoBuilder"
             ) as video_builder, patch(
-                "app.core.start.MediaProbe.get_duration",
+                "app.shared.media_probe.MediaProbe.get_duration",
                 return_value=4.0,
             ):
                 voice_builder.return_value.build.return_value = project.audio_path()

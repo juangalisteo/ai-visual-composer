@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.core import start
 from app.modules.design import DesignExecutionCoordinator
 from app.modules.video_component import (
     VideoClipGenerationResult,
@@ -594,7 +593,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                         "ScriptOperation must not run"
                     )
                 ), patch(
-                    "app.core.start.ScriptPreparationService",
+                    "app.modules.script.operation.ScriptPreparationService",
                     side_effect=AssertionError(
                         "ScriptPreparationService must not run"
                     )
@@ -634,7 +633,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                         "VideoBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ), patch(
                     "app.modules.design.execution_coordinator.ConfigManager"
@@ -648,7 +647,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                     config_manager_mock.return_value.get_operational_profile_key.return_value = (
                         profile_key
                     )
-                    result = start.ejecutar_diseno_video(
+                    result = DesignExecutionCoordinator().run_video(
                         preparation_service=VideoDesignPreparationService(
                             visual_interpreter=(
                                 FakeVideoDesignInterpreter()

@@ -6,7 +6,7 @@ from unittest.mock import Mock, call, patch
 import pytest
 import main
 
-from app.core.start import ejecutar_studio_video_audio_srt
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.controllers.run_controller import RunController
 from app.modules.studio import (
     StudioInputMode,
@@ -581,10 +581,13 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
             output_path_resolver=resolver_output,
             service=renderer,
         )
-        with patch("app.core.start.ExternalMediaSubtitlePreparationService") as whisper, patch(
+        with patch(
+            "app.modules.studio.execution_coordinator."
+            "ExternalMediaSubtitlePreparationService"
+        ) as whisper, patch(
             "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
         ) as transformer:
-                result = ejecutar_studio_video_audio_srt(
+                result = StudioExecutionCoordinator().run_video_audio_srt(
                     StudioVideoAudioSrtPlan(video, audio, subtitle),
                     **options,
                 )
@@ -635,7 +638,7 @@ def test_human_srt_allows_only_a_visual_uppercase_derivative():
         with patch(
             "app.modules.studio.execution_coordinator.SubtitleCueTransformer"
         ) as transformer:
-            result = ejecutar_studio_video_audio_srt(
+            result = StudioExecutionCoordinator().run_video_audio_srt(
                 StudioVideoAudioSrtPlan(video, audio, subtitle),
                 subtitle_profile_key=subtitle_profile.key,
                 project=Mock(),

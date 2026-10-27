@@ -13,7 +13,7 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio_exportar_srt
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
     StudioProfileLoader,
@@ -624,7 +624,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectManager()
             project.base_path = Path(directory) / "output" / "demo"
-            result = ejecutar_studio_exportar_srt(
+            result = StudioExecutionCoordinator().run_subtitle_export(
                 plan,
                 project=project,
                 export_service=service,
@@ -646,7 +646,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             ValueError,
             "CONVERTIR requiere una identidad STUDIO estructurada",
         ):
-            ejecutar_studio_exportar_srt(
+            StudioExecutionCoordinator().run_subtitle_export(
                 plan,
                 subtitle_profile_key=SubtitleProfileKey(
                     "studio",
@@ -680,7 +680,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         config.get_subtitle_profile_by_key.return_value = selected_profile
         service = Mock()
 
-        ejecutar_studio_exportar_srt(
+        StudioExecutionCoordinator().run_subtitle_export(
             plan,
             subtitle_profile_key=selected_key,
             project=Mock(),
@@ -719,8 +719,9 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         expected = Mock()
         with patch(
             "app.core.start.ProjectManager"
-        ) as projects, patch(
-            "app.core.start.ejecutar_studio_exportar_srt",
+        ) as projects, patch.object(
+            StudioExecutionCoordinator,
+            "run_subtitle_export",
             return_value=expected,
         ) as exporter:
             result = iniciar(request=request)

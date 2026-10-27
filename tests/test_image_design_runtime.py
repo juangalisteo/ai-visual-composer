@@ -155,7 +155,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     "app.modules.design.execution_coordinator.ImageBuilder",
                     return_value=fake_image_builder
                 ), patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
                     config_manager.return_value.get_profile_config.return_value = None
@@ -224,7 +224,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                         "ScriptOperation must not run"
                     )
                 ), patch(
-                    "app.core.start.ScriptPreparationService",
+                    "app.modules.script.operation.ScriptPreparationService",
                     side_effect=AssertionError(
                         "ScriptPreparationService must not run"
                     )
@@ -264,10 +264,10 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                         "VideoBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
-                    result = start.ejecutar_diseno_imagen(
+                    result = DesignExecutionCoordinator().run_image(
                         project=ProjectManager(project_name="design image"),
                         preparation_service=ImageDesignPreparationService(
                             visual_interpreter=(

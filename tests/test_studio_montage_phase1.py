@@ -328,8 +328,9 @@ class StudioMontagePhase1Test(unittest.TestCase):
             )
             with patch(
                 "app.core.start.ProjectManager"
-            ) as projects, patch(
-                "app.core.start.ejecutar_studio_montaje",
+            ) as projects, patch.object(
+                StudioExecutionCoordinator,
+                "run_montage",
                 return_value="montage-result",
             ) as montage:
                 result = iniciar(request=request)

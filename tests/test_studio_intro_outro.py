@@ -8,7 +8,8 @@ from app.core.execution_request import (
     ApplicationExecutionRequest,
     StudioExecutionRequest,
 )
-from app.core.start import ejecutar_studio_intro_outro, iniciar
+from app.core.start import iniciar
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioInputMode,
     StudioIntroOutroInputError,
@@ -221,7 +222,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             renderer = Mock()
             renderer.render.return_value = "rendered"
 
-            result = ejecutar_studio_intro_outro(
+            result = StudioExecutionCoordinator().run_intro_outro(
                 plan,
                 config_manager=config,
                 profile_loader=profile_loader,
@@ -260,7 +261,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                     plan=plan,
                 ),
             )
-            with patch("app.core.start.ProjectManager") as projects, patch("app.core.start.ejecutar_studio_intro_outro", return_value="result") as execute, patch("app.core.start.ejecutar_studio") as normal:
+            with patch("app.core.start.ProjectManager") as projects, patch.object(StudioExecutionCoordinator, "run_intro_outro", return_value="result") as execute, patch.object(StudioExecutionCoordinator, "run_standard") as normal:
                 self.assertEqual("result", iniciar(request=request))
             self.assertEqual((plan,), execute.call_args.args)
             self.assertIs(projects.return_value, execute.call_args.kwargs["project"])

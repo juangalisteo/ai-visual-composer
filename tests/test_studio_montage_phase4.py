@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import main
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio_montaje
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioMontageClip,
     StudioMontagePlan,
@@ -75,7 +75,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
                 music_path=Path("music.mp3"), render_duration=0.4,
             )
 
-            result = ejecutar_studio_montaje(
+            result = StudioExecutionCoordinator().run_montage(
                 plan, music_path=Path("music.mp3"),
                 intro_outro_selection=SimpleNamespace(intro=object(), outro=None),
                 project=project, profile_resolver=resolver, profile_loader=loader,

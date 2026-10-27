@@ -236,9 +236,6 @@ def _run_video_audio_srt(tmp_path, subtitle_profile):
         profile_loader=Mock(load=Mock(return_value=_studio_profile())),
         output_path_resolver=Mock(resolve=Mock(return_value=output)),
         service=service,
-        subtitle_profile_key_normalizer=(
-            lambda subtitle_profile_key: subtitle_profile_key
-        ),
     )
     return runner, tmp_path / "demo" / "subtitles"
 

@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import main
-from app.core.start import ejecutar_studio_montaje
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioMontageError,

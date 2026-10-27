@@ -14,7 +14,7 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio, preparar_studio
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioInputMode,
@@ -637,7 +637,7 @@ class StudioPhase1Test(unittest.TestCase):
                 "1\n00:00:00,000 --> 00:00:01,000\nTexto intacto\n",
                 encoding="utf-8",
             )
-            result = preparar_studio(
+            result = StudioExecutionCoordinator().prepare_standard(
                 subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                 input_mode="srt_video",
                 config_manager=self._config_manager(),
@@ -666,18 +666,20 @@ class StudioPhase1Test(unittest.TestCase):
             resolver = Mock()
 
             def prepare(**options):
-                return preparar_studio(
+                return StudioExecutionCoordinator().prepare_standard(
                     config_manager=self._config_manager(),
                     input_preparation_service=input_service,
                     media_probe=probe,
                     **options,
                 )
 
-            with patch("app.core.start.ProjectManager") as projects, self.assertRaisesRegex(
+            with patch(
+                "app.modules.studio.execution_coordinator.ProjectManager"
+            ) as projects, self.assertRaisesRegex(
                 ValueError,
                 "no contiene una pista de audio",
             ):
-                ejecutar_studio(
+                StudioExecutionCoordinator().run_standard(
                     subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                     input_mode="video",
                     preparation_service=prepare,
@@ -705,7 +707,7 @@ class StudioPhase1Test(unittest.TestCase):
                 )
             )
 
-            prepared = preparar_studio(
+            prepared = StudioExecutionCoordinator().prepare_standard(
                 subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                 input_mode="video",
                 config_manager=self._config_manager(),
@@ -731,7 +733,7 @@ class StudioPhase1Test(unittest.TestCase):
             )
             probe = Mock()
 
-            prepared = preparar_studio(
+            prepared = StudioExecutionCoordinator().prepare_standard(
                 subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                 input_mode="srt_video",
                 config_manager=self._config_manager(),

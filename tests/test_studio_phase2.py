@@ -13,10 +13,9 @@ from app.core.execution_request import (
     StudioExecutionRequest,
 )
 from app.core.start import (
-    _persist_studio_render_subtitle,
-    ejecutar_studio,
     iniciar,
 )
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
     StudioInputMode,
@@ -116,14 +115,16 @@ class StudioPhase2Test(unittest.TestCase):
 
         base_path = Path("output/studio/subtitles/result.srt")
         derived_path = Path("output/studio/subtitles/result_three_two_words.srt")
-        with patch(
-            "app.core.start._persist_studio_subtitle_base",
+        with patch.object(
+            StudioExecutionCoordinator,
+            "persist_subtitle_base",
             return_value=base_path,
-        ), patch(
-            "app.core.start._persist_studio_render_subtitle",
+        ), patch.object(
+            StudioExecutionCoordinator,
+            "persist_render_subtitle",
             return_value=derived_path,
         ):
-            result = ejecutar_studio(
+            result = StudioExecutionCoordinator().run_standard(
                 subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 preparation_service=prepare,
@@ -159,7 +160,7 @@ class StudioPhase2Test(unittest.TestCase):
             subtitle_profile_key=self.subtitle_profile.key,
             route=StudioExecutionRequest(input_mode=StudioInputMode.SRT_VIDEO),
         )
-        with patch("app.core.start.ejecutar_studio") as studio, patch(
+        with patch.object(StudioExecutionCoordinator, "run_standard") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects, patch("app.core.start.VideoBuilder") as video, patch(
             "app.core.start.SrtOptimizer"
@@ -373,7 +374,7 @@ class StudioPhase2Test(unittest.TestCase):
             root = Path(directory)
             video_path, subtitle_path = self._sources(root)
             original = subtitle_path.read_bytes()
-            rendered_path = _persist_studio_render_subtitle(
+            rendered_path = StudioExecutionCoordinator.persist_render_subtitle(
                 base_subtitle_path=subtitle_path,
                 output_path=root / "demo" / "video" / "demo.mp4",
                 subtitle_profile=uppercase_profile,

@@ -21,21 +21,14 @@ from app.modules.images.image_builder import ImageBuilder
 from app.modules.design import DesignExecutionCoordinator
 from app.modules.script import (
     ScriptOperation,
-    ScriptPreparationService,
 )
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
-from app.modules.subtitles.io.external_media_subtitles import (
-    ExternalMediaSubtitlePreparationService,
-)
 from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
 from app.modules.video.video_builder import VideoBuilder
 from app.modules.video_component.clip_batch import (
     build_public_video,
     generate_video_clips,
-)
-from app.modules.studio import (
-    StudioInputMode,
 )
 from app.modules.studio.execution_coordinator import (
     StudioExecutionCoordinator,
@@ -47,12 +40,11 @@ from app.shared.config_contract import (
     require_mapping,
 )
 from app.shared.config_manager import ConfigManager
-from app.shared.media_probe import MediaProbe
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
 )
-from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from app.shared.subtitle_profile_identity import require_subtitle_profile_key
 
 
 _PIPELINE_TELEMETRY = PipelineTelemetry()
@@ -71,11 +63,15 @@ def iniciar(request):
         )
     route = request.route
     if isinstance(route, StudioExecutionRequest):
-        return _iniciar_studio_request(
+        config_manager = _config_manager_for_operational_key(
+            request.operational_profile_key
+        )
+        project = ProjectManager(project_name=request.project_name)
+        return _STUDIO_EXECUTION_COORDINATOR.run_route(
             route=route,
             subtitle_profile_key=request.subtitle_profile_key,
-            operational_profile_key=request.operational_profile_key,
-            project_name=request.project_name,
+            config_manager=config_manager,
+            project=project,
         )
 
     project = ProjectManager(project_name=request.project_name)
@@ -84,13 +80,13 @@ def iniciar(request):
             request.operational_profile_key
         )
         if route.mode == "design_image":
-            return ejecutar_diseno_imagen(
+            return _DESIGN_EXECUTION_COORDINATOR.run_image(
                 pipeline_start=pipeline_start,
                 project=project,
                 profile=design_config.get_profile_config(),
                 ai_config=design_config.get_ai_config(),
             )
-        return ejecutar_diseno_video(
+        return _DESIGN_EXECUTION_COORDINATOR.run_video(
             pipeline_start=pipeline_start,
             project=project,
             profile_key=request.operational_profile_key,
@@ -140,8 +136,8 @@ def iniciar(request):
         )
     ):
             subtitle_profile = config.get_subtitle_profile_by_key(
-                _normalise_subtitle_profile_key(
-                    subtitle_profile_key=subtitle_profile_key,
+                require_subtitle_profile_key(
+                    subtitle_profile_key
                 )
             )
 
@@ -486,76 +482,6 @@ def iniciar(request):
     return final_result
 
 
-def _iniciar_studio_request(
-    *,
-    route,
-    subtitle_profile_key,
-    operational_profile_key,
-    project_name,
-):
-    """Dispatch a typed STUDIO route without reconstructing its plan."""
-    config_manager = _config_manager_for_operational_key(
-        operational_profile_key
-    )
-    project = ProjectManager(project_name=project_name)
-    if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT:
-        video_audio_options = _typed_subtitle_options(
-            subtitle_profile_key,
-        )
-        return ejecutar_studio_video_audio_srt(
-            route.plan,
-            config_manager=config_manager,
-            project=project,
-            **video_audio_options,
-        )
-    if route.input_mode is StudioInputMode.INTRO_OUTRO:
-        return ejecutar_studio_intro_outro(
-            route.plan,
-            config_manager=config_manager,
-            project=project,
-        )
-    if route.input_mode is StudioInputMode.EXPORTAR_SRT:
-        export_options = _typed_subtitle_options(
-            subtitle_profile_key,
-        )
-        return ejecutar_studio_exportar_srt(
-            route.plan,
-            config_manager=config_manager,
-            project=project,
-            **export_options,
-        )
-    if route.input_mode is StudioInputMode.MONTAJE_VIDEOS:
-        montage_options = {}
-        if route.music_path is not None:
-            montage_options["music_path"] = route.music_path
-        if route.intro_outro_plan is not None:
-            montage_options["intro_outro_selection"] = route.intro_outro_plan
-        montage_options["project"] = project
-        return ejecutar_studio_montaje(route.plan, **montage_options)
-
-    studio_options = {
-        "music_path": route.music_path,
-        "input_mode": route.input_mode.value,
-    }
-    studio_options.update(
-        _typed_subtitle_options(
-            subtitle_profile_key,
-        )
-    )
-    if route.subtitle_original:
-        studio_options["subtitle_original"] = True
-    if route.intro_outro_plan is not None:
-        studio_options["intro_outro_selection"] = route.intro_outro_plan
-    if route.video_path is not None:
-        studio_options["video_path"] = route.video_path
-    if route.subtitle_path is not None:
-        studio_options["subtitle_path"] = route.subtitle_path
-    studio_options["config_manager"] = config_manager
-    project.setup()
-    studio_options["project"] = project
-    return ejecutar_studio(**studio_options)
-
-
 def _config_manager_for_operational_key(
     operational_profile_key,
     *,
@@ -567,25 +493,6 @@ def _config_manager_for_operational_key(
     if voice_config_id is not None:
         options["voice_config_id"] = voice_config_id
     return ConfigManager(**options)
-
-
-def _typed_subtitle_options(subtitle_profile_key):
-    if subtitle_profile_key is not None:
-        return {"subtitle_profile_key": subtitle_profile_key}
-    return {}
-
-
-def _normalise_subtitle_profile_key(
-    subtitle_profile_key=None,
-):
-    """Validate and return the full subtitle identity."""
-    if subtitle_profile_key is None:
-        raise ValueError("La ruta de subtítulos requiere una SubtitleProfileKey.")
-    if not isinstance(subtitle_profile_key, SubtitleProfileKey):
-        raise TypeError(
-            "La ruta moderna requiere una SubtitleProfileKey completa."
-        )
-    return subtitle_profile_key
 
 
 def _resolve_single_video_operational_key(profile_resolver, profile_format):
@@ -611,199 +518,6 @@ def _resolve_single_video_operational_key(profile_resolver, profile_format):
     return candidates[0]
 
 
-def preparar_studio(
-    input_mode=None,
-    subtitle_profile_key=None,
-    config_manager=None,
-    profile_loader=None,
-    input_preparation_service=None,
-    media_probe=None,
-    video_path=None,
-    subtitle_path=None,
-    subtitle_original=False,
-):
-    """Validate and transport Studio inputs without creating a project."""
-    return _STUDIO_EXECUTION_COORDINATOR.prepare_standard(
-        input_mode=input_mode,
-        subtitle_profile_key=subtitle_profile_key,
-        config_manager=config_manager,
-        profile_loader=profile_loader,
-        input_preparation_service=input_preparation_service,
-        media_probe=media_probe,
-        video_path=video_path,
-        subtitle_path=subtitle_path,
-        subtitle_original=subtitle_original,
-        subtitle_profile_key_normalizer=_normalise_subtitle_profile_key,
-    )
-
-
-def ejecutar_studio_video_audio_srt(
-    plan,
-    subtitle_profile_key=None,
-    project=None,
-    config_manager=None,
-    profile_loader=None,
-    output_path_resolver=None,
-    service=None,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.run_video_audio_srt(
-        plan=plan,
-        subtitle_profile_key=subtitle_profile_key,
-        project=project,
-        config_manager=config_manager,
-        profile_loader=profile_loader,
-        output_path_resolver=output_path_resolver,
-        service=service,
-        subtitle_profile_key_normalizer=_normalise_subtitle_profile_key,
-        persist_subtitle_base=_persist_studio_subtitle_base,
-        persist_render_subtitle=_persist_studio_render_subtitle,
-    )
-
-def ejecutar_studio_intro_outro(
-    intro_outro_plan,
-    project=None,
-    config_manager=None,
-    profile_loader=None,
-    output_path_resolver=None,
-    render_service=None,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.run_intro_outro(
-        intro_outro_plan=intro_outro_plan,
-        project=project,
-        config_manager=config_manager,
-        profile_loader=profile_loader,
-        output_path_resolver=output_path_resolver,
-        render_service=render_service,
-    )
-
-def ejecutar_studio_exportar_srt(
-    export_plan,
-    subtitle_profile_key=None,
-    project=None,
-    config_manager=None,
-    profile_loader=None,
-    export_service=None,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.run_subtitle_export(
-        export_plan=export_plan,
-        subtitle_profile_key=subtitle_profile_key,
-        project=project,
-        config_manager=config_manager,
-        profile_loader=profile_loader,
-        export_service=export_service,
-        subtitle_profile_key_normalizer=_normalise_subtitle_profile_key,
-    )
-
-
-def ejecutar_studio_montaje(
-    montage_plan,
-    music_path=None,
-    intro_outro_selection=None,
-    project=None,
-    profile_resolver=None,
-    profile_loader=None,
-    output_path_resolver=None,
-    montage_service=None,
-    render_service=None,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.run_montage(
-        montage_plan=montage_plan,
-        music_path=music_path,
-        intro_outro_selection=intro_outro_selection,
-        project=project,
-        profile_resolver=profile_resolver,
-        profile_loader=profile_loader,
-        output_path_resolver=output_path_resolver,
-        montage_service=montage_service,
-        render_service=render_service,
-    )
-
-
-def ejecutar_studio(
-    input_mode=None,
-    subtitle_profile_key=None,
-    music_path=None,
-    intro_outro_selection=None,
-    preparation_service=None,
-    render_service=None,
-    output_path_resolver=None,
-    external_subtitle_preparation_service=None,
-    project=None,
-    video_path=None,
-    subtitle_path=None,
-    subtitle_original=False,
-    config_manager=None,
-):
-    if preparation_service is None and config_manager is not None:
-        def preparation_service(**options):
-            return preparar_studio(
-                config_manager=config_manager,
-                **options,
-            )
-
-    return _STUDIO_EXECUTION_COORDINATOR.run_standard(
-        input_mode=input_mode,
-        subtitle_profile_key=subtitle_profile_key,
-        music_path=music_path,
-        intro_outro_selection=intro_outro_selection,
-        preparation_service=(
-            preparation_service
-            or preparar_studio
-        ),
-        render_service=render_service,
-        output_path_resolver=output_path_resolver,
-        external_subtitle_preparation_service=external_subtitle_preparation_service,
-        project=project,
-        video_path=video_path,
-        subtitle_path=subtitle_path,
-        subtitle_original=subtitle_original,
-        config_manager=config_manager,
-        subtitle_profile_key_normalizer=_normalise_subtitle_profile_key,
-        persist_subtitle_base=_persist_studio_subtitle_base,
-        persist_render_subtitle=_persist_studio_render_subtitle,
-        with_subtitle_artifacts=_with_studio_subtitle_artifacts,
-    )
-
-
-def _persist_studio_subtitle_base(subtitle_path, output_path):
-    return _STUDIO_EXECUTION_COORDINATOR.persist_subtitle_base(
-        subtitle_path,
-        output_path,
-    )
-
-
-def _persist_studio_render_subtitle(
-    base_subtitle_path,
-    output_path,
-    subtitle_profile,
-    render_fps,
-    timing=None,
-    original=False,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.persist_render_subtitle(
-        base_subtitle_path=base_subtitle_path,
-        output_path=output_path,
-        subtitle_profile=subtitle_profile,
-        render_fps=render_fps,
-        timing=timing,
-        original=original,
-    )
-
-
-def _with_studio_subtitle_artifacts(
-    rendered,
-    base_subtitle_path,
-    render_subtitle_path,
-    subtitle_preparation_duration=None,
-):
-    return _STUDIO_EXECUTION_COORDINATOR.with_subtitle_artifacts(
-        rendered,
-        base_subtitle_path=base_subtitle_path,
-        render_subtitle_path=render_subtitle_path,
-        subtitle_preparation_duration=subtitle_preparation_duration,
-    )
-
-
 def ejecutar_guion(
     builders,
     ai_config,
@@ -821,56 +535,6 @@ def ejecutar_guion(
         input_topic_path=input_topic_path,
         output_script_path=output_script_path,
         source_mode=script_source
-    )
-
-
-def ejecutar_diseno_imagen(
-    pipeline_start=None,
-    project=None,
-    input_design_path=None,
-    preparation_service=None,
-    visual_truth_adapter=None,
-    image_builder=None,
-    profile=None,
-    ai_config=None,
-):
-    return _DESIGN_EXECUTION_COORDINATOR.run_image(
-        pipeline_start=pipeline_start,
-        project=project,
-        input_design_path=input_design_path,
-        preparation_service=preparation_service,
-        visual_truth_adapter=visual_truth_adapter,
-        image_builder=image_builder,
-        profile=profile,
-        ai_config=ai_config,
-    )
-
-
-def ejecutar_diseno_video(
-    pipeline_start=None,
-    project=None,
-    input_design_path=None,
-    preparation_service=None,
-    visual_truth_adapter=None,
-    image_builder=None,
-    video_builder=None,
-    profile=None,
-    profile_key=None,
-    config_manager=None,
-    ai_config=None,
-):
-    return _DESIGN_EXECUTION_COORDINATOR.run_video(
-        pipeline_start=pipeline_start,
-        project=project,
-        input_design_path=input_design_path,
-        preparation_service=preparation_service,
-        visual_truth_adapter=visual_truth_adapter,
-        image_builder=image_builder,
-        video_builder=video_builder,
-        profile=profile,
-        profile_key=profile_key,
-        config_manager=config_manager,
-        ai_config=ai_config,
     )
 
 

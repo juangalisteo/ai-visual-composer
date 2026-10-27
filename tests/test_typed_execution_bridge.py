@@ -9,7 +9,9 @@ from app.core.execution_request import (
     StudioExecutionRequest,
 )
 from app.core import start
+from app.modules.design import DesignExecutionCoordinator
 from app.modules.studio import StudioInputMode, StudioVideoAudioSrtPlan
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
@@ -404,8 +406,8 @@ def test_typed_design_image_dispatches_only_to_design_image():
     )
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_diseno_imagen", return_value=Path("images.json")
-    ) as run_image, patch.object(start, "ejecutar_diseno_video") as run_video:
+        DesignExecutionCoordinator, "run_image", return_value=Path("images.json")
+    ) as run_image, patch.object(DesignExecutionCoordinator, "run_video") as run_video:
         result = start.iniciar(request=request)
 
     assert result == Path("images.json")
@@ -427,7 +429,7 @@ def test_typed_design_video_transports_the_existing_operational_key():
     )
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_diseno_video", return_value=Path("scene_001.mkv")
+        DesignExecutionCoordinator, "run_video", return_value=Path("scene_001.mkv")
     ) as run_video:
         result = start.iniciar(request=request)
 
@@ -458,7 +460,7 @@ def test_typed_studio_standard_preserves_paths_and_subtitle_key():
 
     project = _project()
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_studio", return_value="studio-result"
+        StudioExecutionCoordinator, "run_standard", return_value="studio-result"
     ) as execute:
         result = start.iniciar(request=request)
 
@@ -497,7 +499,7 @@ def test_typed_studio_plan_is_delegated_without_reconstruction():
 
     project = _project()
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_studio_video_audio_srt", return_value="video-audio"
+        StudioExecutionCoordinator, "run_video_audio_srt", return_value="video-audio"
     ) as execute:
         result = start.iniciar(request=request)
 

@@ -47,6 +47,17 @@ class SubtitleProfileKey:
         return Path(self.component.value) / self.format / self.family / "subtitulos" / f"{self.profile_id}.json"
 
 
+def require_subtitle_profile_key(subtitle_profile_key):
+    """Validate and return the full subtitle identity."""
+    if subtitle_profile_key is None:
+        raise ValueError("La ruta de subtítulos requiere una SubtitleProfileKey.")
+    if not isinstance(subtitle_profile_key, SubtitleProfileKey):
+        raise TypeError(
+            "La ruta moderna requiere una SubtitleProfileKey completa."
+        )
+    return subtitle_profile_key
+
+
 @dataclass(frozen=True)
 class ResolvedSubtitleProfile:
     key: SubtitleProfileKey
