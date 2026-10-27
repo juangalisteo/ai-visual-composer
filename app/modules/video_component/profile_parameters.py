@@ -14,7 +14,7 @@ def load_video_component_parameters(profile_key, resolver=None):
     if not isinstance(profile_key, OperationalProfileKey):
         raise TypeError(
             "La configuración Wan requiere una identidad operacional "
-            "VIDEO explícito."
+            "VIDEO explícita."
         )
 
     if profile_key.component is not ProfileComponent.VIDEO:

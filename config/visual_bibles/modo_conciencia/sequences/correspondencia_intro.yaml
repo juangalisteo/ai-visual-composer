@@ -5,8 +5,8 @@ type: sequence
 title: Correspondencia Intro
 extends: modo_conciencia.episode.correspondencia_universal
 composes:
-  - reference: modo_conciencia.platform.instagram
-    role: platform
+  - reference: modo_conciencia.format.vertical
+    role: format
 metadata:
   owner: Modo Conciencia
   status: draft

@@ -34,9 +34,8 @@ ROLE_PRECEDENCE = {
     "genre": 5,
     "campaign": 6,
     "format": 7,
-    "platform": 8,
-    "editorial": 9,
-    "reference": 10,
+    "editorial": 8,
+    "reference": 9,
 }
 
 SECTION_MODELS = {

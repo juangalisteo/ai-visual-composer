@@ -12,6 +12,8 @@ from app.visual_bibles import (
     VisualBibleLoader,
     VisualBibleRegistry,
 )
+from app.visual_bibles.loader import VALID_COMPOSITION_ROLES
+from app.visual_bibles.resolver import ROLE_PRECEDENCE
 
 
 ROOT_YAML = """
@@ -93,18 +95,18 @@ visual_bible:
 """
 
 
-PLATFORM_YAML = """
+FORMAT_YAML = """
 schema_version: 1
-id: platform.vertical
+id: format_layer
 version: "1.0.0"
-type: platform
-title: Platform
+type: format
+title: Format
 extends: null
 composes:
 metadata:
   owner: Test
   status: draft
-  description: Platform.
+  description: Format.
 inheritance_policy:
   locked:
   appendable:
@@ -126,8 +128,8 @@ type: sequence
 title: Composed Child
 extends: root
 composes:
-  - reference: platform.vertical
-    role: platform
+  - reference: format_layer
+    role: format
 metadata:
   owner: Test
   status: draft
@@ -437,8 +439,8 @@ visual_bible:
             )
             self._write(
                 base,
-                "platform.yaml",
-                PLATFORM_YAML
+                "format.yaml",
+                FORMAT_YAML
             )
             self._write(
                 base,
@@ -455,7 +457,7 @@ visual_bible:
             self.assertEqual(
                 effective.composed_layers,
                 (
-                    "platform.vertical",
+                    "format_layer",
                 )
             )
             self.assertEqual(
@@ -500,25 +502,25 @@ visual_bible:
             base = Path(
                 tmp
             )
-            first = PLATFORM_YAML.replace(
-                "id: platform.vertical",
-                "id: platform.one"
+            first = FORMAT_YAML.replace(
+                "id: format_layer",
+                "id: format_layer.one"
             ).replace(
                 "composes:",
-                "composes:\n  - reference: platform.two\n    role: platform",
+                "composes:\n  - reference: format_layer.two\n    role: format",
                 1
             )
-            second = PLATFORM_YAML.replace(
-                "id: platform.vertical",
-                "id: platform.two"
+            second = FORMAT_YAML.replace(
+                "id: format_layer",
+                "id: format_layer.two"
             ).replace(
                 "composes:",
-                "composes:\n  - reference: platform.one\n    role: platform",
+                "composes:\n  - reference: format_layer.one\n    role: format",
                 1
             )
             child = COMPOSED_CHILD_YAML.replace(
-                "platform.vertical",
-                "platform.one"
+                "format_layer",
+                "format_layer.one"
             )
             self._write(
                 base,
@@ -585,12 +587,101 @@ visual_bible:
         self.assertEqual(
             effective.composed_layers,
             (
-                "modo_conciencia.platform.instagram",
+                "modo_conciencia.format.vertical",
             )
         )
         self.assertTrue(
             effective.trace.field_origins
         )
+
+    def test_real_format_layer_loads_with_format_type_and_role(self):
+        loader = VisualBibleLoader()
+        layer = loader.load_file(
+            "config/visual_bibles/modo_conciencia/formats/vertical.yaml"
+        )
+        sequence = loader.load_file(
+            "config/visual_bibles/modo_conciencia/sequences/correspondencia_intro.yaml"
+        )
+
+        self.assertEqual(
+            (
+                layer.id,
+                layer.type
+            ),
+            (
+                "modo_conciencia.format.vertical",
+                "format"
+            )
+        )
+        self.assertEqual(
+            tuple(
+                (
+                    item.reference.id,
+                    item.role
+                )
+                for item in sequence.composes
+            ),
+            (
+                (
+                    "modo_conciencia.format.vertical",
+                    "format"
+                ),
+            )
+        )
+
+    def test_composition_roles_keep_their_precedence_order(self):
+        self.assertEqual(
+            set(
+                ROLE_PRECEDENCE
+            ),
+            VALID_COMPOSITION_ROLES
+        )
+        self.assertEqual(
+            tuple(
+                sorted(
+                    ROLE_PRECEDENCE,
+                    key=ROLE_PRECEDENCE.get
+                )
+            ),
+            (
+                "genre",
+                "campaign",
+                "format",
+                "editorial",
+                "reference",
+            )
+        )
+
+    def test_rejects_undeclared_compose_role_and_layer_type(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(
+                tmp
+            )
+            cases = {
+                "role": COMPOSED_CHILD_YAML.replace(
+                    "role: format",
+                    "role: undeclared_role"
+                ),
+                "type": FORMAT_YAML.replace(
+                    "type: format",
+                    "type: undeclared_type"
+                ),
+            }
+            for case, content in cases.items():
+                path = self._write(
+                    base,
+                    f"{case}.yaml",
+                    content
+                )
+                with self.subTest(
+                    case=case
+                ), self.assertRaisesRegex(
+                    ValueError,
+                    f"Invalid (compose role|Visual Bible type) in .*undeclared_{case}"
+                ):
+                    VisualBibleLoader().load_file(
+                        path
+                    )
 
     def test_fingerprint_is_stable_for_identical_effective_content(self):
         first = VisualBibleRegistry.from_directory(

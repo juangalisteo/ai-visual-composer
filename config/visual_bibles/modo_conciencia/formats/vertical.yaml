@@ -1,14 +1,14 @@
 schema_version: 1
-id: modo_conciencia.platform.instagram
+id: modo_conciencia.format.vertical
 version: "1.0.0"
-type: platform
-title: Instagram Platform Layer
+type: format
+title: Vertical Format Layer
 extends: null
 composes:
 metadata:
   owner: Modo Conciencia
   status: draft
-  description: Platform layer for compact social framing.
+  description: Format layer for compact social framing.
 inheritance_policy:
   locked:
   appendable:

@@ -19,7 +19,6 @@ VALID_TYPES = {
     "genre",
     "campaign",
     "format",
-    "platform",
     "editorial",
     "reference",
 }
@@ -27,7 +26,6 @@ VALID_COMPOSITION_ROLES = {
     "genre",
     "campaign",
     "format",
-    "platform",
     "editorial",
     "reference",
 }

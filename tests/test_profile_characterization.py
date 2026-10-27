@@ -350,7 +350,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 legacy_profile=legacy_profile
             ), self.assertRaisesRegex(
                 TypeError,
-                "identidad operacional VIDEO explícito"
+                "identidad operacional VIDEO explícita"
             ):
                 load_video_component_parameters(
                     legacy_profile
@@ -359,7 +359,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
     def test_wan_profile_rejects_missing_or_incompatible_identity(self):
         with self.assertRaisesRegex(
             TypeError,
-            "identidad operacional VIDEO explícito"
+            "identidad operacional VIDEO explícita"
         ):
             load_video_component_parameters(
                 None
