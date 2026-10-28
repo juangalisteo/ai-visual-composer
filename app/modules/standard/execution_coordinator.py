@@ -35,6 +35,26 @@ from app.shared.profile_identity import (
 from app.shared.subtitle_profile_identity import require_subtitle_profile_key
 
 
+# Stages of the standard route, in execution order.
+_STAGES = (
+    "script",
+    "voice_and_audio",
+    "subtitles",
+    "storyboard",
+    "images",
+    "video",
+)
+
+# Last stage each pipeline mode runs; the stages after it are not attempted.
+_LAST_STAGE_BY_PIPELINE_MODE = {
+    "audio": "voice_and_audio",
+    "subtitles": "subtitles",
+    "storyboard": "storyboard",
+    "full": "video",
+    "full_without_subtitles": "video",
+}
+
+
 class StandardExecutionCoordinator:
     """Coordinate the standard route through existing capabilities."""
 
@@ -56,7 +76,7 @@ class StandardExecutionCoordinator:
         project,
         pipeline_start,
     ):
-        """Run one typed standard route in its established stage order."""
+        """Run one typed standard route up to the last stage of its mode."""
         pipeline_mode = route.pipeline_mode
         visual_pipeline = route.visual_pipeline
         script_source = route.script_source
@@ -64,9 +84,11 @@ class StandardExecutionCoordinator:
         voice_config_id = route.voice_config_id
         overlays_mode = route.overlays_mode
         intro_outro_selection = route.intro_outro_plan
+        stages = _stages_for(
+            pipeline_mode
+        )
 
-        if pipeline_mode != "script":
-            project.setup()
+        project.setup()
 
         ai_config = config_manager.get_ai_config()
         profile = config_manager.get_profile_config()
@@ -123,12 +145,9 @@ class StandardExecutionCoordinator:
                     False
                 )
             ),
-            include_media_duration=(
-                pipeline_mode != "script"
-                and builders.get(
-                    "voice",
-                    False
-                )
+            include_media_duration=builders.get(
+                "voice",
+                False
             ),
         )
         telemetry_artifacts = _pipeline_telemetry_artifacts(
@@ -164,19 +183,12 @@ class StandardExecutionCoordinator:
             output_script_path
         )
 
-        if pipeline_mode == "script":
-            self._pipeline_telemetry.complete(
-                summary=summary,
-                stage_times=stage_times,
-                pipeline_start=pipeline_start,
-                artifacts=telemetry_artifacts,
+        if (
+            "voice_and_audio" in stages
+            and builders.get(
+                "voice",
+                False
             )
-
-            return final_result
-
-        if builders.get(
-            "voice",
-            False
         ):
             if voice_config_id is None:
                 raise ValueError(
@@ -220,18 +232,9 @@ class StandardExecutionCoordinator:
 
             final_result = final_audio_path
 
-        if pipeline_mode == "audio":
-            self._pipeline_telemetry.complete(
-                summary=summary,
-                stage_times=stage_times,
-                pipeline_start=pipeline_start,
-                artifacts=telemetry_artifacts,
-            )
-
-            return final_result
-
         if (
-            render_subtitles
+            "subtitles" in stages
+            and render_subtitles
             and builders.get(
             "subtitles",
             False
@@ -267,19 +270,12 @@ class StandardExecutionCoordinator:
                 or subtitle_path
             )
 
-        if pipeline_mode == "subtitles":
-            self._pipeline_telemetry.complete(
-                summary=summary,
-                stage_times=stage_times,
-                pipeline_start=pipeline_start,
-                artifacts=telemetry_artifacts,
+        if (
+            "storyboard" in stages
+            and builders.get(
+                "storyboard",
+                False
             )
-
-            return final_result
-
-        if builders.get(
-            "storyboard",
-            False
         ):
             storyboard_builder = StoryboardBuilder(
                 config_manager=config_manager,
@@ -297,19 +293,12 @@ class StandardExecutionCoordinator:
 
             final_result = storyboard_path
 
-        if pipeline_mode == "storyboard":
-            self._pipeline_telemetry.complete(
-                summary=summary,
-                stage_times=stage_times,
-                pipeline_start=pipeline_start,
-                artifacts=telemetry_artifacts,
+        if (
+            "images" in stages
+            and builders.get(
+                "images",
+                False
             )
-
-            return final_result
-
-        if builders.get(
-            "images",
-            False
         ):
             image_builder = ImageBuilder(
                 profile=profile,
@@ -329,103 +318,104 @@ class StandardExecutionCoordinator:
                 images_manifest_path
             )
 
-        video_builder_options = {
-            "subtitle_profile": subtitle_profile,
-            "warnings": summary.warnings,
-            "overlays_mode": overlays_mode,
-        }
-        if not render_subtitles:
-            video_builder_options["render_subtitles"] = False
-        if intro_outro_selection is not None:
-            video_builder_options[
-                "intro_outro_selection"
-            ] = intro_outro_selection
-
-        if (
-            visual_pipeline == "video"
-            and pipeline_mode in {
-                "full",
-                "full_without_subtitles",
+        if "video" in stages:
+            video_builder_options = {
+                "subtitle_profile": subtitle_profile,
+                "warnings": summary.warnings,
+                "overlays_mode": overlays_mode,
             }
-        ):
-            profile_key = operational_profile_key
+            if not render_subtitles:
+                video_builder_options["render_subtitles"] = False
+            if intro_outro_selection is not None:
+                video_builder_options[
+                    "intro_outro_selection"
+                ] = intro_outro_selection
+
             if (
-                isinstance(
-                    profile_key,
-                    OperationalProfileKey
-                )
-                and profile_key.component is ProfileComponent.GUION
+                visual_pipeline == "video"
+                and pipeline_mode in {
+                    "full",
+                    "full_without_subtitles",
+                }
             ):
-                profile_key = _resolve_single_video_operational_key(
-                    config_manager.profile_resolver,
-                    profile_key.format,
-                )
-            video_clips_manifest_path, video_i2v_elapsed = (
-                self._pipeline_telemetry.measure_stage(
-                    generate_video_clips,
-                    storyboard_path=(
-                        storyboard_path
-                        or project.storyboard_path()
-                    ),
-                    images_manifest_path=(
-                        images_manifest_path
-                        or project.images_manifest_path()
-                    ),
-                    project=project,
-                    profile_key=profile_key
-                )
-            )
-
-            stage_times["Video I2V"] = (
-                video_i2v_elapsed
-            )
-
-            final_result = (
-                video_clips_manifest_path
-            )
-
-            video_path, video_elapsed = (
-                self._pipeline_telemetry.measure_stage(
-                    build_public_video,
-                    video_builder=VideoBuilder(
-                        **video_builder_options,
-                        config_manager=config_manager,
+                profile_key = operational_profile_key
+                if (
+                    isinstance(
+                        profile_key,
+                        OperationalProfileKey
+                    )
+                    and profile_key.component is ProfileComponent.GUION
+                ):
+                    profile_key = _resolve_single_video_operational_key(
+                        config_manager.profile_resolver,
+                        profile_key.format,
+                    )
+                video_clips_manifest_path, video_i2v_elapsed = (
+                    self._pipeline_telemetry.measure_stage(
+                        generate_video_clips,
+                        storyboard_path=(
+                            storyboard_path
+                            or project.storyboard_path()
+                        ),
+                        images_manifest_path=(
+                            images_manifest_path
+                            or project.images_manifest_path()
+                        ),
                         project=project,
-                    ),
-                    video_clips_manifest_path=(
-                        video_clips_manifest_path
+                        profile_key=profile_key
                     )
                 )
-            )
 
-            stage_times["Vídeo"] = (
-                video_elapsed
-            )
-
-            final_result = video_path
-
-        if (
-            visual_pipeline != "video"
-            and builders.get(
-                "video",
-                False
-            )
-        ):
-            video_path, video_elapsed = (
-                self._pipeline_telemetry.measure_stage(
-                    VideoBuilder(
-                        **video_builder_options,
-                        config_manager=config_manager,
-                        project=project,
-                    ).build
+                stage_times["Video I2V"] = (
+                    video_i2v_elapsed
                 )
-            )
 
-            stage_times["Vídeo"] = (
-                video_elapsed
-            )
+                final_result = (
+                    video_clips_manifest_path
+                )
 
-            final_result = video_path
+                video_path, video_elapsed = (
+                    self._pipeline_telemetry.measure_stage(
+                        build_public_video,
+                        video_builder=VideoBuilder(
+                            **video_builder_options,
+                            config_manager=config_manager,
+                            project=project,
+                        ),
+                        video_clips_manifest_path=(
+                            video_clips_manifest_path
+                        )
+                    )
+                )
+
+                stage_times["Vídeo"] = (
+                    video_elapsed
+                )
+
+                final_result = video_path
+
+            if (
+                visual_pipeline != "video"
+                and builders.get(
+                    "video",
+                    False
+                )
+            ):
+                video_path, video_elapsed = (
+                    self._pipeline_telemetry.measure_stage(
+                        VideoBuilder(
+                            **video_builder_options,
+                            config_manager=config_manager,
+                            project=project,
+                        ).build
+                    )
+                )
+
+                stage_times["Vídeo"] = (
+                    video_elapsed
+                )
+
+                final_result = video_path
 
         self._pipeline_telemetry.complete(
             summary=summary,
@@ -435,6 +425,12 @@ class StandardExecutionCoordinator:
         )
 
         return final_result
+
+
+def _stages_for(pipeline_mode):
+    """Return the stages one pipeline mode runs, in execution order."""
+    last_stage = _LAST_STAGE_BY_PIPELINE_MODE[pipeline_mode]
+    return _STAGES[:_STAGES.index(last_stage) + 1]
 
 
 def _resolve_single_video_operational_key(profile_resolver, profile_format):

@@ -4,7 +4,9 @@ import inspect
 
 import pytest
 
+from app.controllers.interaction.navigation import Navigation
 from app.core.execution_request import (
+    STANDARD_PIPELINE_MODES,
     ApplicationExecutionRequest,
     DesignExecutionRequest,
     StandardExecutionRequest,
@@ -72,6 +74,41 @@ def test_standard_execution_request_rejects_display_name_as_voice_identity():
             script_source="generated",
             voice_config_id="Masculina - Davefx",
         )
+
+
+@pytest.mark.parametrize("pipeline_mode", ("script", "dummy_mode"))
+def test_standard_execution_request_rejects_a_mode_the_menu_does_not_offer(
+    pipeline_mode,
+):
+    with pytest.raises(ValueError, match=f"no admite el modo {pipeline_mode}"):
+        StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline="image",
+            script_source="manual",
+        )
+
+
+def test_standard_execution_request_accepts_exactly_the_modes_the_menu_offers():
+    offered = []
+
+    def capture(modes):
+        offered.extend(mode["mode"] for mode in modes)
+        return modes[0]
+
+    Navigation(None, None).select_pipeline_mode(
+        include_full_without_subtitles=True,
+        writer=lambda _message: None,
+        selector=capture,
+    )
+
+    assert tuple(offered) == STANDARD_PIPELINE_MODES
+    for pipeline_mode in offered:
+        request = StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline="image",
+            script_source="manual",
+        )
+        assert request.pipeline_mode == pipeline_mode
 
 
 def test_studio_execution_request_transports_existing_typed_plan_and_paths():
@@ -150,7 +187,7 @@ def test_application_request_rejects_incoherent_design_identity():
 
 
 def test_application_request_rejects_a_special_route_in_standard_payload():
-    with pytest.raises(ValueError, match="no admite"):
+    with pytest.raises(ValueError, match="no admite el modo design_video"):
         ApplicationExecutionRequest(
             project_name="Incoherente",
             clear_output=False,

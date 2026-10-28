@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from app.core.execution_request import (
+    STANDARD_PIPELINE_MODES,
     ApplicationExecutionRequest,
     DesignExecutionRequest,
     StandardExecutionRequest,
@@ -61,7 +62,7 @@ def _telemetry():
     return telemetry
 
 
-def _standard_request(*, pipeline_mode="script", visual_pipeline="image", **kwargs):
+def _standard_request(*, pipeline_mode="audio", visual_pipeline="image", **kwargs):
     component = (
         ProfileComponent.VIDEO
         if visual_pipeline == "video"
@@ -116,7 +117,7 @@ def test_typed_standard_script_uses_request_source():
     assert config_manager_class.call_args.kwargs["voice_config_id"] == (
         request.route.voice_config_id
     )
-    project.setup.assert_not_called()
+    project.setup.assert_called_once_with()
 
 
 def test_typed_standard_music_category_uses_request_value():
@@ -299,7 +300,7 @@ def test_typed_standard_voice_config_id_is_injected_into_config_manager():
 
 def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
     cases = (
-        ("script", {"voice": True, "storyboard": True}, False, False),
+        ("audio", {"voice": False, "storyboard": True}, False, False),
         ("audio", {"voice": True, "storyboard": True}, False, True),
         ("subtitles", {"voice": True, "storyboard": True}, False, True),
         ("storyboard", {"voice": True, "storyboard": False}, False, True),
@@ -332,6 +333,12 @@ def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
         summary = telemetry.complete.call_args.kwargs["summary"]
         assert summary.include_visual_metrics is expected, pipeline_mode
         assert summary.include_media_duration is expected_duration, pipeline_mode
+
+
+def test_standard_stage_table_ends_every_standard_mode():
+    assert set(standard._LAST_STAGE_BY_PIPELINE_MODE) == set(
+        STANDARD_PIPELINE_MODES
+    )
 
 
 def test_typed_standard_voice_requires_voice_config_id():

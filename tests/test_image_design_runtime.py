@@ -219,7 +219,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                 )
 
                 with patch(
-                    "app.modules.standard.execution_coordinator.ScriptOperation",
+                    "app.modules.script.operation.ScriptOperation.execute",
                     side_effect=AssertionError(
                         "ScriptOperation must not run"
                     )
@@ -229,37 +229,37 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                         "ScriptPreparationService must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.VoiceBuilder",
+                    "app.modules.audio.voice_builder.VoiceBuilder.build",
                     side_effect=AssertionError(
                         "VoiceBuilder must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.MusicSelector",
+                    "app.modules.audio.music_selector.MusicSelector.select",
                     side_effect=AssertionError(
                         "MusicSelector must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.AudioMixer",
+                    "app.modules.audio.audio_mixer.AudioMixer.build",
                     side_effect=AssertionError(
                         "AudioMixer must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.SubtitleBuilder",
+                    "app.modules.subtitles.io.subtitle_builder.SubtitleBuilder.build",
                     side_effect=AssertionError(
                         "SubtitleBuilder must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.SrtOptimizer",
+                    "app.modules.subtitles.pipeline.srt_optimizer.SrtOptimizer.optimize",
                     side_effect=AssertionError(
                         "SrtOptimizer must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.StoryboardBuilder",
+                    "app.modules.storyboard.storyboard_builder.StoryboardBuilder.build",
                     side_effect=AssertionError(
                         "StoryboardBuilder must not run"
                     )
                 ), patch(
-                    "app.modules.standard.execution_coordinator.VideoBuilder",
+                    "app.modules.video.video_builder.VideoBuilder.build",
                     side_effect=AssertionError(
                         "VideoBuilder must not run"
                     )

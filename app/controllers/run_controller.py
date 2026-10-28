@@ -238,7 +238,6 @@ class RunController:
         intro_outro_selection = None
 
         if pipeline_mode not in {
-            "script",
             "design_image",
             "design_video"
         }:

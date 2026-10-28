@@ -28,6 +28,14 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 _TECHNICAL_ID_PATTERN = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*")
+# The pipeline modes the menu offers for the standard route.
+STANDARD_PIPELINE_MODES = (
+    "full",
+    "audio",
+    "subtitles",
+    "storyboard",
+    "full_without_subtitles",
+)
 _STUDIO_PLAN_TYPES = (
     StudioVideoAudioSrtPlan,
     StudioIntroOutroPlan,
@@ -56,11 +64,13 @@ class StandardExecutionRequest:
     intro_outro_plan: IntroOutroPlan | None = None
 
     def __post_init__(self):
-        object.__setattr__(
-            self,
-            "pipeline_mode",
-            _require_non_empty_text(self.pipeline_mode, "pipeline_mode"),
-        )
+        pipeline_mode = _require_non_empty_text(self.pipeline_mode, "pipeline_mode")
+        if pipeline_mode not in STANDARD_PIPELINE_MODES:
+            raise ValueError(
+                f"La ruta estándar no admite el modo {pipeline_mode}. "
+                f"Modos admitidos: {', '.join(STANDARD_PIPELINE_MODES)}."
+            )
+        object.__setattr__(self, "pipeline_mode", pipeline_mode)
         object.__setattr__(
             self,
             "visual_pipeline",

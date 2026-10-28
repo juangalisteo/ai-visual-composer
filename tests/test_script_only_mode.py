@@ -269,101 +269,6 @@ def fake_script_execute(
 
 class ScriptOnlyModeTest(unittest.TestCase):
 
-    def test_main_script_component_uses_manual_script_and_stops(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(
-                temp_dir
-            )
-            previous_cwd = Path.cwd()
-
-            try:
-                os.chdir(
-                    root
-                )
-                input_dir = root / "input"
-                input_dir.mkdir()
-                (
-                    input_dir
-                    / "guion.txt"
-                ).write_text(
-                    "Guion manual del componente principal.",
-                    encoding="utf-8"
-                )
-                (
-                    input_dir
-                    / "tema.txt"
-                ).write_text(
-                    "este tema no debe usarse",
-                    encoding="utf-8"
-                )
-
-                with patch(
-                    "app.core.start.ConfigManager",
-                    FakeConfigManager
-                ), patch(
-                    "app.modules.standard.execution_coordinator.VoiceBuilder",
-                    side_effect=AssertionError(
-                        "VoiceBuilder must not run"
-                    )
-                ), patch(
-                    "app.modules.standard.execution_coordinator.AudioMixer",
-                    side_effect=AssertionError(
-                        "AudioMixer must not run"
-                    )
-                ), patch(
-                    "app.modules.standard.execution_coordinator.SubtitleBuilder",
-                    side_effect=AssertionError(
-                        "SubtitleBuilder must not run"
-                    )
-                ), patch(
-                    "app.modules.standard.execution_coordinator.StoryboardBuilder",
-                    side_effect=AssertionError(
-                        "StoryboardBuilder must not run"
-                    )
-                ), patch(
-                    "app.modules.standard.execution_coordinator.ImageBuilder",
-                    side_effect=AssertionError(
-                        "ImageBuilder must not run"
-                    )
-                ), patch(
-                    "app.modules.standard.execution_coordinator.VideoBuilder",
-                    side_effect=AssertionError(
-                        "VideoBuilder must not run"
-                    )
-                ):
-                    result = start.iniciar(
-                        request=_standard_request(
-                            project_name="guion component",
-                            pipeline_mode="script",
-                            visual_pipeline="script",
-                            script_source="manual",
-                        ),
-                    )
-
-                script_path = (
-                    root
-                    / "output"
-                    / "guion component"
-                    / "scripts"
-                    / "guion.txt"
-                )
-                self.assertTrue(
-                    os.path.samefile(
-                        script_path,
-                        root / result
-                    )
-                )
-                self.assertEqual(
-                    "Guion manual del componente principal.",
-                    script_path.read_text(
-                        encoding="utf-8"
-                    )
-                )
-            finally:
-                os.chdir(
-                    previous_cwd
-                )
-
     def test_main_script_component_does_not_generate_from_topic(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -395,8 +300,8 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         start.iniciar(
                             request=_standard_request(
                                 project_name="guion component",
-                                pipeline_mode="script",
-                                visual_pipeline="script",
+                                pipeline_mode="audio",
+                                visual_pipeline="image",
                                 script_source="manual",
                             ),
                         )
