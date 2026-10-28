@@ -4,8 +4,12 @@ from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
 import pytest
-import main
 
+from app.cli import studio_summary
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.controllers.run_controller import RunController
 from app.modules.studio import (
@@ -73,6 +77,20 @@ def _standard_subtitle_key(style):
         "horizontal",
         STUDIO_HORIZONTAL_SUBTITLE_PROFILE_IDS[style],
         "estandar",
+    )
+
+
+def _summary_request(subtitle_profile_key, input_mode=StudioInputMode.SRT_VIDEO, plan=None):
+    return ApplicationExecutionRequest(
+        project_name="video-audio-srt",
+        clear_output=False,
+        operational_profile_key=OperationalProfileKey(
+            "studio",
+            "horizontal",
+            "studio_horizontal",
+        ),
+        subtitle_profile_key=subtitle_profile_key,
+        route=StudioExecutionRequest(input_mode=input_mode, plan=plan),
     )
 
 
@@ -666,8 +684,8 @@ def test_subtitle_display_name_falls_back_when_profile_does_not_exist():
         "test_family",
     )
 
-    assert main._subtitle_display_name(
-        {"subtitle_profile_key": missing_key}
+    assert studio_summary._subtitle_display_name(
+        _summary_request(missing_key)
     ) == "dummy_profile"
 
 
@@ -683,12 +701,12 @@ def test_subtitle_display_name_falls_back_on_resolver_operational_error():
     )
 
     with patch.object(
-        main.SubtitleProfileResolver,
+        studio_summary.SubtitleProfileResolver,
         "load",
         side_effect=error,
     ):
-        display_name = main._subtitle_display_name(
-            {"subtitle_profile_key": missing_key}
+        display_name = studio_summary._subtitle_display_name(
+            _summary_request(missing_key)
         )
 
     assert display_name == missing_key.profile_id
@@ -702,14 +720,11 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
         video_duration=12.345,
         audio_duration=18.0,
     )
-    options = {
-        "project_name": "video-audio-srt",
-        "profile_id": "studio_horizontal",
-        "profile_format": "horizontal",
-        "studio_input_mode": "video_audio_srt",
-        "studio_video_audio_srt_plan": plan,
-        "subtitle_profile_key": _standard_subtitle_key("single_line"),
-    }
+    request = _summary_request(
+        _standard_subtitle_key("single_line"),
+        input_mode=StudioInputMode.VIDEO_AUDIO_SRT,
+        plan=plan,
+    )
     result = SimpleNamespace(
         output_path=Path("output/video/final.mp4"),
         generated_duration=12.345,
@@ -717,12 +732,12 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
         generated_subtitle_path=Path("output/subtitles/final.srt"),
     )
     summary = Mock()
-    with patch.object(main, "PipelineSummary", return_value=summary), patch.object(
-        main,
+    with patch.object(studio_summary, "PipelineSummary", return_value=summary), patch.object(
+        studio_summary,
         "_subtitle_display_name",
         return_value="Línea única",
     ):
-        main._print_studio_summary(options, result, 1.0)
+        studio_summary.print_studio_summary(request, result, 1.0)
 
     details = [call.args for call in summary.add_detail.call_args_list]
     assert ("Proyecto", "video-audio-srt") in details

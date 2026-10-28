@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-import main
+from app.cli import studio_summary
 from app.controllers.interaction.format_catalog import FormatCatalog
 from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
@@ -210,7 +210,7 @@ def test_run_controller_presents_formats_with_the_injected_catalog(tmp_path):
 
 
 def test_studio_summary_uses_the_menu_label_and_survives_a_broken_catalog():
-    assert main._format_label("vertical") == "Vertical 9:16"
+    assert studio_summary._format_label("vertical") == "Vertical 9:16"
 
     class BrokenCatalog:
         def label(self, profile_format):
@@ -221,5 +221,5 @@ def test_studio_summary_uses_the_menu_label_and_survives_a_broken_catalog():
                 operation="Leer catálogo de formatos",
             )
 
-    with patch.object(main, "FormatCatalog", BrokenCatalog):
-        assert main._format_label("test_format") == "Test Format"
+    with patch.object(studio_summary, "FormatCatalog", BrokenCatalog):
+        assert studio_summary._format_label("test_format") == "Test Format"

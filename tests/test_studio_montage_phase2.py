@@ -7,8 +7,13 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-import main
+from app.cli import studio_summary
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.studio import (
+    StudioInputMode,
     StudioInputPreparationService,
     StudioMontageError,
     StudioMontagePlanningService,
@@ -328,14 +333,22 @@ class StudioMontagePhase2Test(unittest.TestCase):
                 normalization_duration=0.2,
                 normalized_clip_count=1,
             )
-            options = {
-                "project_name": "montaje",
-                "profile_id": "studio_vertical",
-                "profile_format": "vertical",
-                "studio_montage_plan": plan,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="montaje",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio",
+                    "vertical",
+                    "studio_vertical",
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS,
+                    plan=plan,
+                ),
+            )
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
-                main._print_studio_montage_summary(options, result, 1.25)
+                studio_summary.print_studio_summary(request, result, 1.25)
 
         rendered = logger.call_args.args[0]
         self.assertIn("MONTAJE DE VIDEOS", rendered)
@@ -358,14 +371,22 @@ class StudioMontagePhase2Test(unittest.TestCase):
                 preparation_duration=0.4,
                 montage_duration=0.6,
             )
-            options = {
-                "project_name": "montaje",
-                "profile_id": "studio_vertical",
-                "profile_format": "vertical",
-                "studio_montage_plan": plan,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="montaje",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio",
+                    "vertical",
+                    "studio_vertical",
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS,
+                    plan=plan,
+                ),
+            )
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
-                main._print_studio_montage_summary(options, result, 9.0)
+                studio_summary.print_studio_summary(request, result, 9.0)
 
         rendered = logger.call_args.args[0]
         self.assertIn("Preparación clips", rendered)

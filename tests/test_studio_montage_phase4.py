@@ -5,10 +5,15 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-import main
+from app.cli import studio_summary
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
+    StudioInputMode,
     StudioMontageClip,
     StudioMontagePlan,
     StudioMontageRenderResult,
@@ -143,13 +148,19 @@ class StudioMontagePhase4Test(unittest.TestCase):
                 silence_added=False, music_path=None, render_duration=0.4,
             )
             result = StudioMontageRenderResult(montage, rendered)
-            options = {
-                "project_name": "demo", "profile_id": "studio_vertical",
-                "profile_format": "vertical", "studio_montage_plan": plan,
-                "studio_music_path": None, "intro_outro_selection": None,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="demo", clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio", "vertical", "studio_vertical"
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS, plan=plan,
+                    music_path=None, intro_outro_plan=None,
+                ),
+            )
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
-                main._print_studio_montage_summary(options, result, 1.0)
+                studio_summary.print_studio_summary(request, result, 1.0)
 
         output = logger.call_args.args[0]
         self.assertIn("Montaje de videos", output)

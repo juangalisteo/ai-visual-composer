@@ -7,12 +7,17 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import main
+from app.cli import studio_summary
 from app.controllers.interaction.contracts import (
     StudioOperationalSelection,
     StudioProfileSelection,
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
@@ -759,7 +764,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             "main.iniciar",
             return_value=Mock(),
         ) as iniciar_mock, patch(
-            "main._print_studio_subtitle_export_summary"
+            "app.cli.studio_summary._print_subtitle_export_summary"
         ):
             controller.return_value.run.return_value = options
             self.assertEqual(0, main.main())
@@ -784,21 +789,28 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             subtitle_style="word_by_word",
             operation_duration=1.5,
         )
-        options = {
-            "project_name": "demo",
-            "profile_id": "studio_vertical",
-            "profile_format": "vertical",
-            "subtitle_profile_key": SubtitleProfileKey(
+        request = ApplicationExecutionRequest(
+            project_name="demo",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "studio",
+                "vertical",
+                "studio_vertical",
+            ),
+            subtitle_profile_key=SubtitleProfileKey(
                 component="studio",
                 format="vertical",
                 family="minimalista",
                 profile_id="subtitulo_studio_vertical_cumulative_line",
             ),
-            "studio_subtitle_export_plan": plan,
-        }
+            route=StudioExecutionRequest(
+                input_mode=StudioInputMode.EXPORTAR_SRT,
+                plan=plan,
+            ),
+        )
         summary = Mock()
-        with patch.object(main, "PipelineSummary", return_value=summary):
-            main._print_studio_subtitle_export_summary(options, result, 2.0)
+        with patch.object(studio_summary, "PipelineSummary", return_value=summary):
+            studio_summary.print_studio_summary(request, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
         self.assertIn(("Entrada", "EXPORTAR SRT"), details)
@@ -818,13 +830,19 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             subtitle_style=None,
             operation_duration=1.5,
         )
-        options = {
-            "project_name": "demo",
-            "studio_subtitle_export_plan": plan,
-        }
+        request = ApplicationExecutionRequest(
+            project_name="demo",
+            clear_output=False,
+            operational_profile_key=None,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode=StudioInputMode.EXPORTAR_SRT,
+                plan=plan,
+            ),
+        )
         summary = Mock()
-        with patch.object(main, "PipelineSummary", return_value=summary):
-            main._print_studio_subtitle_export_summary(options, result, 2.0)
+        with patch.object(studio_summary, "PipelineSummary", return_value=summary):
+            studio_summary.print_studio_summary(request, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
         self.assertNotIn(("Perfil / formato", ""), details)

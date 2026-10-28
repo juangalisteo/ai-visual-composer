@@ -371,8 +371,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 "main.RunController"
             ) as controller, patch("main.iniciar", return_value=object()) as start, patch(
                 "main.OutputManager.reset"
-            ) as reset, patch("main._print_studio_summary") as summary, patch(
-                "main._print_studio_montage_summary"
+            ) as reset, patch(
+                "app.cli.studio_summary._print_render_summary"
+            ) as summary, patch(
+                "app.cli.studio_summary._print_montage_summary"
             ) as montage_summary:
                 controller.return_value.run.return_value = options
                 result = main.main()

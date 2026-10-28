@@ -47,7 +47,7 @@ from app.modules.studio.montage import (
     StudioMontageResult,
     StudioMontageService,
 )
-from app.modules.studio.incidents import adapt_legacy_studio_error
+from app.modules.studio.incidents import to_studio_operational_error
 
 __all__ = [
     "PreparedStudioInput",
@@ -85,5 +85,5 @@ __all__ = [
     "StudioMontagePreparedClip",
     "StudioMontageResult",
     "StudioMontageService",
-    "adapt_legacy_studio_error",
+    "to_studio_operational_error",
 ]

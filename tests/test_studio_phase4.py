@@ -13,21 +13,48 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import main
+from app.cli import studio_summary
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.core.start import iniciar
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.studio import (
+    StudioInputMode,
     StudioOutputPathResolver,
     StudioProfileLoader,
     StudioRenderService,
 )
+from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
 from app.shared.media_probe import MediaInfo, MediaProbe
 from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 from tests.test_menu_helpers import MenuAnswers
+
+
+def _summary_request(
+    input_mode,
+    profile_format,
+    profile_id,
+    subtitle_profile_key=None,
+    **route_fields,
+):
+    return ApplicationExecutionRequest(
+        project_name="demo",
+        clear_output=False,
+        operational_profile_key=OperationalProfileKey(
+            "studio",
+            profile_format,
+            profile_id,
+        ),
+        subtitle_profile_key=subtitle_profile_key,
+        route=StudioExecutionRequest(input_mode=input_mode, **route_fields),
+    )
 
 
 def _operational_key(profile_key):
@@ -209,22 +236,21 @@ class StudioPhase4Test(unittest.TestCase):
             generated_subtitle_path=generated_srt,
             generated_duration=12.5,
         )
-        options = {
-            "project_name": "demo",
-            "profile_id": "studio_vertical",
-            "profile_format": "vertical",
-            "studio_input_mode": "video",
-            "subtitle_profile_key": SubtitleProfileKey(
+        request = _summary_request(
+            StudioInputMode.VIDEO,
+            "vertical",
+            "studio_vertical",
+            subtitle_profile_key=SubtitleProfileKey(
                 component="studio",
                 format="vertical",
                 family="minimalista",
                 profile_id="subtitulo_studio_vertical_cumulative_line",
             ),
-            "studio_music_path": "assets/music/track.mp3",
-            "intro_outro_selection": None,
-        }
+            music_path=Path("assets/music/track.mp3"),
+            intro_outro_plan=None,
+        )
         with patch("builtins.print") as print_mock:
-            main._print_studio_summary(options, result, 2.5)
+            studio_summary.print_studio_summary(request, result, 2.5)
 
         printed = "\n".join(
             str(call.args[0])
@@ -252,20 +278,19 @@ class StudioPhase4Test(unittest.TestCase):
             render_duration=2.0,
             intro_outro_duration=1.0,
         )
-        options = {
-            "project_name": "demo",
-            "profile_id": "studio_vertical",
-            "profile_format": "vertical",
-            "studio_input_mode": "video",
-            "studio_music_path": None,
-            "intro_outro_selection": SimpleNamespace(
-                intro=object(),
+        request = _summary_request(
+            StudioInputMode.VIDEO,
+            "vertical",
+            "studio_vertical",
+            music_path=None,
+            intro_outro_plan=IntroOutroPlan(
+                intro=IntroOutroSelection(Path("intro.mp4"), "intro"),
                 outro=None,
             ),
-        }
+        )
 
         with patch("builtins.print") as print_mock:
-            main._print_studio_summary(options, result, 5.0)
+            studio_summary.print_studio_summary(request, result, 5.0)
 
         printed = "\n".join(
             str(call.args[0])
@@ -293,17 +318,16 @@ class StudioPhase4Test(unittest.TestCase):
             render_duration=2.0,
             intro_outro_duration=None,
         )
-        options = {
-            "project_name": "demo",
-            "profile_id": "studio_horizontal",
-            "profile_format": "horizontal",
-            "studio_input_mode": "srt_video",
-            "studio_music_path": None,
-            "intro_outro_selection": None,
-        }
+        request = _summary_request(
+            StudioInputMode.SRT_VIDEO,
+            "horizontal",
+            "studio_horizontal",
+            music_path=None,
+            intro_outro_plan=None,
+        )
 
         with patch("builtins.print") as print_mock:
-            main._print_studio_summary(options, result, 2.5)
+            studio_summary.print_studio_summary(request, result, 2.5)
 
         printed = "\n".join(
             str(call.args[0])
@@ -320,17 +344,16 @@ class StudioPhase4Test(unittest.TestCase):
             output_path=Path("output/demo/video/demo.mp4"),
             generated_duration=12.5,
         )
-        options = {
-            "project_name": "demo",
-            "profile_id": "studio_vertical",
-            "profile_format": "vertical",
-            "studio_input_mode": "srt_video",
-            "studio_music_path": None,
-            "intro_outro_selection": None,
-        }
+        request = _summary_request(
+            StudioInputMode.SRT_VIDEO,
+            "vertical",
+            "studio_vertical",
+            music_path=None,
+            intro_outro_plan=None,
+        )
 
         with patch("builtins.print") as print_mock:
-            main._print_studio_summary(options, result, 2.5)
+            studio_summary.print_studio_summary(request, result, 2.5)
 
         printed = "\n".join(
             str(call.args[0])
@@ -343,7 +366,13 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertIn("Tiempo total............... 2.50 s", printed)
 
     def test_studio_summary_shows_intro_outro_only_for_executed_selection(self):
-        for intro, outro in ((object(), None), (None, object()), (object(), object())):
+        intro_selection = IntroOutroSelection(Path("intro.mp4"), "intro")
+        outro_selection = IntroOutroSelection(Path("outro.mp4"), "outro")
+        for intro, outro in (
+            (intro_selection, None),
+            (None, outro_selection),
+            (intro_selection, outro_selection),
+        ):
             with self.subTest(intro=bool(intro), outro=bool(outro)):
                 result = SimpleNamespace(
                     output_path=Path("output/demo/video/demo.mp4"),
@@ -352,19 +381,18 @@ class StudioPhase4Test(unittest.TestCase):
                     render_duration=2.0,
                     intro_outro_duration=0.5,
                 )
-                options = {
-                    "project_name": "demo",
-                    "profile_id": "studio_vertical",
-                    "profile_format": "vertical",
-                    "studio_input_mode": "srt_video",
-                    "studio_music_path": None,
-                    "intro_outro_selection": SimpleNamespace(
+                request = _summary_request(
+                    StudioInputMode.SRT_VIDEO,
+                    "vertical",
+                    "studio_vertical",
+                    music_path=None,
+                    intro_outro_plan=IntroOutroPlan(
                         intro=intro,
                         outro=outro,
                     ),
-                }
+                )
                 with patch("builtins.print") as print_mock:
-                    main._print_studio_summary(options, result, 2.5)
+                    studio_summary.print_studio_summary(request, result, 2.5)
                 printed = "\n".join(
                     str(call.args[0])
                     for call in print_mock.call_args_list
