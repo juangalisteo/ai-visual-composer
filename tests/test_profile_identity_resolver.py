@@ -325,6 +325,28 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         self.assertEqual("PROFILE", caught.exception.context.family)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
+    def _write_format_catalog(self, directory):
+        """Technical formats with an orientation, next to the profiles root."""
+        catalog = {
+            "formats": {
+                "test_portrait_format": {
+                    "display_name": "Formato técnico alto",
+                    "order": 1,
+                    "orientation": "portrait",
+                },
+                "test_landscape_format": {
+                    "display_name": "Formato técnico ancho",
+                    "order": 2,
+                    "orientation": "landscape",
+                },
+            },
+        }
+        (directory / "formats.json").write_text(
+            json.dumps(catalog),
+            encoding="utf-8",
+        )
+        return directory / "profiles"
+
     def _write_format_profile(self, root, profile_format, width, height):
         target = root / "guion" / profile_format / "test_profile.json"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -349,14 +371,16 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 )
 
         cases = (
-            ("vertical", 1080, 1920),
-            ("horizontal", 1920, 1080),
-            ("vertical", 1080, 1080),
+            ("test_portrait_format", 1080, 1920),
+            ("test_landscape_format", 1920, 1080),
+            ("test_portrait_format", 1080, 1080),
+            ("test_undeclared_format", 1920, 1080),
+            ("test_undeclared_format", 1080, 1920),
         )
         for profile_format, width, height in cases:
             with self.subTest(format=profile_format, size=(width, height)):
                 with tempfile.TemporaryDirectory() as directory:
-                    root = Path(directory)
+                    root = self._write_format_catalog(Path(directory))
                     key = self._write_format_profile(
                         root, profile_format, width, height
                     )
@@ -367,13 +391,13 @@ class ProfileIdentityResolverTest(unittest.TestCase):
 
     def test_load_operational_rejects_format_contradicting_video_style(self):
         cases = (
-            ("vertical", 1920, 1080, "más ancho que alto"),
-            ("horizontal", 1080, 1920, "más alto que ancho"),
+            ("test_portrait_format", 1920, 1080, "más ancho que alto"),
+            ("test_landscape_format", 1080, 1920, "más alto que ancho"),
         )
         for profile_format, width, height, orientation in cases:
             with self.subTest(format=profile_format):
                 with tempfile.TemporaryDirectory() as directory:
-                    root = Path(directory)
+                    root = self._write_format_catalog(Path(directory))
                     key = self._write_format_profile(
                         root, profile_format, width, height
                     )

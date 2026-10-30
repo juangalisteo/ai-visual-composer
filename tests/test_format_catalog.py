@@ -3,16 +3,17 @@ from unittest.mock import patch
 
 import pytest
 
+import main
 from app.cli import studio_summary
-from app.controllers.interaction.format_catalog import FormatCatalog
 from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
-from app.shared.operational_error import (
-    OperationalError,
-    create_operational_error,
-)
+from app.shared.format_catalog import FormatCatalog
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
-from app.shared.profile_resolver import OperationalProfileDescriptor
+from app.shared.profile_resolver import (
+    OperationalProfileDescriptor,
+    ProfileResolver,
+)
 from tests.test_menu_helpers import MenuAnswers
 
 
@@ -35,8 +36,7 @@ def _write_catalog(tmp_path, content):
 def test_without_catalog_formats_use_the_generic_label_and_alphabetical_order(
     tmp_path,
 ):
-    root = _profiles_root(tmp_path, "test_format_b", "test_format_a")
-    catalog = FormatCatalog(tmp_path / "formats.json", root)
+    catalog = FormatCatalog(tmp_path / "formats.json")
 
     assert catalog.ordered(("test_format_b", "test_format_a")) == (
         "test_format_a",
@@ -46,20 +46,13 @@ def test_without_catalog_formats_use_the_generic_label_and_alphabetical_order(
 
 
 def test_undeclared_formats_follow_the_declared_ones_alphabetically(tmp_path):
-    root = _profiles_root(
-        tmp_path,
-        "test_format_a",
-        "test_format_b",
-        "test_format_c",
-        "other_format",
-    )
     path = _write_catalog(tmp_path, {
         "formats": {
             "test_format_c": {"display_name": "Primero declarado", "order": 1},
             "test_format_b": {"display_name": "Segundo declarado", "order": 2},
         },
     })
-    catalog = FormatCatalog(path, root)
+    catalog = FormatCatalog(path)
 
     assert catalog.ordered(
         ("other_format", "test_format_a", "test_format_b", "test_format_c"),
@@ -79,7 +72,7 @@ def test_declaration_without_format_directory_is_a_clear_config_error(tmp_path):
     })
 
     with pytest.raises(OperationalError) as caught:
-        FormatCatalog(path, root).ordered(("test_format",))
+        FormatCatalog(path).validate(ProfileResolver(root))
 
     context = caught.value.context
     assert context.family == "CONFIG"
@@ -99,6 +92,8 @@ def test_declaration_without_format_directory_is_a_clear_config_error(tmp_path):
         ({"formats": {"test_format": "Formato técnico"}}, "formats.test_format"),
         ({"formatos": {}}, "formats"),
         ("{", "Expecting property name"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "orientation": "test_orientation"}}}, "formats.test_format.orientation debe ser portrait o landscape"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "image_guidance": "   "}}}, "formats.test_format.image_guidance"),
     ),
 )
 def test_invalid_catalog_is_a_config_error_that_names_the_problem(
@@ -106,11 +101,10 @@ def test_invalid_catalog_is_a_config_error_that_names_the_problem(
     content,
     detail,
 ):
-    root = _profiles_root(tmp_path, "test_format")
     path = _write_catalog(tmp_path, content)
 
     with pytest.raises(OperationalError) as caught:
-        FormatCatalog(path, root).label("test_format")
+        FormatCatalog(path).label("test_format")
 
     context = caught.value.context
     assert context.family == "CONFIG"
@@ -119,12 +113,62 @@ def test_invalid_catalog_is_a_config_error_that_names_the_problem(
     assert context.resource == str(path)
 
 
+def test_orientation_and_image_guidance_come_only_from_the_declaration(tmp_path):
+    path = _write_catalog(tmp_path, {
+        "formats": {
+            "test_portrait_format": {
+                "display_name": "Formato técnico alto",
+                "order": 1,
+                "orientation": "portrait",
+                "image_guidance": "test portrait guidance",
+            },
+            "test_bare_format": {"display_name": "Formato técnico", "order": 2},
+        },
+    })
+    catalog = FormatCatalog(path)
+
+    assert catalog.orientation("test_portrait_format") == "portrait"
+    assert catalog.image_guidance("test_portrait_format") == "test portrait guidance"
+    assert catalog.orientation("test_bare_format") is None
+    assert catalog.orientation("test_undeclared_format") is None
+    for profile_format in ("test_bare_format", "test_undeclared_format"):
+        with pytest.raises(OperationalError) as caught:
+            catalog.image_guidance(profile_format)
+
+        context = caught.value.context
+        assert context.family == "CONFIG"
+        assert "image_guidance" in context.user_message
+        assert f"«{profile_format}»" in context.user_message
+        assert context.resource == str(path)
+
+
 def test_project_catalog_declares_vertical_first_with_its_aspect_ratio():
     catalog = FormatCatalog()
 
     assert catalog.ordered(("horizontal", "vertical")) == ("vertical", "horizontal")
     assert catalog.label("vertical") == "Vertical 9:16"
     assert catalog.label("horizontal") == "Horizontal 16:9"
+    assert catalog.orientation("vertical") == "portrait"
+    assert catalog.orientation("horizontal") == "landscape"
+    assert catalog.image_guidance("vertical") == "vertical 9:16"
+    assert catalog.image_guidance("horizontal") == "wide horizontal 16:9"
+    catalog.validate(ProfileResolver())
+
+
+def test_main_stops_before_the_first_menu_when_the_catalog_is_broken(tmp_path):
+    path = _write_catalog(tmp_path, "{")
+
+    with patch("main.FormatCatalog", return_value=FormatCatalog(path)), patch(
+        "main.RunController"
+    ) as controller, patch("builtins.print") as print_mock:
+        result = main.main()
+
+    assert result == 1
+    controller.assert_not_called()
+    output = print_mock.call_args.args[0]
+    assert output.startswith("ERROR\n")
+    assert "El catálogo de formatos no es válido" in output
+    assert str(path) in output
 
 
 def _first_menu(print_mock):
@@ -183,13 +227,12 @@ class _TwoFormatResolver:
 
 
 def test_run_controller_presents_formats_with_the_injected_catalog(tmp_path):
-    root = _profiles_root(tmp_path, "test_format_a", "test_format_b")
     path = _write_catalog(tmp_path, {
         "formats": {"test_format_b": {"display_name": "Formato B", "order": 1}},
     })
     controller = RunController(
         profile_resolver=_TwoFormatResolver(),
-        format_catalog=FormatCatalog(path, root),
+        format_catalog=FormatCatalog(path),
     )
     answers = MenuAnswers("Test Format A")
 
@@ -209,17 +252,6 @@ def test_run_controller_presents_formats_with_the_injected_catalog(tmp_path):
     assert selected["profile_key"].format == "test_format_a"
 
 
-def test_studio_summary_uses_the_menu_label_and_survives_a_broken_catalog():
+def test_studio_summary_uses_the_menu_label():
     assert studio_summary._format_label("vertical") == "Vertical 9:16"
-
-    class BrokenCatalog:
-        def label(self, profile_format):
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="Catálogo roto.",
-                recommended_action="Corrija el catálogo.",
-                operation="Leer catálogo de formatos",
-            )
-
-    with patch.object(studio_summary, "FormatCatalog", BrokenCatalog):
-        assert studio_summary._format_label("test_format") == "Test Format"
+    assert studio_summary._format_label("test_format") == "Test Format"

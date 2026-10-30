@@ -2,10 +2,9 @@
 
 from pathlib import Path
 
-from app.controllers.interaction import labels
-from app.controllers.interaction.format_catalog import FormatCatalog
 from app.managers.pipeline_summary import PipelineSummary
 from app.modules.studio import StudioInputMode, StudioSubtitleExportMode
+from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -35,10 +34,7 @@ def _subtitle_display_name(request):
 
 
 def _format_label(profile_format):
-    try:
-        return FormatCatalog().label(profile_format)
-    except OperationalError:
-        return labels.label(profile_format)
+    return FormatCatalog().label(profile_format)
 
 
 def _print_render_summary(request, result, elapsed_seconds):

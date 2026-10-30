@@ -5,7 +5,6 @@ from app.controllers.interaction.contracts import (
     StudioProfileSelection,
     StudioSubtitleSelection,
 )
-from app.controllers.interaction.format_catalog import FormatCatalog
 from app.controllers.interaction.intro_outro_selection import (
     IntroOutroSelector,
 )
@@ -40,6 +39,7 @@ from app.shared.error_context import (
     ErrorSeverity,
     ExitKind,
 )
+from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     ProfileComponent,

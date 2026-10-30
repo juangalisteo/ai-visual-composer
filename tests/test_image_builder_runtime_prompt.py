@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 from app.modules.images.image_builder import ImageBuilder
 from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
+from app.shared.format_catalog import FormatCatalog
+from app.shared.operational_error import OperationalError
 
 
 class ImageBuilderRuntimePromptTest(unittest.TestCase):
@@ -28,7 +30,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             with self._patched_environment(
                 manifest_path=manifest_path,
                 profile={
-                    "format": "horizontal",
+                    "format": "test_landscape_format",
                     "video_style": {
                         "width": 640,
                         "height": 360
@@ -41,6 +43,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     prompt_translator=self._wide_encoder_prompt_translator(),
+                    format_catalog=self._format_catalog(root),
                 )
 
                 with patch.object(
@@ -93,7 +96,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["prompt"]
             )
             self.assertIn(
-                "wide horizontal 16:9",
+                "test landscape guidance",
                 manifest[0]["prompt"]
             )
             self.assertIn(
@@ -129,7 +132,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             with self._patched_environment(
                 manifest_path=manifest_path,
                 profile={
-                    "format": "vertical",
+                    "format": "test_portrait_format",
                     "video_style": {
                         "width": 360,
                         "height": 640
@@ -142,6 +145,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     prompt_translator=self._wide_encoder_prompt_translator(),
+                    format_catalog=self._format_catalog(root),
                 )
 
                 with patch.object(
@@ -161,7 +165,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             )
 
             self.assertIn(
-                "vertical 9:16",
+                "test portrait guidance",
                 manifest[0]["prompt"]
             )
 
@@ -179,7 +183,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 root
             )
             profile = {
-                "format": "horizontal",
+                "format": "test_landscape_format",
                 "video_style": {
                     "width": 640,
                     "height": 360
@@ -203,6 +207,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                     workflow_path=workflow_path,
                     profile=profile,
                     prompt_translator=self._wide_encoder_prompt_translator(),
+                    format_catalog=self._format_catalog(root),
                 )
 
                 with patch.object(
@@ -232,6 +237,26 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 360,
                 manifest[0]["height"]
             )
+
+    def test_format_without_image_guidance_is_a_clear_config_error(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            builder = ImageBuilder(
+                workflow_path=self._write_workflow(root),
+                format_catalog=self._format_catalog(root),
+            )
+
+            with self.assertRaises(OperationalError) as caught:
+                builder._profile_format_guidance(
+                    {"format": "test_undeclared_format"}
+                )
+
+        context = caught.exception.context
+        self.assertEqual("CONFIG", context.family)
+        self.assertIn("image_guidance", context.user_message)
+        self.assertIn("«test_undeclared_format»", context.user_message)
 
     def test_official_profiles_remain_valid_for_image_dimensions(self):
         builder = ImageBuilder()
@@ -351,6 +376,34 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             encoding="utf-8"
         )
         return storyboard_path
+
+    def _format_catalog(
+        self,
+        root
+    ):
+        catalog_path = root / "formats.json"
+        catalog_path.write_text(
+            json.dumps(
+                {
+                    "formats": {
+                        "test_portrait_format": {
+                            "display_name": "Formato técnico alto",
+                            "order": 1,
+                            "image_guidance": "test portrait guidance"
+                        },
+                        "test_landscape_format": {
+                            "display_name": "Formato técnico ancho",
+                            "order": 2,
+                            "image_guidance": "test landscape guidance"
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8"
+        )
+        return FormatCatalog(
+            catalog_path
+        )
 
     def _write_workflow(
         self,

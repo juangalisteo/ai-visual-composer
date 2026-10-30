@@ -19,6 +19,7 @@ from app.shared.config_contract import (
     require_text,
 )
 from app.shared.config_manager import ConfigManager
+from app.shared.format_catalog import FormatCatalog
 from app.shared.progress_logger import ProgressLogger
 from app.shared.error_context import (
     ErrorContext,
@@ -63,6 +64,7 @@ class ImageBuilder:
         evidence_writer=None,
         profile=None,
         project=None,
+        format_catalog=None,
     ):
         self.comfyui_url = comfyui_url
 
@@ -98,6 +100,7 @@ class ImageBuilder:
         self.evidence_writer = evidence_writer
         self.profile = profile
         self.project = project
+        self.format_catalog = format_catalog
 
     def build(
         self,
@@ -700,13 +703,8 @@ class ImageBuilder:
             "format",
             "format"
         ).lower()
-        if image_format == "vertical":
-            return "vertical 9:16"
-        if image_format == "horizontal":
-            return "wide horizontal 16:9"
-        raise ValueError(
-            "La configuración format debe ser vertical "
-            "u horizontal."
+        return self._format_catalog().image_guidance(
+            image_format
         )
 
     def _has_visual_truth_content(
@@ -797,6 +795,16 @@ class ImageBuilder:
             )
 
         return self.backend_adapter
+
+    def _format_catalog(
+        self
+    ):
+        if self.format_catalog is None:
+            self.format_catalog = (
+                FormatCatalog()
+            )
+
+        return self.format_catalog
 
     def _evidence_writer(
         self

@@ -1,8 +1,10 @@
 """Transformaciones de presentación para valores técnicos."""
 
+from app.shared.format_catalog import fallback_label
+
 
 def label(value):
-    return value.replace("_", " ").title()
+    return fallback_label(value)
 
 
 def voice_label(value):

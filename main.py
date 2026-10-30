@@ -20,7 +20,9 @@ from app.modules.studio import (
     to_studio_operational_error,
 )
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
+from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
+from app.shared.profile_resolver import ProfileResolver
 
 
 def main():
@@ -50,6 +52,8 @@ def main():
 
 
 def _run_main():
+    # A broken format catalog fails here, before the first menu.
+    FormatCatalog().validate(ProfileResolver())
 
     controller = RunController()
     try:

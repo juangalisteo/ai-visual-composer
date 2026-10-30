@@ -2,6 +2,11 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.shared.format_catalog import (
+    LANDSCAPE,
+    PORTRAIT,
+    FormatCatalog,
+)
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -22,10 +27,15 @@ class OperationalProfileDescriptor:
 class ProfileResolver:
     def __init__(
         self,
-        profiles_root=Path("config/profiles")
+        profiles_root=Path("config/profiles"),
+        format_catalog=None,
     ):
         self.profiles_root = Path(
             profiles_root
+        )
+        # The format catalog sits next to the profiles root (config/formats.json).
+        self.format_catalog = format_catalog or FormatCatalog(
+            self.profiles_root.parent / "formats.json"
         )
 
     def discover_operational_profiles(self, component, profile_format):
@@ -82,9 +92,12 @@ class ProfileResolver:
         self._validate_format_orientation(profile, path)
         return profile
 
-    @staticmethod
-    def _validate_format_orientation(profile, path):
-        """Reject a declared format that contradicts video_style size."""
+    def _validate_format_orientation(self, profile, path):
+        """Reject a video_style size that contradicts the format orientation.
+
+        The orientation comes from the format catalog; a format that does not
+        declare one is not checked.
+        """
         profile_format = profile.get("format")
         video_style = profile.get("video_style")
         if not isinstance(profile_format, str) or not isinstance(
@@ -101,10 +114,11 @@ class ProfileResolver:
             return
 
         profile_format = profile_format.strip().lower()
-        if profile_format == "vertical" and width > height:
-            orientation = "más ancho que alto"
-        elif profile_format == "horizontal" and width < height:
-            orientation = "más alto que ancho"
+        orientation = self.format_catalog.orientation(profile_format)
+        if orientation == PORTRAIT and width > height:
+            shape = "más ancho que alto"
+        elif orientation == LANDSCAPE and width < height:
+            shape = "más alto que ancho"
         else:
             return
 
@@ -116,7 +130,7 @@ class ProfileResolver:
             family="CONFIG",
             user_message=(
                 f"El perfil declara format «{profile_format}», pero "
-                f"video_style mide {width}x{height} ({orientation})."
+                f"video_style mide {width}x{height} ({shape})."
             ),
             recommended_action=(
                 "Corrige format o video_style.width/height para que "
