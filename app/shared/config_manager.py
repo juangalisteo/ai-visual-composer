@@ -125,10 +125,10 @@ class ConfigManager:
         return self._operational_profile_key
 
     def get_subtitle_profile_by_key(self, subtitle_profile_key):
-        """Resolve a modern, complete subtitle identity without adaptation."""
+        """Resolve a complete subtitle identity without adaptation."""
         if not isinstance(subtitle_profile_key, SubtitleProfileKey):
             error = TypeError(
-                "La ruta moderna requiere una SubtitleProfileKey completa."
+                "La ruta de subtítulos requiere una SubtitleProfileKey completa."
             )
             raise create_operational_error(
                 family="VALIDATION",

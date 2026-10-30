@@ -140,7 +140,7 @@ class LayerConfigLoaderTest(
                 legacy_data=legacy_data
             ), self.assertRaisesRegex(
                 ValueError,
-                "no admite las claves legacy selection/weights"
+                "no admite las claves antiguas selection/weights"
             ):
                 OverlayConfigLoader().load(
                     profile(

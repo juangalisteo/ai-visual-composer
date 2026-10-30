@@ -553,7 +553,7 @@ class AssSubtitleBuilder:
             if len(lines) < 3:
                 raise ValueError("El SRT contiene un cue incompleto para ASS.")
             if "-->" not in lines[1]:
-                raise ValueError("El SRT contiene un timing inválido para ASS.")
+                raise ValueError("El SRT contiene un tiempo inválido para ASS.")
             start, end = (part.strip() for part in lines[1].split("-->", 1))
             cues.append((
                 self._milliseconds(start),
@@ -565,10 +565,10 @@ class AssSubtitleBuilder:
     def _milliseconds(self, value):
         match = self._TIMESTAMP.fullmatch(value)
         if match is None:
-            raise ValueError(f"Timestamp SRT inválido para ASS: {value!r}.")
+            raise ValueError(f"Marca de tiempo SRT inválida para ASS: {value!r}.")
         parts = {key: int(item) for key, item in match.groupdict().items()}
         if parts["minutes"] >= 60 or parts["seconds"] >= 60:
-            raise ValueError(f"Timestamp SRT inválido para ASS: {value!r}.")
+            raise ValueError(f"Marca de tiempo SRT inválida para ASS: {value!r}.")
         return (
             parts["hours"] * 3_600_000
             + parts["minutes"] * 60_000

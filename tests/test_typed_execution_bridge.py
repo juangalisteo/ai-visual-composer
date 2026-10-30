@@ -372,10 +372,10 @@ def test_typed_standard_voice_requires_voice_config_id():
             start.run_application(request=request)
         except ValueError as error:
             assert str(error) == (
-                "La ruta moderna requiere voice_config_id para generar voz."
+                "Generar la voz requiere voice_config_id."
             )
         else:
-            raise AssertionError("La ruta moderna acepto una voz sin voice_config_id.")
+            raise AssertionError("La ruta estándar aceptó una voz sin voice_config_id.")
 
     voice_builder.assert_not_called()
 

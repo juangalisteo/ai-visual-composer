@@ -22,7 +22,7 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
 
     # Characters stripped only for detecting words that end in "-mente".
     # This does not modify the rendered subtitle text.
-    _MENTE_TRAILING_CHARS = ".,;:!?…¿¡-—\"'“”‘’«»()[]{}"
+    _ADVERB_SUFFIX_TRAILING_CHARS = ".,;:!?…¿¡-—\"'“”‘’«»()[]{}"
 
     def __init__(self, config):
         self.punctuation = PunctuationPolicy(config)
@@ -167,7 +167,7 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         regular_group = []
 
         for word in words:
-            if self._is_mente_word(word):
+            if self._ends_with_adverb_suffix(word):
                 if regular_group:
                     chunks.extend(
                         self._partition_regular_group(tuple(regular_group))
@@ -238,14 +238,14 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
             return chunks
         return self._avoid_final_orphan(chunks)
 
-    def _is_mente_word(self, word):
+    def _ends_with_adverb_suffix(self, word):
         text = self._word_text(word).strip().lower()
 
         if not text:
             return False
 
         normalized = text.rstrip(
-            self._MENTE_TRAILING_CHARS
+            self._ADVERB_SUFFIX_TRAILING_CHARS
         )
 
         return normalized.endswith("mente")

@@ -192,7 +192,7 @@ class StandardExecutionCoordinator:
         ):
             if voice_config_id is None:
                 raise ValueError(
-                    "La ruta moderna requiere voice_config_id para generar voz."
+                    "Generar la voz requiere voice_config_id."
                 )
             voice_builder = VoiceBuilder(config_manager=config_manager)
             voice_path, voice_elapsed = self._pipeline_telemetry.measure_stage(
@@ -331,13 +331,7 @@ class StandardExecutionCoordinator:
                     "intro_outro_selection"
                 ] = intro_outro_selection
 
-            if (
-                visual_pipeline == "video"
-                and pipeline_mode in {
-                    "full",
-                    "full_without_subtitles",
-                }
-            ):
+            if visual_pipeline == "video":
                 profile_key = operational_profile_key
                 if (
                     isinstance(

@@ -1,4 +1,4 @@
-"""Normalize legacy SRT visual units for generated ASS documents."""
+"""Normalize SRT script-grid visual units for generated ASS documents."""
 
 from dataclasses import replace
 

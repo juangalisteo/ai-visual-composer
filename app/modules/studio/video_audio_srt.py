@@ -321,7 +321,7 @@ class StudioVideoAudioSrtService:
         )
         if abs(render_style.offset) > 0.000001:
             raise ValueError(
-                "STUDIO requiere offset=0 para preservar los timings SRT."
+                "STUDIO requiere offset=0 para preservar los tiempos del SRT."
             )
         return SubtitleRenderPreparation(
             style_builder=self.style_builder

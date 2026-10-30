@@ -353,7 +353,7 @@ class StudioMontageService:
                         )
                     except OSError as error:
                         raise StudioMontageError(
-                            "No se pudo crear el graph temporal de transiciones."
+                            "No se pudo crear el grafo temporal de transiciones."
                         ) from error
                     command = self.build_transition_command(
                         sources=tuple(prepared.path for prepared in prepared_clips),
@@ -373,7 +373,7 @@ class StudioMontageService:
                         )
                     except OSError as error:
                         raise StudioMontageError(
-                            "No se pudo crear el manifest temporal del montaje."
+                            "No se pudo crear el manifiesto temporal del montaje."
                         ) from error
                     command = self.build_concat_command(
                         manifest_path=manifest_path,

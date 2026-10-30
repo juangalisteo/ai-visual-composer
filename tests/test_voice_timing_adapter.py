@@ -37,7 +37,7 @@ class VoiceTimingAdapterTest(unittest.TestCase):
     def test_rejects_invalid_word_types_and_overlapping_intervals(self):
         with self.assertRaisesRegex(TypeError, "TtsWordTiming"):
             self.adapter.adapt((object(),))
-        with self.assertRaisesRegex(ValueError, "non-overlapping"):
+        with self.assertRaisesRegex(ValueError, "sin solaparse"):
             self.adapter.adapt(
                 (
                     TtsWordTiming("uno", 0.0, 0.6),

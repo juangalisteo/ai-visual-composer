@@ -53,7 +53,7 @@ def require_subtitle_profile_key(subtitle_profile_key):
         raise ValueError("La ruta de subtítulos requiere una SubtitleProfileKey.")
     if not isinstance(subtitle_profile_key, SubtitleProfileKey):
         raise TypeError(
-            "La ruta moderna requiere una SubtitleProfileKey completa."
+            "La ruta de subtítulos requiere una SubtitleProfileKey completa."
         )
     return subtitle_profile_key
 

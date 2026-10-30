@@ -21,7 +21,7 @@ class WordTiming:
 
         if not text:
             raise ValueError(
-                "WordTiming text cannot be empty."
+                "WordTiming.text no puede estar vacío."
             )
 
         start = float(
@@ -33,12 +33,12 @@ class WordTiming:
 
         if start < 0:
             raise ValueError(
-                "WordTiming start cannot be negative."
+                "WordTiming.start no puede ser negativo."
             )
 
         if end < start:
             raise ValueError(
-                "WordTiming end cannot be before start."
+                "WordTiming.end no puede ser anterior a start."
             )
 
         object.__setattr__(
@@ -74,12 +74,12 @@ class SpeechSegment:
 
         if start < 0:
             raise ValueError(
-                "SpeechSegment start cannot be negative."
+                "SpeechSegment.start no puede ser negativo."
             )
 
         if end < start:
             raise ValueError(
-                "SpeechSegment end cannot be before start."
+                "SpeechSegment.end no puede ser anterior a start."
             )
 
         _validate_temporal_order(
@@ -492,7 +492,7 @@ def parse_srt_blocks(
                 text=word,
                 start=start,
                 end=end,
-                source="legacy_srt"
+                source="srt_block"
             )
             for word in text.split()
         )
@@ -555,7 +555,7 @@ def _validate_temporal_order(
     for word in words:
         if previous_end is not None and word.start < previous_end:
             raise ValueError(
-                "WordTiming entries must be ordered and non-overlapping."
+                "Los WordTiming deben estar ordenados y sin solaparse."
             )
 
         previous_end = word.end

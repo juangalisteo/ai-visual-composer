@@ -83,7 +83,7 @@ class OllamaProvider:
         *,
         policy=None,
     ):
-        """Return legacy text content for existing free-text consumers."""
+        """Return the plain text content for existing free-text consumers."""
         return self.generate_result(
             prompt,
             policy=policy,

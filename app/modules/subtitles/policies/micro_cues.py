@@ -23,7 +23,7 @@ class SubtitleCue:
 
         if not text:
             raise ValueError(
-                "SubtitleCue text cannot be empty."
+                "SubtitleCue.text no puede estar vacío."
             )
 
         start = float(
@@ -35,17 +35,17 @@ class SubtitleCue:
 
         if start < 0:
             raise ValueError(
-                "SubtitleCue start cannot be negative."
+                "SubtitleCue.start no puede ser negativo."
             )
 
         if end <= start:
             raise ValueError(
-                "SubtitleCue end must be after start."
+                "SubtitleCue.end debe ser posterior a start."
             )
 
         if not self.words:
             raise ValueError(
-                "SubtitleCue must contain at least one source word."
+                "SubtitleCue debe contener al menos una palabra de origen."
             )
 
         object.__setattr__(
@@ -110,22 +110,22 @@ class MicroCuePolicy:
 
         if self.fps <= 0:
             raise ValueError(
-                "MicroCuePolicy fps must be greater than zero."
+                "MicroCuePolicy.fps debe ser mayor que cero."
             )
 
         if self.min_frames <= 0:
             raise ValueError(
-                "MicroCuePolicy min_frames must be greater than zero."
+                "MicroCuePolicy.min_frames debe ser mayor que cero."
             )
 
         if self.min_display_seconds <= 0:
             raise ValueError(
-                "MicroCuePolicy min_display_seconds must be greater than zero."
+                "MicroCuePolicy.min_display_seconds debe ser mayor que cero."
             )
 
         if self.significant_gap_threshold <= 0:
             raise ValueError(
-                "MicroCuePolicy significant_gap_threshold must be greater than zero."
+                "MicroCuePolicy.significant_gap_threshold debe ser mayor que cero."
             )
 
         if self.merge_preference not in {
@@ -133,7 +133,7 @@ class MicroCuePolicy:
             "previous"
         }:
             raise ValueError(
-                "MicroCuePolicy merge_preference must be next or previous."
+                "MicroCuePolicy.merge_preference debe ser next o previous."
             )
 
     @property
