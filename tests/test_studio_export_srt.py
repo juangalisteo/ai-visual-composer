@@ -34,7 +34,7 @@ from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
 from app.modules.subtitles.policies.timing import whisper_timing_path
-from app.shared.profile_identity import OperationalProfileKey
+from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -439,13 +439,17 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
         ) as intro_outro, patch.object(controller, "ask_project_name", return_value="demo"), patch.object(
             controller, "ask_clear_output", return_value=False,
         ):
-            options = controller._run_studio()
+            request = controller._run_studio()
 
-        self.assertEqual("exportar_srt", options["studio_input_mode"])
-        self.assertNotIn("subtitle_config", options)
-        self.assertEqual(subtitle_key, options["subtitle_profile_key"])
-        self.assertIs(plan, options["studio_subtitle_export_plan"])
-        self.assertEqual("studio", options["profile_component"])
+        self.assertIs(StudioInputMode.EXPORTAR_SRT, request.route.input_mode)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
+        self.assertEqual(subtitle_key, request.subtitle_profile_key)
+        self.assertIs(plan, request.route.plan)
+        self.assertIs(
+            ProfileComponent.STUDIO,
+            request.operational_profile_key.component,
+        )
         music.assert_not_called()
         intro_outro.assert_not_called()
 
@@ -500,13 +504,14 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     "ask_clear_output",
                     return_value=False,
                 ):
-                    options = controller._run_studio()
+                    request = controller._run_studio()
 
-                self.assertEqual(descriptor.key, options["subtitle_profile_key"])
-                self.assertNotIn("subtitle_config", options)
+                self.assertEqual(descriptor.key, request.subtitle_profile_key)
+                self.assertNotIn("subtitle_config", vars(request))
+                self.assertNotIn("subtitle_config", vars(request.route))
                 self.assertEqual(
                     expected_mode,
-                    resolver.load(options["subtitle_profile_key"]).cue_policy["mode"],
+                    resolver.load(request.subtitle_profile_key).cue_policy["mode"],
                 )
 
     def test_controller_convertir_transports_a_dynamic_subtitle_profile_key(self):
@@ -568,9 +573,9 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 "ask_clear_output",
                 return_value=False,
             ):
-                options = controller._run_studio()
+                request = controller._run_studio()
 
-        self.assertEqual(descriptor.key, options["subtitle_profile_key"])
+        self.assertEqual(descriptor.key, request.subtitle_profile_key)
         self.assertEqual("three_two_words", mode)
 
     def test_controller_transcribir_never_selects_a_profile(self):
@@ -600,13 +605,11 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False,
         ):
-            options = controller._run_studio()
+            request = controller._run_studio()
 
         profile.assert_not_called()
-        self.assertNotIn("profile_component", options)
-        self.assertNotIn("profile_format", options)
-        self.assertNotIn("profile_id", options)
-        self.assertIs(plan, options["studio_subtitle_export_plan"])
+        self.assertIsNone(request.operational_profile_key)
+        self.assertIs(plan, request.route.plan)
 
 
 class StudioSubtitleExportStartTest(unittest.TestCase):
@@ -700,12 +703,12 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             service.export.call_args.kwargs["subtitle_profile"].cue_policy["mode"],
         )
 
-    def test_iniciar_dispatches_export_without_render_arguments(self):
+    def test_run_application_dispatches_export_without_render_arguments(self):
         from app.core.execution_request import (
             ApplicationExecutionRequest,
             StudioExecutionRequest,
         )
-        from app.core.start import iniciar
+        from app.core.start import run_application
 
         plan = StudioSubtitleExportPlan(
             StudioSubtitleExportMode.TRANSCRIBIR,
@@ -729,7 +732,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             "run_subtitle_export",
             return_value=expected,
         ) as exporter:
-            result = iniciar(request=request)
+            result = run_application(request=request)
 
         self.assertIs(expected, result)
         self.assertEqual((plan,), exporter.call_args.args)
@@ -745,31 +748,29 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
             StudioSubtitleExportMode.TRANSCRIBIR,
             Path("input/studio/exportar_srt/source.mp3"),
         )
-        options = {
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "demo",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "exportar_srt",
-            "studio_subtitle_export_plan": plan,
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="demo",
+            clear_output=False,
+            operational_profile_key=None,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="exportar_srt",
+                plan=plan,
+                music_path=None,
+            ),
+        )
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller, patch(
-            "main.iniciar",
+            "main.run_application",
             return_value=Mock(),
-        ) as iniciar_mock, patch(
+        ) as run_application_mock, patch(
             "app.cli.studio_summary._print_subtitle_export_summary"
         ):
-            controller.return_value.run.return_value = options
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
-        iniciar_mock.assert_called_once()
-        request = iniciar_mock.call_args.kwargs["request"]
+        run_application_mock.assert_called_once()
+        request = run_application_mock.call_args.kwargs["request"]
         self.assertIs(plan, request.route.plan)
         self.assertEqual("exportar_srt", request.route.input_mode.value)
         self.assertIsNone(request.operational_profile_key)

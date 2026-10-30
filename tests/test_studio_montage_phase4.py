@@ -20,6 +20,7 @@ from app.modules.studio import (
     StudioMontageResult,
     StudioRenderResult,
 )
+from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
 from app.shared.profile_identity import OperationalProfileKey
 
 
@@ -108,7 +109,10 @@ class StudioMontagePhase4Test(unittest.TestCase):
             root = Path(directory)
             plan = self._plan(root)
             controller = RunController()
-            intro_outro = SimpleNamespace(intro=object(), outro=object())
+            intro_outro = IntroOutroPlan(
+                intro=IntroOutroSelection(root / "intro.mp4", "intro"),
+                outro=IntroOutroSelection(root / "outro.mp4", "outro"),
+            )
             controller.select_studio_input_mode = Mock(return_value="montaje_videos")
             controller._select_studio_operational_profile = Mock(
                 return_value=(self.profile_key, self.profile)
@@ -119,12 +123,13 @@ class StudioMontagePhase4Test(unittest.TestCase):
             controller.ask_project_name = Mock(return_value="demo")
             controller.ask_clear_output = Mock(return_value=False)
 
-            options = controller._run_studio()
+            request = controller._run_studio()
 
-        self.assertNotIn("subtitle_config", options)
-        self.assertNotIn("subtitle_profile_key", options)
-        self.assertEqual("music.mp3", options["studio_music_path"])
-        self.assertIs(intro_outro, options["intro_outro_selection"])
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
+        self.assertIsNone(request.subtitle_profile_key)
+        self.assertEqual(Path("music.mp3"), request.route.music_path)
+        self.assertIs(intro_outro, request.route.intro_outro_plan)
         controller._select_studio_operational_profile.assert_called_once_with()
         controller.select_studio_montage_plan.assert_called_once_with(
             self.profile_key, self.profile

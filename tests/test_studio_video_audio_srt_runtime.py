@@ -159,7 +159,7 @@ def test_video_audio_srt_menu_uses_operational_format_and_never_asks_for_music(
     controller.ask_project_name = Mock(return_value="project")
     controller.ask_clear_output = Mock(return_value=False)
 
-    options = controller._run_studio()
+    request = controller._run_studio()
 
     controller.select_studio_video_audio_srt_plan.assert_called_once_with(
         subtitles,
@@ -173,10 +173,11 @@ def test_video_audio_srt_menu_uses_operational_format_and_never_asks_for_music(
     )
     assert controller._select_from_list.call_args_list[0].args == ((True, False),)
     controller.select_studio_music.assert_not_called()
-    assert "studio_music_path" not in options
-    assert "subtitle_config" not in options
-    assert ("subtitle_profile_key" in options) is subtitles
-    assert "studio_subtitle_original" not in options
+    assert request.route.music_path is None
+    assert "subtitle_config" not in vars(request)
+    assert "subtitle_config" not in vars(request.route)
+    assert (request.subtitle_profile_key is not None) is subtitles
+    assert request.route.subtitle_original is False
     if subtitles:
         controller.select_studio_video_audio_srt_subtitle.assert_called_once_with()
         controller._select_studio_video_audio_srt_subtitle_profile.assert_called_once_with(

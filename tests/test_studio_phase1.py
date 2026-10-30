@@ -14,6 +14,10 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioInputPreparationService,
@@ -516,30 +520,35 @@ class StudioPhase1Test(unittest.TestCase):
             "ask_clear_output",
             return_value=True,
         ):
-            options = controller.run()
+            request = controller.run()
 
-        self.assertEqual("studio", options["pipeline_mode"])
-        self.assertEqual("studio", options["profile_component"])
+        self.assertIsInstance(request.route, StudioExecutionRequest)
+        self.assertIs(
+            ProfileComponent.STUDIO,
+            request.operational_profile_key.component,
+        )
         self.assertEqual(
             "subtitulo_studio_vertical_linea_unica",
-            options["subtitle_profile_key"].profile_id,
+            request.subtitle_profile_key.profile_id,
         )
-        self.assertFalse(options["studio_subtitle_original"])
-        self.assertEqual("srt_video", options["studio_input_mode"])
+        self.assertFalse(request.route.subtitle_original)
+        self.assertIs(StudioInputMode.SRT_VIDEO, request.route.input_mode)
         self.assertEqual(
-            str(Path("input/studio/srt_video/source.mp4")),
-            options["studio_video_path"],
+            Path("input/studio/srt_video/source.mp4"),
+            request.route.video_path,
         )
         self.assertEqual(
-            str(Path("input/studio/srt_video/source.srt")),
-            options["studio_subtitle_path"],
+            Path("input/studio/srt_video/source.srt"),
+            request.route.subtitle_path,
         )
-        self.assertNotIn("studio_light_leaks_enabled", options)
-        self.assertIsNone(options["studio_music_path"])
-        self.assertEqual("studio project", options["project_name"])
-        self.assertTrue(options["clear_output"])
-        self.assertNotIn("overlays_mode", options)
-        self.assertIsNone(options["intro_outro_selection"])
+        self.assertNotIn("studio_light_leaks_enabled", vars(request))
+        self.assertNotIn("studio_light_leaks_enabled", vars(request.route))
+        self.assertIsNone(request.route.music_path)
+        self.assertEqual("studio project", request.project_name)
+        self.assertTrue(request.clear_output)
+        self.assertNotIn("overlays_mode", vars(request))
+        self.assertNotIn("overlays_mode", vars(request.route))
+        self.assertIsNone(request.route.intro_outro_plan)
         self.assertEqual(["input", "subtitle"], order)
 
     def test_studio_profile_menu_lists_formats_without_video_profile_label(self):
@@ -560,29 +569,24 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertIn("Línea única", printed)
 
     def test_main_transports_studio_identity_without_resetting_output(self):
-        options = {
-            "profile_component": "studio",
-            "profile_format": "vertical",
-            "profile_id": "studio_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio transport",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "srt_video",
-            "studio_video_path": "input/studio/srt_video/source.mp4",
-            "studio_subtitle_path": "input/studio/srt_video/source.srt",
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio transport",
+            clear_output=False,
+            operational_profile_key=self.profile_key,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                video_path=Path("input/studio/srt_video/source.mp4"),
+                subtitle_path=Path("input/studio/srt_video/source.srt"),
+                music_path=None,
+            ),
+        )
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
-        ) as controller, patch("main.iniciar") as start, patch(
+        ) as controller, patch("main.run_application") as start, patch(
             "main.OutputManager"
         ) as output_manager:
-            controller.return_value.run.return_value = options
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PIPELINE_MODE", os.environ)
 
@@ -601,27 +605,22 @@ class StudioPhase1Test(unittest.TestCase):
         output_manager.assert_not_called()
 
     def test_main_resets_output_for_studio_when_selected(self):
-        options = {
-            "profile_component": "studio",
-            "profile_format": "vertical",
-            "profile_id": "studio_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio project",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "srt_video",
-            "clear_output": True,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio project",
+            clear_output=True,
+            operational_profile_key=self.profile_key,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                music_path=None,
+            ),
+        )
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
-        ) as controller, patch("main.iniciar"), patch(
+        ) as controller, patch("main.run_application"), patch(
             "main.OutputManager"
         ) as output_manager:
-            controller.return_value.run.return_value = options
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
         output_manager.return_value.reset.assert_called_once_with()
 

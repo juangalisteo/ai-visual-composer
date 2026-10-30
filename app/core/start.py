@@ -28,7 +28,7 @@ _STANDARD_EXECUTION_COORDINATOR = StandardExecutionCoordinator(
 )
 
 
-def iniciar(request):
+def run_application(request):
     pipeline_start = time.perf_counter()
 
     if not isinstance(request, ApplicationExecutionRequest):

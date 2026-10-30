@@ -16,7 +16,11 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import iniciar
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
+from app.core.start import run_application
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioOutputPathResolver,
@@ -123,9 +127,9 @@ class StudioPhase5Test(unittest.TestCase):
         ), patch.object(
             controller, "ask_clear_output", return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
-        self.assertIsNone(options["intro_outro_selection"])
+        self.assertIsNone(request.route.intro_outro_plan)
 
     def test_studio_menu_selects_intro_outro_and_allows_same_asset(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -197,26 +201,23 @@ class StudioPhase5Test(unittest.TestCase):
             "intro",
         )
         plan = IntroOutroPlan(intro=intro)
-        options = {
-            "profile_component": "studio",
-            "profile_format": "vertical",
-            "profile_id": "studio_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio intro outro",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "srt_video",
-            "intro_outro_selection": plan,
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio intro outro",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "studio", "vertical", "studio_vertical"
+            ),
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                music_path=None,
+                intro_outro_plan=plan,
+            ),
+        )
         with patch.dict("os.environ", {}, clear=True), patch(
             "main.RunController"
-        ) as controller, patch("main.iniciar") as start:
-            controller.return_value.run.return_value = options
+        ) as controller, patch("main.run_application") as start:
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
         start.assert_called_once()
         request = start.call_args.kwargs["request"]
@@ -227,7 +228,7 @@ class StudioPhase5Test(unittest.TestCase):
         with patch.object(StudioExecutionCoordinator, "run_standard") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects:
-            iniciar(request=request)
+            run_application(request=request)
         studio.assert_called_once()
         self.assertIs(plan, studio.call_args.kwargs["intro_outro_selection"])
         self.assertIsNone(studio.call_args.kwargs["music_path"])

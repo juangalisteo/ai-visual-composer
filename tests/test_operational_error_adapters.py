@@ -6,6 +6,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import main
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey
@@ -136,27 +140,24 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
             except OperationalError as caught:
                 error = caught
 
-            options = {
-                "profile_component": "video",
-                "profile_format": "vertical",
-                "profile_id": "test_profile",
-                "voice_config": "",
-                "music_category": None,
-                "overlays_mode": "off",
-                "project_name": "adapter error",
-                "visual_pipeline": "video",
-                "script_source": "manual_design",
-                "design_target": "video",
-                "pipeline_mode": "design_video",
-                "clear_output": False,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="adapter error",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "video",
+                    "vertical",
+                    "test_profile",
+                ),
+                subtitle_profile_key=None,
+                route=DesignExecutionRequest(mode="design_video"),
+            )
             with patch.dict(os.environ, {}, clear=True), patch(
                 "main.RunController"
             ) as controller_mock, patch(
-                "main.iniciar",
+                "main.run_application",
                 side_effect=error,
             ), patch("builtins.print") as print_mock:
-                controller_mock.return_value.run.return_value = options
+                controller_mock.return_value.run.return_value = request
 
                 result = main.main()
 

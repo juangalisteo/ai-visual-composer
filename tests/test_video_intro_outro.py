@@ -8,6 +8,10 @@ from unittest.mock import Mock, patch
 
 import main as app_main
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.modules.video.intro_outro import (
     IntroOutroCatalog,
     IntroOutroComposer,
@@ -20,6 +24,7 @@ from app.modules.video.intro_outro import (
 from app.modules.video.video_build_context import VideoBuildArtifacts
 from app.modules.video.video_render_service import VideoRenderService
 from app.shared.operational_error import OperationalError
+from app.shared.profile_identity import OperationalProfileKey
 from tests.test_menu_helpers import MenuAnswers
 
 
@@ -259,21 +264,25 @@ class IntroOutroTest(unittest.TestCase):
             "intro",
         )
         plan = IntroOutroPlan(intro=selection)
-        options = {
-            "profile_component": "video",
-            "profile_format": "vertical",
-            "profile_id": "video_vertical",
-            "voice_config": "masculina",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "project",
-            "visual_pipeline": "video",
-            "script_source": "generated",
-            "design_target": "",
-            "pipeline_mode": "full",
-            "intro_outro_selection": plan,
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="project",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "video",
+                "vertical",
+                "video_vertical",
+            ),
+            subtitle_profile_key=None,
+            route=StandardExecutionRequest(
+                pipeline_mode="full",
+                visual_pipeline="video",
+                script_source="generated",
+                voice_config_id="masculina",
+                music_category=None,
+                overlays_mode="off",
+                intro_outro_plan=plan,
+            ),
+        )
 
         with patch.dict(
             "os.environ",
@@ -282,15 +291,15 @@ class IntroOutroTest(unittest.TestCase):
         ), patch(
             "main.RunController"
         ) as controller_class, patch(
-            "main.iniciar"
-        ) as iniciar_mock:
-            controller_class.return_value.run.return_value = options
+            "main.run_application"
+        ) as run_application_mock:
+            controller_class.return_value.run.return_value = controller_request
             app_main.main()
 
-        iniciar_mock.assert_called_once()
-        request = iniciar_mock.call_args.kwargs["request"]
+        run_application_mock.assert_called_once()
+        request = run_application_mock.call_args.kwargs["request"]
         self.assertIs(plan, request.route.intro_outro_plan)
-        self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
+        self.assertEqual({"request"}, set(run_application_mock.call_args.kwargs))
 
     def test_compatible_asset_uses_stream_copy_and_intro_is_first(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -106,7 +106,7 @@ def test_typed_standard_script_uses_request_source():
     ), patch.object(
         standard.ScriptOperation, "execute", return_value=prepared_script
     ) as execute:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == project.script_path.return_value
     assert execute.call_args.kwargs["source_mode"] == "manual"
@@ -146,7 +146,7 @@ def test_typed_standard_music_category_uses_request_value():
         music_selector.return_value.select.return_value = Path("calm.mp3")
         audio_mixer.return_value.build.return_value = Path("final.mp3")
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("final.mp3")
     music_selector.return_value.select.assert_called_once_with("calm")
@@ -191,7 +191,7 @@ def test_typed_standard_injects_its_explicit_config_into_profile_consumers():
         image_builder.return_value.build.return_value = Path("images.json")
         video_builder.return_value.build.return_value = Path("final.mp4")
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("final.mp4")
     storyboard_builder.assert_called_once_with(
@@ -247,7 +247,7 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
         subtitle_builder.return_value.build.return_value = project.subtitle_path.return_value
         optimizer.return_value.optimize.return_value = project.subtitle_path.return_value
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == project.subtitle_path.return_value
     subtitle_builder.return_value.build.assert_called_once_with(
@@ -284,7 +284,7 @@ def test_typed_standard_voice_config_id_is_injected_into_config_manager():
         voice_builder.return_value.build.return_value = project.audio_path.return_value
         audio_mixer.return_value.build.return_value = project.final_audio_path.return_value
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == project.final_audio_path.return_value
     config_manager_class.assert_called_once_with(
@@ -326,7 +326,7 @@ def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
         ), patch.object(standard, "VoiceBuilder"), patch.object(
             standard, "AudioMixer"
         ), patch.object(standard, "StoryboardBuilder"):
-            start.iniciar(
+            start.run_application(
                 request=_standard_request(pipeline_mode=pipeline_mode)
             )
 
@@ -369,7 +369,7 @@ def test_typed_standard_voice_requires_voice_config_id():
         standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
     ), patch.object(standard, "VoiceBuilder") as voice_builder:
         try:
-            start.iniciar(request=request)
+            start.run_application(request=request)
         except ValueError as error:
             assert str(error) == (
                 "La ruta moderna requiere voice_config_id para generar voz."
@@ -408,7 +408,7 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key():
     ) as generate_i2v, patch.object(
         standard, "build_public_video", return_value=final_video
     ), patch.object(standard, "VideoBuilder") as video_builder:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == final_video
     assert generate_i2v.call_args.kwargs["profile_key"] is request.operational_profile_key
@@ -432,7 +432,7 @@ def test_typed_design_image_dispatches_only_to_design_image():
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         DesignExecutionCoordinator, "run_image", return_value=Path("images.json")
     ) as run_image, patch.object(DesignExecutionCoordinator, "run_video") as run_video:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("images.json")
     assert run_image.call_args.kwargs["project"] is project
@@ -455,7 +455,7 @@ def test_typed_design_video_transports_the_existing_operational_key():
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         DesignExecutionCoordinator, "run_video", return_value=Path("scene_001.mkv")
     ) as run_video:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("scene_001.mkv")
     assert run_video.call_args.kwargs["profile_key"] is operational_profile_key
@@ -486,7 +486,7 @@ def test_typed_studio_standard_preserves_paths_and_subtitle_key():
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         StudioExecutionCoordinator, "run_standard", return_value="studio-result"
     ) as execute:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == "studio-result"
     assert execute.call_args.kwargs["music_path"] is None
@@ -525,7 +525,7 @@ def test_typed_studio_plan_is_delegated_without_reconstruction():
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         StudioExecutionCoordinator, "run_video_audio_srt", return_value="video-audio"
     ) as execute:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == "video-audio"
     assert execute.call_args.args == (plan,)

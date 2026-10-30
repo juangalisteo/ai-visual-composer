@@ -544,10 +544,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
         ), patch.object(
             controller, "ask_clear_output", return_value=False,
         ):
-            options = controller._run_studio()
+            request = controller._run_studio()
 
         self.assertEqual(["input", "subtitle", "files"], order)
-        self.assertEqual("video", options["studio_input_mode"])
+        self.assertIs(StudioInputMode.VIDEO, request.route.input_mode)
 
     def test_studio_subtitle_selector_discovers_standard_and_design_before_video(self):
         controller = RunController()
@@ -742,12 +742,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                     StudioInputMode.SRT_VIDEO.value,
                 )
             profile_key = selection.operational.operational_key
-            selected = controller._studio_profile_options(
-                profile_key,
-                selection.subtitle.subtitle_key,
-            )[
-                "subtitle_profile_key"
-            ]
+            selected = selection.subtitle.subtitle_key
             original = selection.subtitle.subtitle_original
 
         self.assertEqual(operational_key, profile_key)

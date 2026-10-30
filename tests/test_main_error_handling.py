@@ -7,6 +7,11 @@ from unittest.mock import patch
 import main
 from app.controllers.run_controller import RunController
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import (
     StudioMontageError,
@@ -16,28 +21,39 @@ from app.modules.studio import (
 from app.managers.output_manager import OutputResetBlockedError
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.operational_error import OperationalError
+from app.shared.profile_identity import OperationalProfileKey
 
 
 class MainErrorHandlingTest(unittest.TestCase):
 
-    def design_options(self):
-        return {
-            "profile_component": "video",
-            "profile_format": "vertical",
-            "profile_id": "video_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "error test",
-            "visual_pipeline": "video",
-            "script_source": "manual_design",
-            "design_target": "video",
-            "pipeline_mode": "design_video",
-            "clear_output": False,
-        }
+    def design_request(self, project_name="error test", clear_output=False):
+        return ApplicationExecutionRequest(
+            project_name=project_name,
+            clear_output=clear_output,
+            operational_profile_key=OperationalProfileKey(
+                "video",
+                "vertical",
+                "video_vertical",
+            ),
+            subtitle_profile_key=None,
+            route=DesignExecutionRequest(mode="design_video"),
+        )
+
+    def studio_request(self, input_mode, project_name="error test"):
+        return ApplicationExecutionRequest(
+            project_name=project_name,
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "studio",
+                "vertical",
+                "studio_vertical",
+            ),
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(input_mode=input_mode),
+        )
 
     def test_external_operational_error_is_user_visible_without_traceback(self):
-        options = self.design_options()
+        request = self.design_request()
         error = OperationalError(
             ErrorContext(
                 family="EXTERNAL_SERVICE",
@@ -57,12 +73,12 @@ class MainErrorHandlingTest(unittest.TestCase):
         ), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar",
+            "main.run_application",
             side_effect=error
         ), patch(
             "builtins.print"
         ) as print_mock:
-            controller_mock.return_value.run.return_value = options
+            controller_mock.return_value.run.return_value = request
 
             result = main.main()
 
@@ -93,10 +109,10 @@ class MainErrorHandlingTest(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar",
+            "main.run_application",
             side_effect=OperationalError(context),
         ), patch("builtins.print") as print_mock:
-            controller_mock.return_value.run.return_value = self.design_options()
+            controller_mock.return_value.run.return_value = self.design_request()
 
             result = main.main()
 
@@ -113,7 +129,7 @@ class MainErrorHandlingTest(unittest.TestCase):
         self.assertNotIn("Traceback", print_mock.call_args.args[0])
 
     def test_manual_review_validation_is_visible_without_internal_traceback(self):
-        options = self.design_options()
+        request = self.design_request()
         error = OperationalError(
             ErrorContext(
                 family="VALIDATION",
@@ -139,9 +155,9 @@ class MainErrorHandlingTest(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar", side_effect=error
+            "main.run_application", side_effect=error
         ), patch("builtins.print") as print_mock:
-            controller_mock.return_value.run.return_value = options
+            controller_mock.return_value.run.return_value = request
 
             result = main.main()
 
@@ -188,17 +204,17 @@ class MainErrorHandlingTest(unittest.TestCase):
                 handle.write(b"partial")
 
             with patch("main.RunController") as controller_mock, patch(
-                "main.iniciar", side_effect=KeyboardInterrupt
-            ) as iniciar_mock, patch("builtins.print") as print_mock:
-                controller_mock.return_value.run.return_value = self.design_options()
+                "main.run_application", side_effect=KeyboardInterrupt
+            ) as run_application_mock, patch("builtins.print") as print_mock:
+                controller_mock.return_value.run.return_value = self.design_request()
 
                 result = main.main()
 
             self.assertEqual(130, result)
-            iniciar_mock.assert_called_once()
+            run_application_mock.assert_called_once()
             self.assertEqual(
                 "design_video",
-                iniciar_mock.call_args.kwargs["request"].route.mode,
+                run_application_mock.call_args.kwargs["request"].route.mode,
             )
             self.assertTrue(os.path.exists(artifact))
             output = print_mock.call_args.args[0]
@@ -208,14 +224,14 @@ class MainErrorHandlingTest(unittest.TestCase):
 
     def test_eof_is_clean_input_cancellation_without_runtime(self):
         with patch("main.RunController") as controller_mock, patch(
-            "main.iniciar"
-        ) as iniciar_mock, patch("builtins.print") as print_mock:
+            "main.run_application"
+        ) as run_application_mock, patch("builtins.print") as print_mock:
             controller_mock.return_value.run.side_effect = EOFError()
 
             result = main.main()
 
         self.assertEqual(0, result)
-        iniciar_mock.assert_not_called()
+        run_application_mock.assert_not_called()
         output = print_mock.call_args.args[0]
         self.assertTrue(output.startswith("CANCELADO\n"))
         self.assertIn("entrada de terminal", output)
@@ -247,16 +263,11 @@ class MainErrorHandlingTest(unittest.TestCase):
                 with patch.dict(os.environ, {}, clear=True), patch(
                     "main.RunController"
                 ) as controller_mock, patch(
-                    "main.iniciar", side_effect=error
+                    "main.run_application", side_effect=error
                 ), patch("builtins.print") as print_mock:
-                    options = self.design_options()
-                    options.update(
-                        profile_component="studio",
-                        profile_id="studio_vertical",
-                        pipeline_mode="studio",
-                        studio_input_mode="srt_video",
+                    controller_mock.return_value.run.return_value = (
+                        self.studio_request("srt_video")
                     )
-                    controller_mock.return_value.run.return_value = options
                     result = main.main()
 
                 self.assertEqual(1, result)
@@ -272,12 +283,12 @@ class MainErrorHandlingTest(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar",
+            "main.run_application",
             side_effect=unexpected,
         ), patch("main.ErrorPresenter") as presenter_mock, patch(
             "builtins.print"
         ) as print_mock:
-            controller_mock.return_value.run.return_value = self.design_options()
+            controller_mock.return_value.run.return_value = self.design_request()
             presenter_mock.return_value.present_context.return_value.text = (
                 "ERROR INTERNO\nSe produjo un error interno inesperado."
             )
@@ -299,10 +310,10 @@ class MainErrorHandlingTest(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar",
+            "main.run_application",
             side_effect=ValueError("internal validation detail"),
         ), patch("builtins.print") as print_mock:
-            controller_mock.return_value.run.return_value = self.design_options()
+            controller_mock.return_value.run.return_value = self.design_request()
 
             result = main.main()
 
@@ -325,17 +336,12 @@ class MainErrorHandlingTest(unittest.TestCase):
                 {},
                 clear=True,
             ), patch("main.RunController") as controller_mock, patch(
-                "main.iniciar",
+                "main.run_application",
                 side_effect=error,
             ), patch("builtins.print") as print_mock:
-                options = self.design_options()
-                options.update(
-                    profile_component="studio",
-                    profile_id="studio_vertical",
-                    pipeline_mode="studio",
-                    studio_input_mode="srt_video",
+                controller_mock.return_value.run.return_value = (
+                    self.studio_request("srt_video")
                 )
-                controller_mock.return_value.run.return_value = options
 
                 result = main.main()
 
@@ -359,8 +365,8 @@ class MainErrorHandlingTest(unittest.TestCase):
 
     def test_studio_export_empty_input_is_user_visible_without_starting_runtime(self):
         with patch("main.RunController") as controller_mock, patch(
-            "main.iniciar"
-        ) as iniciar_mock, patch("builtins.print") as print_mock:
+            "main.run_application"
+        ) as run_application_mock, patch("builtins.print") as print_mock:
             controller_mock.return_value.run.side_effect = (
                 StudioSubtitleExportInputError(
                     "No se encontró ningún archivo MP4 o MP3 en:\n"
@@ -372,7 +378,7 @@ class MainErrorHandlingTest(unittest.TestCase):
             result = main.main()
 
         self.assertEqual(1, result)
-        iniciar_mock.assert_not_called()
+        run_application_mock.assert_not_called()
         print_mock.assert_called_once_with(
             "ERROR: No se encontró ningún archivo MP4 o MP3 en:\n"
             "input/studio/exportar_srt/transcribir/\n\n"
@@ -380,31 +386,21 @@ class MainErrorHandlingTest(unittest.TestCase):
         )
 
     def test_studio_solo_video_input_error_is_user_visible(self):
-        options = {
-            "profile_component": "studio",
-            "profile_format": "vertical",
-            "profile_id": "studio_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio silent video",
-            "visual_pipeline": "studio",
-            "script_source": "",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_input_mode": "video",
-            "clear_output": False,
-        }
+        request = self.studio_request(
+            "video",
+            project_name="studio silent video",
+        )
 
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar",
+            "main.run_application",
             side_effect=ValueError(
                 "El video seleccionado no contiene una pista de audio. "
                 "SOLO VIDEO necesita audio para generar los subtítulos."
             ),
         ), patch("builtins.print") as print_mock:
-            controller_mock.return_value.run.return_value = options
+            controller_mock.return_value.run.return_value = request
 
             result = main.main()
 
@@ -416,27 +412,17 @@ class MainErrorHandlingTest(unittest.TestCase):
         self.assertNotIn("Traceback", output)
 
     def test_output_reset_blocked_error_stops_pipeline_cleanly(self):
-        options = {
-            "profile_component": "video",
-            "profile_format": "vertical",
-            "profile_id": "video_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "blocked output",
-            "visual_pipeline": "video",
-            "script_source": "manual_design",
-            "design_target": "video",
-            "pipeline_mode": "design_video",
-            "clear_output": True,
-        }
+        request = self.design_request(
+            project_name="blocked output",
+            clear_output=True,
+        )
 
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch("main.OutputManager") as output_manager, patch(
-            "main.iniciar"
-        ) as iniciar_mock, patch("builtins.print") as print_mock:
-            controller_mock.return_value.run.return_value = options
+            "main.run_application"
+        ) as run_application_mock, patch("builtins.print") as print_mock:
+            controller_mock.return_value.run.return_value = request
             output_manager.return_value.reset.side_effect = (
                 OutputResetBlockedError(
                     "No se puede eliminar OUTPUT porque uno de sus archivos "
@@ -448,7 +434,7 @@ class MainErrorHandlingTest(unittest.TestCase):
             result = main.main()
 
         self.assertEqual(1, result)
-        iniciar_mock.assert_not_called()
+        run_application_mock.assert_not_called()
         print_mock.assert_called_once_with(
             "ERROR: No se puede eliminar OUTPUT porque uno de sus archivos "
             "está siendo utilizado por otro programa.\n\n"
@@ -456,36 +442,26 @@ class MainErrorHandlingTest(unittest.TestCase):
         )
 
     def test_output_reset_normal_path_continues_to_runtime(self):
-        options = {
-            "profile_component": "video",
-            "profile_format": "vertical",
-            "profile_id": "video_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "reset output",
-            "visual_pipeline": "video",
-            "script_source": "manual_design",
-            "design_target": "video",
-            "pipeline_mode": "design_video",
-            "clear_output": True,
-        }
+        request = self.design_request(
+            project_name="reset output",
+            clear_output=True,
+        )
 
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
         ) as controller_mock, patch("main.OutputManager") as output_manager, patch(
-            "main.iniciar"
-        ) as iniciar_mock:
-            controller_mock.return_value.run.return_value = options
+            "main.run_application"
+        ) as run_application_mock:
+            controller_mock.return_value.run.return_value = request
 
             result = main.main()
 
         self.assertEqual(0, result)
         output_manager.return_value.reset.assert_called_once_with()
-        iniciar_mock.assert_called_once()
+        run_application_mock.assert_called_once()
         self.assertEqual(
             "design_video",
-            iniciar_mock.call_args.kwargs["request"].route.mode,
+            run_application_mock.call_args.kwargs["request"].route.mode,
         )
 
 

@@ -11,7 +11,7 @@ from app.core.execution_request import (
     ApplicationExecutionRequest,
     StudioExecutionRequest,
 )
-from app.core.start import iniciar
+from app.core.start import run_application
 from app.modules.studio.execution_coordinator import (
     StudioExecutionCoordinator,
 )
@@ -299,12 +299,13 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 "ask_clear_output",
                 return_value=False,
             ):
-                options = controller._run_studio()
+                request = controller._run_studio()
 
-        self.assertIs(plan, options["studio_montage_plan"])
-        self.assertEqual("montaje_videos", options["studio_input_mode"])
-        self.assertNotIn("subtitle_config", options)
-        self.assertIsNone(options["studio_music_path"])
+        self.assertIs(plan, request.route.plan)
+        self.assertIs(StudioInputMode.MONTAJE_VIDEOS, request.route.input_mode)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
+        self.assertIsNone(request.route.music_path)
 
     def test_start_transports_montage_plan_to_phase_two_orchestrator(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -333,7 +334,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 "run_montage",
                 return_value="montage-result",
             ) as montage:
-                result = iniciar(request=request)
+                result = run_application(request=request)
 
         self.assertEqual("montage-result", result)
         montage.assert_called_once_with(plan, project=projects.return_value)
@@ -350,33 +351,28 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 False,
                 service.parse_order("1 2", service.discover(self.profile)),
             )
-            options = {
-                "profile_component": "studio",
-                "profile_format": "vertical",
-                "profile_id": "studio_vertical",
-                "voice_config": "",
-                "music_category": None,
-                "project_name": "montaje",
-                "visual_pipeline": "studio",
-                "script_source": "external",
-                "design_target": "",
-                "pipeline_mode": "studio",
-                "studio_input_mode": "montaje_videos",
-                "studio_montage_plan": plan,
-                "studio_music_path": None,
-                "intro_outro_selection": None,
-                "clear_output": True,
-            }
+            controller_request = ApplicationExecutionRequest(
+                project_name="montaje",
+                clear_output=True,
+                operational_profile_key=self.profile_key,
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode="montaje_videos",
+                    plan=plan,
+                    music_path=None,
+                    intro_outro_plan=None,
+                ),
+            )
             with patch.dict(os.environ, {}, clear=True), patch(
                 "main.RunController"
-            ) as controller, patch("main.iniciar", return_value=object()) as start, patch(
+            ) as controller, patch("main.run_application", return_value=object()) as start, patch(
                 "main.OutputManager.reset"
             ) as reset, patch(
                 "app.cli.studio_summary._print_render_summary"
             ) as summary, patch(
                 "app.cli.studio_summary._print_montage_summary"
             ) as montage_summary:
-                controller.return_value.run.return_value = options
+                controller.return_value.run.return_value = controller_request
                 result = main.main()
 
         self.assertEqual(0, result)

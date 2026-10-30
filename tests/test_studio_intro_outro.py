@@ -8,7 +8,7 @@ from app.core.execution_request import (
     ApplicationExecutionRequest,
     StudioExecutionRequest,
 )
-from app.core.start import iniciar
+from app.core.start import run_application
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioInputMode,
@@ -143,13 +143,14 @@ class StudioIntroOutroTest(unittest.TestCase):
             messages = []
             controller._print = messages.append
 
-            options = controller._run_studio()
+            request = controller._run_studio()
 
-        self.assertEqual(StudioInputMode.INTRO_OUTRO.value, options["studio_input_mode"])
-        self.assertIs(plan, options["studio_intro_outro_plan"])
-        self.assertNotIn("subtitle_config", options)
-        self.assertNotIn("subtitle_profile_key", options)
-        self.assertEqual(profile_key.format, options["profile_format"])
+        self.assertIs(StudioInputMode.INTRO_OUTRO, request.route.input_mode)
+        self.assertIs(plan, request.route.plan)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
+        self.assertIsNone(request.subtitle_profile_key)
+        self.assertEqual(profile_key.format, request.operational_profile_key.format)
         self.assertNotIn("SUBTÍTULOS", "\n".join(messages))
         subtitle_resolver.assert_not_called()
         controller.select_studio_intro_outro_plan.assert_called_once_with(
@@ -262,7 +263,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                 ),
             )
             with patch("app.core.start.ProjectManager") as projects, patch.object(StudioExecutionCoordinator, "run_intro_outro", return_value="result") as execute, patch.object(StudioExecutionCoordinator, "run_standard") as normal:
-                self.assertEqual("result", iniciar(request=request))
+                self.assertEqual("result", run_application(request=request))
             self.assertEqual((plan,), execute.call_args.args)
             self.assertIs(projects.return_value, execute.call_args.kwargs["project"])
             self.assertEqual(

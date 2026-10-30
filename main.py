@@ -4,11 +4,8 @@ import traceback
 from app.cli.error_presenter import ErrorPresenter
 from app.cli.studio_summary import print_studio_summary
 from app.controllers.run_controller import RunController
-from app.core.execution_request import (
-    StudioExecutionRequest,
-    adapt_legacy_run_options,
-)
-from app.core.start import iniciar
+from app.core.execution_request import StudioExecutionRequest
+from app.core.start import run_application
 from app.managers.output_manager import (
     OutputManager,
     OutputResetBlockedError,
@@ -56,7 +53,7 @@ def _run_main():
 
     controller = RunController()
     try:
-        options = controller.run()
+        request = controller.run()
     except (
         StudioMontageInputError,
         StudioSubtitleExportInputError,
@@ -65,8 +62,6 @@ def _run_main():
     ) as error:
         print(f"ERROR: {error}")
         return 1
-
-    request = adapt_legacy_run_options(options)
 
     studio_route = (
         request.route
@@ -82,7 +77,7 @@ def _run_main():
 
     studio_start = time.perf_counter()
     try:
-        result = iniciar(request=request)
+        result = run_application(request=request)
     except (
         StudioMontageError,
         StudioVideoAudioSrtError,

@@ -401,20 +401,20 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         ),
                     )
 
-    def test_iniciar_has_no_video_i2v_special_dispatch(self):
-        iniciar_tree = ast.parse(
-            inspect.getsource(start.iniciar)
+    def test_run_application_has_no_video_i2v_special_dispatch(self):
+        run_application_tree = ast.parse(
+            inspect.getsource(start.run_application)
             + textwrap.dedent(inspect.getsource(StandardExecutionCoordinator.run))
         )
         mode_literals = {
             node.value
-            for node in ast.walk(iniciar_tree)
+            for node in ast.walk(run_application_tree)
             if isinstance(node, ast.Constant)
             and isinstance(node.value, str)
         }
         called_names = {
             node.func.id
-            for node in ast.walk(iniciar_tree)
+            for node in ast.walk(run_application_tree)
             if isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
         }
@@ -678,7 +678,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
         self.assertEqual("savevideo_h264", overrides["intermediate_output"])
 
-    def test_iniciar_video_product_composes_final_video_from_i2v_clips(
+    def test_run_application_video_product_composes_final_video_from_i2v_clips(
         self
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -805,7 +805,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     final_video
                 )
 
-                result = start.iniciar(
+                result = start.run_application(
                     request=_video_request(
                         pipeline_mode="full",
                         operational_profile_key=OperationalProfileKey(
@@ -847,7 +847,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             video_clips_manifest_path=video_clips_manifest
         )
 
-    def test_iniciar_video_product_without_subtitles_uses_standard_operational_identity(self):
+    def test_run_application_video_product_without_subtitles_uses_standard_operational_identity(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             project = FakeProject(Path(temp_dir) / "output" / "video-product")
             final_video = project.video_path()
@@ -926,7 +926,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 image_builder.return_value.build.return_value = project.images_manifest_path()
                 video_builder.return_value.build.return_value = final_video
 
-                result = start.iniciar(
+                result = start.run_application(
                     request=_video_request(
                         pipeline_mode="full_without_subtitles",
                         operational_profile_key=OperationalProfileKey(

@@ -3,6 +3,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    DesignExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.shared.error_context import ExitKind
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
@@ -571,23 +575,23 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
             "image",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "manual",
-            options["script_source"]
+            request.route.script_source
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
         self.assertEqual(
             "script image project",
-            options["project_name"]
+            request.project_name
         )
         mode_mock.assert_called_once_with(
             include_full_without_subtitles=True,
@@ -597,7 +601,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        self.assertIs(subtitle_key, options["subtitle_profile_key"])
+        self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -661,32 +665,30 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
             "image",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "generated",
-            options["script_source"]
+            request.route.script_source
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
         self.assertEqual(
             "project",
-            options["project_name"]
+            request.project_name
         )
         self.assertEqual(
             "smart",
-            options["overlays_mode"]
+            request.route.overlays_mode
         )
-        self.assertEqual(
-            "",
-            options["design_target"]
-        )
+        self.assertIsInstance(request.route, StandardExecutionRequest)
+        self.assertNotIn("design_target", vars(request.route))
         intro_outro_mock.assert_called_once()
 
     def test_script_entry_selects_video_destination_and_reuses_video_flow(self):
@@ -751,27 +753,25 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
             "video",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "manual",
-            options["script_source"]
+            request.route.script_source
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
-        self.assertEqual(
-            "",
-            options["design_target"]
-        )
+        self.assertIsInstance(request.route, StandardExecutionRequest)
+        self.assertNotIn("design_target", vars(request.route))
         self.assertEqual(
             "script video project",
-            options["project_name"]
+            request.project_name
         )
         mode_mock.assert_called_once_with(
             include_full_without_subtitles=True,
@@ -781,7 +781,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        self.assertIs(subtitle_key, options["subtitle_profile_key"])
+        self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -847,37 +847,38 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
         mode_mock.assert_called_once()
         profile_mock.assert_called_once_with(
             "video"
         )
-        self.assertIs(subtitle_key, options["subtitle_profile_key"])
+        self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
         intro_outro_mock.assert_called_once()
         self.assertEqual(
             "video",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
-        self.assertNotIn("subtitle_config", options)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
         self.assertEqual(
             "femenina",
-            options["voice_config"]
+            request.route.voice_config_id
         )
         self.assertEqual(
             "random",
-            options["music_category"]
+            request.route.music_category
         )
         self.assertEqual(
             "smart",
-            options["overlays_mode"]
+            request.route.overlays_mode
         )
 
     def test_script_design_image_only_requests_design_image_inputs(self):
@@ -933,7 +934,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         design_target_mock.assert_called_once()
         mode_mock.assert_not_called()
@@ -947,45 +948,26 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
         self.assertEqual(
-            "image",
-            options["visual_pipeline"]
+            DesignExecutionRequest(mode="design_image"),
+            request.route
         )
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertIsNone(request.subtitle_profile_key)
         self.assertEqual(
-            "manual_design",
-            options["script_source"]
+            {"mode"},
+            set(vars(request.route))
         )
-        self.assertEqual(
-            "image",
-            options["design_target"]
-        )
-        self.assertEqual(
-            "design_image",
-            options["pipeline_mode"]
-        )
-        self.assertNotIn("subtitle_config", options)
-        self.assertIsNone(options["subtitle_profile_key"])
-        self.assertEqual(
-            "",
-            options["voice_config"]
-        )
-        self.assertIsNone(
-            options["music_category"]
-        )
-        self.assertEqual(
-            "off",
-            options["overlays_mode"]
-        )
-        self.assertEqual(
-            "imagen",
-            options["profile_component"]
+        self.assertIs(
+            ProfileComponent.IMAGEN,
+            request.operational_profile_key.component
         )
         self.assertEqual(
             "vertical",
-            options["profile_format"]
+            request.operational_profile_key.format
         )
         self.assertEqual(
             "imagen_vertical",
-            options["profile_id"]
+            request.operational_profile_key.profile_id
         )
 
     def test_script_design_video_only_requests_design_video_inputs(self):
@@ -1041,7 +1023,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         design_target_mock.assert_called_once()
         mode_mock.assert_not_called()
@@ -1055,45 +1037,26 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
         self.assertEqual(
-            "video",
-            options["visual_pipeline"]
+            DesignExecutionRequest(mode="design_video"),
+            request.route
         )
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertIsNone(request.subtitle_profile_key)
         self.assertEqual(
-            "manual_design",
-            options["script_source"]
+            {"mode"},
+            set(vars(request.route))
         )
-        self.assertEqual(
-            "video",
-            options["design_target"]
-        )
-        self.assertEqual(
-            "design_video",
-            options["pipeline_mode"]
-        )
-        self.assertNotIn("subtitle_config", options)
-        self.assertIsNone(options["subtitle_profile_key"])
-        self.assertEqual(
-            "",
-            options["voice_config"]
-        )
-        self.assertIsNone(
-            options["music_category"]
-        )
-        self.assertEqual(
-            "off",
-            options["overlays_mode"]
-        )
-        self.assertEqual(
-            "video",
-            options["profile_component"]
+        self.assertIs(
+            ProfileComponent.VIDEO,
+            request.operational_profile_key.component
         )
         self.assertEqual(
             "vertical",
-            options["profile_format"]
+            request.operational_profile_key.format
         )
         self.assertEqual(
             "video_vertical",
-            options["profile_id"]
+            request.operational_profile_key.profile_id
         )
 
     def test_audio_mode_skips_subtitles_but_keeps_voice_and_music(self):
@@ -1139,24 +1102,25 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_not_called()
         intro_outro_mock.assert_not_called()
-        self.assertNotIn("subtitle_config", options)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
         self.assertEqual(
             "femenina",
-            options["voice_config"]
+            request.route.voice_config_id
         )
         self.assertEqual(
             "calm",
-            options["music_category"]
+            request.route.music_category
         )
         self.assertEqual(
             "off",
-            options["overlays_mode"]
+            request.route.overlays_mode
         )
 
     def test_music_menu_only_exposes_disabled_or_random_selection(self):
@@ -1282,9 +1246,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "ask_clear_output",
                     return_value=False
                 ):
-                    options = controller.run()
+                    request = controller.run()
 
-                self.assertIs(subtitle_key, options["subtitle_profile_key"])
+                self.assertIs(subtitle_key, request.subtitle_profile_key)
                 music_mock.assert_called_once()
                 if pipeline_mode in {
                     "full",
@@ -1293,16 +1257,17 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     intro_outro_mock.assert_called_once()
                     self.assertEqual(
                         "smart",
-                        options["overlays_mode"]
+                        request.route.overlays_mode
                     )
                 else:
                     overlays_mock.assert_not_called()
                     intro_outro_mock.assert_not_called()
                     self.assertEqual(
                         "off",
-                        options["overlays_mode"]
+                        request.route.overlays_mode
                     )
-                self.assertNotIn("subtitle_config", options)
+                self.assertNotIn("subtitle_config", vars(request))
+                self.assertNotIn("subtitle_config", vars(request.route))
 
     def test_full_without_subtitles_skips_subtitle_selection(self):
         controller = RunController()
@@ -1355,9 +1320,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False,
         ):
-            options = controller.run()
+            request = controller.run()
 
-        self.assertNotIn("subtitle_config", options)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
 
     def test_overlay_menu_returns_on_when_enabled(
         self
@@ -1466,13 +1432,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "ask_clear_output",
                     return_value=False
                 ):
-                    options = controller.run()
+                    request = controller.run()
 
                 overlays_mock.assert_not_called()
                 intro_outro_mock.assert_not_called()
                 self.assertEqual(
                     "off",
-                    options["overlays_mode"]
+                    request.route.overlays_mode
                 )
 
 

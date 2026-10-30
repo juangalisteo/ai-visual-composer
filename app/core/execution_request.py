@@ -1,14 +1,15 @@
 """Pure typed transport contracts for application execution decisions.
 
-This module deliberately has no runtime integration yet.  It adapts the
-current controller dictionary without reading or writing process environment,
-loading configuration, or invoking pipelines.
+``RunController`` builds an ``ApplicationExecutionRequest`` from the menu
+choices and ``run_application`` dispatches it. The contracts only validate
+their own fields: they do not read or write process environment, load
+configuration, or invoke pipelines.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Mapping, TypeAlias
+from typing import TypeAlias
 
 from app.modules.studio import (
     StudioInputMode,
@@ -203,117 +204,6 @@ class ApplicationExecutionRequest:
         )
 
 
-def adapt_legacy_run_options(
-    options: Mapping[str, object],
-) -> ApplicationExecutionRequest:
-    """Adapt the current controller mapping without consulting runtime state."""
-    if not isinstance(options, Mapping):
-        raise TypeError("options debe ser un mapping de opciones de ejecución.")
-
-    pipeline_mode = _require_non_empty_text(
-        options.get("pipeline_mode"),
-        "pipeline_mode",
-    )
-    operational_profile_key = _adapt_operational_profile_key(options)
-    subtitle_profile_key = _require_subtitle_profile_key(
-        options.get("subtitle_profile_key"),
-    )
-    route = _adapt_route(
-        options=options,
-        pipeline_mode=pipeline_mode,
-    )
-    return ApplicationExecutionRequest(
-        project_name=_require_non_empty_text(
-            options.get("project_name"),
-            "project_name",
-        ),
-        clear_output=_require_bool(options.get("clear_output"), "clear_output"),
-        operational_profile_key=operational_profile_key,
-        subtitle_profile_key=subtitle_profile_key,
-        route=route,
-    )
-
-
-def _adapt_route(
-    *,
-    options: Mapping[str, object],
-    pipeline_mode: str,
-) -> ExecutionRoute:
-    if pipeline_mode == "studio":
-        return StudioExecutionRequest(
-            input_mode=options.get("studio_input_mode"),
-            plan=_adapt_studio_plan(options),
-            video_path=_adapt_optional_path(options.get("studio_video_path")),
-            subtitle_path=_adapt_optional_path(
-                options.get("studio_subtitle_path"),
-            ),
-            music_path=_adapt_optional_path(options.get("studio_music_path")),
-            subtitle_original=_coerce_bool_default(
-                options.get("studio_subtitle_original"),
-                default=False,
-                name="studio_subtitle_original",
-            ),
-            intro_outro_plan=_require_intro_outro_plan(
-                options.get("intro_outro_selection"),
-            ),
-        )
-    if pipeline_mode in {"design_image", "design_video"}:
-        return DesignExecutionRequest(mode=pipeline_mode)
-    return StandardExecutionRequest(
-        pipeline_mode=pipeline_mode,
-        visual_pipeline=options.get("visual_pipeline"),
-        script_source=options.get("script_source"),
-        voice_config_id=_blank_to_none(options.get("voice_config")),
-        music_category=_blank_to_none(options.get("music_category")),
-        overlays_mode=_blank_to_none(options.get("overlays_mode")),
-        intro_outro_plan=_require_intro_outro_plan(
-            options.get("intro_outro_selection"),
-        ),
-    )
-
-
-def _adapt_operational_profile_key(
-    options: Mapping[str, object],
-) -> OperationalProfileKey | None:
-    existing_key = options.get("operational_profile_key")
-    if existing_key is not None:
-        if not isinstance(existing_key, OperationalProfileKey):
-            raise TypeError(
-                "operational_profile_key debe ser OperationalProfileKey."
-            )
-        return existing_key
-
-    values = tuple(
-        _blank_to_none(options.get(name))
-        for name in (
-            "profile_component",
-            "profile_format",
-            "profile_id",
-        )
-    )
-    if not any(values):
-        return None
-    if not all(values):
-        raise ValueError("La identidad operacional legacy está incompleta.")
-    return OperationalProfileKey(*values)
-
-
-def _adapt_studio_plan(options: Mapping[str, object]) -> StudioExecutionPlan | None:
-    plans = tuple(
-        value
-        for value in (
-            options.get("studio_video_audio_srt_plan"),
-            options.get("studio_intro_outro_plan"),
-            options.get("studio_montage_plan"),
-            options.get("studio_subtitle_export_plan"),
-        )
-        if value is not None
-    )
-    if len(plans) > 1:
-        raise ValueError("Una ruta STUDIO no puede transportar varios planes.")
-    return plans[0] if plans else None
-
-
 def _validate_studio_plan_for_input_mode(
     input_mode: StudioInputMode,
     plan: StudioExecutionPlan | None,
@@ -339,12 +229,6 @@ def _validate_route_identity(
     route: ExecutionRoute,
     operational_profile_key: OperationalProfileKey | None,
 ) -> None:
-    if isinstance(route, StandardExecutionRequest):
-        if route.pipeline_mode in {"studio", "design_image", "design_video"}:
-            raise ValueError(
-                "La ruta estándar no admite modos STUDIO ni DESIGN."
-            )
-        return
     if isinstance(route, DesignExecutionRequest):
         if operational_profile_key is None:
             raise ValueError("DESIGN requiere identidad operacional.")
@@ -404,50 +288,6 @@ def _coerce_technical_id(value: object, name: str) -> str | None:
     return technical_id
 
 
-def _require_bool(value: object, name: str) -> bool:
-    if not isinstance(value, bool):
-        raise TypeError(f"{name} debe ser booleano.")
-    return value
-
-
-def _coerce_bool_default(value: object, *, default: bool, name: str) -> bool:
-    if value is None:
-        return default
-    return _require_bool(value, name)
-
-
-def _require_subtitle_profile_key(value: object) -> SubtitleProfileKey | None:
-    if value is None:
-        return None
-    if not isinstance(value, SubtitleProfileKey):
-        raise TypeError("subtitle_profile_key debe ser SubtitleProfileKey o None.")
-    return value
-
-
-def _require_intro_outro_plan(value: object) -> IntroOutroPlan | None:
-    if value is None:
-        return None
-    if not isinstance(value, IntroOutroPlan):
-        raise TypeError("intro_outro_selection debe ser IntroOutroPlan o None.")
-    return value
-
-
 def _require_optional_path(value: object, name: str) -> None:
     if value is not None and not isinstance(value, Path):
         raise TypeError(f"{name} debe ser Path o None.")
-
-
-def _adapt_optional_path(value: object) -> Path | None:
-    if value is None or value == "":
-        return None
-    if isinstance(value, Path):
-        return value
-    if isinstance(value, str):
-        return Path(value)
-    raise TypeError("Las rutas legacy deben ser texto, Path o None.")
-
-
-def _blank_to_none(value: object) -> object | None:
-    if isinstance(value, str) and not value.strip():
-        return None
-    return value

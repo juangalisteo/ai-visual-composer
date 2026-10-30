@@ -8,6 +8,10 @@ from unittest.mock import patch
 import main
 import app.shared.profile_identity as profile_identity
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
@@ -887,37 +891,42 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
-            "video",
-            options["profile_component"]
+            ProfileComponent.VIDEO,
+            request.operational_profile_key.component
         )
         self.assertEqual(
             "vertical",
-            options["profile_format"]
+            request.operational_profile_key.format
         )
         self.assertEqual(
             "video_vertical",
-            options["profile_id"]
+            request.operational_profile_key.profile_id
         )
-        self.assertNotIn("profile_path", options)
+        self.assertNotIn("profile_path", vars(request))
+        self.assertNotIn("profile_path", vars(request.route))
 
     def test_main_transports_only_structured_profile_identity(self):
-        options = {
-            "profile_component": "video",
-            "profile_format": "vertical",
-            "profile_id": "video_vertical",
-            "voice_config": "femenina",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "profile identity",
-            "visual_pipeline": "video",
-            "script_source": "generated",
-            "design_target": "",
-            "pipeline_mode": "audio",
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="profile identity",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                ProfileComponent.VIDEO,
+                "vertical",
+                "video_vertical",
+            ),
+            subtitle_profile_key=None,
+            route=StandardExecutionRequest(
+                pipeline_mode="audio",
+                visual_pipeline="video",
+                script_source="generated",
+                voice_config_id="femenina",
+                music_category=None,
+                overlays_mode="off",
+            ),
+        )
 
         with patch.dict(
             os.environ,
@@ -926,9 +935,9 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         ), patch(
             "main.RunController"
         ) as controller_mock, patch(
-            "main.iniciar"
-        ) as iniciar_mock:
-            controller_mock.return_value.run.return_value = options
+            "main.run_application"
+        ) as run_application_mock:
+            controller_mock.return_value.run.return_value = controller_request
 
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
@@ -948,40 +957,42 @@ class ProfileIdentityResolverTest(unittest.TestCase):
                 "MC_SUBTITLE_CONFIG",
                 os.environ
             )
-            iniciar_mock.assert_called_once()
-            request = iniciar_mock.call_args.kwargs["request"]
+            run_application_mock.assert_called_once()
+            request = run_application_mock.call_args.kwargs["request"]
             self.assertEqual(profile_key, request.operational_profile_key)
-            self.assertEqual({"request"}, set(iniciar_mock.call_args.kwargs))
+            self.assertEqual({"request"}, set(run_application_mock.call_args.kwargs))
 
     def test_main_transports_design_subtitle_identity_without_a_profile_path(self):
         subtitle_profile_key = SubtitleProfileKey("imagen", "vertical", "modo_conciencia_palabra_unica", "design",
         )
-        options = {
-            "profile_component": "imagen",
-            "profile_format": "vertical",
-            "profile_id": "imagen_vertical",
-            "profile_family": "system",
-            "subtitle_profile_key": subtitle_profile_key,
-            "voice_config": "",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "design identity",
-            "visual_pipeline": "image",
-            "script_source": "generated",
-            "design_target": "",
-            "pipeline_mode": "audio",
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="design identity",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                ProfileComponent.IMAGEN,
+                "vertical",
+                "imagen_vertical",
+            ),
+            subtitle_profile_key=subtitle_profile_key,
+            route=StandardExecutionRequest(
+                pipeline_mode="audio",
+                visual_pipeline="image",
+                script_source="generated",
+                voice_config_id=None,
+                music_category=None,
+                overlays_mode="off",
+            ),
+        )
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
-        ) as controller_mock, patch("main.iniciar") as iniciar_mock:
-            controller_mock.return_value.run.return_value = options
+        ) as controller_mock, patch("main.run_application") as run_application_mock:
+            controller_mock.return_value.run.return_value = controller_request
 
             self.assertEqual(0, main.main())
             self.assertNotIn("MC_PROFILE_FAMILY", os.environ)
             self.assertNotIn("MC_PROFILE_PATH", os.environ)
-        iniciar_mock.assert_called_once()
-        request = iniciar_mock.call_args.kwargs["request"]
+        run_application_mock.assert_called_once()
+        request = run_application_mock.call_args.kwargs["request"]
         self.assertIs(subtitle_profile_key, request.subtitle_profile_key)
 
     def test_productive_runtime_has_no_profile_path_environment_contract(self):

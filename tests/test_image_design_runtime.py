@@ -160,7 +160,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                 ):
                     config_manager.return_value.get_profile_config.return_value = None
                     config_manager.return_value.get_ai_config.return_value = None
-                    result = start.iniciar(request=request)
+                    result = start.run_application(request=request)
 
                 config_manager.assert_called_once_with(
                     operational_profile_key=operational_profile_key

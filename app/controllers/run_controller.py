@@ -29,6 +29,12 @@ from app.controllers.interaction.studio.video_audio_srt_selection import (
     StudioVideoAudioSrtSelection,
 )
 from app.controllers.interaction.terminal import Terminal
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+    StandardExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.shared.error_context import (
     ErrorContext,
     ErrorSeverity,
@@ -232,7 +238,7 @@ class RunController:
         else:
             profile = self.select_profile(profile_scope)
         profile_key = profile.get("profile_key")
-        voice_config = ""
+        voice_config = None
         music_category = None
         overlays_mode = "off"
         intro_outro_selection = None
@@ -254,36 +260,28 @@ class RunController:
 
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
-        return {
-            "visual_pipeline": visual_pipeline,
-            "script_source": script_source,
-            "design_target": design_target,
-            "pipeline_mode": pipeline_mode,
-            "profile_component": (
-                profile_key.component.value
-                if profile_key
-                else ""
-            ),
-            "profile_format": (
-                profile_key.format
-                if profile_key
-                else ""
-            ),
-            "profile_id": (
-                profile_key.profile_id
-                if profile_key
-                else ""
-            ),
-            "subtitle_profile_key": profile.get(
-                "subtitle_profile_key"
-            ),
-            "voice_config": voice_config,
-            "music_category": music_category,
-            "overlays_mode": overlays_mode,
-            "intro_outro_selection": intro_outro_selection,
-            "project_name": project_name,
-            "clear_output": clear_output
-        }
+        if pipeline_mode in {
+            "design_image",
+            "design_video"
+        }:
+            route = DesignExecutionRequest(mode=pipeline_mode)
+        else:
+            route = StandardExecutionRequest(
+                pipeline_mode=pipeline_mode,
+                visual_pipeline=visual_pipeline,
+                script_source=script_source,
+                voice_config_id=voice_config,
+                music_category=music_category,
+                overlays_mode=overlays_mode,
+                intro_outro_plan=intro_outro_selection,
+            )
+        return ApplicationExecutionRequest(
+            project_name=project_name,
+            clear_output=clear_output,
+            operational_profile_key=profile_key,
+            subtitle_profile_key=profile.get("subtitle_profile_key"),
+            route=route,
+        )
 
     def select_visual_pipeline(self):
         return self.navigation.select_visual_pipeline(
@@ -581,42 +579,33 @@ class RunController:
                 subtitle_path=subtitle_path,
             )
             plan = self.select_studio_video_audio_srt_audio_tail(plan)
-            return {
-                "visual_pipeline": "studio",
-                "script_source": "external",
-                "design_target": "",
-                "pipeline_mode": "studio",
-                "studio_input_mode": input_mode,
-                "studio_video_audio_srt_plan": plan,
-                "voice_config": "",
-                "music_category": None,
-                "project_name": self.ask_project_name(),
-                "clear_output": self.ask_clear_output(),
-                **self._studio_operational_profile_options(profile_key),
-                **(
-                    {"subtitle_profile_key": subtitle_profile_key}
-                    if subtitle_profile_key is not None
-                    else {}
+            project_name = self.ask_project_name()
+            clear_output = self.ask_clear_output()
+            return ApplicationExecutionRequest(
+                project_name=project_name,
+                clear_output=clear_output,
+                operational_profile_key=profile_key,
+                subtitle_profile_key=subtitle_profile_key,
+                route=StudioExecutionRequest(
+                    input_mode=input_mode,
+                    plan=plan,
                 ),
-            }
+            )
         if input_mode == StudioInputMode.INTRO_OUTRO.value:
             profile_key, _ = self._select_studio_operational_profile()
             intro_outro_plan = self.select_studio_intro_outro_plan(profile_key)
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
-            return {
-                "visual_pipeline": "studio",
-                "script_source": "external",
-                "design_target": "",
-                "pipeline_mode": "studio",
-                "studio_input_mode": input_mode,
-                "studio_intro_outro_plan": intro_outro_plan,
-                "voice_config": "",
-                "music_category": None,
-                "project_name": project_name,
-                "clear_output": clear_output,
-                **self._studio_operational_profile_options(profile_key),
-            }
+            return ApplicationExecutionRequest(
+                project_name=project_name,
+                clear_output=clear_output,
+                operational_profile_key=profile_key,
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=input_mode,
+                    plan=intro_outro_plan,
+                ),
+            )
         if input_mode == StudioInputMode.MONTAJE_VIDEOS.value:
             profile_key, studio_profile = self._select_studio_operational_profile()
             montage_plan = self.select_studio_montage_plan(
@@ -627,21 +616,18 @@ class RunController:
             intro_outro_selection = self.select_studio_intro_outro(profile_key)
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
-            return {
-                "visual_pipeline": "studio",
-                "script_source": "external",
-                "design_target": "",
-                "pipeline_mode": "studio",
-                "studio_input_mode": input_mode,
-                "studio_montage_plan": montage_plan,
-                "studio_music_path": str(music_path) if music_path else None,
-                "voice_config": "",
-                "music_category": None,
-                "intro_outro_selection": intro_outro_selection,
-                "project_name": project_name,
-                "clear_output": clear_output,
-                **self._studio_operational_profile_options(profile_key),
-            }
+            return ApplicationExecutionRequest(
+                project_name=project_name,
+                clear_output=clear_output,
+                operational_profile_key=profile_key,
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=input_mode,
+                    plan=montage_plan,
+                    music_path=music_path,
+                    intro_outro_plan=intro_outro_selection,
+                ),
+            )
         if input_mode == StudioInputMode.EXPORTAR_SRT.value:
             export_mode = self.select_studio_subtitle_export_mode()
             export_plan = self.select_studio_subtitle_export_plan(export_mode)
@@ -653,19 +639,16 @@ class RunController:
                 subtitle_key = studio_selection.subtitle.subtitle_key
             project_name = self.ask_project_name()
             clear_output = self.ask_clear_output()
-            return {
-                "visual_pipeline": "studio",
-                "script_source": "external",
-                "design_target": "",
-                "pipeline_mode": "studio",
-                "studio_input_mode": input_mode,
-                "studio_subtitle_export_plan": export_plan,
-                "voice_config": "",
-                "music_category": None,
-                "project_name": project_name,
-                "clear_output": clear_output,
-                **self._studio_profile_options(profile_key, subtitle_key),
-            }
+            return ApplicationExecutionRequest(
+                project_name=project_name,
+                clear_output=clear_output,
+                operational_profile_key=profile_key,
+                subtitle_profile_key=subtitle_key,
+                route=StudioExecutionRequest(
+                    input_mode=input_mode,
+                    plan=export_plan,
+                ),
+            )
         studio_selection = self._select_studio_profile_selection(input_mode)
         profile_key = studio_selection.operational.operational_key
         studio_profile = studio_selection.operational.studio_profile
@@ -680,27 +663,20 @@ class RunController:
         project_name = self.ask_project_name()
         clear_output = self.ask_clear_output()
 
-        return {
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_subtitle_original": subtitle_original,
-            "studio_input_mode": input_mode,
-            "studio_video_path": str(prepared_input.video_path),
-            "studio_subtitle_path": (
-                str(prepared_input.subtitle_path)
-                if prepared_input.subtitle_path is not None
-                else None
+        return ApplicationExecutionRequest(
+            project_name=project_name,
+            clear_output=clear_output,
+            operational_profile_key=profile_key,
+            subtitle_profile_key=subtitle_key,
+            route=StudioExecutionRequest(
+                input_mode=input_mode,
+                video_path=prepared_input.video_path,
+                subtitle_path=prepared_input.subtitle_path,
+                music_path=music_path,
+                subtitle_original=subtitle_original,
+                intro_outro_plan=intro_outro_selection,
             ),
-            "studio_music_path": str(music_path) if music_path else None,
-            "voice_config": "",
-            "music_category": None,
-            "intro_outro_selection": intro_outro_selection,
-            "project_name": project_name,
-            "clear_output": clear_output,
-            **self._studio_profile_options(profile_key, subtitle_key),
-        }
+        )
 
     def _select_studio_profile_selection(self, input_mode=None):
         profiles_by_format = self._studio_operational_profiles_by_format()
@@ -775,22 +751,6 @@ class RunController:
             family_label=self._family_label,
             presentation_families=self._presentation_families,
         )
-
-    def _studio_profile_options(self, profile_key, subtitle_key=None):
-        options = self._studio_operational_profile_options(profile_key)
-        if subtitle_key is not None:
-            options["subtitle_profile_key"] = subtitle_key
-        return options
-
-    @staticmethod
-    def _studio_operational_profile_options(profile_key):
-        if profile_key is None:
-            return {}
-        return {
-            "profile_component": profile_key.component.value,
-            "profile_format": profile_key.format,
-            "profile_id": profile_key.profile_id,
-        }
 
     def _exit_application(self):
         raise OperationalError(

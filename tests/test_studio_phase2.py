@@ -13,7 +13,7 @@ from app.core.execution_request import (
     StudioExecutionRequest,
 )
 from app.core.start import (
-    iniciar,
+    run_application,
 )
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.managers.project_manager import ProjectManager
@@ -165,7 +165,7 @@ class StudioPhase2Test(unittest.TestCase):
         ) as projects, patch("app.modules.standard.execution_coordinator.VideoBuilder") as video, patch(
             "app.modules.standard.execution_coordinator.SrtOptimizer"
         ) as optimizer:
-            iniciar(request=request)
+            run_application(request=request)
 
         studio.assert_called_once()
         self.assertEqual(

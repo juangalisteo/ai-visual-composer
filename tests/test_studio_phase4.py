@@ -19,7 +19,7 @@ from app.core.execution_request import (
     ApplicationExecutionRequest,
     StudioExecutionRequest,
 )
-from app.core.start import iniciar
+from app.core.start import run_application
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.audio.music_selector import MusicSelector
 from app.modules.studio import (
@@ -178,30 +178,27 @@ class StudioPhase4Test(unittest.TestCase):
     def test_main_and_start_transport_selected_music(self):
         selected = Path("assets/music/ambient/ambient_001.mp3")
         final_output = Path("output/studio/video/studio.mp4")
-        options = {
-            "profile_component": "studio",
-            "profile_format": "vertical",
-            "profile_id": "studio_vertical",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio music",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": str(selected),
-            "studio_input_mode": "srt_video",
-            "intro_outro_selection": None,
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio music",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "studio", "vertical", "studio_vertical"
+            ),
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                music_path=selected,
+                intro_outro_plan=None,
+            ),
+        )
         with patch.dict("os.environ", {}, clear=True), patch(
             "main.RunController"
         ) as controller, patch(
-            "main.iniciar"
+            "main.run_application"
         ) as start, patch("main.OutputManager"), patch(
             "builtins.print"
         ) as print_mock:
-            controller.return_value.run.return_value = options
+            controller.return_value.run.return_value = controller_request
             start.return_value = SimpleNamespace(output_path=final_output)
             self.assertEqual(0, main.main())
         printed = "\n".join(
@@ -222,7 +219,7 @@ class StudioPhase4Test(unittest.TestCase):
         with patch.object(
             StudioExecutionCoordinator, "run_standard"
         ) as studio, patch("app.core.start.ProjectManager") as project_manager:
-            iniciar(request=request)
+            run_application(request=request)
         studio.assert_called_once()
         self.assertEqual(selected, studio.call_args.kwargs["music_path"])
         self.assertEqual("srt_video", studio.call_args.kwargs["input_mode"])

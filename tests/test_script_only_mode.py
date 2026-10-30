@@ -297,7 +297,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     with self.assertRaises(
                         FileNotFoundError
                     ):
-                        start.iniciar(
+                        start.run_application(
                             request=_standard_request(
                                 project_name="guion component",
                                 pipeline_mode="audio",
@@ -412,24 +412,25 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     {},
                     clear=False
                 ):
-                    run_controller.return_value.run.return_value = {
-                        "visual_pipeline": "image",
-                        "script_source": "manual",
-                        "pipeline_mode": "full",
-                        "profile_path": (
-                            "config/profiles/guion/vertical/estandar/"
-                            "perfil_guion_vertical.json"
-                        ),
-                        "subtitle_profile_key": (
-                            FakeConfigManager.subtitle_profile_key
-                        ),
-                        "voice_config": "masculina",
-                        "music_category": None,
-                        "overlays_mode": "smart",
-                        "intro_outro_selection": intro_outro_selection,
-                        "project_name": "guion component",
-                        "clear_output": True
-                    }
+                    run_controller.return_value.run.return_value = (
+                        ApplicationExecutionRequest(
+                            project_name="guion component",
+                            clear_output=True,
+                            operational_profile_key=None,
+                            subtitle_profile_key=(
+                                FakeConfigManager.subtitle_profile_key
+                            ),
+                            route=StandardExecutionRequest(
+                                pipeline_mode="full",
+                                visual_pipeline="image",
+                                script_source="manual",
+                                voice_config_id="masculina",
+                                music_category=None,
+                                overlays_mode="smart",
+                                intro_outro_plan=intro_outro_selection,
+                            ),
+                        )
+                    )
                     audio_mixer.return_value.build.return_value = Path(
                         "output/guion component/audio/audio_final.mp3"
                     )
@@ -574,26 +575,26 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     {},
                     clear=False
                 ):
-                    run_controller.return_value.run.return_value = {
-                        "visual_pipeline": "video",
-                        "script_source": "manual",
-                        "pipeline_mode": "full",
-                        "profile_component": "guion",
-                        "profile_format": (
-                            FakeConfigManager.script_operational_key.format
-                        ),
-                        "profile_id": (
-                            FakeConfigManager.script_operational_key.profile_id
-                        ),
-                        "subtitle_profile_key": (
-                            FakeConfigManager.subtitle_profile_key
-                        ),
-                        "voice_config": "masculina",
-                        "music_category": None,
-                        "overlays_mode": "smart",
-                        "project_name": "guion video",
-                        "clear_output": False
-                    }
+                    run_controller.return_value.run.return_value = (
+                        ApplicationExecutionRequest(
+                            project_name="guion video",
+                            clear_output=False,
+                            operational_profile_key=(
+                                FakeConfigManager.script_operational_key
+                            ),
+                            subtitle_profile_key=(
+                                FakeConfigManager.subtitle_profile_key
+                            ),
+                            route=StandardExecutionRequest(
+                                pipeline_mode="full",
+                                visual_pipeline="video",
+                                script_source="manual",
+                                voice_config_id="masculina",
+                                music_category=None,
+                                overlays_mode="smart",
+                            ),
+                        )
+                    )
                     audio_mixer.return_value.build.return_value = Path(
                         "output/guion video/audio/audio_final.mp3"
                     )
@@ -725,7 +726,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     )
                     video_builder.return_value.build.return_value = final_video
 
-                    result = start.iniciar(
+                    result = start.run_application(
                         request=_standard_request(
                             project_name="full without subtitles",
                             pipeline_mode="full_without_subtitles",
@@ -826,7 +827,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "output/full test/video/full test.mp4"
                     )
 
-                    result = start.iniciar(
+                    result = start.run_application(
                         request=_standard_request(
                             project_name="full test",
                             pipeline_mode="full",
@@ -937,7 +938,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "output/full generated source/video/full generated source.mp4"
                     )
 
-                    start.iniciar(
+                    start.run_application(
                         request=_standard_request(
                             project_name="full generated source",
                             pipeline_mode="full",

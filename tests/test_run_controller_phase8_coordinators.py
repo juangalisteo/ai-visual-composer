@@ -13,8 +13,7 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.execution_request import adapt_legacy_run_options
-from app.modules.studio import StudioInputMode
+from app.modules.studio import StudioInputMode, StudioVideoAudioSrtPlan
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
@@ -107,40 +106,65 @@ def test_studio_coordinator_transports_contract_to_final_options_without_state()
     controller.ask_project_name = Mock(return_value="studio")
     controller.ask_clear_output = Mock(return_value=False)
 
-    options = controller.run()
+    request = controller.run()
 
-    assert options["profile_component"] == "studio"
-    assert options["profile_format"] == "vertical"
-    assert options["profile_id"] == "studio_vertical"
-    assert options["subtitle_profile_key"].profile_id == "subtitle_fixture"
-    assert options["subtitle_profile_key"] is selection.subtitle.subtitle_key
-    assert options["studio_subtitle_original"] is True
-    assert options["studio_video_path"] == "input\\studio\\srt_video\\source.mp4"
-    assert options["studio_subtitle_path"] == "input\\studio\\srt_video\\source.srt"
+    assert request.operational_profile_key.component is ProfileComponent.STUDIO
+    assert request.operational_profile_key.format == "vertical"
+    assert request.operational_profile_key.profile_id == "studio_vertical"
+    assert request.subtitle_profile_key.profile_id == "subtitle_fixture"
+    assert request.subtitle_profile_key is selection.subtitle.subtitle_key
+    assert request.route.subtitle_original is True
+    assert request.route.video_path == Path("input/studio/srt_video/source.mp4")
+    assert request.route.subtitle_path == Path("input/studio/srt_video/source.srt")
     assert not hasattr(controller, "_active_studio_subtitle_key")
     assert not hasattr(controller, "_active_studio_subtitle_original")
 
 
-def test_studio_profile_options_are_explicit():
+def test_studio_request_carries_explicit_profile_keys():
     selection = _studio_selection()
     controller = RunController()
+    controller.select_studio_input_mode = Mock(
+        return_value=StudioInputMode.SRT_VIDEO.value
+    )
+    controller._select_studio_profile_selection = Mock(return_value=selection)
+    controller.select_studio_input_files = Mock(
+        return_value=SimpleNamespace(
+            video_path=Path("input/studio/srt_video/source.mp4"),
+            subtitle_path=Path("input/studio/srt_video/source.srt"),
+        )
+    )
+    controller.select_studio_music = Mock(return_value=None)
+    controller.select_studio_intro_outro = Mock(return_value=None)
+    controller.ask_project_name = Mock(return_value="studio")
+    controller.ask_clear_output = Mock(return_value=False)
 
-    assert controller._studio_profile_options(
-        selection.operational.operational_key,
-        selection.subtitle.subtitle_key,
-    ) == {
-        "profile_component": "studio",
-        "profile_format": "vertical",
-        "profile_id": "studio_vertical",
-        "subtitle_profile_key": selection.subtitle.subtitle_key,
-    }
-    assert controller._studio_profile_options(
-        selection.operational.operational_key
-    ) == {
-        "profile_component": "studio",
-        "profile_format": "vertical",
-        "profile_id": "studio_vertical",
-    }
+    request = controller._run_studio()
+
+    assert request.operational_profile_key is selection.operational.operational_key
+    assert request.subtitle_profile_key is selection.subtitle.subtitle_key
+
+    plan = StudioVideoAudioSrtPlan(
+        video_path=Path("input/source.mp4"),
+        audio_path=Path("input/audio.mp3"),
+    )
+    controller._print = Mock()
+    controller._select_from_list = Mock(return_value=False)
+    controller.select_studio_input_mode = Mock(
+        return_value=StudioInputMode.VIDEO_AUDIO_SRT.value
+    )
+    controller._select_studio_operational_profile = Mock(
+        return_value=(selection.operational.operational_key, Mock())
+    )
+    controller.select_studio_video_audio_srt_inputs = Mock(
+        return_value=(plan.video_path, plan.audio_path)
+    )
+    controller.select_studio_video_audio_srt_plan = Mock(return_value=plan)
+    controller.select_studio_video_audio_srt_audio_tail = Mock(return_value=plan)
+
+    request = controller._run_studio()
+
+    assert request.operational_profile_key is selection.operational.operational_key
+    assert request.subtitle_profile_key is None
 
 
 def test_removed_state_has_no_runtime_readers():
@@ -230,14 +254,11 @@ def test_modes_without_subtitles_do_not_ask_subtitle_profile(
         pipeline_mode=pipeline_mode,
     )
 
-    options = controller.run()
+    request = controller.run()
 
     subtitle_selection.select_profile_subtitle_profile.assert_not_called()
-    assert options["pipeline_mode"] == pipeline_mode
-    assert options["subtitle_profile_key"] is None
-    request = adapt_legacy_run_options(options)
-    assert request.subtitle_profile_key is None
     assert request.route.pipeline_mode == pipeline_mode
+    assert request.subtitle_profile_key is None
 
 
 @pytest.mark.parametrize(
@@ -250,9 +271,9 @@ def test_modes_with_subtitles_still_ask_subtitle_profile(pipeline_mode):
         pipeline_mode=pipeline_mode,
     )
 
-    options = controller.run()
+    request = controller.run()
 
     subtitle_selection.select_profile_subtitle_profile.assert_called_once()
-    assert options["subtitle_profile_key"] is (
+    assert request.subtitle_profile_key is (
         subtitle_selection.select_profile_subtitle_profile.return_value
     )
