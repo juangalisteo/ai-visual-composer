@@ -166,7 +166,8 @@ class StudioExecutionCoordinator:
             if not media_info.has_audio:
                 raise ValueError(
                     "El video seleccionado no contiene una pista de audio. "
-                    "SOLO VIDEO necesita audio para generar los subtítulos."
+                    f"{StudioInputMode.VIDEO.label} "
+                    "necesita audio para generar los subtítulos."
                 )
 
         return StudioPreparation(
@@ -184,7 +185,8 @@ class StudioExecutionCoordinator:
         """Validate the structured STUDIO montage boundary."""
         if not isinstance(montage_plan, StudioMontagePlan):
             raise TypeError(
-                "MONTAJE DE VÍDEOS requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.MONTAJE_VIDEOS.label} "
+                "requiere un plan STUDIO estructurado."
             )
         return montage_plan
 
@@ -210,7 +212,8 @@ class StudioExecutionCoordinator:
             and input_mode != StudioInputMode.SRT_VIDEO.value
         ):
             raise ValueError(
-                "ORIGINAL solo está disponible para STUDIO SRT + VIDEO."
+                "ORIGINAL solo está disponible para STUDIO "
+                f"{StudioInputMode.SRT_VIDEO.label}."
             )
         preparation_options = {"input_mode": input_mode}
         if subtitle_profile_key is not None:
@@ -359,21 +362,24 @@ class StudioExecutionCoordinator:
         """Run the structured STUDIO VIDEO + AUDIO + SRT route."""
         if not isinstance(plan, StudioVideoAudioSrtPlan):
             raise TypeError(
-                "VIDEO + AUDIO SRT requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "requiere un plan STUDIO estructurado."
             )
         if (
             plan.subtitle_path is None
             and subtitle_profile_key is not None
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT sin SRT no admite estilo de subtítulos."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "sin SRT no admite estilo de subtítulos."
             )
         if (
             plan.subtitle_path is not None
             and not subtitle_profile_key
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT con SRT requiere un estilo de subtítulos."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "con SRT requiere un estilo de subtítulos."
             )
 
         project = project or ProjectManager()
@@ -385,7 +391,8 @@ class StudioExecutionCoordinator:
             or profile_key.component is not ProfileComponent.STUDIO
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT requiere identidad STUDIO estructurada."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "requiere identidad STUDIO estructurada."
             )
         profile = (profile_loader or StudioProfileLoader()).load(
             config.get_profile_config(),
@@ -459,7 +466,8 @@ class StudioExecutionCoordinator:
         """Run the structured STUDIO subtitle export route."""
         if not isinstance(export_plan, StudioSubtitleExportPlan):
             raise TypeError(
-                "EXPORTAR SRT requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.EXPORTAR_SRT.label} "
+                "requiere un plan STUDIO estructurado."
             )
         project = project or ProjectManager()
         project.setup()
@@ -514,7 +522,8 @@ class StudioExecutionCoordinator:
         """Run the structured STUDIO INTRO / OUTRO route."""
         if not isinstance(intro_outro_plan, StudioIntroOutroPlan):
             raise TypeError(
-                "INTRO / OUTRO requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.INTRO_OUTRO.label} "
+                "requiere un plan STUDIO estructurado."
             )
         project = project or ProjectManager()
         project.setup()
@@ -525,7 +534,8 @@ class StudioExecutionCoordinator:
             or profile_key.component is not ProfileComponent.STUDIO
         ):
             raise ValueError(
-                "INTRO / OUTRO requiere identidad STUDIO estructurada."
+                f"{StudioInputMode.INTRO_OUTRO.label} "
+                "requiere identidad STUDIO estructurada."
             )
         profile = (profile_loader or StudioProfileLoader()).load(
             config.get_profile_config(),

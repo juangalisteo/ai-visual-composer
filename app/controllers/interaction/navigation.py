@@ -98,21 +98,17 @@ class Navigation:
 
     def select_studio_input_mode(self, writer=None, selector=None):
         modes = (
-            StudioInputMode.VIDEO.value,
-            StudioInputMode.SRT_VIDEO.value,
-            StudioInputMode.INTRO_OUTRO.value,
-            StudioInputMode.MONTAJE_VIDEOS.value,
-            StudioInputMode.VIDEO_AUDIO_SRT.value,
-            StudioInputMode.EXPORTAR_SRT.value,
+            StudioInputMode.VIDEO,
+            StudioInputMode.SRT_VIDEO,
+            StudioInputMode.INTRO_OUTRO,
+            StudioInputMode.MONTAJE_VIDEOS,
+            StudioInputMode.VIDEO_AUDIO_SRT,
+            StudioInputMode.EXPORTAR_SRT,
         )
         self._write("\nENTRADA\n", writer)
-        self._write("1. SOLO VIDEO", writer)
-        self._write("2. SRT + VIDEO", writer)
-        self._write("3. INTRO / OUTRO", writer)
-        self._write("4. MONTAJE VÍDEOS", writer)
-        self._write("5. VIDEO + AUDIO | SRT", writer)
-        self._write("6. EXPORTAR SRT ➜  VIDEO", writer)
-        return self._select(modes, selector)
+        for index, mode in enumerate(modes, start=1):
+            self._write(f"{index}. {mode.label}", writer)
+        return self._select(tuple(mode.value for mode in modes), selector)
 
     def select_studio_subtitle_export_mode(self, writer=None, selector=None):
         modes = (

@@ -38,18 +38,13 @@ def _format_label(profile_format):
 
 
 def _print_render_summary(request, result, elapsed_seconds):
-    """Summary of SRT + VIDEO, VIDEO and VIDEO + AUDIO SRT."""
+    """Summary of SRT + VIDEO, SOLO VIDEO and VIDEO + AUDIO | SRT."""
     route = request.route
     profile_key = request.operational_profile_key
     summary = PipelineSummary(
         request.project_name,
         include_visual_metrics=False,
     )
-    input_labels = {
-        StudioInputMode.SRT_VIDEO: "SRT + VIDEO",
-        StudioInputMode.VIDEO: "VIDEO",
-        StudioInputMode.VIDEO_AUDIO_SRT: "VIDEO + AUDIO SRT",
-    }
     plan = route.intro_outro_plan
     generated_subtitle_path = getattr(
         result,
@@ -69,10 +64,7 @@ def _print_render_summary(request, result, elapsed_seconds):
             f"{_format_label(profile_key.format)}"
         ),
     )
-    summary.add_detail(
-        "Entrada",
-        input_labels[route.input_mode],
-    )
+    summary.add_detail("Entrada", route.input_mode.label)
     if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT:
         video_audio_plan = route.plan
         subtitles_enabled = request.subtitle_profile_key is not None
@@ -141,7 +133,7 @@ def _print_render_summary(request, result, elapsed_seconds):
     summary.add_detail(
         "Estado final",
         (
-            "VIDEO + AUDIO SRT COMPLETADO"
+            f"{route.input_mode.label} COMPLETADO"
             if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT
             else "STUDIO COMPLETADO"
         ),
@@ -182,12 +174,15 @@ def _print_intro_outro_summary(request, result, elapsed_seconds):
         "Perfil / formato",
         f"{profile_key.profile_id} / {_format_label(profile_key.format)}",
     )
-    summary.add_detail("Entrada", "INTRO / OUTRO")
+    summary.add_detail("Entrada", request.route.input_mode.label)
     summary.add_detail("Video fuente", plan.source_path)
     summary.add_detail("Intro", "Sí" if plan.intro_outro_plan.intro else "No")
     summary.add_detail("Outro", "Sí" if plan.intro_outro_plan.outro else "No")
     summary.add_detail("Video final", result.output_path)
-    summary.add_detail("Estado final", "INTRO / OUTRO COMPLETADO")
+    summary.add_detail(
+        "Estado final",
+        f"{request.route.input_mode.label} COMPLETADO",
+    )
     summary.set_media_duration(result.generated_duration)
     for label, attribute in (("Preparación video", "render_duration"), ("Intro / Outro", "intro_outro_duration")):
         duration = _recorded_stage_duration(result, attribute)
@@ -217,7 +212,7 @@ def _print_subtitle_export_summary(
             "Perfil / formato",
             f"{profile_key.profile_id} / {_format_label(profile_key.format)}",
         )
-    summary.add_detail("Entrada", "EXPORTAR SRT")
+    summary.add_detail("Entrada", request.route.input_mode.label)
     summary.add_detail("Modo", mode_labels[plan.mode])
     summary.add_detail("Fuente", plan.source_path)
     if plan.mode is StudioSubtitleExportMode.CONVERTIR:
@@ -226,7 +221,10 @@ def _print_subtitle_export_summary(
             _subtitle_display_name(request),
         )
     summary.add_detail("SRT generado", result.output_path)
-    summary.add_detail("Estado final", "EXPORTAR SRT COMPLETADO")
+    summary.add_detail(
+        "Estado final",
+        f"{request.route.input_mode.label} COMPLETADO",
+    )
     summary.add_stage(
         (
             "Transcripción"
@@ -256,7 +254,7 @@ def _print_montage_summary(request, result, elapsed_seconds):
             f"{_format_label(profile_key.format)}"
         ),
     )
-    summary.add_detail("Entrada", "MONTAJE DE VIDEOS")
+    summary.add_detail("Entrada", route.input_mode.label)
     summary.add_detail("Clips", montage_result.clip_count)
     if montage_result.normalized_clip_count:
         summary.add_detail("Normalizados", montage_result.normalized_clip_count)

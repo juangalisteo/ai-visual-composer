@@ -2,6 +2,7 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.modules.studio.input_preparation import StudioInputMode
 from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
@@ -234,7 +235,8 @@ class StudioProfileLoader:
             family="CONFIG",
             user_message=(
                 "studio.input.video_extensions incluye "
-                f"{', '.join(unsupported)}, pero SOLO VIDEO transcribe el "
+                f"{', '.join(unsupported)}, pero "
+                f"{StudioInputMode.VIDEO.label} transcribe el "
                 "vídeo con Whisper, que solo admite "
                 f"{', '.join(supported)}."
             ),

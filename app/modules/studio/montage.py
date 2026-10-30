@@ -25,6 +25,9 @@ from app.shared.operational_error import (
 )
 
 
+_MODE_LABEL = StudioInputMode.MONTAJE_VIDEOS.label
+
+
 class StudioMontageInputError(ValueError):
     """Expected user-facing error while preparing a STUDIO montage plan."""
 
@@ -45,7 +48,7 @@ class StudioMontageClip:
         if temporary_id <= 0:
             raise ValueError("El ID temporal del clip debe ser positivo.")
         if not path.name:
-            raise ValueError("El clip de MONTAJE DE VIDEOS debe tener nombre.")
+            raise ValueError(f"El clip de {_MODE_LABEL} debe tener nombre.")
         if self.original_name != path.name:
             raise ValueError(
                 "El nombre original del clip debe coincidir con su ruta."
@@ -61,11 +64,11 @@ class StudioMontageCandidates:
 
     def __post_init__(self):
         if not self.clips:
-            raise ValueError("MONTAJE DE VIDEOS requiere al menos un clip.")
+            raise ValueError(f"{_MODE_LABEL} requiere al menos un clip.")
         ids = tuple(clip.temporary_id for clip in self.clips)
         if ids != tuple(range(1, len(ids) + 1)):
             raise ValueError(
-                "Los IDs temporales de MONTAJE DE VIDEOS deben ser consecutivos."
+                f"Los IDs temporales de {_MODE_LABEL} deben ser consecutivos."
             )
 
 
@@ -77,26 +80,26 @@ class StudioMontagePlan:
 
     def __post_init__(self):
         if not isinstance(self.profile_key, OperationalProfileKey):
-            raise TypeError("MONTAJE DE VIDEOS requiere identidad operacional explícita.")
+            raise TypeError(f"{_MODE_LABEL} requiere identidad operacional explícita.")
         if self.profile_key.component is not ProfileComponent.STUDIO:
-            raise ValueError("MONTAJE DE VIDEOS requiere component=studio.")
+            raise ValueError(f"{_MODE_LABEL} requiere component=studio.")
         if not isinstance(self.transitions_enabled, bool):
             raise TypeError("transitions_enabled debe ser booleano.")
         if len(self.clips) < 2:
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS requiere al menos dos clips."
+                f"El plan de {_MODE_LABEL} requiere al menos dos clips."
             )
         if any(not isinstance(clip, StudioMontageClip) for clip in self.clips):
             raise TypeError("El plan contiene un clip de montaje no válido.")
         ids = tuple(clip.temporary_id for clip in self.clips)
         if len(set(ids)) != len(ids):
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS contiene IDs duplicados."
+                f"El plan de {_MODE_LABEL} contiene IDs duplicados."
             )
         paths = tuple(clip.path for clip in self.clips)
         if len(set(paths)) != len(paths):
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS contiene clips duplicados."
+                f"El plan de {_MODE_LABEL} contiene clips duplicados."
             )
         missing = next((path for path in paths if not path.is_file()), None)
         if missing is not None:
@@ -205,7 +208,7 @@ class StudioMontagePlanningService:
 
     def parse_order(self, value, candidates):
         if not isinstance(candidates, StudioMontageCandidates):
-            raise TypeError("Los candidatos de MONTAJE DE VIDEOS no son válidos.")
+            raise TypeError(f"Los candidatos de {_MODE_LABEL} no son válidos.")
         text = "" if value is None else str(value).strip()
         if not text:
             raise StudioMontageInputError(
@@ -234,7 +237,7 @@ class StudioMontagePlanningService:
                 )
             if temporary_id in seen:
                 raise StudioMontageInputError(
-                    "No se permiten clips duplicados en MONTAJE DE VIDEOS: "
+                    f"No se permiten clips duplicados en {_MODE_LABEL}: "
                     f"{temporary_id}."
                 )
             if not clip.path.is_file():
@@ -246,7 +249,7 @@ class StudioMontagePlanningService:
             selected.append(clip)
         if len(selected) < 2:
             raise StudioMontageInputError(
-                "Selecciona al menos dos clips para MONTAJE DE VIDEOS."
+                f"Selecciona al menos dos clips para {_MODE_LABEL}."
             )
         return tuple(selected)
 
@@ -433,7 +436,7 @@ class StudioMontageService:
                 output_path.unlink()
 
         ProgressLogger.finish(
-            "MONTAJE DE VIDEOS COMPLETADO",
+            f"{_MODE_LABEL} COMPLETADO",
             montage_duration,
         )
         return StudioMontageResult(
@@ -454,7 +457,7 @@ class StudioMontageService:
 
     def prepare(self, plan, profile, temporary_directory):
         if not isinstance(plan, StudioMontagePlan):
-            raise TypeError("MONTAJE DE VIDEOS requiere StudioMontagePlan.")
+            raise TypeError(f"{_MODE_LABEL} requiere StudioMontagePlan.")
         if plan.transitions_enabled and len(plan.clips) < 2:
             raise StudioMontageError(
                 "Se necesitan al menos 2 clips para aplicar transiciones."
@@ -695,7 +698,7 @@ class StudioMontageService:
 
     def _require_executable_plan(self, plan):
         if not isinstance(plan, StudioMontagePlan):
-            raise TypeError("MONTAJE DE VIDEOS requiere StudioMontagePlan.")
+            raise TypeError(f"{_MODE_LABEL} requiere StudioMontagePlan.")
         return plan
 
     def _require_transition_durations(self, inspected, profile):

@@ -752,4 +752,4 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
     assert ("Duración final", "12.345 s") in details
     assert ("Tratamiento audio", "Recortado al vídeo") in details
     assert ("Video final", result.output_path) in details
-    assert ("Estado final", "VIDEO + AUDIO SRT COMPLETADO") in details
+    assert ("Estado final", "VIDEO + AUDIO | SRT COMPLETADO") in details

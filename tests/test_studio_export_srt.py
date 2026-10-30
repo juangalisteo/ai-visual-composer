@@ -814,7 +814,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             studio_summary.print_studio_summary(request, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
-        self.assertIn(("Entrada", "EXPORTAR SRT"), details)
+        self.assertIn(("Entrada", "EXPORTAR SRT ➜  VIDEO"), details)
         self.assertIn(("Modo", "CONVERTIR"), details)
         self.assertIn(("Perfil de subtítulos", "Palabra por palabra"), details)
         self.assertIn(("SRT generado", result.output_path), details)

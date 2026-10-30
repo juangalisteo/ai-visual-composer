@@ -351,7 +351,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
                 studio_summary.print_studio_summary(request, result, 1.25)
 
         rendered = logger.call_args.args[0]
-        self.assertIn("MONTAJE DE VIDEOS", rendered)
+        self.assertIn("MONTAJE VÍDEOS", rendered)
         self.assertIn("Preparación clips", rendered)
         self.assertIn("Normalización clips", rendered)
         self.assertIn("Normalizados", rendered)
