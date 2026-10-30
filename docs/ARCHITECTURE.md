@@ -1,10 +1,50 @@
-# AI Visual Composer Architecture
+# Arquitectura de AI Visual Composer
 
-Professional AI Visual Generation Platform
+Este documento explica cómo está construido AI Visual Composer por dentro: qué
+partes tiene, cómo viaja una ejecución desde el menú hasta el archivo final y
+dónde vive cada responsabilidad.
 
-This document describes the internal architecture of AI Visual Composer V2.0.
+Otros documentos:
 
-AI Visual Composer is organized around four main product components:
+| Para saber… | Documento |
+|---|---|
+| Cómo se usa el programa (menús, carpetas de entrada, resultados) | [START.md](START.md) |
+| Cómo se instala | [INSTALL.md](INSTALL.md) |
+| Cómo funcionan los perfiles de subtítulos (familias, modos, estilos y efectos) | [SUBTITLES.md](SUBTITLES.md) |
+| Cómo se genera la voz y cuánto dura un guion | [VOICEOVER.md](VOICEOVER.md) |
+| Qué ha cambiado y cuándo | [CHANGELOG.md](../CHANGELOG.md) |
+
+---
+
+## 1. Principios
+
+- **El código implementa capacidades; la configuración declara entidades.**
+  Python contiene los componentes fijos y las capacidades técnicas (preparar un
+  guion, generar voz, transcribir, generar imágenes y clips, componer con
+  FFmpeg…). Los formatos, las familias de subtítulos, los perfiles y sus valores
+  se declaran en `config/` y se descubren leyendo sus carpetas. Un perfil o una
+  familia nuevos que usen capacidades existentes no necesitan cambiar Python.
+- **La identidad es técnica.** Un perfil se identifica por su clave
+  (`OperationalProfileKey` o `SubtitleProfileKey`, [apartado 11](#11-identidad-y-perfiles)).
+  `display_name` y las etiquetas de los menús solo sirven para mostrar; nunca
+  deciden qué se carga ni qué se ejecuta.
+- **El menú construye una petición completa antes de ejecutar.** Todo lo que el
+  usuario elige viaja en una petición tipada (`ApplicationExecutionRequest`),
+  no en variables de entorno ni en diccionarios sueltos.
+- **Un coordinador por ruta.** La ruta estándar (GUION, IMAGEN, VIDEO), STUDIO y
+  la ruta DISEÑO tienen cada una su coordinador; el despachador solo elige cuál.
+- **Una sola frontera de errores.** Los errores se presentan en `main.py`, que
+  decide el texto que ve el usuario y el código de salida.
+- **Ejecución local.** Ollama, ComfyUI (Flux y Wan), Piper, Whisper y FFmpeg se
+  ejecutan en el propio equipo; sus modelos no forman parte del repositorio.
+  Las llamadas a Ollama y a Wan no tienen tiempo límite, a propósito
+  ([AGENTS.md](../AGENTS.md) §8).
+
+---
+
+## 2. Componentes y rutas
+
+El menú principal ofrece los cuatro componentes del producto:
 
 ```text
 AI VISUAL COMPOSER
@@ -15,778 +55,337 @@ AI VISUAL COMPOSER
 4. Studio
 ```
 
-Diseño is an integrated capability and scalability path. It is not a fifth main product component.
+| Componente | De qué parte | Qué produce |
+|---|---|---|
+| **GUION** | Un texto completo escrito por el usuario (`input/guion.txt`) | Un proyecto de Imagen o de Video con ese texto tal cual, o la ruta DISEÑO |
+| **IMAGEN** | Un tema o una idea (`input/tema.txt`); la IA escribe el guion | Un vídeo hecho con imágenes generadas |
+| **VIDEO** | Un tema o una idea (`input/tema.txt`); la IA escribe el guion | Un vídeo hecho con clips generados a partir de esas imágenes (imagen a vídeo, I2V) |
+| **STUDIO** | Material propio ya grabado (vídeo, audio, SRT) en `input/studio/` | El vídeo terminado (subtítulos, audio nuevo, montaje, intro/outro) o un SRT |
 
-The architecture is profile-driven and locally executed. It separates product selection, runtime orchestration, script preparation, audio, subtitle timing, storyboard construction, visual interpretation, image generation, image-to-video generation, temporal processing, and final FFmpeg composition.
+GUION, IMAGEN y VIDEO comparten la **ruta estándar** ([apartado 5](#5-ruta-estándar-guion-imagen-y-video)).
+Dentro de GUION, el destino «Diseño» abre la **ruta DISEÑO**
+([apartado 7](#7-ruta-diseño)), que no es un quinto componente. STUDIO tiene su
+propia ruta ([apartado 8](#8-studio)) y no usa la IA generativa.
 
----
+**DISEÑO no es la familia `design`.** La palabra aparece en dos sitios que no
+tienen relación:
 
-## 1. Architectural Principles
-
-AI Visual Composer follows several fundamental architectural principles:
-
-- Guion, Imagen, Video, and Studio are the four main product components.
-- Diseño is an integrated capability, not an independent fifth component.
-- Product architecture and operational routing are separate concepts.
-- Narrative information must remain separated from backend-specific generation instructions.
-- Visual generation must pass through structured visual contracts.
-- Image generation and I2V generation remain separated from final audiovisual composition.
-- Runtime configuration is profile-driven.
-- Generated artifacts and manifests provide traceability throughout the pipeline.
-- Validation evidence is preserved separately from temporary runtime output.
-- External AI runtimes and models remain outside the core public repository.
-
----
-
-## 2. High-Level Runtime Flow
-
-At the highest operational level:
-
-```text
-Console
-   ↓
-RunController
-   ↓
-Runtime Options
-   ↓
-app.core.start.iniciar()
-   ↓
-Component Orchestration
-   ↓
-Builders
-   ↓
-Generation Backends
-   ↓
-Manifests
-   ↓
-Output Artifacts
-```
-
-The console does not generate audiovisual content directly.
-
-Its responsibility is to collect the user's operational selections, including:
-
-- product entry;
-- execution mode;
-- profile;
-- voice;
-- subtitle configuration;
-- music;
-- overlays;
-- project name;
-- output reset behavior.
-
-Runtime execution is delegated to the internal orchestration layer.
+| Nombre | Qué es |
+|---|---|
+| **Ruta DISEÑO** | GUION → Diseño → Imagen o Video: genera una sola imagen o un solo clip a partir de una descripción visual directa |
+| **Familia de subtítulos `design` (MODO CONCIENCIA)** | Una de las familias de perfiles de subtítulos; en el menú se llama «MODO CONCIENCIA» ([SUBTITLES.md](SUBTITLES.md)) |
 
 ---
 
-## 3. Product Architecture
-
-The conceptual product architecture contains exactly four main components:
+## 3. Flujo de ejecución
 
 ```text
-AI VISUAL COMPOSER
-│
-├── GUION
-│
-├── IMAGEN
-│
-├── VIDEO
-│
-└── STUDIO
+python main.py
+   ↓
+main.py                      valida config/formats.json antes del primer menú
+   ↓
+RunController.run()          menús → ApplicationExecutionRequest
+   ↓
+(ELIMINAR OUTPUT = Sí)       OutputManager().reset() vacía output/
+   ↓
+run_application(request)     app/core/start.py: elige el coordinador por el tipo de ruta
+   ↓
+StandardExecutionCoordinator | StudioExecutionCoordinator | DesignExecutionCoordinator
+   ↓
+builders y servicios         guion, voz, subtítulos, storyboard, imágenes, clips, FFmpeg
+   ↓
+output/<proyecto>/…          artefactos y vídeo final
+   ↓
+resumen en la terminal
 ```
 
-This level describes what the product is.
+**La petición.** `RunController.run()` (`app/controllers/run_controller.py`)
+recorre los menús con los selectores de `app/controllers/interaction/` y
+devuelve una `ApplicationExecutionRequest` (`app/core/execution_request.py`):
 
-Operational routes describe how the console and controller allow the user to reach those capabilities.
+| Campo | Contenido |
+|---|---|
+| `project_name` | Nombre del proyecto (menú PROYECTO) |
+| `clear_output` | Si se vacía `output/` antes de empezar (menú ELIMINAR OUTPUT) |
+| `operational_profile_key` | `OperationalProfileKey` del perfil elegido |
+| `subtitle_profile_key` | `SubtitleProfileKey` elegida, o `None` si la ejecución no lleva subtítulos |
+| `route` | `StandardExecutionRequest`, `StudioExecutionRequest` o `DesignExecutionRequest` |
 
-Integrated capabilities describe additional generation paths that reuse the existing architecture without becoming new main product components.
+Cada tipo de ruta comprueba sus datos al construirse; por ejemplo,
+`StandardExecutionRequest` solo acepta los modos del menú MODO.
+
+**El despachador.** `run_application(request)` (`app/core/start.py`) prepara el
+`ConfigManager` con la clave operacional (y la voz elegida, en la ruta estándar)
+y el `ProjectManager` del proyecto, y entrega la ruta a su coordinador:
+
+| Tipo de ruta | Coordinador |
+|---|---|
+| `StandardExecutionRequest` | `StandardExecutionCoordinator` (`app/modules/standard/execution_coordinator.py`) |
+| `StudioExecutionRequest` | `StudioExecutionCoordinator` (`app/modules/studio/execution_coordinator.py`) |
+| `DesignExecutionRequest` | `DesignExecutionCoordinator` (`app/modules/design/execution_coordinator.py`) |
+
+**Los resúmenes.** Al terminar, la terminal muestra un resumen con los tiempos
+de cada etapa:
+
+- En la ruta estándar y en la ruta DISEÑO lo imprime `PipelineTelemetry.complete()`
+  (`app/core/pipeline_telemetry.py`). El resumen estándar (`PipelineSummary`) se
+  crea al **empezar** la ejecución, porque recoge avisos mientras se ejecuta: el
+  coordinador pasa `summary.warnings` a `VideoBuilder`. Por eso no está en
+  `app/cli/`: sacarlo de ahí cambiaría lo que devuelve la ruta estándar sin
+  ningún cambio visible.
+- En STUDIO, cada modo devuelve un resultado y `main.py` lo imprime con
+  `print_studio_summary()` (`app/cli/studio_summary.py`), que elige el resumen
+  por el modo de entrada (`StudioInputMode`).
+
+**Los errores.** `main.py` es la única frontera: un `OperationalError` se
+presenta con `ErrorPresenter` (`app/cli/error_presenter.py`); los errores de
+entrada de STUDIO se muestran como `ERROR: …`; cualquier otro error se presenta
+como error interno. Códigos de salida: `0` (correcto o cancelado), `1` (error) y
+`130` (interrumpido con Ctrl+C).
 
 ---
 
-# 4. GUION
+## 4. Formatos
 
-Guion is the script-centered product component.
+Un **formato** es el tamaño y la orientación del vídeo final. Hay dos:
 
-Its source is:
+| Formato (id) | En el menú | Orientación | Para qué redes sirve |
+|---|---|---|---|
+| `vertical` | Vertical 9:16 | `portrait` | Instagram Reels, TikTok, YouTube Shorts |
+| `horizontal` | Horizontal 16:9 | `landscape` | YouTube (vídeo normal) |
 
-```text
-input/guion.txt
-```
+La terminal no nombra ninguna red: solo «Vertical 9:16» y «Horizontal 16:9».
 
-The user provides the complete text or script.
+Cómo se declaran:
 
-The base textual content therefore already exists and AI Visual Composer processes that source through the selected destination.
+- **Las carpetas deciden qué formatos existen:** cada carpeta
+  `config/profiles/<componente>/<formato>/` es un formato de ese componente.
+- **`config/formats.json` describe cada formato** (`FormatCatalog`,
+  `app/shared/format_catalog.py`):
 
-Guion does not need to invent the original text supplied by the user.
+  | Clave | Para qué sirve |
+  |---|---|
+  | `display_name` | Texto del menú FORMATO |
+  | `order` | Posición en el menú (Vertical primero) |
+  | `orientation` | `portrait` o `landscape`: al cargar un perfil, `ProfileResolver` rechaza un `video_style` cuyo ancho y alto contradigan la orientación |
+  | `image_guidance` | Texto de formato que se añade al prompt de cada imagen |
 
-## Responsibilities
-
-Guion is responsible for:
-
-- reading the manual script source;
-- preserving the user-provided textual content;
-- preparing the script for the selected workflow;
-- routing the content toward Imagen or Video;
-- exposing operational access to Diseño when selected;
-- keeping script preparation independent from visual rendering.
-
-## Operational Routes
-
-Current operational route families include:
-
-```text
-Guion -> Imagen
-
-Guion -> Video
-
-Guion -> Diseño -> Imagen
-
-Guion -> Diseño -> Video
-```
-
-These are operational controller routes.
-
-They do not mean that Diseño is conceptually part of Guion or dependent on Guion as a product capability.
+- Al arrancar, `main.py` comprueba que cada formato declarado tenga su carpeta
+  de perfiles; si el catálogo está mal, el programa se para antes del primer
+  menú.
+- **El tamaño en píxeles no lo da el formato, sino cada perfil:**
+  `video_style.width`/`height` en GUION, IMAGEN y VIDEO, y `studio.output` en
+  STUDIO.
+- Un formato nuevo que use capacidades existentes se añade con configuración:
+  sus carpetas de perfiles, su entrada en `config/formats.json`, su texto en
+  `prompts/formats/<formato>.txt` y, para VIDEO, su documento de Wan
+  (`"kind": "video_component"`, como `wan_i2v_<formato>.json`). No hace falta
+  tocar Python.
 
 ---
 
-# 5. IMAGEN
+## 5. Ruta estándar: GUION, IMAGEN y VIDEO
 
-Imagen is the image-centered product component.
+`StandardExecutionCoordinator` ejecuta siempre las mismas etapas, en este orden,
+y se detiene en la última que pide el modo elegido ([apartado 6](#6-modos-de-ejecución)):
 
-For its normal topic-driven operation, the source is:
+| Etapa | Qué hace | Herramienta |
+|---|---|---|
+| Guion | GUION lee `input/guion.txt` tal cual; IMAGEN y VIDEO escriben un guion a partir de `input/tema.txt` | Ollama (solo IMAGEN y VIDEO) |
+| Voz y audio | Locución y mezcla con la música elegida | Piper ([VOICEOVER.md](VOICEOVER.md)) y FFmpeg |
+| Subtítulos | Transcribe la locución y ajusta el SRT al texto del guion y al perfil de subtítulos | Whisper ([SUBTITLES.md](SUBTITLES.md)) |
+| Storyboard | Divide el guion en escenas visuales: tantas como la duración del audio entre `video_style.storyboard.seconds_per_image` del perfil, redondeando hacia arriba | Ollama |
+| Imágenes | Una imagen por escena | ComfyUI + Flux |
+| Vídeo | IMAGEN compone el vídeo con las imágenes; VIDEO genera antes un clip por imagen | FFmpeg; VIDEO también ComfyUI + Wan |
 
-```text
-input/tema.txt
-```
-
-The user can provide a topic, idea, description, short paragraph, or brief text.
-
-The system develops the content required by the selected execution mode and processes it through the visual generation architecture.
-
-## Responsibilities
-
-Depending on the selected mode, Imagen can coordinate:
-
-- content preparation;
-- voice generation;
-- audio;
-- subtitles;
-- storyboard generation;
-- Visual Truth;
-- Visual Intelligence;
-- Cinematic Direction;
-- Prompt Translation;
-- image generation;
-- image manifests;
-- visual evidence;
-- final FFmpeg composition.
-
-## Complete Image Flow
-
-At a high level:
-
-```text
-Input
-   ↓
-Script Preparation
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-Subtitles
-   ↓
-Storyboard
-   ↓
-Visual Truth
-   ↓
-Visual Intelligence
-   ↓
-Cinematic Direction
-   ↓
-Prompt Translation
-   ↓
-Image Generation
-   ↓
-Image Manifest
-   ↓
-FFmpeg Composition
-   ↓
-Final Video
-```
-
-The image generation layer remains independent from final video composition.
+- **Qué perfil se usa.** Cada componente usa su perfil operacional del formato
+  elegido. En **GUION → Video** se usa el perfil de GUION para todo salvo los
+  clips, que salen del único perfil operacional de VIDEO de ese formato; si en
+  ese formato hubiera más de uno o ninguno, la ejecución se para con un error.
+  Los subtítulos de GUION salen de los perfiles de subtítulos de GUION.
+- **Duración.** Con un tema, la IA escribe un guion para la duración (`duration`)
+  del perfil de IMAGEN o VIDEO. Con `input/guion.txt`, la duración la marca el
+  propio texto. El cálculo está en [VOICEOVER.md](VOICEOVER.md).
+- **Vídeo final.** Los modos «Proyecto completo» publican un único MP4 en
+  `output/<proyecto>/video/<proyecto>.mp4`. Si se eligió INTRO / OUTRO, se añade
+  sobre ese vídeo ya validado.
 
 ---
 
-# 6. VIDEO
+## 6. Modos de ejecución
 
-Video is the video-centered product component.
+El menú MODO de la ruta estándar ofrece:
 
-For its normal topic-driven operation, the source is:
+| Modo (en el menú) | Id | Hasta qué etapa llega | Subtítulos | Pide OVERLAYS e INTRO / OUTRO |
+|---|---|---|---|---|
+| Proyecto completo | `full` | Vídeo | Sí | Sí |
+| Solo audio | `audio` | Voz y audio | No | No |
+| Audio + subtítulos | `subtitles` | Subtítulos | Sí | No |
+| Audio + subtítulos + storyboard | `storyboard` | Storyboard | Sí | No |
+| Proyecto completo sin subtítulos | `full_without_subtitles` | Vídeo | No | Sí |
 
-```text
-input/tema.txt
-```
-
-The user provides a topic, idea, description, short paragraph, or brief text.
-
-The runtime develops the content required to create the audiovisual sequence.
-
-## Responsibilities
-
-Video can coordinate:
-
-- content preparation;
-- voice generation;
-- audio;
-- subtitles;
-- storyboard generation;
-- Visual Truth;
-- Visual Intelligence;
-- image generation;
-- source-image analysis;
-- motion intent;
-- I2V prompt translation;
-- I2V generation;
-- video clip manifests;
-- temporal preparation;
-- Motion;
-- transitions;
-- overlays;
-- visual effects;
-- fade;
-- subtitles;
-- final FFmpeg composition.
-
-## Complete Video Flow
-
-```text
-Input
-   ↓
-Script Preparation
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-Subtitles
-   ↓
-Storyboard
-   ↓
-Visual Truth
-   ↓
-Visual Intelligence
-   ↓
-Prompt Translation
-   ↓
-Image Generation
-   ↓
-I2V Generation
-   ↓
-Temporal Preparation
-   ↓
-Motion
-   ↓
-Transitions
-   ↓
-Overlays
-   ↓
-Visual Effects
-   ↓
-Fade
-   ↓
-Subtitles
-   ↓
-Final Video
-```
+- «Proyecto completo sin subtítulos» solo aparece en **GUION**. Hace lo mismo
+  que «Proyecto completo», pero sin generar ni pintar subtítulos: un único MP4
+  sin texto, no una segunda versión del vídeo.
+- Los modos sin subtítulos no muestran el menú de subtítulos (FAMILIA → PERFIL)
+  y su petición lleva `subtitle_profile_key = None`.
 
 ---
 
-# 7. STUDIO
+## 7. Ruta DISEÑO
 
-Studio is the finishing component for externally supplied audiovisual material.
+La ruta DISEÑO parte de una descripción visual directa escrita por el usuario,
+no de un guion narrado. Se entra por GUION → DESTINO → Diseño → Imagen o Video.
 
-Studio has six input modes:
+| Destino | Entrada | Etapas | Resultado |
+|---|---|---|---|
+| Diseño → Imagen | `input/guion_imagen.txt` | Interpreta la descripción (Ollama) → una escena → una imagen (ComfyUI + Flux) | Una sola imagen |
+| Diseño → Video | `input/guion_video.txt` | Interpreta la descripción (Ollama) → una escena → una imagen → un clip (ComfyUI + Wan) | Un solo clip |
 
-```text
-1. SOLO VIDEO
-2. SRT + VIDEO
-3. INTRO / OUTRO
-4. MONTAJE VÍDEOS
-5. VIDEO + AUDIO SRT
-6. EXPORTAR SRT VIDEO
-```
-
-Its external input directories are:
-
-```text
-input/studio/
-├── video/
-├── srt_video/
-├── intro_outro/
-├── montaje_videos/
-├── video_audio_srt/
-└── exportar_srt/
-    ├── transcribir/
-    └── convertir/
-```
-
-All Studio media is discovered by extension, not by hardcoded filenames.
-
-## SOLO VIDEO
-
-`SOLO VIDEO` accepts an MP4 from `input/studio/video/`. One valid candidate is
-used directly; multiple candidates are selected in the console. The source
-must contain audio because Whisper generates the subtitle source.
-
-The available subtitle styles are:
-
-```text
-LÍNEA ÚNICA
-PALABRA POR PALABRA
-```
-
-`ORIGINAL` is not offered in this mode. Whisper produces the persistent base
-SRT at `output/<proyecto>/subtitles/<proyecto>.srt`; the selected visual style
-produces a persistent derived SRT, which is the exact source used for render.
-
-## SRT + VIDEO
-
-`SRT + VIDEO` accepts an MP4 and a UTF-8 structural SRT from
-`input/studio/srt_video/`. Exactly one pair is selected directly; otherwise
-the user selects the MP4 and SRT independently. The SRT is authoritative:
-Studio preserves its human text, cue order, and timings.
-
-The available subtitle styles are:
-
-```text
-ORIGINAL
-LÍNEA ÚNICA
-PALABRA POR PALABRA
-```
-
-`ORIGINAL` preserves the human SRT and uses only the selected subtitle
-profile's `render_style`; it does not transform cues or invoke subtitle timing
-generation. The other styles generate their persistent derived SRT before the
-render.
-
-## INTRO / OUTRO
-
-`INTRO / OUTRO` composes user-selected assets from the shared semantic catalog
-under `assets/videos/intro_outro/`. Only incompatible assets are normalized;
-the completed Studio principal is then concatenated without re-encoding it.
-
-## MONTAJE VÍDEOS
-
-`MONTAJE VÍDEOS` discovers clips in `input/studio/montaje_videos/`, assigns
-temporary numeric identifiers, and accepts a validated user order. It supports
-the current `SOLO MONTAJE` and `MONTAJE COMPLETO` paths. Clips are inspected
-and normalized only when required by the target Studio profile.
-
-Without transitions, composition uses the compatible concat path. With
-transitions, `studio.montage.transition_duration` is a configurable Studio
-visual-montage value: it controls the perceptible `xfade` duration between
-clips and the visual `tpad` required at each boundary. Each clip must be
-longer than that value; it does not change the expected total duration,
-timestamps, or audio/video synchronization. Audio does not use `acrossfade`:
-it remains sequential through audio `concat`. Instagram uses `0.25 s` and
-YouTube uses `0.50 s`. MONTAJE does not expose an `ORIGINAL` subtitle option.
-
-## VIDEO + AUDIO SRT
-
-`VIDEO + AUDIO SRT` discovers the required video and new audio in
-`input/studio/video_audio_srt/`; an SRT is optional. Without an SRT it renders
-the adjusted video with the new audio. With an SRT, the human SRT is the
-textual authority and uses the common Studio subtitle transformation and
-rendering path. It never invokes Whisper or retranscribes. The new audio is
-the sole audio and temporal authority: the source video is trimmed or looped
-to exactly its duration and its original audio does not return. Music is not
-part of this mode.
-
-## EXPORTAR SRT VIDEO
-
-`EXPORTAR SRT VIDEO` is isolated from audiovisual render. `TRANSCRIBIR` discovers
-an MP4 or MP3 in `input/studio/exportar_srt/transcribir/`, reuses the external
-media subtitle preparation, and persists the generated SRT. `CONVERTIR`
-discovers a structural UTF-8 SRT in `input/studio/exportar_srt/convertir/` and
-creates the selected `LÍNEA ÚNICA` or `PALABRA POR PALABRA` output without
-running Whisper.
-
-## Studio render
-
-Studio has its own `OperationalProfileKey`, main profiles, subtitle profiles, input
-preparation, output naming, and render service. It does not fall back to
-Guion, Imagen, or Video and does not invoke Ollama, Flux, Wan, ComfyUI,
-Motion, storyboard generation, or narrative audio generation.
-
-Its base render preserves aspect ratio through `scale` plus `pad`, emits
-H.264/yuv420p video and AAC 48 kHz stereo audio, and uses the profile
-resolution and FPS. Source audio remains at nominal gain. When enabled, music
-is mixed according to `studio.music.volume = 0.1`, with `amix normalize=0`
-and a `0.95` limiter.
-
-When INTRO or OUTRO is selected, only incompatible assets are normalized. The
-validated Studio principal is then concatenated through the concat demuxer
-with `-c copy`, so it is not encoded a second time. The shared
-`IntroOutroCatalog` resolves assets only from the selected operational
-platform directories `assets/videos/intro_outro/<platform>/intro/` and
-`assets/videos/intro_outro/<platform>/outro/`.
-
-## Native full-video output
-
-For GUION, IMAGEN, and VIDEO when `pipeline_mode=full`, the native render
-publishes one validated subtitle-bearing MP4:
-
-```text
-output/<proyecto>/video/<proyecto>.mp4
-```
-
-The visual chain remains Motion, Transitions, Overlays, Visual Effects, Fade,
-and `SubtitleGraphBuilder`. It is encoded once. When selected, INTRO/OUTRO is
-composed only over that validated principal.
-
-GUION also offers the secondary `Proyecto completo sin subtítulos` mode only
-after its destination has been selected as Imagen or Video. It runs the same
-full audiovisual pipeline and produces the same single principal MP4, but the
-does not request a subtitle style, resolve a subtitle profile, generate or
-optimize an SRT, or invoke `SubtitleGraphBuilder`. Its media and timeline
-contexts carry no subtitle path, and the chain ends after Fade at `[vout]`.
-This is not a dual-output mode and it never produces a parallel
-subtitle-bearing MP4.
+- `DesignExecutionCoordinator` comprueba que la descripción produzca
+  **exactamente una escena**, y después una sola imagen o un solo clip.
+- La ruta DISEÑO **no** genera voz, música ni subtítulos, y **no** compone un
+  vídeo final: por eso solo pregunta el FORMATO, el PROYECTO y ELIMINAR OUTPUT.
+- Reutiliza la generación de imágenes y de clips de la ruta estándar; no tiene
+  una arquitectura de generación propia.
 
 ---
 
-# 8. INTEGRATED DESIGN CAPABILITY
+## 8. STUDIO
 
-Diseño is an integrated capability that allows direct visual intent to become the source for image or video generation.
+STUDIO termina material que el usuario ya tiene. No usa Ollama, ComfyUI, Flux
+ni Wan, ni genera voz o storyboard. Whisper solo interviene en SOLO VIDEO y en
+EXPORTAR SRT → TRANSCRIBIR. Todos sus modos, salvo TRANSCRIBIR (que no pide
+formato), usan el perfil operacional STUDIO del formato elegido
+(`OperationalProfileKey` con `component=studio`) y, cuando llevan subtítulos,
+un perfil de subtítulos STUDIO (`SubtitleProfileKey`).
 
-It is a scalability path.
+El menú ENTRADA ofrece seis modos (textos tal cual en la terminal):
 
-It is not a fifth main product component.
+| Modo | Carpeta de entrada | Qué hace |
+|---|---|---|
+| `SOLO VIDEO` | `input/studio/video/` | Whisper transcribe el audio del vídeo y el SRT se adapta al perfil de subtítulos elegido antes de pintarlo. El vídeo tiene que tener audio |
+| `SRT + VIDEO` | `input/studio/srt_video/` | Pinta el SRT del usuario **tal cual** (siempre ORIGINAL): ni Whisper ni cambios de texto o de tiempos |
+| `INTRO / OUTRO` | `input/studio/intro_outro/` | Añade una intro, un outro o ambos al vídeo |
+| `MONTAJE VÍDEOS` | `input/studio/montaje_videos/` | Une varios vídeos en el orden que se elige, con o sin transiciones, y sin subtítulos |
+| `VIDEO + AUDIO \| SRT` | `input/studio/video_audio_srt/` | Sustituye el audio del vídeo por uno nuevo y, si hay SRT, lo pinta tal cual |
+| `EXPORTAR SRT ➜  VIDEO` | `input/studio/exportar_srt/transcribir/` y `…/convertir/` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
 
-Diseño uses dedicated manual inputs and converts direct visual descriptions into information compatible with the existing generation architecture.
+Qué archivos van en cada carpeta y cómo se eligen está en [START.md](START.md).
 
----
+### Cómo se tratan los subtítulos en STUDIO
 
-## Diseño -> Imagen
+- **SRT + VIDEO pinta siempre el SRT tal cual.** No es una opción del menú: el
+  perfil de subtítulos elegido solo aporta el aspecto (`render_style`) y, si lo
+  declara, las mayúsculas (`cue_policy.uppercase`). El orden, el texto y los
+  tiempos de las líneas no cambian. Es así a propósito: si SOLO VIDEO transcribe
+  mal una palabra, el usuario corrige el SRT y lo vuelve a pintar con SRT + VIDEO
+  ([AGENTS.md](../AGENTS.md) §8). Los efectos por palabra reparten tiempos
+  aproximados **dentro** de cada línea, sin tocar los tiempos del SRT
+  ([SUBTITLES.md](SUBTITLES.md)).
+- **VIDEO + AUDIO | SRT** trata su SRT igual que SRT + VIDEO.
+- **SOLO VIDEO** guarda el SRT de Whisper y genera otro adaptado al modo de cue
+  del perfil, que es el que se pinta.
 
-Source:
+Archivos de subtítulos que quedan en `output/<proyecto>/subtitles/`:
 
-```text
-input/guion_imagen.txt
-```
+| Archivo | Cuándo |
+|---|---|
+| `<proyecto>.srt` | Siempre que hay subtítulos: copia del SRT de partida (el de Whisper en SOLO VIDEO, el del usuario en SRT + VIDEO) |
+| `<proyecto>_<modo>.srt` | SOLO VIDEO: el SRT adaptado al modo de cue del perfil (`<modo>` es su `cue_policy.mode`, p. ej. `single_line`); **es el que se pinta** |
+| `<proyecto>_original.srt` | SRT + VIDEO y VIDEO + AUDIO \| SRT, solo si el perfil cambia el texto a mayúsculas; si no, se pinta `<proyecto>.srt` |
 
-Operational flow:
+Para corregir un vídeo de SOLO VIDEO se corrige `<proyecto>_<modo>.srt` (el que
+se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 
-```text
-input/guion_imagen.txt
-   ↓
-ImageDesignPreparationService
-   ↓
-ImageDesignVisualTruthAdapter
-   ↓
-ImageBuilder
-   ↓
-Standalone Images
-```
+### Cada modo por dentro
 
-This route produces standalone visual assets.
-
-It does not execute the complete audiovisual Imagen workflow.
-
-It does not produce:
-
-- voice;
-- subtitles;
-- music;
-- final audiovisual composition.
-
----
-
-## Diseño -> Video
-
-Source:
-
-```text
-input/guion_video.txt
-```
-
-Operational flow:
-
-```text
-input/guion_video.txt
-   ↓
-VideoDesignPreparationService
-   ↓
-VideoDesignVisualTruthAdapter
-   ↓
-ImageBuilder
-   ↓
-VideoComponentBuilder
-   ↓
-Standalone Video Clips
-```
-
-This route generates the visual source required for I2V and produces standalone video clips.
-
-It does not represent the complete Video product pipeline.
-
-It does not produce:
-
-- complete narration;
-- subtitles;
-- music;
-- final audiovisual composition.
+- **Render base** (`StudioRenderService`, `app/modules/studio/render_service.py`):
+  escala el vídeo al tamaño del perfil conservando su proporción (`scale` +
+  `pad`, con bandas si no coincide), con el FPS, el códec y el audio del perfil.
+  El audio original se queda a su volumen; la música, si se elige, se mezcla con
+  el volumen y el limitador de `studio.music`.
+- **INTRO / OUTRO:** los recursos salen de
+  `assets/videos/intro_outro/<formato>/intro/` y `…/<formato>/outro/` (carpeta
+  local, fuera de Git). Solo se normalizan los que no son compatibles; después se
+  unen con el vídeo principal sin volver a codificarlo (`-c copy`). Es el mismo
+  catálogo que usa la ruta estándar.
+- **MONTAJE VÍDEOS:** los clips que no encajan con el perfil se normalizan
+  primero. Sin transiciones, se unen uno detrás de otro (`concat`); con
+  transiciones, se encadenan con `xfade`, cuya duración es
+  `studio.montage.transition_duration` del perfil. El audio de los clips sigue
+  uno detrás de otro (sin fundido). Cada clip tiene que durar más que la
+  transición.
+- **VIDEO + AUDIO | SRT:** manda la duración del **vídeo**. El audio original
+  desaparece y suena el nuevo; si el audio nuevo es más corto que el vídeo, el
+  menú AUDIO MÁS CORTO QUE EL VÍDEO ofrece rellenar el final con silencio o con
+  música.
+- **EXPORTAR SRT:** TRANSCRIBIR guarda `<proyecto>.srt`; CONVERTIR guarda
+  `<proyecto>_<modo>.srt`. El SRT de partida no se modifica.
 
 ---
 
-## Diseño Boundaries
+## 9. Entradas
 
-Diseño may:
+| Entrada | La lee | Contenido |
+|---|---|---|
+| `input/guion.txt` | GUION | El texto completo que se va a narrar |
+| `input/tema.txt` | IMAGEN y VIDEO | Un tema o una idea; la IA escribe el guion |
+| `input/guion_imagen.txt` | Ruta DISEÑO → Imagen | La descripción visual de una imagen |
+| `input/guion_video.txt` | Ruta DISEÑO → Video | La descripción visual de un clip |
+| `input/studio/<modo>/` | STUDIO | Vídeos, audios y SRT de cada modo ([apartado 8](#8-studio)) |
 
-- receive direct visual intent;
-- prepare visual descriptions;
-- adapt visual information into Visual Truth compatible scenes;
-- reuse image generation infrastructure;
-- reuse I2V generation infrastructure.
-
-Diseño must not:
-
-- replace Guion;
-- replace Imagen;
-- replace Video;
-- become a fifth main product component;
-- create an independent parallel generation architecture.
+- Los cuatro `.txt` están en el repositorio vacíos: el usuario escribe en ellos.
+  Cómo evitar que sus cambios salgan en Git está en [INSTALL.md](INSTALL.md).
+- STUDIO descubre sus archivos por extensión, no por nombre: si hay un solo
+  candidato válido lo usa directamente; si hay varios, pregunta cuál. El
+  contenido de `input/studio/` no se versiona.
 
 ---
 
-# 9. EXECUTION MODES
+## 10. Salida
 
-Validated execution modes for Imagen and Video include:
+Cada ejecución escribe en `output/<proyecto>/`, donde `<proyecto>` es el nombre
+dado en el menú PROYECTO (obligatorio). Si se elige ELIMINAR
+OUTPUT = Sí, antes de empezar se vacía `output/` entero; si algún archivo está
+abierto en otro programa, la ejecución se para y lo avisa.
 
-```text
-Proyecto completo
-Solo audio
-Audio + subtítulos
-Audio + subtítulos + storyboard
-```
+| Ruta | Contenido |
+|---|---|
+| `scripts/guion.txt` | Guion usado |
+| `audio/voz.mp3`, `audio/audio_final.mp3` | Locución y audio mezclado |
+| `subtitles/` | SRT de la ruta estándar (`subtitulos.srt`) o de STUDIO ([apartado 8](#8-studio)) |
+| `storyboard/storyboard.json` | Escenas |
+| `images/images_manifest.json` e `images/` | Imágenes generadas y su manifiesto (con su carpeta `evidence/`) |
+| `video_clips/video_clips_manifest.json` | Clips I2V (VIDEO y Diseño → Video) |
+| `video/<proyecto>.mp4` | Vídeo final |
 
-Their general behavior is:
-
-## Solo audio
-
-```text
-Script
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-STOP
-```
-
-## Audio + subtítulos
-
-```text
-Script
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-Subtitles
-   ↓
-STOP
-```
-
-## Audio + subtítulos + storyboard
-
-```text
-Script
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-Subtitles
-   ↓
-Storyboard
-   ↓
-STOP
-```
-
-## Proyecto completo — Imagen
-
-```text
-Script
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-Subtitles
-   ↓
-Storyboard
-   ↓
-Images
-   ↓
-Final Video
-```
-
-## Proyecto completo — Video
-
-```text
-Script
-   ↓
-Voice
-   ↓
-Audio
-   ↓
-Subtitles
-   ↓
-Storyboard
-   ↓
-Images
-   ↓
-I2V Clips
-   ↓
-Final Video
-```
+La ruta estándar crea siempre las seis carpetas (`scripts/`, `audio/`,
+`subtitles/`, `storyboard/`, `images/` y `video/`); cada etapa llena la suya.
+`video_clips/` solo aparece cuando se generan clips. `output/` está fuera de
+Git: es espacio de trabajo y se puede borrar o regenerar.
 
 ---
 
-# 10. INPUT ARCHITECTURE
+## 11. Identidad y perfiles
 
-The current manual input files are:
+Hay dos tipos de perfil, con claves separadas
+(`app/shared/profile_identity.py`, `app/shared/subtitle_profile_identity.py`):
 
-```text
-input/guion.txt
-input/tema.txt
-input/guion_imagen.txt
-input/guion_video.txt
-input/studio/ (mode-specific runtime input)
-```
+| Clave | Campos | Qué identifica |
+|---|---|---|
+| `OperationalProfileKey` | `component`, `format`, `profile_id` | Cómo produce un componente en un formato (voz, imágenes, vídeo, render STUDIO…) |
+| `SubtitleProfileKey` | `component`, `format`, `profile_id`, `family` | Cómo se cortan y se ven los subtítulos |
 
-Their responsibilities are deliberately separated.
-
-## `input/guion.txt`
-
-Complete text or script supplied directly by the user.
-
-Used by:
-
-```text
-GUION
-```
-
-The original textual source already exists and must be preserved.
-
----
-
-## `input/tema.txt`
-
-Topic, idea, description, short paragraph, or brief text.
-
-Used by:
-
-```text
-IMAGEN
-VIDEO
-```
-
-The AI runtime can develop the necessary textual content from this source according to the selected workflow.
-
----
-
-## `input/guion_imagen.txt`
-
-Direct visual source for:
-
-```text
-DISEÑO -> IMAGEN
-```
-
-Produces standalone images.
-
----
-
-## `input/guion_video.txt`
-
-Direct visual source for:
-
-```text
-DISEÑO -> VIDEO
-```
-
-Produces standalone I2V video clips.
-
----
-
-## `input/studio/`
-
-Runtime source directory for Studio. It contains `video/`, `srt_video/`,
-`intro_outro/`, `montaje_videos/`, `video_audio_srt/`, and
-`exportar_srt/{transcribir,convertir}/`. Candidates are discovered by extension
-rather than fixed filenames. Runtime media is ignored by Git while `.gitkeep`
-preserves the input directories.
-
----
-
-# 11. OUTPUT ARCHITECTURE
-
-Generated runtime projects are grouped by main product entry:
-
-```text
-output/guion/
-output/imagen/
-output/video/
-output/<project>/video/
-```
-
-Depending on the execution path, projects may contain:
-
-```text
-scripts/
-audio/
-subtitles/
-storyboard/
-images/
-images/evidence/
-video_clips/
-video/
-```
-
-For native GUION, IMAGEN, and VIDEO full pipelines, `video/` contains the
-canonical subtitle-bearing MP4. Studio uses its own selected-project result
-and persists base or derived SRT artifacts under `subtitles/` when its
-selected mode produces them.
-
-For the GUION secondary no-subtitle full mode, `video/` instead contains its
-single canonical MP4 without burned-in subtitles; no paired variant is
-generated.
-
-Important runtime manifests include:
-
-```text
-storyboard/storyboard.json
-
-images/images_manifest.json
-
-video_clips/video_clips_manifest.json
-```
-
-`output/` is temporary runtime storage.
-
-It is not a permanent validation baseline and is not a mechanism for integral system restoration.
-
-Permanent validation evidence is stored separately under:
-
-```text
-validation/
-```
+- La familia pertenece solo a los subtítulos: no forma parte de la identidad del
+  perfil operacional.
+- Los perfiles operacionales viven en
+  `config/profiles/<componente>/<formato>/`; los de subtítulos, en
+  `config/profiles/<componente>/<formato>/<familia>/subtitulos/`.
+- El menú pide primero el FORMATO (y con él el perfil operacional) y después,
+  si el modo lleva subtítulos, FAMILIA → PERFIL.
+- Cómo se cargan y validan los perfiles: apartado 31. Familias, modos de cue y
+  estilos: [SUBTITLES.md](SUBTITLES.md).
 
 ---
 
@@ -1574,111 +1173,56 @@ Personal absolute filesystem paths must not be introduced into public documentat
 
 ---
 
-# 36. DOCUMENTATION RESPONSIBILITIES
+## 36. Documentación
 
-Official documentation is separated by responsibility.
+Cada documento tiene una responsabilidad; los demás lo enlazan en vez de
+repetirlo.
 
-## README.md
-
-Product overview.
-
-## ARCHITECTURE.md
-
-Internal architecture and component relationships.
-
-## INSTALL.md
-
-Initial installation and environment requirements.
-
-## START.md
-
-Normal startup and shutdown.
-
-## ROADMAP.md
-
-Current implementation state and future development direction.
-
-## CHANGELOG.md
-
-Historical record of product changes.
-
-## validation/
-
-Permanent behavioral validation evidence.
+| Documento | Responsabilidad |
+|---|---|
+| [README.md](../README.md) | Qué es el producto y por dónde empezar |
+| [INSTALL.md](INSTALL.md) | Instalación y requisitos |
+| [START.md](START.md) | Uso: arranque, menús, entradas y resultados |
+| ARCHITECTURE.md (este) | Arquitectura interna |
+| [SUBTITLES.md](SUBTITLES.md) | Referencia de los perfiles de subtítulos |
+| [VOICEOVER.md](VOICEOVER.md) | Voz y duración de la locución |
+| [ROADMAP.md](ROADMAP.md) | Estado actual y próximos pasos |
+| [CHANGELOG.md](../CHANGELOG.md) | Historia de cambios |
+| [AGENTS.md](../AGENTS.md) | Reglas para los agentes de IA que trabajan en el proyecto |
 
 ---
 
-# 37. VERSION STATE
+## 37. Estado de versión
 
-The current implementation is:
-
-```text
-AI VISUAL COMPOSER V3 (OPEN)
-```
-
-V3 includes the current architecture for:
-
-```text
-GUION
-IMAGEN
-VIDEO
-STUDIO
-```
-
-together with the integrated Diseño capability, dynamic ESTÁNDAR/DISEÑO
-profiles, the six Studio modes, and the current subtitle timing architecture.
-
-The permanent V2.0 validation baseline contains 36 historical real executions
-and remains the regression reference. V3 stays open until the owner's final
-manual validation.
-
-Future architectural changes must be validated before becoming part of a new stable system state.
+- **Última versión cerrada:** `v2.0.0` (tag de Git).
+- **En desarrollo:** la V3, abierta hasta la validación final del propietario.
+  Sus cambios se anotan en el bloque [Unreleased] de
+  [CHANGELOG.md](../CHANGELOG.md) y se publicará como `v3.0.0`.
 
 ---
 
-# 38. ARCHITECTURAL SUMMARY
-
-The complete conceptual architecture can be summarized as:
+## 38. Resumen
 
 ```text
 AI VISUAL COMPOSER
 │
-├── GUION / IMAGEN / VIDEO
-│      ↓
-│   CONTENT + STORYBOARD + VISUAL GENERATION
-│      ↓
-│   AUDIO + SUBTITLES + VIDEO COMPOSITION
+├── GUION / IMAGEN / VIDEO      ruta estándar (StandardExecutionCoordinator)
+│     guion → voz y audio → subtítulos → storyboard → imágenes → vídeo
+│     └── GUION → Diseño        ruta DISEÑO (DesignExecutionCoordinator)
+│           una descripción visual → una imagen o un clip
 │
-└── STUDIO
-       ↓
-    EXTERNAL MEDIA FINISHING (SIX MODES)
-    ↓
-    OPTIONAL HUMAN SRT RENDER
-       ↓
-    OPTIONAL INTRO / OUTRO STREAM COPY
-       ↓
-    VALIDATED FINAL VIDEO
-```
+└── STUDIO                      material propio (StudioExecutionCoordinator)
+      SOLO VIDEO · SRT + VIDEO · INTRO / OUTRO · MONTAJE VÍDEOS
+      VIDEO + AUDIO | SRT · EXPORTAR SRT ➜  VIDEO
 
-Diseño integrates into the Image and Video infrastructure through dedicated direct visual inputs without becoming a fifth product component.
-
----
-
-## Architecture Status
-
-```text
-AI VISUAL COMPOSER
-VERSION: V3 (OPEN)
-ARCHITECTURE: MODULAR
-EXECUTION: LOCAL
-CONFIGURATION: PROFILE-DRIVEN
-VALIDATION: V2.0 BASELINE PRESERVED; V3 MANUAL FINAL VALIDATION PENDING
-MAIN COMPONENTS: GUION / IMAGEN / VIDEO / STUDIO
-INTEGRATED CAPABILITY: DISEÑO
+menús → ApplicationExecutionRequest → run_application() → coordinador
+formatos: vertical (9:16) y horizontal (16:9), declarados en config/formats.json
+perfiles: OperationalProfileKey + SubtitleProfileKey, descubiertos en config/profiles/
 ```
 
 ---
 
 Copyright © 2026 Juan Bautista Galisteo Marqués.
 
-AI Visual Composer was created and is maintained by Juan Bautista Galisteo Marqués.
+AI Visual Composer es obra de Juan Bautista Galisteo Marqués, que lo creó y lo
+mantiene.
