@@ -6,6 +6,11 @@ reglas permanentes y comunes. El estado de trabajo no va aquí: ver §7.
 **Idioma:** todos los agentes responden siempre en español (chat, informes, bitácoras
 y resúmenes).
 
+**Idioma del código y de la terminal:** el código (nombres de funciones, clases,
+variables…) va en inglés. Todo lo que ve el usuario en la terminal va en español.
+Excepción: los miembros de enum cuyo valor es un dato (carpeta o texto de menú), que
+se quedan como el dato.
+
 Cada agente tiene además sus reglas propias, que no repiten lo común:
 
 - Si eres Claude, tus reglas propias están en `AGENT_AI/CLAUDE/AGENT.md`.
