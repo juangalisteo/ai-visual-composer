@@ -384,796 +384,370 @@ Hay dos tipos de perfil, con claves separadas
   `config/profiles/<componente>/<formato>/<familia>/subtitulos/`.
 - El menú pide primero el FORMATO (y con él el perfil operacional) y después,
   si el modo lleva subtítulos, FAMILIA → PERFIL.
-- Cómo se cargan y validan los perfiles: apartado 31. Familias, modos de cue y
-  estilos: [SUBTITLES.md](SUBTITLES.md).
+- Cómo se cargan y validan los perfiles:
+  [apartado 19](#19-perfiles-y-configuración). Familias, modos de cue y estilos:
+  [SUBTITLES.md](SUBTITLES.md).
 
 ---
 
-# 12. SCRIPT LAYER
+## 12. Guion
 
-The script layer is implemented primarily under:
+`ScriptOperation` llama a `ScriptPreparationService` (`app/modules/script/`),
+que prepara el texto que se va a narrar y lo guarda en
+`output/<proyecto>/scripts/guion.txt`. El origen del texto depende del
+componente:
 
-```text
-app/modules/script/
-```
+| Origen (`script_source`) | Componente | Qué hace |
+|---|---|---|
+| `manual` | GUION | Usa `input/guion.txt` tal cual. Si falta o está vacío, la ejecución se para con un error |
+| `generated` | IMAGEN y VIDEO | Lee `input/tema.txt`, monta el prompt con `PromptEngine` (`app/core/prompt_engine.py`) y se lo pide a Ollama con `ScriptBuilder` |
 
-Its responsibilities include:
-
-- loading or generating script content according to the selected source;
-- preparing textual content for downstream processing;
-- validating script output contracts;
-- preventing invalid conversational model responses from entering downstream pipelines;
-- keeping script handling independent from image and video rendering.
-
-Key elements include:
-
-```text
-ScriptPreparationService
-ScriptOperation
-ScriptBuilder
-ScriptOutputValidator
-```
+- **El prompt** se compone con archivos de `prompts/`: el tono
+  (`prompts/tones/<tone>.txt`, según la clave `tone` del perfil), la tarea
+  (`prompts/tasks/script.txt`), el formato (`prompts/formats/<formato>.txt`) y
+  las reglas de idioma y restricciones (`prompts/rules/`). Incluye además el
+  rango de palabras que corresponde a la duración (`duration`) del perfil; el
+  cálculo está en [VOICEOVER.md](VOICEOVER.md).
+- **La respuesta se valida antes de usarla** (`ScriptOutputValidator`): se
+  rechaza si trae Markdown, bloques de código, JSON, XML, encabezados del
+  modelo, recuentos de palabras o comentarios, o si se sale del rango de
+  palabras. En ese caso `ScriptBuilder` repite la petición una vez, indicando el
+  motivo; si la segunda respuesta tampoco vale, la ejecución se para con
+  `InvalidScriptOutputError`. El guion nunca se recorta.
 
 ---
 
-# 13. AUDIO AND VOICE LAYER
-
-The audio architecture coordinates voice generation and final audio preparation.
-
-Responsibilities include:
-
-- voice synthesis;
-- voice artifact persistence;
-- neutral timing adaptation when a backend provides real word timings;
-- music integration when enabled;
-- audio preparation;
-- final audio mixing.
-
-Voice synthesis follows the technical boundary:
+## 13. Voz y música
 
 ```text
-Declarative voice configuration
+config/voice_configs/<voz>.json    documento de la voz (backend_key, modelo, idioma)
         ↓
-backend_key
+TtsBackendRegistry                 elige el backend por su backend_key exacto
         ↓
-TtsBackendRegistry
+PiperBackend                       sintetiza un WAV en una carpeta temporal
         ↓
-Provider / TtsBackend
+VoiceBuilder                       lo publica como audio/voz.mp3
         ↓
-VoiceBuilder.build(text, output_path=None) -> Path
+AudioMixer                         mezcla la voz con la música → audio/audio_final.mp3
 ```
 
-The registry resolves exact technical keys and does not select a backend from a
-display name, label, component, or controller. Piper ONNX is the current
-declarative provider. The shared voice documents resolve
-`backend_key="piper_onnx"` to Davefx and Carlfm technical identities.
-GUIÓN, IMAGEN, and VIDEO depend only on the VoiceBuilder facade, not on the
-provider implementation.
+- **Voces.** El menú VOZ lista los documentos de `config/voice_configs/` por su
+  `display_name` («Carlfm», «Davefx»). Cada documento declara su `backend_key`
+  (`piper_onnx`), el idioma y la ruta de su modelo ONNX en `models/`, que no
+  está en el repositorio ([INSTALL.md](INSTALL.md)). Añadir una voz Piper es
+  añadir un documento; no hace falta tocar Python.
+- **Backend.** `TtsBackendRegistry` (`app/modules/audio/`) solo resuelve claves
+  técnicas exactas: nunca elige el backend por un nombre visible, un componente
+  o un menú. Hoy el único registrado es Piper (`PiperBackend`), que se ejecuta
+  en el propio proceso de Python. GUION, IMAGEN y VIDEO solo conocen
+  `VoiceBuilder`.
+- **Tiempos por palabra.** Piper no devuelve tiempos por palabra. El contrato
+  neutro (`TtsWordTiming`) está preparado para un backend que sí los dé; hoy los
+  tiempos de los subtítulos salen siempre de Whisper
+  ([apartado 14](#14-subtítulos)).
+- **Música.** El menú MÚSICA ofrece «Aleatoria» o «Sin música». Con
+  «Aleatoria», `MusicSelector` elige al azar una categoría (cada subcarpeta de
+  `assets/music/`) y una pista de ella. `AudioMixer` la pone en bucle por debajo
+  de la voz, con entrada y salida suaves, y la corta a la duración de la voz;
+  sin música, `audio_final.mp3` es una copia de `voz.mp3`.
 
-Piper currently returns no real word-level alignment. `TtsWordTiming` remains
-the neutral seconds-based contract for a backend that can provide it, while the
-active subtitle route is Whisper usable timing or `None`.
-
-Audio generation remains logically separated from subtitle presentation.
+Duración de la locución y ritmo de las voces: [VOICEOVER.md](VOICEOVER.md).
 
 ---
 
-# 14. SUBTITLE LAYER
+## 14. Subtítulos
 
-The subtitle layer is implemented under:
-
-```text
-app/modules/subtitles/
-```
-
-AI Visual Composer uses a provider-neutral timing architecture designed to use
-real word timing whenever a backend provides it.
-
-## Active Timing Resolution
+La capa de subtítulos (`app/modules/subtitles/`) transcribe la voz, corta el
+texto en líneas según el perfil de subtítulos elegido y prepara su pintado. La
+referencia de familias, modos de cue, estilos y efectos está en
+[SUBTITLES.md](SUBTITLES.md).
 
 ```text
-Whisper JSON Word Timestamps
-        ↓
-None
+audio/voz.mp3
+    ↓
+SubtitleBuilder            Whisper → SRT + JSON con los tiempos de cada palabra
+    ↓
+WhisperRepetitionFilter    quita las frases que Whisper inventa al final
+    ↓
+SrtOptimizer               texto del guion + tiempos de Whisper → líneas según cue_policy.mode
+    ↓
+subtitles/subtitulos.srt
+    ↓
+vídeo final                se pinta con el render_style del perfil (apartado 18)
 ```
 
-`SubtitleTimingResolver` uses usable Whisper word timestamps. When no usable
-Whisper metadata exists, it returns `None`; no provider-specific WordBoundary
-codec, ticks, or `*_word_boundaries.jsonl` sidecar participates in the active
-route.
-
-## Responsibilities
-
-The subtitle layer can:
-
-- generate subtitle files from real audio;
-- request and preserve Whisper word timestamps;
-- resolve usable Whisper timing or a clean absence of timing;
-- render single-line subtitles;
-- render word-by-word subtitles;
-- detect extremely short subtitle cues;
-- apply presentation-level micro-cue handling.
-
-## Main Components
-
-```text
-SubtitleBuilder
-SrtOptimizer
-SubtitleTiming
-SubtitleTimingResolver
-WhisperTimingParser
-SingleLineModel
-WordByWordModel
-MicroCuePolicy
-```
-
-## Timing Resolution
-
-The timing resolver follows:
-
-```text
-1. Whisper word timestamps, when usable
-2. None
-```
-
-This allows subtitle models to use real timing evidence without introducing a
-provider-specific timing format into runtime.
-
-## Micro-Cue Policy
-
-Very short word-level subtitle events can produce visual cues that are technically correct but too brief to be perceived correctly during playback.
-
-`MicroCuePolicy` handles those cases at presentation level.
-
-Its purpose is to preserve spoken content while improving the visual presentation of extremely short subtitle cues.
-
-The policy must not:
-
-- delete spoken words;
-- alter the source audio;
-- alter the script;
-- modify image generation;
-- modify I2V generation.
-
-Subtitle timing and presentation remain isolated from visual generation.
+- **Transcripción.** `SubtitleBuilder` lanza Whisper como proceso aparte
+  (`python -m whisper`) con una configuración fija (`WhisperTranscriptionConfig`:
+  modelo `medium`, idioma español, tiempos por palabra). En la ruta estándar
+  transcribe la voz sin música (`voz.mp3`). En STUDIO, SOLO VIDEO y EXPORTAR SRT
+  → TRANSCRIBIR usan el mismo `SubtitleBuilder`, tras sacar el audio del vídeo
+  con FFmpeg (`ExternalMediaSubtitlePreparationService`).
+- **Frases inventadas.** Al final de un audio, donde ya no hay voz, Whisper a
+  veces repite una frase anterior. `WhisperRepetitionFilter` quita del SRT y del
+  JSON un segmento solo si repite texto anterior y además se da una de estas
+  dos situaciones: dura demasiado poco para haberse dicho (repetición en
+  silencio), o va detrás de la última voz, en una zona que Whisper marca sin voz
+  y con palabras de muy baja confianza (repetición sin voz). Lo avisa en la
+  terminal y anota en el JSON cada segmento descartado con su motivo.
+- **Texto y tiempos.** En la ruta estándar manda el **texto del guion**: Whisper
+  solo aporta los tiempos. `SrtOptimizer` pasa el SRT por
+  `SubtitleCueTransformer`, que crea el modelo de corte con `CueModelRegistry`
+  según `cue_policy.mode` del perfil y aplica las mayúsculas si el perfil las
+  pide. Los tiempos por palabra los lee `SubtitleTimingResolver` del JSON de
+  Whisper (`subtitulos_whisper.json`); si no hay tiempos utilizables, el modelo
+  trabaja solo con el SRT. En el modo `word_by_word`, las líneas demasiado
+  breves para leerse se alargan o se unen a sus vecinas sin quitar palabras
+  (`MicroCuePolicy`).
+- **Pintado.** Según su `render_style`, un perfil se pinta de forma estática
+  (filtro `subtitles` de FFmpeg con un estilo fijo) o dinámica (un ASS temporal
+  con efectos por palabra, filtro `ass`). Las fuentes salen de `assets/fonts/`.
+- **STUDIO** trata los subtítulos a su manera (SRT + VIDEO y VIDEO + AUDIO | SRT
+  pintan el SRT tal cual): [apartado 8](#8-studio).
+- Un modo de cue nuevo es una capacidad nueva: una clase en
+  `app/modules/subtitles/modes/` y su entrada en `CueModelRegistry`. Un perfil o
+  una familia nuevos que usen modos existentes son solo configuración
+  ([apartado 19](#19-perfiles-y-configuración)).
 
 ---
 
-# 15. STORYBOARD LAYER
+## 15. Storyboard
 
-Storyboard generation is implemented primarily under:
+`StoryboardBuilder` (`app/modules/storyboard/`) convierte el guion en escenas
+visuales y las guarda en `output/<proyecto>/storyboard/storyboard.json`.
 
-```text
-app/modules/storyboard/
-```
+| Paso | Qué hace | Quién |
+|---|---|---|
+| Número de escenas | Duración del audio entre `video_style.storyboard.seconds_per_image` del perfil, redondeando hacia arriba | `StoryboardBuilder` |
+| Reparto del texto | Divide el guion en ese número de fragmentos; cada escena dura lo mismo (la duración del audio entre el número de escenas) | `SceneSplitter` |
+| Descripción visual | Pide a Ollama, con respuesta JSON de esquema fijo, qué se ve en cada escena | `StoryboardAIBuilder` |
+| Comprobación | Lee la respuesta y exige una descripción por escena | `StoryboardResponseParser`, `StoryboardValidator` |
+| Unión | Junta el texto, la duración y la descripción de cada escena | `StoryboardComposer` |
 
-Responsibilities include:
-
-- interpreting prepared script content;
-- dividing content into visual scenes;
-- validating storyboard structure;
-- preserving Visual Truth information;
-- providing structured scenes to downstream visual generation.
-
-The storyboard acts as the narrative-to-visual transition point of the system.
-
----
-
-# 16. VISUAL TRUTH
-
-Visual Truth is the operational visual contract of the Image Pipeline.
-
-Its purpose is to preserve the visual information that must survive from storyboard interpretation to backend-neutral generation.
-
-This may include:
-
-- visible subjects;
-- visible actions;
-- environments;
-- objects;
-- spatial relationships;
-- continuity relationships;
-- visual constraints;
-- filmable interpretation.
-
-Visual Truth must remain backend-neutral.
-
-It must not contain ComfyUI-specific execution instructions.
+La descripción visual de cada escena se llama **Visual Truth**: lo que tiene que
+verse, sin instrucciones para ningún backend. Sus campos son
+`visible_subject`, `visible_action`, `visible_environment`, `time_context`,
+`key_objects`, `spatial_relationships`, `continuity_links`, `abstract_source`,
+`filmable_interpretation`, `visual_constraints` y `visual_truth_status`. El
+prompt sale de `prompts/tasks/storyboard.txt`, con el tono y el formato del
+perfil.
 
 ---
 
-# 17. VISUAL INTELLIGENCE
+## 16. Imágenes
 
-Visual Intelligence is the structured interpretation layer between Visual Truth and Prompt Translation.
-
-Its architecture follows:
+`ImageBuilder` (`app/modules/images/`) genera una imagen por escena del
+storyboard, del tamaño `video_style.width` × `video_style.height` del perfil.
+Cada escena recorre esta cadena:
 
 ```text
-Visual Analysis
-      ↓
-Visual Reasoning
-      ↓
-Visual Synthesis
-      ↓
+escena del storyboard (Visual Truth)
+    ↓  StoryboardSceneAdapter            + el image_guidance del formato (config/formats.json)
+Visual Intelligence                      análisis → razonamiento → síntesis
+    ↓
 EffectiveVisualBrief
+    ↓  CinematicDirectionOrchestrator    composición, fotografía, luz, color, movimiento, continuidad
+Prompt Translation                       prompt final dentro del presupuesto del modelo
+    ↓  ComfyUIAdapter + ImagePromptSystem
+ComfyUI + Flux                           config/comfyui_flux_workflow_api.json
+    ↓
+control de calidad                       ImageQualityFlowCoordinator
+    ↓
+images/scene_*.png + images/images_manifest.json
 ```
 
-## Visual Analysis
+| Etapa | Dónde | Qué hace |
+|---|---|---|
+| Visual Intelligence | `app/visual_intelligence/` (`analysis/`, `reasoning/`, `synthesis/`) | Interpreta la escena: qué es importante, qué intención tiene, qué la une a las demás y qué conflictos hay. El resultado es un `EffectiveVisualBrief` |
+| Dirección cinematográfica | `app/cinematic_direction/` y los directores de `app/*_direction/` | Convierte el brief en decisiones de composición, fotografía, luz, color, movimiento y continuidad |
+| Traducción a prompt | `app/prompt_translation/` | Escoge y ordena la información visual, quita duplicados y ajusta el prompt al presupuesto de tokens del modelo; no reinterpreta la escena |
+| Backend | `app/backend_adapters/`, `app/modules/images/backends/comfyui_backend.py` | Adapta el prompt a ComfyUI y lanza el workflow de Flux |
 
-Inspects the structured visual information and identifies relevant visual semantics and priorities.
-
-## Visual Reasoning
-
-Reasons about:
-
-- scene intent;
-- visual strategy;
-- continuity;
-- conflicts;
-- priorities;
-- relationships between visual elements.
-
-## Visual Synthesis
-
-Consolidates the interpreted visual information into a canonical:
-
-```text
-EffectiveVisualBrief
-```
-
-This brief becomes the structured source for downstream cinematic direction and prompt translation.
-
-## Responsibilities
-
-Visual Intelligence is responsible for:
-
-- inspecting Visual Truth;
-- classifying visual semantics;
-- establishing priorities;
-- reasoning about intent;
-- reasoning about continuity;
-- resolving structured visual strategy;
-- reporting conflicts;
-- synthesizing the Effective Visual Brief;
-- preserving traceability.
-
-Visual Intelligence does not generate backend prompts directly.
+- Ollama no interviene en estas etapas: la imagen parte solo de la Visual
+  Truth del storyboard.
+- **Control de calidad.** Cada imagen pasa por `ImageQualityFlowCoordinator`
+  (`app/visual_quality/`). Comprueba que el archivo exista y no esté vacío y,
+  con NudeNet en local (modelo en `models/`), que no haya desnudos; las demás
+  comprobaciones de `default_product_quality_checks()` solo fallan si reciben
+  una señal explícita. Si una imagen falla, se vuelve a generar; si tras los
+  intentos sigue fallando, la ejecución se para y pide revisión manual.
+  Ningún resultado rechazado llega al manifiesto.
+- **Evidencias.** Cada etapa deja su resultado por escena en
+  `images/evidence/`, para poder rastrear de dónde sale cada prompt.
+- Las biblias visuales (`config/visual_bibles/`, `app/visual_bibles/`) y los
+  datos de `data/` existen como capacidad, pero hoy ninguna ruta del menú los
+  carga.
 
 ---
 
-# 18. CINEMATIC DIRECTION
+## 17. Clips de vídeo (I2V)
 
-Cinematic Direction operates after Visual Intelligence and before final backend prompt construction.
+En VIDEO (y en GUION → Video) cada imagen se convierte en un clip con Wan
+(imagen a vídeo, I2V). Lo hace `generate_video_clips()`
+(`app/modules/video_component/clip_batch.py`) con `VideoComponentBuilder`:
 
-Its purpose is to convert structured visual understanding into cinematographic direction.
+```text
+imagen de la escena + su Visual Truth
+    ↓  SourceImageAnalyzer        qué hay en la imagen
+    ↓  MotionIntentBuilder        qué movimiento pide la escena
+    ↓  VideoPromptTranslator      prompt de vídeo
+    ↓  ComfyUIVideoAdapter        workflow config/comfyui_wan22_ti2v_i2v_workflow_api.json
+ComfyUI + Wan
+    ↓
+video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
+```
 
-It can represent aspects such as:
-
-- composition;
-- framing;
-- photographic intention;
-- visual movement;
-- cinematic treatment.
-
-Cinematic Direction remains part of the structured visual interpretation process and does not directly execute generation.
+- **Parámetros.** Salen del documento Wan del formato
+  (`config/profiles/video/<formato>/wan_i2v_<formato>.json`,
+  `"kind": "video_component"`): tamaño de generación, número de fotogramas, FPS,
+  semilla y muestreo. Si en un formato hay más de uno o ninguno, la ejecución se
+  para con un error.
+- **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
+  los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
+  clips son intermedios: se borran cuando el vídeo final se ha publicado bien.
+- La ruta DISEÑO → Video usa el mismo `VideoComponentBuilder` para su único
+  clip ([apartado 7](#7-ruta-diseño)).
+- La llamada a Wan no tiene tiempo límite, a propósito
+  ([AGENTS.md](../AGENTS.md) §8).
 
 ---
 
-# 19. PROMPT TRANSLATION
+## 18. Composición del vídeo final
 
-Prompt Translation is implemented under:
+`VideoBuilder` (`app/modules/video/`) monta el MP4 final con un único comando
+FFmpeg. Usa `audio/audio_final.mp3` y reparte su duración a partes iguales
+entre las escenas. El grafo de filtros se construye por etapas, siempre en este
+orden:
 
-```text
-app/prompt_translation/
-```
+| Etapa | Qué hace | Clave del perfil (`video_style`) |
+|---|---|---|
+| Movimiento | Imagen fija: zoom o desplazamiento (`zoompan`). Clip I2V: se alarga hasta la duración de la escena (ver abajo); no lleva movimiento añadido | `motion` |
+| Transiciones | Une las escenas con una transición (`xfade`) del tipo y la duración del perfil | `transitions` |
+| Overlays | Superpone vídeos de `assets/videos/overlays/<categoría>/` con mezcla y opacidad | `overlays` |
+| Efectos visuales | Otra capa de vídeos superpuestos, de `assets/videos/visual_effects/` | `visual_effects` |
+| Fundido | Fundido de entrada y de salida del vídeo completo | `fade` |
+| Subtítulos | Pinta el SRT con el perfil de subtítulos ([apartado 14](#14-subtítulos)); no existe en «Proyecto completo sin subtítulos» | — |
 
-Its responsibility is to transform structured visual information into generation instructions suitable for the selected backend.
-
-Responsibilities include:
-
-- consuming the Effective Visual Brief;
-- selecting relevant prompt information;
-- prioritizing visual content;
-- deduplicating prompt fragments;
-- respecting backend prompt budgets;
-- assembling backend-compatible prompt data;
-- preserving traceability.
-
-Prompt Translation must not reinterpret the original narrative intent.
-
-It translates structured visual intent rather than replacing it.
-
----
-
-# 20. IMAGE RUNTIME
-
-The image runtime is implemented primarily through:
-
-```text
-app/modules/images/
-app/domain/adapters/storyboard_scene_adapter.py
-app/visual_intelligence/
-app/prompt_translation/
-app/modules/images/backends/comfyui_backend.py
-```
-
-The principal flow is:
-
-```text
-StoryboardScene
-      ↓
-StoryboardSceneAdapter
-      ↓
-Visual Analysis
-      ↓
-Visual Reasoning
-      ↓
-Visual Synthesis
-      ↓
-EffectiveVisualBrief
-      ↓
-Cinematic Direction
-      ↓
-Prompt Translation
-      ↓
-BackendPrompt
-      ↓
-ComfyUI
-      ↓
-Generated Image
-      ↓
-images_manifest.json
-```
-
-Generation evidence may be persisted under:
-
-```text
-images/evidence/
-```
-
-The image runtime remains separated from final FFmpeg composition.
+- **Clips I2V.** Un clip de Wan dura menos que su escena. Dentro del mismo
+  grafo, `I2VClipTransform` lo reproduce hacia delante y hacia atrás sin repetir
+  los fotogramas de los extremos, lo repite lo necesario, lo corta a la duración
+  exacta de la escena y lo ajusta al tamaño del perfil. No se vuelve a generar.
+- **Overlays.** El menú OVERLAYS («Sí» / «No») decide si la etapa se aplica.
+  Con «Sí», `OverlaySelector` elige carpeta (categoría) y archivo según el
+  perfil: al azar, con pesos y, si hay alternativa, sin repetir el archivo ni la
+  categoría de la escena anterior.
+- **Efectos visuales.** Tienen la misma forma que los overlays, pero se activan
+  solo con `visual_effects.enabled` del perfil.
+- **Validación.** El render se escribe primero en un archivo temporal; después
+  `VideoValidator` comprueba que su duración no se aleje de la del audio más de
+  `validation.max_duration_difference` del perfil. Solo entonces se publica como
+  `video/<proyecto>.mp4`.
+- **INTRO / OUTRO.** Si se eligió, `IntroOutroComposer` añade la intro y el
+  outro al vídeo ya validado.
+- **Diagnóstico.** Cada render deja `video/ffmpeg_diagnostics.json` con el
+  comando y el resultado; si FFmpeg falla, el error remite a ese archivo.
 
 ---
 
-# 21. VIDEO COMPONENT
+## 19. Perfiles y configuración
 
-The I2V video component is implemented under:
+Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 
-```text
-app/modules/video_component/
-```
+| Ruta | Contenido |
+|---|---|
+| `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
+| `config/ai.json` | Proveedor y modelo de Ollama |
+| `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
+| `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
+| `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
+| `config/profiles/<componente>/<formato>/<familia>/subtitulos/*.json` | Perfiles de subtítulos |
+| `prompts/` | Textos de los prompts: `tones/`, `tasks/`, `formats/` y `rules/` |
 
-Its responsibility is to transform source images into generated temporal visual assets.
+**Perfil operacional** (`OperationalProfileKey`). En GUION, IMAGEN y VIDEO
+declara:
 
-The component can:
+| Clave | Para qué sirve |
+|---|---|
+| `component`, `format`, `profile_id` | Identidad: tienen que coincidir con la carpeta |
+| `tone` | Archivo de `prompts/tones/` |
+| `duration` | Duración pedida al guion generado (IMAGEN y VIDEO; GUION no la lleva) |
+| `builders` | Qué etapas puede ejecutar el componente |
+| `image_validation` | `enabled`: hoy no cambia nada, porque el control de calidad de las imágenes se aplica siempre ([apartado 16](#16-imágenes)) |
+| `video_style` | Tamaño, FPS y las etapas del vídeo final ([apartado 18](#18-composición-del-vídeo-final)); `storyboard.seconds_per_image` |
+| `validation` | Diferencia de duración que se tolera en el vídeo final |
+| `video`, `audio` | Códecs y calidad del MP4 final |
 
-- analyze source images;
-- construct motion intent;
-- translate visual video intent;
-- prepare backend requests;
-- execute ComfyUI I2V generation;
-- persist generated clip manifests.
+En STUDIO, el perfil operacional solo tiene la identidad y el bloque `studio`
+(`input`, `output`, `montage` y `music`; [apartado 8](#8-studio)).
 
-High-level flow:
+**Cómo se cargan:**
 
-```text
-Source Image
-      ↓
-SourceImageAnalyzer
-      ↓
-MotionIntentBuilder
-      ↓
-VideoPromptTranslator
-      ↓
-BackendVideoPrompt
-      ↓
-ComfyUIVideoAdapter
-      ↓
-ComfyUI
-      ↓
-Wan I2V
-      ↓
-Generated Clip
-      ↓
-video_clips_manifest.json
-```
-
-The component is used by:
-
-```text
-VIDEO — Proyecto completo
-
-DISEÑO -> VIDEO
-```
+- `ProfileResolver` (`app/shared/profile_resolver.py`) descubre los perfiles
+  operacionales leyendo `config/profiles/<componente>/<formato>/`. Reconoce un
+  perfil por su contenido, no por el nombre del archivo, y exige que
+  `component`, `format` y `profile_id` coincidan con la ruta; un `profile_id`
+  repetido es un error. Al cargarlo comprueba además que el tamaño de
+  `video_style` cuadre con la orientación del formato.
+- `SubtitleProfileResolver` (`app/shared/subtitle_profile_resolver.py`)
+  descubre las familias como subcarpetas del formato (una familia sin perfiles no
+  aparece) y valida cada perfil al descubrirlo: identidad, `cue_policy` con un
+  modo conocido y `render_style` completo.
+- `ConfigManager` (`app/shared/config_manager.py`) recibe la clave
+  operacional y la voz que viajan en la petición y da a cada etapa su
+  configuración. No lee variables de entorno.
+- Un perfil o una familia nuevos son solo archivos: aparecen en el menú sin
+  tocar Python.
 
 ---
 
-# 22. I2V
+## 20. Programas externos
 
-I2V generation transforms a source image into a generated video clip.
+Todos se ejecutan en el propio equipo. Su instalación y sus modelos están en
+[INSTALL.md](INSTALL.md).
 
-Evidence is persisted through:
+| Programa | Para qué | Cómo se usa |
+|---|---|---|
+| **Ollama** | Guion (IMAGEN y VIDEO), descripción visual del storyboard e interpretación de la ruta DISEÑO | HTTP local (`OllamaProvider`, `app/providers/`); el modelo está en `config/ai.json`. Sin tiempo límite |
+| **ComfyUI + Flux** | Imágenes | HTTP local (`http://127.0.0.1:8188`) con el workflow de Flux |
+| **ComfyUI + Wan** | Clips I2V | El mismo servidor, con el workflow de Wan. Sin tiempo límite |
+| **Piper** | Voz | Librería de Python, en el mismo proceso, con el modelo ONNX de cada voz |
+| **Whisper** (OpenAI) | Transcripción y tiempos por palabra | Proceso aparte (`python -m whisper`) |
+| **NudeNet** | Control de desnudos en las imágenes | Librería de Python, con su modelo ONNX |
+| **FFmpeg** | Mezcla de audio, vídeo final, render de STUDIO, intro/outro y extracción de audio para Whisper | Proceso aparte (`ffmpeg`, `ffprobe`) |
 
-```text
-video_clips/video_clips_manifest.json
-video_clips/scene_*.mp4
-```
-
-The current local backend uses ComfyUI with the configured Wan I2V workflow.
-
-Generated I2V clips remain independent project artifacts.
-
-They are later consumed by the FFmpeg composition architecture when producing a complete Video project.
-
----
-
-# 23. TEMPORAL PREPARATION
-
-Generated I2V clips have their own native duration.
-
-When a scene requires more time than the generated source clip provides, AI Visual Composer can prepare the temporal asset before final composition.
-
-The validated behavior supports forward/reverse ping-pong looping.
-
-Conceptually:
-
-```text
-FORWARD
-   ↓
-REVERSE
-   ↓
-REPEAT AS REQUIRED
-   ↓
-TRIM TO EXACT SCENE DURATION
-```
-
-Duplicated endpoint frames are avoided during the forward/reverse transition.
-
-This allows an existing I2V clip to cover the required scene duration without regenerating the Wan output.
+Que Ollama y Wan no tengan tiempo límite es intencionado: con límites se
+cortaban generaciones válidas ([AGENTS.md](../AGENTS.md) §8).
 
 ---
 
-# 24. FFMPEG VIDEO COMPOSITION CORE
+## 21. Qué está en el repositorio
 
-The final video composition architecture is implemented primarily under:
+**En Git:**
 
-```text
-app/modules/video/
-```
+- El código: `main.py`, `app/`, `certification/` (campaña de certificación de
+  la generación de imágenes) y `tools/`.
+- La configuración: `config/`, `prompts/` y `data/`.
+- `tests/`.
+- `assets/`: fuentes, música, overlays y efectos visuales.
+- Los `.txt` de `input/` (vacíos) y las carpetas de `input/studio/` (con su
+  `.gitkeep`).
+- La documentación (`docs/`, README, CHANGELOG, LICENSE), `requirements.txt`,
+  `.env.example` y las reglas para agentes de IA (`AGENTS.md`, `CLAUDE.md` y
+  `PROMPTS.md`).
 
-The validated stage order is:
+**Fuera de Git (solo en el equipo):**
 
-```text
-Motion
-   ↓
-Transitions
-   ↓
-Overlays
-   ↓
-Visual Effects
-   ↓
-Fade
-   ↓
-Subtitles
-```
+- `output/` (proyectos generados) y `logs/`.
+- `models/` y `ComfyUI/`: programas y modelos de IA.
+- El contenido de `input/studio/` y de `assets/videos/intro_outro/`.
+- Secretos (`.env`), entornos virtuales, cachés y archivos temporales.
+- Los espacios privados de trabajo de los agentes ([AGENTS.md](../AGENTS.md)).
 
-Main responsibilities include:
-
-- loading video profile configuration;
-- selecting temporal assets;
-- preparing scene-level media;
-- constructing FFmpeg filter stages;
-- constructing command plans;
-- serializing FFmpeg commands;
-- executing final rendering;
-- validating the resulting video.
-
-Key components include:
-
-```text
-VideoBuildContextFactory
-VideoComponentFactory
-VideoFilterContextFactory
-VideoRenderService
-VideoBuilder
-CommandPlanBuilder
-CommandBuilder
-Runner
-VideoValidator
-```
+La documentación y la configuración compartida no llevan rutas personales del
+equipo.
 
 ---
 
-# 25. MOTION
-
-Motion is part of the FFmpeg composition graph.
-
-It applies scene-level visual movement according to profile configuration and available media.
-
-Motion can operate over:
-
-```text
-Still Images
-Generated I2V Clips
-```
-
-This means I2V generation and Motion are separate stages.
-
-Wan generates the temporal visual source.
-
-Motion can subsequently apply additional compositional movement during final FFmpeg processing.
-
----
-
-# 26. TRANSITIONS
-
-Transitions are handled by the FFmpeg composition layer.
-
-Their behavior is controlled through profile configuration.
-
-Transitions remain separate from:
-
-- Motion;
-- overlays;
-- visual effects;
-- subtitles.
-
-This separation allows each stage to evolve independently.
-
----
-
-# 27. OVERLAYS
-
-Overlay assets are sourced from:
-
-```text
-assets/videos/overlays/
-```
-
-The architecture supports:
-
-- semantic category resolution;
-- weighted distribution;
-- category cooldown;
-- neutral fallback behavior.
-
-`Light Leaks` can operate as a neutral fallback when appropriate.
-
-Overlay processing remains independent from transitions and visual effects.
-
----
-
-# 28. VISUAL EFFECTS
-
-Visual Effects are applied as an independent stage of the FFmpeg composition pipeline.
-
-They remain configurable through video profiles and are not structurally coupled to overlays or transitions.
-
----
-
-# 29. FADE
-
-Fade behavior is controlled independently through profile configuration.
-
-It operates after visual effects and before subtitle rendering in the validated composition order.
-
----
-
-# 30. MUSIC
-
-Music is selected when enabled by runtime configuration.
-
-Music assets are sourced from:
-
-```text
-assets/music/
-```
-
-Music remains part of the audiovisual composition process and does not affect visual generation.
-
----
-
-# 31. PROFILES AND CONFIGURATION
-
-AI Visual Composer is profile-driven.
-
-Relevant profile families include:
-
-```text
-config/profiles/guion/
-config/profiles/imagen/
-config/profiles/video/
-config/profiles/studio/
-```
-
-For every component and platform, ESTÁNDAR profiles live under
-`config/profiles/<component>/<platform>/estandar/`; self-contained DISEÑO JSON
-profiles live under `config/profiles/<component>/<platform>/design/`. Families
-are discovered dynamically from the filesystem. DISEÑO is a profile family, not
-a product component; an empty YouTube `design/` directory does not expose it.
-
-Additional system configuration is maintained under:
-
-```text
-config/
-```
-
-Runtime selections are propagated from the console/controller layer into the execution environment.
-
-Profiles control behavior without requiring the core architecture to be rewritten for each output target.
-
----
-
-# 32. EXTERNAL RUNTIMES
-
-AI Visual Composer relies on several local external runtimes and tools.
-
-## Ollama
-
-Used for local language-model processing.
-
-## ComfyUI
-
-Used for:
-
-- image generation;
-- I2V generation.
-
-## FFmpeg
-
-Used for:
-
-- audio processing;
-- temporal preparation;
-- Motion;
-- transitions;
-- overlays;
-- visual effects;
-- fades;
-- subtitles;
-- final audiovisual composition.
-- Studio rendering and optional INTRO/OUTRO stream-copy composition.
-
-## Piper ONNX
-
-Used for:
-
-- local declarative voice synthesis through the neutral TTS registry.
-
-The current shared voice catalog resolves Davefx and Carlfm through
-`backend_key="piper_onnx"`. Piper does not fabricate word timings.
-
-## OpenAI Whisper
-
-Used for:
-
-- subtitle transcription;
-- word timestamp fallback.
-
-External runtimes, downloaded models, checkpoints, generated outputs, secrets, and private development resources are not part of the core public repository.
-
----
-
-# 33. VALIDATION ARCHITECTURE
-
-AI Visual Composer V2.0 maintains permanent validation evidence created from real executions of the system.
-
-The historical V2.0 validation baseline is divided into three preserved areas that predate Studio:
-
-```text
-validation/01_VALIDACION_2026-08-24/
-│
-├── guion/
-├── imagen/
-└── video/
-```
-
-Validated execution count:
-
-```text
-GUION    20
-IMAGEN    8
-VIDEO     8
-───────────
-TOTAL     36
-```
-
-Each baseline may contain:
-
-```text
-report.md
-metrics.json
-metrics.csv
-inventory.json
-samples_manifest.json
-samples/
-charts/
-```
-
-The preserved samples provide historical behavioral evidence for comparison against future system states.
-
-Depending on the route, preserved evidence may include:
-
-- scripts;
-- audio;
-- subtitles;
-- storyboards;
-- image manifests;
-- source images;
-- I2V manifests;
-- I2V clips;
-- final videos.
-
-This makes the validation baseline independent from temporary runtime output.
-
----
-
-# 34. RUNTIME OUTPUT VS VALIDATION
-
-The architecture deliberately separates:
-
-```text
-output/
-```
-
-from:
-
-```text
-validation/
-```
-
-`output/` contains temporary generated projects.
-
-It may be replaced, cleaned, or regenerated during normal operation.
-
-`validation/` contains preserved evidence used to establish historical behavior.
-
-Therefore:
-
-```text
-OUTPUT ≠ BASELINE
-```
-
-and:
-
-```text
-OUTPUT ≠ RESTORATION POINT
-```
-
-Validation evidence must remain preserved when runtime output is cleaned.
-
----
-
-# 35. REPOSITORY BOUNDARIES
-
-The public repository may contain:
-
-- source code;
-- configuration;
-- tests;
-- official documentation;
-- official assets;
-- validation evidence;
-- technical references.
-
-Local or private resources remain outside public distribution, including:
-
-- generated output;
-- temporary runtime files;
-- local input content;
-- local logs;
-- secrets;
-- local ComfyUI runtime;
-- downloaded AI models;
-- checkpoints;
-- private development memory;
-- private agent workspaces.
-
-Personal absolute filesystem paths must not be introduced into public documentation or shared configuration.
-
----
-
-## 36. Documentación
+## 22. Documentación
 
 Cada documento tiene una responsabilidad; los demás lo enlazan en vez de
 repetirlo.
@@ -1192,7 +766,7 @@ repetirlo.
 
 ---
 
-## 37. Estado de versión
+## 23. Estado de versión
 
 - **Última versión cerrada:** `v2.0.0` (tag de Git).
 - **En desarrollo:** la V3, abierta hasta la validación final del propietario.
@@ -1201,7 +775,7 @@ repetirlo.
 
 ---
 
-## 38. Resumen
+## 24. Resumen
 
 ```text
 AI VISUAL COMPOSER
