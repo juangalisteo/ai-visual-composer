@@ -236,9 +236,6 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                         "width": 640,
                         "height": 360,
                     },
-                    "image_validation": {
-                        "enabled": False,
-                    },
                 },
             ):
                 builder = ImageBuilder(
@@ -290,7 +287,8 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
         scene_number,
         output_dir,
         width,
-        height
+        height,
+        seed=None
     ):
         output_dir.mkdir(
             parents=True,

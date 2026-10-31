@@ -378,18 +378,6 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     expected_height,
                     profile["video_style"]["height"]
                 )
-                self.assertEqual(
-                    False,
-                    bool(
-                        profile.get(
-                            "image_validation",
-                            {}
-                        ).get(
-                            "enabled",
-                            False
-                        )
-                    )
-                )
 
 
 if __name__ == "__main__":

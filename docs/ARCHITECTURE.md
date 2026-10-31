@@ -671,10 +671,12 @@ declara:
 | `tone` | Archivo de `prompts/tones/` |
 | `duration` | Duración pedida al guion generado (IMAGEN y VIDEO; GUION no la lleva) |
 | `builders` | Qué etapas puede ejecutar el componente |
-| `image_validation` | `enabled`: hoy no cambia nada, porque el control de calidad de las imágenes se aplica siempre ([apartado 16](#16-imágenes)) |
 | `video_style` | Tamaño, FPS y las etapas del vídeo final ([apartado 18](#18-composición-del-vídeo-final)); `storyboard.seconds_per_image` |
 | `validation` | Diferencia de duración que se tolera en el vídeo final |
 | `video`, `audio` | Códecs y calidad del MP4 final |
+
+El control de calidad de las imágenes no tiene clave en el perfil: se aplica
+siempre ([apartado 16](#16-imágenes)).
 
 En STUDIO, el perfil operacional solo tiene la identidad y el bloque `studio`
 (`input`, `output`, `montage` y `music`; [apartado 8](#8-studio)).

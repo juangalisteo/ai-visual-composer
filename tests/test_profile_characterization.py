@@ -221,18 +221,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         Path("config/profiles/diseno").exists()
                     )
                     self.assertEqual(
-                        False,
-                        bool(
-                            profile.get(
-                                "image_validation",
-                                {}
-                            ).get(
-                                "enabled",
-                                False
-                            )
-                        )
-                    )
-                    self.assertEqual(
                         expected["width"],
                         profile["video_style"]["width"]
                     )

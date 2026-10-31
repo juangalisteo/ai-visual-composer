@@ -54,7 +54,8 @@ class ComfyUIBackend:
         scene_number,
         output_dir,
         width,
-        height
+        height,
+        seed=None
     ):
         try:
             return self._generate(
@@ -63,6 +64,7 @@ class ComfyUIBackend:
                 output_dir=output_dir,
                 width=width,
                 height=height,
+                seed=seed,
             )
         except OperationalError:
             raise
@@ -83,6 +85,7 @@ class ComfyUIBackend:
         output_dir,
         width,
         height,
+        seed=None,
     ):
         workflow = json.loads(
             self.workflow_path.read_text(
@@ -100,6 +103,12 @@ class ComfyUIBackend:
             width,
             height
         )
+
+        if seed is not None:
+            workflow = self.inject_seed(
+                workflow,
+                seed
+            )
 
         client_id = str(
             uuid.uuid4()
@@ -161,6 +170,31 @@ class ComfyUIBackend:
             raise ValueError(
                 "No se encontró el nodo "
                 "ModelSamplingFlux "
+                "en el workflow de ComfyUI."
+            )
+
+        return workflow
+
+    def inject_seed(
+        self,
+        workflow,
+        seed
+    ):
+        seed_injected = False
+
+        for node in workflow.values():
+            inputs = node.get(
+                "inputs",
+                {}
+            )
+
+            if "noise_seed" in inputs:
+                inputs["noise_seed"] = seed
+                seed_injected = True
+
+        if not seed_injected:
+            raise ValueError(
+                "No se encontró ningún nodo con noise_seed "
                 "en el workflow de ComfyUI."
             )
 

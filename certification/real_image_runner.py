@@ -23,7 +23,6 @@ class RealImageRunnerConfig:
         "config/comfyui_flux_workflow_api.json"
     )
     comfyui_url: str = "http://127.0.0.1:8188"
-    image_validation_enabled: bool = True
     keep_rejected_heavy_artifacts: bool = False
 
 
@@ -178,9 +177,6 @@ class RealImageComponentRunner:
             "video_style": {
                 "width": self.config.image_width,
                 "height": self.config.image_height,
-            },
-            "image_validation": {
-                "enabled": self.config.image_validation_enabled
             },
             "visual_director": {
                 "enabled": True

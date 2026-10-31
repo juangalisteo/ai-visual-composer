@@ -114,7 +114,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     )
 
                     self.assertEqual(expected["format"], profile["format"])
-                    self.assertFalse(profile["image_validation"]["enabled"])
+                    self.assertNotIn("image_validation", profile)
                     self.assertEqual(profile["builders"], _required_builders(profile))
                     self.assertEqual(expected["width"], video_config.width)
                     self.assertEqual(expected["height"], video_config.height)
@@ -227,11 +227,6 @@ class RequiredProfileContractsTest(unittest.TestCase):
         del without_format["format"]
         with self.assertRaisesRegex(ValueError, "format"):
             builder._profile_format_guidance(without_format)
-
-        without_validation = deepcopy(profile)
-        del without_validation["image_validation"]["enabled"]
-        with self.assertRaisesRegex(ValueError, "image_validation.enabled"):
-            builder._is_image_validation_enabled(without_validation)
 
         without_duration = deepcopy(profile)
         del without_duration["video_style"]["storyboard"][

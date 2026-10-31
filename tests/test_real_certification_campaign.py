@@ -485,7 +485,6 @@ class RealCertificationCampaignTest(unittest.TestCase):
                 image_width=640,
                 image_height=360,
                 workflow_path=root / "workflow.json",
-                image_validation_enabled=True,
             )
             runner = RealImageComponentRunner(
                 config
@@ -534,8 +533,9 @@ class RealCertificationCampaignTest(unittest.TestCase):
             injected_profile = image_builder.call_args.kwargs[
                 "profile"
             ]
-            self.assertTrue(
-                injected_profile["image_validation"]["enabled"]
+            self.assertNotIn(
+                "image_validation",
+                injected_profile
             )
             self.assertTrue(
                 injected_profile["visual_director"]["enabled"]
@@ -585,9 +585,6 @@ class RealCertificationCampaignTest(unittest.TestCase):
                 "video_style": {
                     "width": 1920,
                     "height": 1080,
-                },
-                "image_validation": {
-                    "enabled": True,
                 },
                 "visual_director": {
                     "enabled": True,
