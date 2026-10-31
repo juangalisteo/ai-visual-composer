@@ -1,147 +1,124 @@
-# AI VISUAL COMPOSER — VOICEOVER
+# Voz de AI Visual Composer
 
-## REFERENCIA DE DURACIÓN DE LOCUCIÓN
+Este documento es la referencia de la voz: qué voces hay, cómo se declara cada
+una, cuántas palabras se piden al guion generado y a qué ritmo lee de verdad
+Piper.
 
-### DATOS DE REFERENCIA
+Otros documentos:
 
-135 palabras = 1:00 minuto
-Velocidad aproximada: 135 palabras/minuto
+| Para saber… | Documento |
+|---|---|
+| Cómo se genera y se mezcla el audio (Piper, música, `audio_final.mp3`) | [ARCHITECTURE.md, apartado 13](ARCHITECTURE.md#13-voz-y-música) |
+| Cómo se escribe el guion y cómo se valida | [ARCHITECTURE.md, apartado 12](ARCHITECTURE.md#12-guion) |
+| Cómo se instalan Piper y sus modelos | [INSTALL.md](INSTALL.md) |
+| Subtítulos | [SUBTITLES.md](SUBTITLES.md) |
 
-91 palabras = 0:42 segundos
-Velocidad aproximada: 130 palabras/minuto
+---
 
-### CÁLCULO DE REFERENCIA
+## 1. Voces
 
-Rango real observado: 130–135 palabras/minuto.
+| Documento | En el menú VOZ | Modelo ONNX | Idioma |
+|---|---|---|---|
+| `config/voice_configs/piper_carlfm.json` | Carlfm | `models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx` | `es-ES` |
+| `config/voice_configs/piper_davefx.json` | Davefx | `models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx` | `es-ES` |
 
-### TIEMPO ESTIPULADO PARA LOS GUIONES
+- El menú VOZ lista los documentos de `config/voice_configs/` por orden de
+  nombre de archivo y muestra su `display_name`:
 
-30 segundos → 65–70 palabras
-40 segundos → 87–93 palabras
-45 segundos → 98–105 palabras
-50 segundos → 108–117 palabras
-60 segundos → 130–140 palabras
+  ```text
+  VOZ
 
-## SUBTÍTULOS
+  1. Carlfm
+  2. Davefx
+  ```
 
-SYSTEM es la autoridad audiovisual: formato, resolución, vídeo, audio y demás
-valores de la pieza. STANDARD y DESIGN son perfiles especializados de estilo
-visual de subtítulos. DESIGN no sustituye SYSTEM.
+- Si una ejecución no trae una voz elegida, `ConfigManager` usa
+  `piper_davefx`: es la voz por defecto.
+- Las dos voces son de Piper y no cambian la velocidad ni el volumen del
+  modelo (`speaking_rate` 1.0 y `volume_gain_db` 0.0).
+- Los modelos (`.onnx` y su `.onnx.json`) no están en el repositorio: se
+  descargan al instalar ([INSTALL.md](INSTALL.md)).
 
-La composición real es:
+---
 
-```text
-SRT → tratamiento funcional → estilo visual → renderer
-```
+## 2. Documento de voz
 
-ORIGINAL toma el SRT humano como autoridad. Conserva cues, índices, orden,
-timestamps y segmentación. Sólo puede aplicar la transformación textual
-explícita `uppercase` del perfil.
+Cada voz es un JSON en `config/voice_configs/`. Lo lee
+`load_tts_voice_configuration` (`app/modules/audio/voice_configuration.py`),
+que rechaza las claves que no conoce.
 
-Línea única reutiliza el tratamiento existente que prepara cues de lectura
-continua a partir del SRT. Palabra por palabra reutiliza el tratamiento
-existente que genera cues por palabra con su política de duración y micro-cues.
-Ambos se aplican antes del estilo visual y no tienen variantes separadas para
-STANDARD o DESIGN.
+| Clave | Para qué sirve |
+|---|---|
+| `kind` | Siempre `tts_voice` |
+| `voice_id` | Identidad técnica de la voz |
+| `display_name` | Nombre en el menú VOZ; es solo presentación |
+| `backend_key` | Qué programa sintetiza la voz. Hoy solo existe `piper_onnx` (Piper) |
+| `language` | Idioma de la voz. Tiene que coincidir con el del modelo (`espeak.voice` de su `.onnx.json`) |
+| `prosody.speaking_rate` | Velocidad: 1.0 es la del modelo; con otro valor, Piper divide entre él el `length_scale` del modelo |
+| `prosody.volume_gain_db` | Volumen en dB: 0.0 deja el del modelo |
+| `backend_options.model.onnx_path` | Ruta del modelo `.onnx`, dentro de `models/audio/piper/`; su `.onnx.json` tiene que estar al lado |
+| `backend_options.synthesis` | Ajustes de Piper, opcionales: `length_scale`, `noise_scale`, `noise_w_scale`, `normalize_audio` y `volume`. `length_scale` y `volume` mandan sobre `prosody` |
 
-El backend de render se decide después del tratamiento funcional. Sin dinámica,
-`render_style.dynamic` ausente o `false` conserva SRT, el filtro `subtitles` de
-FFmpeg, `fontsdir` y `force_style`. SRT sigue siendo la autoridad temporal.
+Añadir una voz de Piper es copiar su modelo y su `.onnx.json` en una carpeta de
+`models/audio/piper/` y escribir su documento en `config/voice_configs/`:
+aparece en el menú VOZ sin tocar Python.
 
-Con `dynamic: true`, ASS es una representación temporal de render: se construye
-a partir del SRT final, usa `PlayResX/Y` derivados de SYSTEM, Styles V4+, Events
-y Dialogue, y FFmpeg aplica el filtro `ass`. El temporal no sobrescribe el SRT
-del usuario, se limpia tras el render y también ante error.
+---
 
-### Propiedades estáticas implementadas
+## 3. Cuánto dura un guion
 
-Todas se declaran en `render_style` del perfil especializado, se validan con
-`SubtitleConfigLoader`, llegan a `SubtitleStyleBuilder` y se serializan en
-`force_style` para libass.
+- **Guion generado (IMAGEN y VIDEO).** El prompt pide a Ollama un número de
+  palabras según la duración (`duration`, en segundos) del perfil operacional
+  (`PromptEngine`, `app/core/prompt_engine.py`):
 
-#### font
+  ```text
+  palabras objetivo = parte entera de (duration × 2,6)
+  mínimo            = parte entera de (objetivo × 0,9)   (al menos 1)
+  máximo            = parte entera de (objetivo × 1,1)
+  ```
 
-Finalidad: familia tipográfica. Tipo: texto no vacío. Consumidor: `FontManager`
-y `SubtitleStyleBuilder`. Ejemplo: `"font": "oswald"`.
+  | `duration` | Objetivo | Rango aceptado |
+  |---|---|---|
+  | 10 s | 26 palabras | 23–28 |
+  | 30 s | 78 palabras | 70–85 |
+  | 60 s | 156 palabras | 140–171 |
 
-#### font_size
+  Las palabras se cuentan con `count_script_words`
+  (`app/modules/script/validator.py`): cada secuencia de letras o cifras es una
+  palabra. Qué pasa si la respuesta se sale del rango:
+  [ARCHITECTURE.md, apartado 12](ARCHITECTURE.md#12-guion).
+- **Guion escrito a mano (GUION, `input/guion.txt`).** No hay rango: la voz lee
+  el texto tal cual y la duración del vídeo la marca la voz.
 
-Finalidad: tamaño visual. Tipo: entero mayor que cero. Consumidor: `FontSize`.
-Ejemplo: `"font_size": 22`.
+---
 
-#### bold, italic, underline y strikeout
+## 4. Ritmo real de Piper
 
-Finalidad: peso y decoraciones tipográficas. Tipo: booleano. Consumidor:
-`Bold`, `Italic`, `Underline` y `StrikeOut`. `bold` es obligatorio; los otros
-tres son opcionales y, si faltan, no alteran el baseline. Ejemplo:
-`"italic": true`.
+El cálculo del apartado 3 supone 2,6 palabras por segundo. Medido con las dos
+voces, Piper lee más deprisa:
 
-#### primary_colour, outline_colour, back_colour y secondary_colour
+| Voz | Texto | Palabras | Duración | Palabras/s |
+|---|---|---|---|---|
+| Davefx | corto | 61 | 20,5 s | 2,98 |
+| Davefx | medio | 139 | 44,2 s | 3,14 |
+| Davefx | largo | 228 | 71,0 s | 3,21 |
+| **Davefx** | **total** | **428** | **135,7 s** | **3,15** |
+| Carlfm | corto | 61 | 20,7 s | 2,95 |
+| Carlfm | medio | 139 | 44,4 s | 3,13 |
+| Carlfm | largo | 228 | 69,7 s | 3,27 |
+| **Carlfm** | **total** | **428** | **134,8 s** | **3,18** |
 
-Finalidad: colores ASS. Tipo: texto `&HAABBGGRR`. Consumidor: las propiedades
-ASS homónimas, incluida `SecondaryColour` si se declara. Ejemplo:
-`"primary_colour": "&H00FFFFFF"`.
+Con la voz por defecto (Davefx) son unas 3,15 palabras por segundo (unas 190
+por minuto), un 21 % más que las 2,6 del cálculo. Por eso un guion generado
+dura menos que su `duration`: con 30 s se piden 70–85 palabras, que Davefx lee
+en unos 22–27 s.
 
-#### border_style, outline y shadow
-
-Finalidad: borde y sombra. `border_style` admite `1` o `3`; `outline` y
-`shadow` son enteros no negativos. Consumidor: `BorderStyle`, `Outline` y
-`Shadow`. Ejemplo: `"shadow": 1`.
-
-#### alignment, margin_v, margin_l y margin_r
-
-Finalidad: posición estática y márgenes. `alignment` es entero de 1 a 9;
-`margin_v`, `margin_l` y `margin_r` son enteros no negativos. Los dos últimos
-son opcionales. Consumidor: `Alignment`, `MarginV`, `MarginL` y `MarginR`.
-Ejemplo: `"alignment": 2`.
-
-#### scale_x, scale_y y spacing
-
-Finalidad: escala horizontal, escala vertical y espaciado. Tipo: número finito;
-son opcionales. Consumidor: `ScaleX`, `ScaleY` y `Spacing`. Ejemplo:
-`"spacing": 1.5`.
-
-#### uppercase
-
-Finalidad: política textual de `cue_policy`, no propiedad ASS. Tipo: booleano.
-Consumidor: `TextCasePolicy`. En ORIGINAL cambia sólo texto y conserva toda la
-estructura temporal. Ejemplo: `"uppercase": true`.
-
-### Disponible pero no activado por perfiles oficiales
-
-`italic`, `underline`, `strikeout`, `secondary_colour`, `margin_l`, `margin_r`,
-`scale_x`, `scale_y` y `spacing` están implementados y validados, pero no se
-declaran en los perfiles oficiales actuales. Su ausencia conserva la apariencia
-aprobada, incluido Modo Conciencia | Reels.
-
-### No son propiedades visuales estáticas
-
-`offset` se valida en `render_style`, pero es un desplazamiento temporal de SRT
-y no se serializa en `force_style`. STUDIO exige `offset = 0` para preservar
-los timestamps humanos.
-
-### Dinámica ASS declarativa
-
-`render_style.effects` admite un único efecto por cue y requiere `dynamic:
-true`: `fade` (`\fad`), `pop` y `zoom` (`\fscx`, `\fscy`, `\t`), o `slide`
-(`\move`). Sus ventanas son internas al Dialogue, con clamp determinista para
-cues cortos; no cambian Start/End, texto, orden ni segmentación.
-
-`render_style.word_effects` admite un único efecto por palabra y también
-requiere `dynamic: true`: `karaoke` (`\kf`), `highlight` (`\1c` con color ASS
-declarado) o `progressive_reveal` (`\1a` y `\t`). `effects` y `word_effects`
-son incompatibles en una misma representación.
-
-Los efectos por palabra usan exclusivamente los tiempos de los cues finales de
-Palabra por palabra. Requieren un cue final de una sola palabra; ORIGINAL y
-Línea única multifrase no se resegmentan para ASS y fallan de forma controlada
-si se intenta aplicarles un word effect. Karaoke convierte milisegundos a
-centésimas ASS de forma determinista, sin timestamps inventados.
-
-Los tags ASS los genera exclusivamente el sistema. El texto humano sigue
-escapando barras, llaves y saltos para impedir que se convierta en comandos.
-No hay Whisper, retranscripción, forced alignment ni análisis de audio nuevo.
-
-Los perfiles oficiales actuales no declaran `dynamic`, `effects` ni
-`word_effects`: mantienen el backend SRT aprobado. Modo Conciencia | Reels
-continúa actualmente en SRT.
+**Cómo se midió** (31-10-2026): desde la raíz del repositorio, con el
+`VoiceBuilder` del programa y cada voz
+(`VoiceBuilder(config_manager=ConfigManager(voice_config_id="piper_davefx"))`
+y lo mismo con `piper_carlfm`), se generó el MP3 de tres textos en español
+de 61, 139 y 228 palabras (contadas con `count_script_words`): una reflexión
+corta, una biografía y una práctica de atención. La duración de cada MP3 se
+leyó con `ffprobe`; `silencedetect` de FFmpeg (−45 dB) no encontró silencio al
+principio ni al final, así que la duración es toda voz. Para repetirla con
+otras voces o modelos basta con el mismo procedimiento.

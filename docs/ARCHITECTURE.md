@@ -73,7 +73,7 @@ tienen relación:
 | Nombre | Qué es |
 |---|---|
 | **Ruta DISEÑO** | GUION → Diseño → Imagen o Video: genera una sola imagen o un solo clip a partir de una descripción visual directa |
-| **Familia de subtítulos `design` (MODO CONCIENCIA)** | Una de las familias de perfiles de subtítulos; en el menú se llama «MODO CONCIENCIA» ([SUBTITLES.md](SUBTITLES.md)) |
+| **Familia de subtítulos `design` (MODO CONCIENCIA)** | Una de las familias de perfiles de subtítulos; en el menú se llama «MODO CONCIENCIA» ([SUBTITLES.md](SUBTITLES.md#2-familias)) |
 
 ---
 
@@ -277,12 +277,12 @@ Qué archivos van en cada carpeta y cómo se eligen está en [START.md](START.md
 
 - **SRT + VIDEO pinta siempre el SRT tal cual.** No es una opción del menú: el
   perfil de subtítulos elegido solo aporta el aspecto (`render_style`) y, si lo
-  declara, las mayúsculas (`cue_policy.uppercase`). El orden, el texto y los
+  declara, las mayúsculas (`cue_policy.text_case`). El orden, el texto y los
   tiempos de las líneas no cambian. Es así a propósito: si SOLO VIDEO transcribe
   mal una palabra, el usuario corrige el SRT y lo vuelve a pintar con SRT + VIDEO
   ([AGENTS.md](../AGENTS.md) §8). Los efectos por palabra reparten tiempos
   aproximados **dentro** de cada línea, sin tocar los tiempos del SRT
-  ([SUBTITLES.md](SUBTITLES.md)).
+  ([SUBTITLES.md](SUBTITLES.md#8-tiempos-por-palabra-de-los-efectos)).
 - **VIDEO + AUDIO | SRT** trata su SRT igual que SRT + VIDEO.
 - **SOLO VIDEO** guarda el SRT de Whisper y genera otro adaptado al modo de cue
   del perfil, que es el que se pinta.
@@ -432,10 +432,8 @@ AudioMixer                         mezcla la voz con la música → audio/audio_
 ```
 
 - **Voces.** El menú VOZ lista los documentos de `config/voice_configs/` por su
-  `display_name` («Carlfm», «Davefx»). Cada documento declara su `backend_key`
-  (`piper_onnx`), el idioma y la ruta de su modelo ONNX en `models/`, que no
-  está en el repositorio ([INSTALL.md](INSTALL.md)). Añadir una voz Piper es
-  añadir un documento; no hace falta tocar Python.
+  `display_name` («Carlfm», «Davefx»). Qué declara cada documento y cómo se
+  añade una voz: [VOICEOVER.md](VOICEOVER.md#2-documento-de-voz).
 - **Backend.** `TtsBackendRegistry` (`app/modules/audio/`) solo resuelve claves
   técnicas exactas: nunca elige el backend por un nombre visible, un componente
   o un menú. Hoy el único registrado es Piper (`PiperBackend`), que se ejecuta
@@ -495,12 +493,13 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   según `cue_policy.mode` del perfil y aplica las mayúsculas si el perfil las
   pide. Los tiempos por palabra los lee `SubtitleTimingResolver` del JSON de
   Whisper (`subtitulos_whisper.json`); si no hay tiempos utilizables, el modelo
-  trabaja solo con el SRT. En el modo `word_by_word`, las líneas demasiado
-  breves para leerse se alargan o se unen a sus vecinas sin quitar palabras
-  (`MicroCuePolicy`).
+  trabaja solo con el SRT. Cómo corta cada modo:
+  [SUBTITLES.md](SUBTITLES.md#4-cue_policy-cómo-se-corta-el-texto).
 - **Pintado.** Según su `render_style`, un perfil se pinta de forma estática
   (filtro `subtitles` de FFmpeg con un estilo fijo) o dinámica (un ASS temporal
-  con efectos por palabra, filtro `ass`). Las fuentes salen de `assets/fonts/`.
+  con efectos, filtro `ass`):
+  [SUBTITLES.md](SUBTITLES.md#6-pintado-estático-y-dinámico). Las fuentes salen
+  de `assets/fonts/`.
 - **STUDIO** trata los subtítulos a su manera (SRT + VIDEO y VIDEO + AUDIO | SRT
   pintan el SRT tal cual): [apartado 8](#8-studio).
 - Un modo de cue nuevo es una capacidad nueva: una clase en
