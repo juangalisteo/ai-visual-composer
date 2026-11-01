@@ -10,6 +10,7 @@ from collections.abc import Callable, Mapping
 import json
 import math
 from pathlib import Path
+import re
 import wave
 
 from app.modules.audio.tts_backend_registry import TtsBackend
@@ -35,6 +36,9 @@ _SYNTHESIS_FIELDS = frozenset(
         "volume",
     }
 )
+_PARAGRAPH_BREAK = re.compile(r"\n[^\S\n]*\n\s*")
+# An ellipsis plus any trailing marks or closing quotes, followed by a space.
+_ELLIPSIS_BREAK = re.compile(r"(?:…|\.\.\.)[.?!…]*[\"'”’»)\]]*(?=\s)")
 
 
 PiperVoiceFactory = Callable[[Path, Path], object]
@@ -112,6 +116,9 @@ class PiperBackend:
             text=request.text,
             audio_path=audio_path,
             synthesis_config=synthesis_config,
+            sample_rate_hz=sample_rate_hz,
+            sentence_pause_seconds=request.voice.prosody.sentence_pause_seconds,
+            paragraph_pause_seconds=request.voice.prosody.paragraph_pause_seconds,
         )
 
         try:
@@ -305,12 +312,40 @@ def _sample_rate_from_voice(voice: object) -> int:
     return sample_rate
 
 
+def _split_paragraphs(text: str) -> tuple[str, ...]:
+    """Split text at one or more blank lines; single line breaks stay inside."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    return tuple(
+        paragraph.strip()
+        for paragraph in _PARAGRAPH_BREAK.split(normalized)
+        if paragraph.strip()
+    )
+
+
+def _split_after_ellipses(paragraph: str) -> tuple[str, ...]:
+    """Cut after ``…`` or ``...``, which espeak-ng does not end as a sentence.
+
+    Piper already yields one audio chunk per ``.``, ``?`` or ``!`` sentence, so
+    only the ellipsis needs an explicit cut before synthesis.
+    """
+    pieces = []
+    start = 0
+    for match in _ELLIPSIS_BREAK.finditer(paragraph):
+        pieces.append(paragraph[start : match.end()])
+        start = match.end()
+    pieces.append(paragraph[start:])
+    return tuple(piece.strip() for piece in pieces if piece.strip())
+
+
 def _synthesize_wav(
     *,
     voice: object,
     text: str,
     audio_path: Path,
     synthesis_config: object,
+    sample_rate_hz: int,
+    sentence_pause_seconds: float,
+    paragraph_pause_seconds: float,
 ) -> None:
     """Write one WAV without allowing ``wave.close`` to hide synth failure."""
     try:
@@ -323,7 +358,14 @@ def _synthesize_wav(
         ) from error
 
     try:
-        voice.synthesize_wav(text, wav_file, syn_config=synthesis_config)
+        _write_paced_chunks(
+            voice=voice,
+            text=text,
+            wav_file=wav_file,
+            synthesis_config=synthesis_config,
+            sentence_pause_frames=_pause_frames(sentence_pause_seconds, sample_rate_hz),
+            paragraph_pause_frames=_pause_frames(paragraph_pause_seconds, sample_rate_hz),
+        )
     except Exception as error:
         try:
             wav_file.close()
@@ -341,6 +383,48 @@ def _synthesize_wav(
             TtsBackendErrorKind.AUDIO_INVALID,
             "Piper no finalizó un WAV de staging válido.",
         ) from error
+
+
+def _write_paced_chunks(
+    *,
+    voice: object,
+    text: str,
+    wav_file: wave.Wave_write,
+    synthesis_config: object,
+    sentence_pause_frames: int,
+    paragraph_pause_frames: int,
+) -> None:
+    """Write Piper sentence chunks with declared silence between them.
+
+    A paragraph break replaces the sentence pause; nothing is added before the
+    first chunk or after the last one.
+    """
+    pending_pause_frames = 0
+    wrote_audio = False
+    for paragraph_index, paragraph in enumerate(_split_paragraphs(text)):
+        if paragraph_index > 0 and wrote_audio:
+            pending_pause_frames = paragraph_pause_frames
+        for piece in _split_after_ellipses(paragraph):
+            for chunk in voice.synthesize(piece, syn_config=synthesis_config):
+                if not wrote_audio:
+                    wav_file.setframerate(chunk.sample_rate)
+                    wav_file.setsampwidth(chunk.sample_width)
+                    wav_file.setnchannels(chunk.sample_channels)
+                    wrote_audio = True
+                if pending_pause_frames:
+                    wav_file.writeframes(
+                        bytes(
+                            pending_pause_frames
+                            * chunk.sample_width
+                            * chunk.sample_channels
+                        )
+                    )
+                wav_file.writeframes(chunk.audio_int16_bytes)
+                pending_pause_frames = sentence_pause_frames
+
+
+def _pause_frames(seconds: float, sample_rate_hz: int) -> int:
+    return round(seconds * sample_rate_hz)
 
 
 def _validate_staged_wav(

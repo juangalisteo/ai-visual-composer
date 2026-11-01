@@ -13,6 +13,7 @@ from app.modules.audio.tts_contracts import (
     TtsSynthesisRequest,
     TtsSynthesisResult,
     TtsSynthesisWorkspace,
+    TtsVoiceConfigurationError,
 )
 from app.modules.audio.tts_backend_runtime import build_default_tts_backend_registry
 from app.modules.audio.voice_timing_adapter import VoiceTimingAdapter
@@ -213,6 +214,17 @@ class VoiceBuilder:
             technical_metadata["backend_key"] = voice.backend_key
         if isinstance(error, TtsBackendError):
             technical_metadata["backend_error_kind"] = error.diagnostic.kind.value
+        if isinstance(error, TtsVoiceConfigurationError):
+            return create_operational_error(
+                family="CONFIG",
+                user_message=f"La configuración de la voz no es válida: {error}",
+                recommended_action=(
+                    "Corrige el documento de la voz en config/voice_configs/."
+                ),
+                operation="Generar voz",
+                resource=str(output_path),
+                technical_metadata=technical_metadata,
+            )
 
         return create_operational_error(
             family="AUDIO",

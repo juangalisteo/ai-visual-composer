@@ -12,6 +12,7 @@ from app.modules.audio.voice_configuration import (
 from app.modules.audio.tts_backend_runtime import (
     build_default_tts_backend_registry,
 )
+from app.modules.audio.tts_contracts import TtsVoiceConfigurationError
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
 
@@ -210,6 +211,66 @@ def test_voice_configuration_validates_required_neutral_fields(
 
     with pytest.raises((TypeError, ValueError), match=error):
         load_tts_voice_configuration(document)
+
+
+def test_current_voice_documents_declare_sentence_and_paragraph_pauses():
+    for stem in ("piper_davefx", "piper_carlfm"):
+        prosody = load_tts_voice_configuration(_document(stem)).voice.prosody
+
+        assert prosody.sentence_pause_seconds == 0.5
+        assert prosody.paragraph_pause_seconds == 1.5
+
+
+def test_missing_pauses_mean_no_extra_silence():
+    document = _document()
+    del document["prosody"]["sentence_pause_seconds"]
+    del document["prosody"]["paragraph_pause_seconds"]
+
+    prosody = load_tts_voice_configuration(document).voice.prosody
+
+    assert prosody.sentence_pause_seconds == 0.0
+    assert prosody.paragraph_pause_seconds == 0.0
+
+
+@pytest.mark.parametrize("value", (0, 0.0, 2, 0.25))
+@pytest.mark.parametrize("field", ("sentence_pause_seconds", "paragraph_pause_seconds"))
+def test_pause_accepts_zero_and_positive_seconds(field, value):
+    document = _document()
+    document["prosody"][field] = value
+
+    assert getattr(load_tts_voice_configuration(document).voice.prosody, field) == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    (-0.5, "0.5", True, None, float("nan"), float("inf"), [0.5]),
+)
+@pytest.mark.parametrize("field", ("sentence_pause_seconds", "paragraph_pause_seconds"))
+def test_pause_rejects_invalid_values_with_spanish_message(field, value):
+    document = _document()
+    document["prosody"][field] = value
+
+    with pytest.raises(TtsVoiceConfigurationError) as error:
+        load_tts_voice_configuration(document)
+
+    assert str(error.value).startswith(
+        f"prosody.{field} debe ser un número de segundos mayor o igual que 0 "
+        "(0 = sin pausa extra); se recibió "
+    )
+
+
+def test_prosody_rejects_unknown_fields_such_as_misspelled_pauses():
+    document = _document()
+    document["prosody"]["sentence_pause"] = 0.5
+
+    with pytest.raises(TtsVoiceConfigurationError) as error:
+        load_tts_voice_configuration(document)
+
+    assert str(error.value) == (
+        "prosody no admite las claves: sentence_pause. Claves válidas: "
+        "speaking_rate, volume_gain_db, sentence_pause_seconds, "
+        "paragraph_pause_seconds."
+    )
 
 
 @pytest.mark.parametrize(

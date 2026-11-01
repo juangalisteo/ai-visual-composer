@@ -179,6 +179,38 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
         self.assertIs(caught.exception.__cause__, backend_error)
         self.assertIs(backend_error.__cause__, original_cause)
 
+    def test_invalid_pause_reaches_the_user_as_spanish_configuration_error(self):
+        document = json.loads(
+            Path("config/voice_configs/piper_davefx.json").read_text(encoding="utf-8")
+        )
+        document["prosody"]["paragraph_pause_seconds"] = -1
+
+        class _InvalidConfigurationManager:
+            def get_tts_voice_configuration(self):
+                return load_tts_voice_configuration(document)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            backend = _Backend()
+            builder = VoiceBuilder(
+                config_manager=_InvalidConfigurationManager(),
+                backend_registry=TtsBackendRegistry((backend,)),
+                workspace_parent=root / "workspaces",
+            )
+            with self.assertRaises(OperationalError) as caught:
+                builder.build("texto", output_path=root / "voz.mp3")
+
+        context = caught.exception.context
+        self.assertEqual("CONFIG", context.family)
+        self.assertEqual(
+            "La configuración de la voz no es válida: "
+            "prosody.paragraph_pause_seconds debe ser un número de segundos "
+            "mayor o igual que 0 (0 = sin pausa extra); se recibió -1.",
+            context.user_message,
+        )
+        self.assertIn("config/voice_configs/", context.recommended_action)
+        self.assertEqual([], backend.requests)
+
     def test_current_voice_documents_resolve_their_declared_piper_capability(self):
         expected = {
             "piper_carlfm": "piper_voice_carlfm",
@@ -199,6 +231,8 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
                 self.assertEqual(voice_id, request.voice.voice_id)
                 self.assertIsNone(request.voice.backend_voice_id)
                 self.assertEqual(1.0, request.voice.prosody.speaking_rate)
+                self.assertEqual(0.5, request.voice.prosody.sentence_pause_seconds)
+                self.assertEqual(1.5, request.voice.prosody.paragraph_pause_seconds)
 
     def test_facade_has_no_direct_client_or_component_backend_knowledge(self):
         from app.modules.audio import voice_builder

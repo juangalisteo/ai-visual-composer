@@ -1,8 +1,8 @@
 # Voz de AI Visual Composer
 
 Este documento es la referencia de la voz: qué voces hay, cómo se declara cada
-una, cuántas palabras se piden al guion generado y a qué ritmo lee de verdad
-Piper.
+una, cuántas palabras se piden al guion generado, a qué ritmo lee de verdad
+Piper y cómo hace las pausas.
 
 Otros documentos:
 
@@ -36,6 +36,8 @@ Otros documentos:
   `piper_davefx`: es la voz por defecto.
 - Las dos voces son de Piper y no cambian la velocidad ni el volumen del
   modelo (`speaking_rate` 1.0 y `volume_gain_db` 0.0).
+- Las dos hacen una pausa de 0,5 s tras cada frase y de 1,5 s entre párrafos
+  (apartado 5).
 - Los modelos (`.onnx` y su `.onnx.json`) no están en el repositorio: se
   descargan al instalar ([INSTALL.md](INSTALL.md)).
 
@@ -56,8 +58,18 @@ que rechaza las claves que no conoce.
 | `language` | Idioma de la voz. Tiene que coincidir con el del modelo (`espeak.voice` de su `.onnx.json`) |
 | `prosody.speaking_rate` | Velocidad: 1.0 es la del modelo; con otro valor, Piper divide entre él el `length_scale` del modelo |
 | `prosody.volume_gain_db` | Volumen en dB: 0.0 deja el del modelo |
+| `prosody.sentence_pause_seconds` | Silencio extra, en segundos, tras cada final de frase. Opcional: sin la clave, 0 (sin pausa extra). Apartado 5 |
+| `prosody.paragraph_pause_seconds` | Silencio extra, en segundos, entre párrafos (una o más líneas en blanco). Opcional: sin la clave, 0. Apartado 5 |
 | `backend_options.model.onnx_path` | Ruta del modelo `.onnx`, dentro de `models/audio/piper/`; su `.onnx.json` tiene que estar al lado |
 | `backend_options.synthesis` | Ajustes de Piper, opcionales: `length_scale`, `noise_scale`, `noise_w_scale`, `normalize_audio` y `volume`. `length_scale` y `volume` mandan sobre `prosody` |
+
+`prosody` solo admite esas cuatro claves. Un valor que no vale (o una clave
+mal escrita) detiene la generación de la voz con un mensaje que nombra la
+clave, por ejemplo:
+
+```text
+La configuración de la voz no es válida: prosody.paragraph_pause_seconds debe ser un número de segundos mayor o igual que 0 (0 = sin pausa extra); se recibió -1.
+```
 
 Añadir una voz de Piper es copiar su modelo y su `.onnx.json` en una carpeta de
 `models/audio/piper/` y escribir su documento en `config/voice_configs/`:
@@ -122,3 +134,52 @@ corta, una biografía y una práctica de atención. La duración de cada MP3 se
 leyó con `ffprobe`; `silencedetect` de FFmpeg (−45 dB) no encontró silencio al
 principio ni al final, así que la duración es toda voz. Para repetirla con
 otras voces o modelos basta con el mismo procedimiento.
+
+La medida es de antes de las pausas del apartado 5 (31-10-2026, voces sin
+pausas): es el ritmo de la lectura. Con las pausas, cada audio dura además lo
+que sumen sus pausas.
+
+---
+
+## 5. Pausas
+
+La voz hace dos pausas, que declara cada documento de voz en `prosody`:
+
+| Clave | Dónde | Valor en las dos voces |
+|---|---|---|
+| `sentence_pause_seconds` | Tras cada final de frase (`.`, `?`, `!`, `…`) | 0,5 s |
+| `paragraph_pause_seconds` | Entre párrafos: una o más líneas en blanco | 1,5 s |
+
+- **0 = sin pausa extra.** Las dos claves son opcionales; sin ellas, 0.
+- El valor es silencio **añadido** al que el modelo ya deja al final de cada
+  frase (hasta unos 0,25 s con Davefx).
+- Un cambio de párrafo lleva solo la pausa de párrafo (no se suman las dos).
+  No se añade silencio al principio ni al final del audio.
+- **Un salto de línea simple no hace nada especial:** las dos líneas se leen
+  seguidas, como una sola frase si no hay punto entre ellas. Un texto sin
+  líneas en blanco solo lleva las pausas de frase.
+- Es la misma regla para el guion escrito a mano (`input/guion.txt`) y para el
+  generado. Las pausas solo cambian el audio: el guion guardado
+  (`scripts/guion.txt`) y el texto de los subtítulos son los mismos.
+
+**Cómo se hacen (Piper).** `PiperBackend`
+(`app/modules/audio/piper_backend.py`):
+
+1. Parte el texto en párrafos por las líneas en blanco (vale con finales de
+   línea de Windows).
+2. Parte cada párrafo tras unos puntos suspensivos (`…` o `...`) seguidos de
+   espacio: el lector fonético de Piper (espeak-ng) no los toma como final de
+   frase y, sin este corte, pega las palabras de alrededor.
+3. Lee cada trozo con Piper, que ya devuelve el audio frase a frase (corta en
+   `.`, `?` y `!`), y escribe entre frases la pausa de frase y entre párrafos la
+   de párrafo.
+
+Leer cada párrafo por separado tiene además otro efecto: Piper ya no pierde el
+punto de la última frase de cada párrafo (le pasaba con una línea en blanco
+detrás) y esa frase se lee con entonación de final.
+
+Lo que decide dónde acaba una frase es Piper: tras una abreviatura con punto
+(«Sr. García») también hace pausa. Si molesta, se escribe la palabra entera.
+
+Los subtítulos siguen la voz: Whisper da los tiempos de cada palabra y en las
+pausas no hay texto ([SUBTITLES.md](SUBTITLES.md)).

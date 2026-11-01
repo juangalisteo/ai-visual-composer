@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import json
 import math
+import re
 import sys
 import wave
 
@@ -22,27 +23,36 @@ from app.modules.audio.tts_contracts import (
 )
 
 
+CHUNK_FRAMES = 8
+
+
 class FakePiperVoice:
+    """Yield one non-silent chunk per ``.``/``?``/``!`` sentence, like Piper."""
+
     def __init__(self, sample_rate=22050, *, synthesize_error=None, audio_format=None):
         self.config = SimpleNamespace(sample_rate=sample_rate)
         self.synthesize_error = synthesize_error
         self.audio_format = audio_format or (1, 2, sample_rate)
         self.calls = []
 
-    def synthesize_wav(self, text, wav_file, syn_config=None):
+    def synthesize(self, text, syn_config=None):
         self.calls.append((text, syn_config))
         if self.synthesize_error is not None:
             raise self.synthesize_error
         channels, sample_width, sample_rate = self.audio_format
-        wav_file.setnchannels(channels)
-        wav_file.setsampwidth(sample_width)
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(b"\x00" * sample_width * channels * 8)
+        for _sentence in re.findall(r"[^.?!]+[.?!]*", text):
+            yield SimpleNamespace(
+                sample_rate=sample_rate,
+                sample_width=sample_width,
+                sample_channels=channels,
+                audio_int16_bytes=b"\x01" * sample_width * channels * CHUNK_FRAMES,
+            )
 
 
 class EmptyPiperVoice(FakePiperVoice):
-    def synthesize_wav(self, text, wav_file, syn_config=None):
+    def synthesize(self, text, syn_config=None):
         self.calls.append((text, syn_config))
+        return iter(())
 
 
 class RecordingFactory:
@@ -84,12 +94,12 @@ def _write_model_pair(root, *, model_length_scale=1.0, model_language="es"):
     return relative, model_path
 
 
-def _request(tmp_path, relative_path, *, backend_key="piper_onnx", language="es-ES", backend_voice_id=None, synthesis=None, speaking_rate=1.0, volume_gain_db=0.0):
+def _request(tmp_path, relative_path, *, backend_key="piper_onnx", language="es-ES", backend_voice_id=None, synthesis=None, speaking_rate=1.0, volume_gain_db=0.0, text="Texto de prueba.", sentence_pause_seconds=0.0, paragraph_pause_seconds=0.0):
     options = {"model": {"onnx_path": str(relative_path)}}
     if synthesis is not None:
         options["synthesis"] = synthesis
     return TtsSynthesisRequest(
-        text="Texto de prueba.",
+        text=text,
         voice=ResolvedTtsVoice(
             voice_id="test_voice",
             backend_key=backend_key,
@@ -98,6 +108,8 @@ def _request(tmp_path, relative_path, *, backend_key="piper_onnx", language="es-
             prosody=TtsProsody(
                 speaking_rate=speaking_rate,
                 volume_gain_db=volume_gain_db,
+                sentence_pause_seconds=sentence_pause_seconds,
+                paragraph_pause_seconds=paragraph_pause_seconds,
             ),
             backend_options=options,
         ),
@@ -501,3 +513,132 @@ def test_does_not_select_model_from_voice_identity_or_filename_substrings(tmp_pa
     backend.synthesize(request)
 
     assert factory.calls[0][0] == model_path
+
+
+@pytest.mark.parametrize(
+    ("text", "paragraphs"),
+    [
+        ("Una. Dos.", ("Una. Dos.",)),
+        ("Línea uno\nlínea dos.", ("Línea uno\nlínea dos.",)),
+        ("Uno.\n\nDos.", ("Uno.", "Dos.")),
+        ("Uno.\r\n\r\nDos.\r\nTres.", ("Uno.", "Dos.\nTres.")),
+        ("Uno.\n \t\n\n\nDos.", ("Uno.", "Dos.")),
+        ("\n\nUno.\n\n", ("Uno.",)),
+    ],
+)
+def test_splits_paragraphs_only_at_blank_lines(text, paragraphs):
+    assert piper_backend._split_paragraphs(text) == paragraphs
+
+
+@pytest.mark.parametrize(
+    ("paragraph", "pieces"),
+    [
+        ("Una. Dos.", ("Una. Dos.",)),
+        ("Espera… Ya llega.", ("Espera…", "Ya llega.")),
+        ("Espera... ya llega.", ("Espera...", "ya llega.")),
+        ("¿Y si…? Bien.", ("¿Y si…?", "Bien.")),
+        ("Dijo «así…» y calló.", ("Dijo «así…»", "y calló.")),
+        ("Termina así…", ("Termina así…",)),
+        ("Uno…dos.", ("Uno…dos.",)),
+    ],
+)
+def test_cuts_after_ellipses_that_espeak_does_not_end(paragraph, pieces):
+    assert piper_backend._split_after_ellipses(paragraph) == pieces
+
+
+def _frames(path):
+    with wave.open(str(path), "rb") as wav_file:
+        return wav_file.readframes(wav_file.getnframes())
+
+
+def _silence_runs(frames):
+    """Length in samples of each run of zero samples between audio chunks."""
+    samples = [frames[index : index + 2] for index in range(0, len(frames), 2)]
+    runs, current = [], 0
+    for sample in samples:
+        if sample == b"\x00\x00":
+            current += 1
+        elif current:
+            runs.append(current)
+            current = 0
+    assert current == 0, "no silence must be written after the last chunk"
+    return runs
+
+
+@pytest.mark.parametrize("sample_rate", [22050, 16000])
+def test_writes_exact_sentence_and_paragraph_pauses_between_chunks(tmp_path, sample_rate):
+    relative, _ = _write_model_pair(tmp_path)
+    voice = FakePiperVoice(sample_rate=sample_rate)
+    backend, _, _ = _backend(tmp_path, voice)
+
+    result = backend.synthesize(
+        _request(
+            tmp_path,
+            relative,
+            text="Uno. ¿Dos? ¡Tres!\r\n\r\nCuatro…  cinco.\n\n\nSeis",
+            sentence_pause_seconds=0.5,
+            paragraph_pause_seconds=1.5,
+        )
+    )
+
+    frames = _frames(result.staged_audio.path)
+    sentence, paragraph = round(0.5 * sample_rate), round(1.5 * sample_rate)
+    assert frames[: 2 * CHUNK_FRAMES] == b"\x01" * 2 * CHUNK_FRAMES
+    assert _silence_runs(frames) == [sentence, sentence, paragraph, sentence, paragraph]
+    assert len(frames) == 2 * (6 * CHUNK_FRAMES + 3 * sentence + 2 * paragraph)
+    assert [text for text, _ in voice.calls] == [
+        "Uno. ¿Dos? ¡Tres!",
+        "Cuatro…",
+        "cinco.",
+        "Seis",
+    ]
+
+
+def test_zero_pauses_write_chunks_back_to_back(tmp_path):
+    relative, _ = _write_model_pair(tmp_path)
+    voice = FakePiperVoice()
+    backend, _, _ = _backend(tmp_path, voice)
+
+    result = backend.synthesize(
+        _request(tmp_path, relative, text="Uno. Dos.\n\nTres… cuatro.")
+    )
+
+    frames = _frames(result.staged_audio.path)
+    assert frames == b"\x01" * 2 * 4 * CHUNK_FRAMES
+    assert _silence_runs(frames) == []
+
+
+def test_text_without_blank_lines_only_gets_sentence_pauses(tmp_path):
+    relative, _ = _write_model_pair(tmp_path)
+    backend, _, _ = _backend(tmp_path, FakePiperVoice())
+
+    result = backend.synthesize(
+        _request(
+            tmp_path,
+            relative,
+            text="Uno. Dos\ntres. Cuatro.",
+            sentence_pause_seconds=0.25,
+            paragraph_pause_seconds=2.0,
+        )
+    )
+
+    assert _silence_runs(_frames(result.staged_audio.path)) == [
+        round(0.25 * 22050)
+    ] * 2
+
+
+def test_paragraph_pause_does_not_add_the_sentence_pause(tmp_path):
+    relative, _ = _write_model_pair(tmp_path)
+    backend, _, _ = _backend(tmp_path, FakePiperVoice())
+
+    result = backend.synthesize(
+        _request(
+            tmp_path,
+            relative,
+            text="Uno.\n\nDos.",
+            sentence_pause_seconds=0.5,
+            paragraph_pause_seconds=0.0,
+        )
+    )
+
+    assert _silence_runs(_frames(result.staged_audio.path)) == []

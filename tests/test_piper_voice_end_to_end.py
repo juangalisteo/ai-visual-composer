@@ -25,12 +25,18 @@ class _PiperVoiceDouble:
     def __init__(self, sample_rate_hz):
         self.config = type("Config", (), {"sample_rate": sample_rate_hz})()
 
-    def synthesize_wav(self, text, wav_file, *, syn_config):
+    def synthesize(self, text, *, syn_config):
         del text, syn_config
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(self.config.sample_rate)
-        wav_file.writeframes(b"\x00\x00" * (self.config.sample_rate // 20))
+        yield type(
+            "Chunk",
+            (),
+            {
+                "sample_rate": self.config.sample_rate,
+                "sample_width": 2,
+                "sample_channels": 1,
+                "audio_int16_bytes": b"\x00\x00" * (self.config.sample_rate // 20),
+            },
+        )()
 
 
 def _piper_backend_factory(project_root, observed_sample_rates, observed_timings):
