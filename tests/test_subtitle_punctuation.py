@@ -362,5 +362,179 @@ class SubtitlePunctuationTest(unittest.TestCase):
         )
 
 
+class ScriptAlignedTimingTest(unittest.TestCase):
+    """The script's words always win over what Whisper heard."""
+
+    @staticmethod
+    def _timing(*segments):
+        return SubtitleTiming(
+            source="whisper",
+            segments=tuple(
+                SpeechSegment(
+                    start=words[0][1],
+                    end=words[-1][2],
+                    words=tuple(
+                        WordTiming(text, start, end, confidence=0.5, source="whisper")
+                        for text, start, end in words
+                    ),
+                )
+                for words in segments
+            ),
+        )
+
+    @staticmethod
+    def _aligned(script, timing):
+        return reconcile_timing_text(script, timing, authoritative=True)
+
+    @staticmethod
+    def _spans(timing):
+        return [
+            (word.text, round(word.start, 6), round(word.end, 6))
+            for word in timing.words
+        ]
+
+    def test_same_number_of_words_takes_the_script_text_and_whisper_times(self):
+        timing = self._timing(
+            [("durante", 0.0, 0.4), ("siglos", 0.5, 0.9)],
+            [("buscamos", 1.5, 2.0), ("fuera.", 2.1, 2.5)],
+        )
+
+        aligned = self._aligned("Durante siglos, «buscamos» fuera…", timing)
+
+        self.assertEqual(
+            [
+                ("Durante", 0.0, 0.4),
+                ("siglos,", 0.5, 0.9),
+                ("«buscamos»", 1.5, 2.0),
+                ("fuera…", 2.1, 2.5),
+            ],
+            self._spans(aligned),
+        )
+        self.assertEqual([2, 2], [len(segment.words) for segment in aligned.segments])
+        self.assertEqual(0.5, aligned.words[0].confidence)
+
+    def test_changed_word_keeps_its_whisper_times(self):
+        timing = self._timing(
+            [("Y", 0.0, 0.2), ("quizás", 0.3, 0.8), ("sea", 0.9, 1.1), ("así.", 1.2, 1.5)]
+        )
+
+        aligned = self._aligned("Y quizá sea así.", timing)
+
+        self.assertEqual(
+            [("Y", 0.0, 0.2), ("quizá", 0.3, 0.8), ("sea", 0.9, 1.1), ("así.", 1.2, 1.5)],
+            self._spans(aligned),
+        )
+
+    def test_extra_whisper_word_is_left_out(self):
+        timing = self._timing(
+            [("de", 0.0, 0.2), ("verdad", 0.3, 0.7), ("que", 0.8, 0.9), ("aquella", 1.0, 1.5)]
+        )
+
+        aligned = self._aligned("de verdad aquella", timing)
+
+        self.assertEqual(
+            [("de", 0.0, 0.2), ("verdad", 0.3, 0.7), ("aquella", 1.0, 1.5)],
+            self._spans(aligned),
+        )
+
+    def test_missing_word_shares_the_time_of_the_previous_word(self):
+        timing = self._timing(
+            [("empezó", 0.0, 0.5), ("luchar", 0.6, 1.0), ("con", 1.1, 1.3)]
+        )
+
+        aligned = self._aligned("empezó a luchar con", timing)
+
+        self.assertEqual(
+            [("empezó", 0.0, 0.428571), ("a", 0.428571, 0.5), ("luchar", 0.6, 1.0), ("con", 1.1, 1.3)],
+            self._spans(aligned),
+        )
+        self.assertEqual("approximate", aligned.words[1].source)
+
+    def test_missing_word_after_a_sentence_end_shares_the_next_word(self):
+        timing = self._timing(
+            [("fin.", 0.0, 0.4)],
+            [("Jacob", 2.0, 2.5), ("salió.", 2.6, 3.0)],
+        )
+
+        aligned = self._aligned("fin.\n\nY Jacob salió.", timing)
+
+        self.assertEqual(
+            [("fin.", 0.0, 0.4), ("Y", 2.0, 2.083333), ("Jacob", 2.083333, 2.5), ("salió.", 2.6, 3.0)],
+            self._spans(aligned),
+        )
+        self.assertEqual([1, 3], [len(segment.words) for segment in aligned.segments])
+
+    def test_run_with_another_number_of_words_is_spread_by_letters_in_its_span(self):
+        timing = self._timing(
+            [("un", 0.0, 0.2), ("serie", 0.3, 0.8), ("misterioso", 0.9, 1.5)]
+        )
+
+        aligned = self._aligned("un ser y misterioso", timing)
+
+        self.assertEqual(
+            [("un", 0.0, 0.2), ("ser", 0.3, 0.675), ("y", 0.675, 0.8), ("misterioso", 0.9, 1.5)],
+            self._spans(aligned),
+        )
+
+    def test_differences_of_case_accents_and_signs_still_align(self):
+        timing = self._timing(
+            [("Genesis,", 0.0, 0.5), ("solo", 0.6, 0.9), ("entonces", 1.0, 1.4)]
+        )
+
+        aligned = self._aligned("Génesis: sólo entonces,", timing)
+
+        self.assertEqual(
+            [("Génesis:", 0.0, 0.5), ("sólo", 0.6, 0.9), ("entonces,", 1.0, 1.4)],
+            self._spans(aligned),
+        )
+
+    def test_paragraph_of_three_lines_is_read_whole(self):
+        timing = self._timing(
+            [("uno", 0.0, 0.2), ("dos", 0.3, 0.5), ("tres", 0.6, 0.8), ("cuatro", 0.9, 1.1)]
+        )
+
+        aligned = self._aligned("Uno,\ndos,\ntres\ncuatro.", timing)
+
+        self.assertEqual(
+            ["Uno,", "dos,", "tres", "cuatro."],
+            [word.text for word in aligned.words],
+        )
+
+    def test_empty_script_keeps_the_whisper_timing(self):
+        timing = self._timing([("hola", 0.0, 0.4)])
+
+        for script in ("", "   \n\n "):
+            with self.subTest(script=script):
+                self.assertIs(timing, self._aligned(script, timing))
+
+    def test_cue_transformer_renders_exactly_the_script_words(self):
+        script = "Pero quizá, ¿solo entonces? ¡Sí!"
+        timing = self._timing(
+            [("Pero", 0.0, 0.3), ("quizás", 0.4, 0.8), ("sólo", 0.9, 1.2),
+             ("que", 1.25, 1.3), ("entonces", 1.3, 1.8), ("sí", 1.9, 2.2)]
+        )
+        transformer = SubtitleCueTransformer(
+            subtitle_profile=SimpleNamespace(
+                cue_policy={
+                    "mode": "single_line",
+                    "max_chars_per_line": 60,
+                    "min_duration": 1.0,
+                    "max_duration": 3.0,
+                    "significant_gap_threshold": 0.35,
+                    "punctuation": dict(SubtitlePunctuationTest.PUNCTUATION),
+                },
+            ),
+            render_fps=30,
+        )
+
+        rendered = transformer.transform(
+            "1\n00:00:00,000 --> 00:00:02,200\nPero quizás sólo que entonces sí",
+            timing=timing,
+            canonical_content=script,
+        )
+
+        self.assertEqual(script, SubtitlePunctuationTest._cue_text(rendered))
+
+
 if __name__ == "__main__":
     unittest.main()

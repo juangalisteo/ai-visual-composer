@@ -500,7 +500,15 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   en el ASS. Sin `voice_pauses` (STUDIO, o una voz sin pausas) los tiempos son
   los de Whisper.
 - **Texto y tiempos.** En la ruta estándar manda el **texto del guion**: Whisper
-  solo aporta los tiempos. `SrtOptimizer` pasa el SRT por
+  solo aporta los tiempos. `reconcile_timing_text` alinea palabra a palabra el
+  guion con lo que oyó Whisper (`difflib.SequenceMatcher`, sin contar
+  mayúsculas, tildes ni signos) y pone siempre las palabras del guion, con sus
+  mayúsculas y signos. Una palabra igual, o cambiada por otra («quizás» por
+  «quizá»), toma el tiempo de la de Whisper; un tramo con otro número de
+  palabras («serie» por «ser y») reparte su tiempo entre las del guion en
+  proporción a sus letras; una palabra del guion que Whisper no oyó comparte el
+  tiempo de la anterior (o de la siguiente, si la anterior cierra frase o
+  párrafo), y una palabra que Whisper añade se quita. `SrtOptimizer` pasa el SRT por
   `SubtitleCueTransformer`, que crea el modelo de corte con `CueModelRegistry`
   según `cue_policy.mode` del perfil y aplica las mayúsculas si el perfil las
   pide. Los tiempos por palabra los lee `SubtitleTimingResolver` del JSON de
