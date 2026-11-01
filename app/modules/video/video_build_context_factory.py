@@ -4,6 +4,7 @@ from pathlib import Path
 from app.managers.project_manager import ProjectManager
 from app.shared.progress_logger import ProgressLogger
 
+from app.modules.subtitles.policies.punctuation import reconcile_timing_text
 from app.modules.subtitles.policies.timing import SubtitleTimingResolver
 from app.modules.video.media.audio_resolver import AudioResolver
 from app.modules.video.media.media_loader import MediaLoader
@@ -162,8 +163,9 @@ class VideoBuildContextFactory:
         )
 
         subtitle_timing = (
-            SubtitleTimingResolver().resolve(
-                subtitle_path=media.subtitle_path
+            self._subtitle_timing(
+                subtitle_path=media.subtitle_path,
+                project=project
             )
             if render_subtitles
             else None
@@ -175,6 +177,39 @@ class VideoBuildContextFactory:
             timeline=timeline,
             render_subtitles=bool(render_subtitles),
             subtitle_timing=subtitle_timing,
+        )
+
+    @staticmethod
+    def _subtitle_timing(
+        subtitle_path,
+        project
+    ):
+        """Return the word times for the subtitles.
+
+        When the project has a script, its words go on the Whisper times
+        with the same alignment the SRT got (``reconcile_timing_text``), so
+        the word effects see the words of the SRT lines.
+        """
+        timing = SubtitleTimingResolver().resolve(
+            subtitle_path=subtitle_path
+        )
+
+        if timing is None:
+            return None
+
+        script_path = Path(
+            project.script_path()
+        )
+
+        if not script_path.is_file():
+            return timing
+
+        return reconcile_timing_text(
+            script_path.read_text(
+                encoding="utf-8"
+            ),
+            timing,
+            authoritative=True
         )
 
     def _apply_overlay_mode(

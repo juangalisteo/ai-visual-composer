@@ -2,7 +2,8 @@
 
 SOLO VIDEO already passes Whisper word times to the ASS renderer. These tests
 cover the other routes: GUION/IMAGEN/VIDEO pass the Whisper times saved next
-to the SRT, and SRT + VIDEO and VIDEO + AUDIO | SRT spread each cue over its
+to the SRT, with the script's words when the project has a script (the same
+alignment as the SRT), and SRT + VIDEO and VIDEO + AUDIO | SRT spread each cue over its
 words (approximate times, render only). The saved SRT files never change.
 """
 
@@ -338,6 +339,7 @@ def test_guion_context_carries_the_whisper_times_saved_beside_the_srt(tmp_path):
     )
     project = SimpleNamespace(
         subtitle_path=lambda: subtitle_path,
+        script_path=lambda: tmp_path / "scripts" / "guion.txt",
         storyboard_path=lambda: tmp_path / "storyboard.json",
         images_manifest_path=lambda: tmp_path / "images.json",
         video_path=lambda: tmp_path / "out.mp4",
@@ -443,7 +445,8 @@ def test_guion_karaoke_uses_the_whisper_times(tmp_path, component):
 def test_guion_cue_that_does_not_match_whisper_gets_approximate_times(tmp_path):
     profile = _subtitle_profile(ProfileComponent.GUION, "highlight_in_sentence")
     timing = _whisper_timing()
-    # The script says "DOS" where Whisper heard "dios": only that cue changes.
+    # Times not aligned with a script: the line says "DOS" where Whisper
+    # heard "dios", so only that cue changes.
     words = list(timing.words)
     words[1] = WordTiming("dios", 0.5, 0.9)
     timing = SubtitleTiming(
@@ -468,6 +471,174 @@ def test_guion_without_whisper_times_gets_approximate_times(tmp_path):
     ass = _guion_ass(tmp_path, profile, None)
 
     _assert_word_intervals_inside_cues(ass)
+
+
+# --- GUION / IMAGEN / VIDEO: Whisper times aligned with the script --------
+
+
+SCRIPT = "Uno dos tres.\n\nHola mundo."
+WHISPER_WORDS = (
+    ("uno", 0.1, 0.4), ("dos", 0.5, 0.9), ("tres", 1.0, 1.5),
+    ("hola", 2.0, 2.3), ("mundo", 2.6, 3.0),
+)
+WHISPER_INTERVALS = [
+    (100, 400), (500, 900), (1000, 1500), (2000, 2300), (2600, 3000),
+]
+
+
+def _context_timing(tmp_path, whisper_words, script=SCRIPT):
+    """Return the timing the video context gets from the project's saved
+    Whisper words and, when given, its script."""
+    subtitle_path = tmp_path / "subtitulos.srt"
+    subtitle_path.write_text(SRT, encoding="utf-8")
+    whisper_timing_path(subtitle_path).write_text(
+        json.dumps(
+            {
+                "segments": [
+                    {
+                        "start": whisper_words[0][1],
+                        "end": whisper_words[-1][2],
+                        "words": [
+                            {"word": f" {text}", "start": start, "end": end}
+                            for text, start, end in whisper_words
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    script_path = tmp_path / "scripts" / "guion.txt"
+    if script is not None:
+        script_path.parent.mkdir()
+        script_path.write_text(script, encoding="utf-8")
+    project = SimpleNamespace(
+        subtitle_path=lambda: subtitle_path,
+        script_path=lambda: script_path,
+        storyboard_path=lambda: tmp_path / "storyboard.json",
+        images_manifest_path=lambda: tmp_path / "images.json",
+        video_path=lambda: tmp_path / "out.mp4",
+    )
+    module = "app.modules.video.video_build_context_factory"
+
+    with patch(f"{module}.AudioResolver"), patch(
+        f"{module}.VideoConfigLoader"
+    ) as config_loader, patch(f"{module}.MediaLoader") as media_loader, patch(
+        f"{module}.TimelineBuilder"
+    ) as timeline_builder:
+        config_loader.return_value.load.return_value = SimpleNamespace(
+            subtitle_offset=0.0,
+            transitions=SimpleNamespace(duration=0.4),
+            width=1080,
+            height=1920,
+            fps=30,
+        )
+        media_loader.return_value.load.return_value = SimpleNamespace(
+            audio_path=Path("audio.mp3"),
+            subtitle_path=subtitle_path,
+            image_paths=(Path("one.png"),),
+        )
+        timeline_builder.return_value.build.return_value = SimpleNamespace(
+            audio_duration=3.0,
+            image_duration=3.0,
+        )
+        return VideoBuildContextFactory(project=project).build().subtitle_timing
+
+
+def _active_intervals(tmp_path, whisper_words, words_per_cue=(6, 3)):
+    profile = _subtitle_profile(ProfileComponent.GUION, "highlight_in_sentence")
+    ass = _guion_ass(
+        tmp_path, profile, _context_timing(tmp_path, whisper_words)
+    )
+    _assert_word_intervals_inside_cues(ass, words_per_cue=words_per_cue)
+    return [
+        (start, end) for start, end, line in _dialogue_intervals(ass)
+        if r"{\1c&H0000FFFF}" in line
+    ]
+
+
+def _heard(*replacements):
+    words = dict(enumerate(WHISPER_WORDS))
+    for index, word in replacements:
+        if word is None:
+            del words[index]
+        else:
+            words[index] = word
+    return tuple(words[index] for index in sorted(words))
+
+
+def test_guion_context_puts_the_script_words_on_the_whisper_times(tmp_path):
+    timing = _context_timing(tmp_path, _heard((1, ("dios", 0.5, 0.9))))
+
+    assert [
+        (word.text, word.start, word.end) for word in timing.words
+    ] == [
+        ("Uno", 0.1, 0.4), ("dos", 0.5, 0.9), ("tres.", 1.0, 1.5),
+        ("Hola", 2.0, 2.3), ("mundo.", 2.6, 3.0),
+    ]
+
+
+def test_guion_context_without_a_script_keeps_the_whisper_words(tmp_path):
+    timing = _context_timing(
+        tmp_path, _heard((1, ("dios", 0.5, 0.9))), script=None
+    )
+
+    assert [word.text for word in timing.words] == [
+        "uno", "dios", "tres", "hola", "mundo",
+    ]
+
+
+def test_guion_line_that_matches_whisper_renders_as_before(tmp_path):
+    profile = _subtitle_profile(ProfileComponent.GUION, "highlight_in_sentence")
+    aligned = _context_timing(tmp_path, WHISPER_WORDS)
+
+    assert _guion_ass(tmp_path, profile, aligned) == _guion_ass(
+        tmp_path, profile, _whisper_timing()
+    )
+
+
+@pytest.mark.parametrize(
+    ("index", "heard"),
+    (
+        (0, ("huno", 0.1, 0.4)),
+        (1, ("dios", 0.5, 0.9)),
+        (4, ("mundos", 2.6, 3.0)),
+    ),
+    ids=("first", "middle", "last"),
+)
+def test_guion_word_heard_differently_keeps_its_whisper_times(
+    tmp_path, index, heard,
+):
+    assert _active_intervals(
+        tmp_path, _heard((index, heard))
+    ) == WHISPER_INTERVALS
+
+
+def test_guion_extra_heard_word_is_left_out(tmp_path):
+    whisper_words = WHISPER_WORDS[:2] + (("pues", 0.9, 1.0),) + WHISPER_WORDS[2:]
+
+    assert _active_intervals(tmp_path, whisper_words) == WHISPER_INTERVALS
+
+
+def test_guion_unheard_word_shares_its_neighbour_time_by_letters(tmp_path):
+    # "dos" was not heard: it shares "uno"'s time, 3 letters each.
+    assert _active_intervals(
+        tmp_path, _heard((1, None)), words_per_cue=(5, 3)
+    ) == [
+        (100, 250), (250, 400), (1000, 1500), (2000, 2300), (2600, 3000),
+    ]
+
+
+def test_guion_unequal_run_is_spread_by_letters_between_its_neighbours(
+    tmp_path,
+):
+    # Whisper heard "dostres" for "dos tres": only that run is spread by
+    # letters (3 + 5 with the period), inside its own time.
+    whisper_words = _heard((1, ("dostres", 0.5, 1.3)), (2, None))
+
+    assert _active_intervals(tmp_path, whisper_words) == [
+        (100, 400), (500, 800), (800, 1300), (2000, 2300), (2600, 3000),
+    ]
 
 
 # --- SRT + VIDEO ----------------------------------------------------------
