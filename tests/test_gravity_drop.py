@@ -137,7 +137,7 @@ def test_ffmpeg_libass_accepts_the_gravity_drop_micro_trajectory(tmp_path):
         ({"drop_height_px": 0}, "drop_height_px"),
         ({"bounce_elasticity": 1.1}, "bounce_elasticity"),
         ({"cue_effect": "unknown"}, "cue effect no soportado"),
-        ({"effects": {"fade": {"enabled": True, "in_ms": 1, "out_ms": 1}}}, "no pueden combinarse"),
+        ({"word_effect": "highlight_in_sentence"}, "cue_effect y word_effect no pueden combinarse"),
     ),
 )
 def test_gravity_drop_validates_its_declarative_contract(changes, message):

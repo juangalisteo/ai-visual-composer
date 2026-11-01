@@ -201,6 +201,35 @@ class DynamicSubtitleDiscoveryPhase2Test(unittest.TestCase):
                     TypeError,
                 )
 
+    def test_subtitle_directory_rejects_retired_keys_with_clear_message(self):
+        source = Path(
+            "config/profiles/guion/vertical/estandar/subtitulos/"
+            "subtitulo_guion_vertical_linea_unica.json"
+        )
+        base = json.loads(source.read_text(encoding="utf-8"))
+        cases = (
+            ("render_style", "effects", {"fade": {"enabled": False}},
+             "claves antiguas effects/word_effects"),
+            ("render_style", "word_effects", {"karaoke": {"enabled": True}},
+             "claves antiguas effects/word_effects"),
+            ("cue_policy", "uppercase", False, "clave antigua uppercase"),
+        )
+        for section, key, value, message in cases:
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self._write_subtitle_profile(
+                    root,
+                    profile_id="perfil_prueba",
+                    changes={section: {**base[section], key: value}},
+                )
+                with self.assertRaises(OperationalError) as captured:
+                    SubtitleProfileResolver(root).discover_profiles_for_family(
+                        "guion", "vertical", "test_family",
+                    )
+                self.assertEqual("VALIDATION", captured.exception.context.family)
+                self.assertIsInstance(captured.exception.__cause__, ValueError)
+                self.assertIn(message, str(captured.exception.__cause__))
+
     def test_operational_profile_with_subtitle_prefix_keeps_operational_domain(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

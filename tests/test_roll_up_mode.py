@@ -43,7 +43,6 @@ def _policy(**changes):
     policy = {
         "mode": "roll_up",
         "text_case": "original",
-        "uppercase": False,
         "max_chars_per_line": 8,
         "visible_lines": 3,
         "significant_gap_threshold": 0.35,

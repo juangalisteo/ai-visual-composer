@@ -24,7 +24,7 @@ PUNCTUATION = {
 }
 
 POLICY = {
-    "mode": "single_line", "text_case": "original", "uppercase": False,
+    "mode": "single_line", "text_case": "original",
     "max_chars_per_line": 35, "min_duration": 1.0, "max_duration": 4.0,
     "significant_gap_threshold": 0.35, "syllabify": True,
     "punctuation": PUNCTUATION,

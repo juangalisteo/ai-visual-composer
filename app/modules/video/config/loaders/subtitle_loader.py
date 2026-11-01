@@ -20,18 +20,7 @@ class SubtitleConfigLoader:
         r"&H[0-9A-Fa-f]{8}"
     )
     SUPPORTED_BORDER_STYLES = (1, 3)
-    EFFECT_FIELDS = {
-        "fade": {"enabled", "in_ms", "out_ms"},
-        "pop": {"enabled", "in_ms", "from_scale"},
-        "zoom": {"enabled", "in_ms", "from_scale", "to_scale"},
-        "slide": {"enabled", "direction", "duration_ms"},
-    }
     DIRECT_CUE_EFFECTS = {"gravity_drop"}
-    WORD_EFFECT_FIELDS = {
-        "karaoke": {"enabled"},
-        "highlight": {"enabled", "active_colour"},
-        "progressive_reveal": {"enabled", "reveal_ms"},
-    }
     IN_SENTENCE_WORD_EFFECTS = {
         "highlight_in_sentence",
         "active_pill",
@@ -54,6 +43,21 @@ class SubtitleConfigLoader:
                 "render_style debe ser un diccionario."
             )
 
+        retired_keys = tuple(
+            key
+            for key in (
+                "effects",
+                "word_effects"
+            )
+            if key in render_style
+        )
+        if retired_keys:
+            raise ValueError(
+                f"{self._context(profile_path)}render_style no admite las "
+                "claves antiguas effects/word_effects. Use cue_effect "
+                "o word_effect."
+            )
+
         dynamic = self._optional_bool(
             render_style,
             "dynamic",
@@ -74,8 +78,8 @@ class SubtitleConfigLoader:
             )
         if cue_effect is not None and word_effect is not None:
             raise ValueError(
-                f"{self._context(profile_path)}effects y word_effects no pueden "
-                "combinarse en la misma representación."
+                f"{self._context(profile_path)}cue_effect y word_effect no "
+                "pueden combinarse en la misma representación."
             )
 
         subtitle_config = SubtitleConfig(
@@ -356,60 +360,6 @@ class SubtitleConfigLoader:
         return float(value)
 
     def _load_cue_effect(self, render_style, *, profile_path):
-        declared_effect = self._load_declared_cue_effect(
-            render_style,
-            profile_path=profile_path,
-        )
-        if "effects" not in render_style:
-            return declared_effect
-        if declared_effect is not None:
-            raise ValueError(
-                f"{self._context(profile_path)}cue_effect y effects no pueden "
-                "combinarse en la misma representación."
-            )
-        effects = render_style["effects"]
-        if not isinstance(effects, dict):
-            raise TypeError(
-                f"{self._context(profile_path)}render_style.effects debe ser "
-                "un diccionario."
-            )
-        unknown = set(effects) - set(self.EFFECT_FIELDS)
-        if unknown:
-            raise ValueError(
-                f"{self._context(profile_path)}efecto de subtítulos no "
-                f"soportado: {sorted(unknown)[0]!r}."
-            )
-        enabled = []
-        for name, values in effects.items():
-            if not isinstance(values, dict):
-                raise TypeError(
-                    f"{self._context(profile_path)}render_style.effects.{name} "
-                    "debe ser un diccionario."
-                )
-            extra = set(values) - self.EFFECT_FIELDS[name]
-            if extra:
-                raise ValueError(
-                    f"{self._context(profile_path)}parámetro no soportado para "
-                    f"{name}: {sorted(extra)[0]!r}."
-                )
-            if "enabled" not in values or not isinstance(values["enabled"], bool):
-                raise TypeError(
-                    f"{self._context(profile_path)}render_style.effects.{name}.enabled "
-                    "debe ser booleano."
-                )
-            if values["enabled"]:
-                enabled.append((name, values))
-        if len(enabled) > 1:
-            raise ValueError(
-                f"{self._context(profile_path)}solo se permite un efecto por cue."
-            )
-        if not enabled:
-            return None
-        name, values = enabled[0]
-        parameters = self._effect_parameters(name, values, profile_path)
-        return CueEffectConfig(name=name, parameters=parameters)
-
-    def _load_declared_cue_effect(self, render_style, *, profile_path):
         declared_effect = render_style.get("cue_effect")
         if declared_effect is None:
             return None
@@ -460,140 +410,31 @@ class SubtitleConfigLoader:
             "bounce_elasticity": float(elasticity),
         }
 
-    def _effect_parameters(self, name, values, profile_path):
-        required = self.EFFECT_FIELDS[name] - {"enabled"}
-        missing = required - set(values)
-        if missing:
-            raise ValueError(
-                f"{self._context(profile_path)}efecto {name} requiere "
-                f"{sorted(missing)[0]}."
-            )
-        if name == "fade":
-            return {
-                "in_ms": self._nonnegative_ms(values["in_ms"], name, "in_ms", profile_path),
-                "out_ms": self._nonnegative_ms(values["out_ms"], name, "out_ms", profile_path),
-            }
-        if name in ("pop", "zoom"):
-            parameters = {
-                "in_ms": self._positive_ms(values["in_ms"], name, "in_ms", profile_path),
-                "from_scale": self._scale(values["from_scale"], name, "from_scale", profile_path),
-            }
-            if name == "zoom":
-                parameters["to_scale"] = self._scale(
-                    values["to_scale"], name, "to_scale", profile_path
-                )
-            return parameters
-        direction = values["direction"]
-        if direction not in ("left", "right", "up", "down"):
-            raise ValueError(
-                f"{self._context(profile_path)}efecto slide.direction debe ser "
-                "left, right, up o down."
-            )
-        return {
-            "direction": direction,
-            "duration_ms": self._positive_ms(
-                values["duration_ms"], name, "duration_ms", profile_path
-            ),
-        }
-
     def _load_word_effect(self, render_style, *, profile_path):
         declared_effect = render_style.get("word_effect")
-        if declared_effect is not None:
-            if not isinstance(declared_effect, str):
-                raise TypeError(
-                    f"{self._context(profile_path)}render_style.word_effect "
-                    "debe ser texto."
-                )
-            declared_effect = declared_effect.strip().lower()
-            if declared_effect == "none":
-                declared_effect = None
-            elif declared_effect not in self.IN_SENTENCE_WORD_EFFECTS:
-                raise ValueError(
-                    f"{self._context(profile_path)}word effect no soportado: "
-                    f"{declared_effect!r}."
-                )
-
-        if "word_effects" not in render_style:
-            return (
-                WordEffectConfig(
-                    name=declared_effect,
-                    parameters=self._in_sentence_parameters(
-                        declared_effect,
-                        render_style,
-                        profile_path,
-                    ),
-                )
-                if declared_effect is not None
-                else None
-            )
-        if declared_effect is not None:
-            raise ValueError(
-                f"{self._context(profile_path)}word_effect y word_effects no "
-                "pueden combinarse en la misma representación."
-            )
-        effects = render_style["word_effects"]
-        if not isinstance(effects, dict):
+        if declared_effect is None:
+            return None
+        if not isinstance(declared_effect, str):
             raise TypeError(
-                f"{self._context(profile_path)}render_style.word_effects debe ser "
-                "un diccionario."
+                f"{self._context(profile_path)}render_style.word_effect "
+                "debe ser texto."
             )
-        unknown = set(effects) - set(self.WORD_EFFECT_FIELDS)
-        if unknown:
+        declared_effect = declared_effect.strip().lower()
+        if declared_effect == "none":
+            return None
+        if declared_effect not in self.IN_SENTENCE_WORD_EFFECTS:
             raise ValueError(
                 f"{self._context(profile_path)}word effect no soportado: "
-                f"{sorted(unknown)[0]!r}."
+                f"{declared_effect!r}."
             )
-        enabled = []
-        for name, values in effects.items():
-            if not isinstance(values, dict):
-                raise TypeError(
-                    f"{self._context(profile_path)}render_style.word_effects.{name} "
-                    "debe ser un diccionario."
-                )
-            extra = set(values) - self.WORD_EFFECT_FIELDS[name]
-            if extra:
-                raise ValueError(
-                    f"{self._context(profile_path)}parámetro no soportado para "
-                    f"word effect {name}: {sorted(extra)[0]!r}."
-                )
-            if "enabled" not in values or not isinstance(values["enabled"], bool):
-                raise TypeError(
-                    f"{self._context(profile_path)}render_style.word_effects.{name}.enabled "
-                    "debe ser booleano."
-                )
-            if values["enabled"]:
-                enabled.append((name, values))
-        if len(enabled) > 1:
-            raise ValueError(
-                f"{self._context(profile_path)}solo se permite un word effect por cue."
-            )
-        if not enabled:
-            return None
-        name, values = enabled[0]
-        required = self.WORD_EFFECT_FIELDS[name] - {"enabled"}
-        missing = required - set(values)
-        if missing:
-            raise ValueError(
-                f"{self._context(profile_path)}word effect {name} requiere "
-                f"{sorted(missing)[0]}."
-            )
-        if name == "karaoke":
-            parameters = {}
-        elif name == "highlight":
-            colour = values["active_colour"]
-            if not isinstance(colour, str) or not self.ASS_COLOUR_PATTERN.fullmatch(colour):
-                raise ValueError(
-                    f"{self._context(profile_path)}word effect highlight.active_colour "
-                    "debe usar el formato ASS &HAABBGGRR."
-                )
-            parameters = {"active_colour": colour}
-        else:
-            parameters = {
-                "reveal_ms": self._positive_ms(
-                    values["reveal_ms"], name, "reveal_ms", profile_path
-                )
-            }
-        return WordEffectConfig(name=name, parameters=parameters)
+        return WordEffectConfig(
+            name=declared_effect,
+            parameters=self._in_sentence_parameters(
+                declared_effect,
+                render_style,
+                profile_path,
+            ),
+        )
 
     def _in_sentence_parameters(self, name, render_style, profile_path):
         if name == "alpha_fade":
@@ -652,31 +493,11 @@ class SubtitleConfigLoader:
             ) if "pill_radius" in render_style else 4,
         }
 
-    def _nonnegative_ms(self, value, effect, field, profile_path):
-        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-            raise ValueError(
-                f"{self._context(profile_path)}efecto {effect}.{field} debe ser "
-                "un entero >= 0."
-            )
-        return value
-
     def _positive_ms(self, value, effect, field, profile_path):
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise ValueError(
                 f"{self._context(profile_path)}efecto {effect}.{field} debe ser "
                 "un entero > 0."
-            )
-        return value
-
-    def _scale(self, value, effect, field, profile_path):
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise TypeError(
-                f"{self._context(profile_path)}efecto {effect}.{field} debe ser numérico."
-            )
-        value = float(value)
-        if not math.isfinite(value) or not 1 <= value <= 400:
-            raise ValueError(
-                f"{self._context(profile_path)}efecto {effect}.{field} debe estar entre 1 y 400."
             )
         return value
 

@@ -9,32 +9,21 @@ class TextCasePolicy:
 
     @classmethod
     def from_cue_policy(cls, cue_policy):
-        text_case = cue_policy.get("text_case")
-        has_text_case = "text_case" in cue_policy
-        uppercase = cue_policy.get("uppercase")
-        has_uppercase = "uppercase" in cue_policy
-        if has_text_case:
-            if text_case not in VALID_TEXT_CASES:
-                raise ValueError(
-                    "cue_policy.text_case inválido: "
-                    f"{text_case!r}. Valores permitidos: "
-                    f"{', '.join(VALID_TEXT_CASES)}."
-                )
-        if has_uppercase and not isinstance(uppercase, bool):
-            raise TypeError("cue_policy.uppercase debe ser booleana.")
-        if has_text_case and has_uppercase:
-            coherent = (
-                (text_case == "uppercase" and uppercase)
-                or (text_case == "original" and not uppercase)
+        if "uppercase" in cue_policy:
+            raise ValueError(
+                "cue_policy no admite la clave antigua uppercase. "
+                "Use cue_policy.text_case."
             )
-            if not coherent:
-                raise ValueError(
-                    "cue_policy.text_case y cue_policy.uppercase "
-                    "son contradictorios."
-                )
-        if has_text_case:
-            return cls(text_case)
-        return cls("uppercase" if uppercase else "original")
+        if "text_case" not in cue_policy:
+            return cls("original")
+        text_case = cue_policy["text_case"]
+        if text_case not in VALID_TEXT_CASES:
+            raise ValueError(
+                "cue_policy.text_case inválido: "
+                f"{text_case!r}. Valores permitidos: "
+                f"{', '.join(VALID_TEXT_CASES)}."
+            )
+        return cls(text_case)
 
     def apply(self, text):
         if self.mode == "uppercase":

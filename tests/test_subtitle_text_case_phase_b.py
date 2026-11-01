@@ -52,6 +52,16 @@ def test_text_case_contract_validation():
         TextCasePolicy.from_cue_policy({"text_case": "caps"})
 
 
+@pytest.mark.parametrize("cue_policy", (
+    {"uppercase": True},
+    {"uppercase": False},
+    {"text_case": "uppercase", "uppercase": True},
+))
+def test_retired_uppercase_key_fails_with_clear_message(cue_policy):
+    with pytest.raises(ValueError, match="clave antigua uppercase. Use cue_policy.text_case"):
+        TextCasePolicy.from_cue_policy(cue_policy)
+
+
 def test_design_and_standard_profiles_use_the_common_policy_without_original_path():
     resolver = SubtitleProfileResolver()
     standard = resolver.load(SubtitleProfileKey(
