@@ -95,7 +95,7 @@ def test_piper_voice_documents_are_unique_native_baselines_and_resolve_by_backen
         and configuration.voice.language == "es-ES"
         and configuration.voice.prosody.speaking_rate == 1.0
         and configuration.voice.prosody.volume_gain_db == 0.0
-        and configuration.voice.backend_options["synthesis"] == {}
+        and configuration.voice.backend_options["synthesis"] == {"length_scale": 1.10}
         for configuration in configurations.values()
     )
     assert {
@@ -221,6 +221,17 @@ def test_current_voice_documents_declare_sentence_and_paragraph_pauses():
         assert prosody.paragraph_pause_seconds == 1.5
 
 
+def test_current_voice_documents_share_the_same_slower_length_scale():
+    length_scales = {
+        stem: load_tts_voice_configuration(_document(stem)).voice.backend_options[
+            "synthesis"
+        ]["length_scale"]
+        for stem in ("piper_davefx", "piper_carlfm")
+    }
+
+    assert length_scales == {"piper_davefx": 1.10, "piper_carlfm": 1.10}
+
+
 def test_missing_pauses_mean_no_extra_silence():
     document = _document()
     del document["prosody"]["sentence_pause_seconds"]
@@ -321,7 +332,7 @@ def test_default_voice_configuration_is_the_approved_piper_davefx_baseline():
 
     assert configuration.voice.voice_id == "piper_voice_davefx"
     assert configuration.voice.backend_key == "piper_onnx"
-    assert configuration.voice.backend_options["synthesis"] == {}
+    assert configuration.voice.backend_options["synthesis"] == {"length_scale": 1.10}
 
 
 def test_invalid_explicit_voice_override_preserves_the_configuration_error():

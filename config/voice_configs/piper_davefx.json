@@ -14,6 +14,8 @@
     "model": {
       "onnx_path": "models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx"
     },
-    "synthesis": {}
+    "synthesis": {
+      "length_scale": 1.10
+    }
   }
 }

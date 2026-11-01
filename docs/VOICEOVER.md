@@ -34,8 +34,14 @@ Otros documentos:
 
 - Si una ejecución no trae una voz elegida, `ConfigManager` usa
   `piper_davefx`: es la voz por defecto.
-- Las dos voces son de Piper y no cambian la velocidad ni el volumen del
-  modelo (`speaking_rate` 1.0 y `volume_gain_db` 0.0).
+- Las dos voces son de Piper y van algo más lentas que el modelo, a propósito
+  (elección del propietario): las dos llevan
+  `backend_options.synthesis.length_scale` 1,10 (el modelo trae 1). En la
+  práctica la lectura se alarga menos de un 10 %, porque Piper redondea la
+  duración de cada sonido: un 4 % con Davefx y un 2 % con Carlfm, cuyo modelo
+  (`x_low`) es más basto (apartado 4). El volumen es el del modelo
+  (`volume_gain_db` 0.0); `speaking_rate` sigue en 1.0, pero `length_scale`
+  manda sobre él (apartado 2).
 - Las dos hacen una pausa de 0,5 s tras cada frase y de 1,5 s entre párrafos
   (apartado 5).
 - Los modelos (`.onnx` y su `.onnx.json`) no están en el repositorio: se
@@ -138,6 +144,18 @@ otras voces o modelos basta con el mismo procedimiento.
 La medida es de antes de las pausas del apartado 5 (31-10-2026, voces sin
 pausas): es el ritmo de la lectura. Con las pausas, cada audio dura además lo
 que sumen sus pausas.
+
+También es de antes de `length_scale` 1,10 (apartado 1), con la velocidad del
+modelo. Con 1,10, medido el 01-11-2026 de la misma forma pero con las pausas a
+0 y un texto narrativo de 300 palabras:
+
+| Voz | `length_scale` del modelo (1) | 1,10 | Más lenta |
+|---|---|---|---|
+| Davefx | 96,0 s (3,12 palabras/s) | 100,1 s (3,00 palabras/s) | 4,2 % |
+| Carlfm | 92,9 s (3,23 palabras/s) | 94,5 s (3,18 palabras/s) | 1,7 % |
+
+Así, con Davefx las 70–85 palabras de un guion de 30 s se leen en unos
+23–28 s, más sus pausas.
 
 ---
 

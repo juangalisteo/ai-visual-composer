@@ -14,6 +14,8 @@
     "model": {
       "onnx_path": "models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx"
     },
-    "synthesis": {}
+    "synthesis": {
+      "length_scale": 1.10
+    }
   }
 }

@@ -128,4 +128,4 @@ def test_piper_catalog_uses_no_fallback_and_default_voice_is_davefx():
 
     assert default_voice.voice_id == "piper_voice_davefx"
     assert default_voice.backend_key == "piper_onnx"
-    assert default_voice.backend_options["synthesis"] == {}
+    assert default_voice.backend_options["synthesis"] == {"length_scale": 1.10}
