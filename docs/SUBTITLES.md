@@ -215,7 +215,10 @@ palabras. Los fotogramas por segundo salen del perfil operacional
 (`video_style.fps`, o `studio.output.fps` en STUDIO).
 
 **Con y sin tiempos por palabra.** Si hay tiempos de Whisper utilizables, el
-modo agrupa las palabras con ellos. Si no los hay (EXPORTAR SRT ➜  VIDEO →
+modo agrupa las palabras con ellos. En GUION, IMAGEN y VIDEO esos tiempos
+llegan ya fuera de las pausas que escribió la voz, así que en ellas no queda
+texto en pantalla
+([ARCHITECTURE.md, apartado 14](ARCHITECTURE.md#14-subtítulos)). Si no los hay (EXPORTAR SRT ➜  VIDEO →
 CONVERTIR, o la ruta estándar cuando Whisper no da tiempos por palabra), cada
 línea del SRT se corta en trozos y su tiempo se reparte entre ellos. Una
 palabra de duración 0 se alarga hasta que empieza la línea siguiente, como
@@ -323,7 +326,7 @@ los tiempos ni el texto de la línea.
 
 | Ruta | De dónde salen los tiempos por palabra |
 |---|---|
-| GUION, IMAGEN y VIDEO | Del JSON de Whisper (`subtitles/subtitulos_whisper.json`); una línea que no coincide (una palabra del guion distinta de lo que oyó Whisper) se reparte por letras |
+| GUION, IMAGEN y VIDEO | Del JSON de Whisper (`subtitles/subtitulos_whisper.json`), fuera de las pausas de la voz; una línea que no coincide (una palabra del guion distinta de lo que oyó Whisper) se reparte por letras |
 | STUDIO, SOLO VIDEO | De Whisper; una línea que no coincide se reparte por letras |
 | STUDIO, SRT + VIDEO y VIDEO + AUDIO \| SRT | No hay Whisper: siempre se reparte por letras dentro de cada línea del SRT, que se pinta tal cual |
 

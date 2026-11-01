@@ -11,6 +11,7 @@ from app.modules.audio.tts_contracts import (
     TtsBackendDiagnostic,
     TtsBackendError,
     TtsBackendErrorKind,
+    TtsPause,
     TtsProsody,
     TtsSynthesisRequest,
     TtsSynthesisResult,
@@ -192,6 +193,33 @@ class TtsContractsTest(unittest.TestCase):
                     TtsWordTiming("two", 0.6, 1.0),
                 ),
             )
+
+    def test_result_pauses_default_to_empty_and_must_be_ordered(self):
+        audio = _audio()
+        self.assertEqual((), TtsSynthesisResult(audio, None).pauses)
+        result = TtsSynthesisResult(
+            audio,
+            None,
+            pauses=[TtsPause(0.5, 1.0), TtsPause(1.0, 2.5)],
+        )
+        self.assertEqual((TtsPause(0.5, 1.0), TtsPause(1.0, 2.5)), result.pauses)
+        with self.assertRaisesRegex(ValueError, "non-overlapping"):
+            TtsSynthesisResult(audio, None, pauses=(TtsPause(0.5, 1.5), TtsPause(1.0, 2.0)))
+        with self.assertRaisesRegex(TypeError, "TtsPause"):
+            TtsSynthesisResult(audio, None, pauses=((0.5, 1.0),))
+
+    def test_pause_requires_a_positive_finite_interval(self):
+        self.assertEqual(1.5, TtsPause(0.0, 1.5).end_seconds)
+        for start, end in ((-0.1, 1.0), (1.0, 1.0), (2.0, 1.0)):
+            with self.subTest(start=start, end=end):
+                with self.assertRaises(ValueError):
+                    TtsPause(start, end)
+        for start, end in ((math.nan, 1.0), (0.0, math.inf)):
+            with self.subTest(start=start, end=end):
+                with self.assertRaises(ValueError):
+                    TtsPause(start, end)
+        with self.assertRaises(TypeError):
+            TtsPause(True, 1.0)
 
     def test_neutral_diagnostic_and_error_preserve_typed_context(self):
         diagnostic = TtsBackendDiagnostic(

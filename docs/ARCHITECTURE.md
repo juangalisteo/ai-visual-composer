@@ -461,9 +461,9 @@ referencia de familias, modos de cue, estilos y efectos está en
 [SUBTITLES.md](SUBTITLES.md).
 
 ```text
-audio/voz.mp3
+audio/voz.mp3 + silencios que escribió la voz
     ↓
-SubtitleBuilder            Whisper → SRT + JSON con los tiempos de cada palabra
+SubtitleBuilder            Whisper → SRT + JSON con los tiempos de cada palabra y esos silencios
     ↓
 WhisperRepetitionFilter    quita las frases que Whisper inventa al final
     ↓
@@ -487,6 +487,18 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   silencio), o va detrás de la última voz, en una zona que Whisper marca sin voz
   y con palabras de muy baja confianza (repetición sin voz). Lo avisa en la
   terminal y anota en el JSON cada segmento descartado con su motivo.
+- **Pausas de la voz.** En la ruta estándar la voz sabe dónde puso cada pausa:
+  `PiperBackend` devuelve el inicio y el fin de cada silencio que escribe
+  (`TtsSynthesisResult.pauses`, en segundos de `voz.mp3`), `VoiceBuilder` los
+  deja en `last_pauses` y `SubtitleBuilder` los anota en el JSON como
+  `voice_pauses`, sin tocar los tiempos de Whisper. Al leer el JSON,
+  `SubtitleTimingResolver` saca las palabras de esos silencios: la que empieza
+  antes y acaba dentro termina donde empieza el silencio, la que empieza dentro
+  empieza donde acaba (si cae entera dentro, queda de duración 0 en ese punto)
+  y la que lo cruza entero se queda en el lado donde tiene más tiempo. Así
+  ninguna línea sigue en pantalla durante una pausa de la voz, ni en el SRT ni
+  en el ASS. Sin `voice_pauses` (STUDIO, o una voz sin pausas) los tiempos son
+  los de Whisper.
 - **Texto y tiempos.** En la ruta estándar manda el **texto del guion**: Whisper
   solo aporta los tiempos. `SrtOptimizer` pasa el SRT por
   `SubtitleCueTransformer`, que crea el modelo de corte con `CueModelRegistry`

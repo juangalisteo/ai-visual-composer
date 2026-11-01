@@ -11,6 +11,7 @@ from app.modules.audio.tts_contracts import (
     TtsBackendDiagnostic,
     TtsBackendError,
     TtsBackendErrorKind,
+    TtsPause,
     TtsSynthesisResult,
     TtsWordTiming,
 )
@@ -39,9 +40,10 @@ class _ConfigurationManager:
 class _Backend:
     backend_key = "piper_onnx"
 
-    def __init__(self, *, timings=None, error=None):
+    def __init__(self, *, timings=None, error=None, pauses=()):
         self.timings = timings
         self.error = error
+        self.pauses = pauses
         self.requests = []
 
     def synthesize(self, request):
@@ -61,6 +63,7 @@ class _Backend:
                 channels=1,
             ),
             word_timings=self.timings,
+            pauses=self.pauses,
         )
 
 
@@ -148,6 +151,27 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
             self.assertEqual((output_path,), tuple(output_path.parent.iterdir()))
             self.assertFalse(backend.requests[0].workspace.path.exists())
             self.assertEqual((), tuple(workspace_parent.iterdir()))
+
+    def test_exposes_the_backend_pauses_of_the_last_published_voice(self):
+        pauses = (TtsPause(0.4, 0.9), TtsPause(1.6, 3.1))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            builder = _builder(
+                _voice_configuration(),
+                _Backend(pauses=pauses),
+                root / "workspaces",
+            )
+            self.assertEqual((), builder.last_pauses)
+
+            builder.build("Uno. Dos.", output_path=root / "audio" / "voz.mp3")
+            self.assertEqual(pauses, builder.last_pauses)
+
+            builder._backend_registry = TtsBackendRegistry(
+                (_Backend(error=RuntimeError("fallo")),)
+            )
+            with self.assertRaises(OperationalError):
+                builder.build("Uno. Dos.", output_path=root / "audio" / "voz.mp3")
+            self.assertEqual((), builder.last_pauses)
 
     def test_backend_error_is_neutral_operational_error_with_full_cause_chain(self):
         original_cause = RuntimeError("transport unavailable")

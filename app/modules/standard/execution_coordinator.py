@@ -182,6 +182,7 @@ class StandardExecutionCoordinator:
         final_result = (
             output_script_path
         )
+        voice_pauses = ()
 
         if (
             "voice_and_audio" in stages
@@ -203,6 +204,10 @@ class StandardExecutionCoordinator:
 
             stage_times["Voces"] = (
                 voice_elapsed
+            )
+            voice_pauses = tuple(
+                (pause.start_seconds, pause.end_seconds)
+                for pause in getattr(voice_builder, "last_pauses", ())
             )
 
             final_result = voice_path
@@ -247,6 +252,7 @@ class StandardExecutionCoordinator:
             subtitle_path = SubtitleBuilder().build(
                 audio_path=project.audio_path(),
                 output_path=project.subtitle_path(),
+                voice_pauses=voice_pauses,
             )
 
             optimizer_options = {

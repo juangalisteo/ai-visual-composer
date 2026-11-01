@@ -13,6 +13,7 @@ from app.modules.subtitles.policies.timing import (
     SubtitleTimingResolver,
     WhisperTimingParser,
     WordTiming,
+    fit_words_to_voice_pauses,
     whisper_timing_path,
 )
 
@@ -670,6 +671,257 @@ class SubtitleRealTimingTest(unittest.TestCase):
         return " ".join(
             block.splitlines()[2:]
         )
+
+
+class VoicePauseFittingTest(unittest.TestCase):
+
+    PAUSE = (2.0, 3.5)
+
+    def _timing(self, *words, voice_pauses=(PAUSE,)):
+        return SubtitleTiming(
+            source="whisper",
+            segments=(
+                SpeechSegment(
+                    start=words[0][1],
+                    end=words[-1][2],
+                    words=tuple(
+                        WordTiming(text, start, end, confidence=0.9, source="whisper")
+                        for text, start, end in words
+                    ),
+                ),
+            ),
+            voice_pauses=voice_pauses,
+        )
+
+    def _spans(self, timing):
+        return [(word.text, word.start, word.end) for word in timing.words]
+
+    def test_word_running_into_a_pause_ends_where_the_pause_starts(self):
+        fitted = fit_words_to_voice_pauses(
+            self._timing(("uno", 1.0, 1.6), ("ángel.", 1.7, 3.2), ("Jacob", 3.6, 4.0))
+        )
+
+        self.assertEqual(
+            [("uno", 1.0, 1.6), ("ángel.", 1.7, 2.0), ("Jacob", 3.6, 4.0)],
+            self._spans(fitted),
+        )
+        self.assertEqual(0.9, fitted.words[1].confidence)
+        self.assertEqual("whisper", fitted.words[1].source)
+
+    def test_word_starting_inside_a_pause_starts_where_the_pause_ends(self):
+        fitted = fit_words_to_voice_pauses(
+            self._timing(("profundo:", 1.0, 1.9), ("aquella", 2.4, 4.1))
+        )
+
+        self.assertEqual(
+            [("profundo:", 1.0, 1.9), ("aquella", 3.5, 4.1)],
+            self._spans(fitted),
+        )
+
+    def test_word_wholly_inside_a_pause_is_left_with_zero_duration_at_its_end(self):
+        fitted = fit_words_to_voice_pauses(
+            self._timing(("uno", 1.0, 1.9), ("que", 2.5, 2.9), ("dos", 3.0, 4.0))
+        )
+
+        self.assertEqual(
+            [("uno", 1.0, 1.9), ("que", 3.5, 3.5), ("dos", 3.5, 4.0)],
+            self._spans(fitted),
+        )
+
+    def test_word_crossing_the_whole_pause_keeps_the_side_with_more_time(self):
+        before = fit_words_to_voice_pauses(
+            self._timing(("Prado.", 1.5, 3.8), ("Jacob", 3.9, 4.2))
+        )
+        after = fit_words_to_voice_pauses(
+            self._timing(("vida.", 1.4, 1.97), ("Cambiar", 1.97, 3.9))
+        )
+        tie = fit_words_to_voice_pauses(self._timing(("uno", 1.7, 3.8)))
+
+        self.assertEqual(
+            [("Prado.", 1.5, 2.0), ("Jacob", 3.9, 4.2)],
+            self._spans(before),
+        )
+        self.assertEqual(
+            [("vida.", 1.4, 1.97), ("Cambiar", 3.5, 3.9)],
+            self._spans(after),
+        )
+        self.assertEqual([("uno", 1.7, 2.0)], self._spans(tie))
+
+    def test_words_touching_a_pause_edge_and_several_pauses(self):
+        fitted = fit_words_to_voice_pauses(
+            self._timing(
+                ("uno", 1.0, 2.0),
+                ("dos", 3.5, 4.0),
+                ("tres", 4.1, 5.3),
+                ("cuatro", 5.6, 6.0),
+                voice_pauses=((2.0, 3.5), (5.0, 5.5)),
+            )
+        )
+
+        self.assertEqual(
+            [("uno", 1.0, 2.0), ("dos", 3.5, 4.0), ("tres", 4.1, 5.0), ("cuatro", 5.6, 6.0)],
+            self._spans(fitted),
+        )
+        self.assertEqual((1.0, 6.0), (fitted.segments[0].start, fitted.segments[0].end))
+
+    def test_without_pauses_the_timing_is_returned_unchanged(self):
+        timing = self._timing(("ángel.", 1.7, 3.2), voice_pauses=())
+
+        self.assertIs(timing, fit_words_to_voice_pauses(timing))
+
+    def _write_whisper_json(self, directory, **extra):
+        subtitle_path = Path(directory) / "subtitulos.srt"
+        subtitle_path.write_text("", encoding="utf-8")
+        whisper_timing_path(subtitle_path).write_text(
+            json.dumps(
+                {
+                    "segments": [
+                        {
+                            "start": 1.0,
+                            "end": 4.2,
+                            "words": [
+                                {"word": " ángel.", "start": 1.0, "end": 3.2, "probability": 0.8},
+                                {"word": " Jacob", "start": 3.3, "end": 4.2, "probability": 0.9},
+                            ],
+                        }
+                    ],
+                    **extra,
+                }
+            ),
+            encoding="utf-8",
+        )
+        return subtitle_path
+
+    def test_resolver_fits_whisper_words_to_the_recorded_voice_pauses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            subtitle_path = self._write_whisper_json(
+                directory,
+                voice_pauses=[{"start": 2.0, "end": 3.5}],
+            )
+
+            timing = SubtitleTimingResolver().resolve(subtitle_path=subtitle_path)
+
+        self.assertEqual(((2.0, 3.5),), timing.voice_pauses)
+        self.assertEqual(
+            [("ángel.", 1.0, 2.0), ("Jacob", 3.5, 4.2)],
+            self._spans(timing),
+        )
+
+    def test_resolver_without_voice_pauses_keeps_whisper_times(self):
+        with tempfile.TemporaryDirectory() as directory:
+            subtitle_path = self._write_whisper_json(directory)
+
+            timing = SubtitleTimingResolver().resolve(subtitle_path=subtitle_path)
+            parsed = WhisperTimingParser().parse(whisper_timing_path(subtitle_path))
+
+        self.assertEqual(parsed, timing)
+        self.assertEqual((), timing.voice_pauses)
+        self.assertEqual(
+            [("ángel.", 1.0, 3.2), ("Jacob", 3.3, 4.2)],
+            self._spans(timing),
+        )
+
+    def test_resolver_returns_none_when_voice_pauses_are_invalid(self):
+        for voice_pauses in (
+            {"start": 2.0, "end": 3.5},
+            [{"start": 2.0}],
+            [{"start": 3.5, "end": 2.0}],
+            [{"start": 2.0, "end": 3.0}, {"start": 2.5, "end": 4.0}],
+        ):
+            with self.subTest(voice_pauses=voice_pauses):
+                with tempfile.TemporaryDirectory() as directory:
+                    subtitle_path = self._write_whisper_json(
+                        directory,
+                        voice_pauses=voice_pauses,
+                    )
+
+                    self.assertIsNone(
+                        SubtitleTimingResolver().resolve(subtitle_path=subtitle_path)
+                    )
+
+    def test_single_line_shows_no_text_inside_the_pause(self):
+        model = SingleLineModel(
+            {
+                "max_chars_per_line": 60,
+                "min_duration": 1.0,
+                "max_duration": 3.0,
+                "significant_gap_threshold": 0.35,
+                "punctuation": {
+                    key: False
+                    for key in (
+                        "remove_commas", "remove_periods", "remove_colons",
+                        "remove_semicolons", "remove_question_marks",
+                        "remove_exclamation_marks", "remove_ellipsis",
+                        "remove_hyphens", "remove_em_dashes",
+                        "remove_double_quotes", "remove_single_quotes",
+                        "remove_parentheses",
+                    )
+                },
+            }
+        )
+        timing = self._timing(
+            ("Luchó", 0.5, 1.0), ("con", 1.05, 1.3), ("un", 1.35, 1.5),
+            ("ángel.", 1.55, 3.25), ("Jacob", 3.3, 4.0), ("salió.", 4.05, 4.6),
+        )
+
+        blocks = model.optimize([], timing=fit_words_to_voice_pauses(timing))
+
+        self.assertEqual(2, len(blocks))
+        self.assertIn("00:00:00,500 --> 00:00:02,000\nLuchó con un ángel.", blocks[0])
+        self.assertIn("00:00:03,500 --> 00:00:04,600\nJacob salió.", blocks[1])
+
+    def _build_subtitles(self, directory, **build_options):
+        directory = Path(directory)
+        audio_path = directory / "voz.mp3"
+        output_path = directory / "subtitulos.srt"
+        audio_path.write_bytes(b"audio")
+        whisper_json = json.dumps(
+            {"segments": [{"words": [{"word": " Hola", "start": 0.0, "end": 0.5}]}]}
+        )
+
+        def fake_run(command, check):
+            output_dir = Path(command[-1])
+            (output_dir / "voz.srt").write_text(
+                "1\n00:00:00,000 --> 00:00:00,500\nHola\n",
+                encoding="utf-8",
+            )
+            (output_dir / "voz.json").write_text(whisper_json, encoding="utf-8")
+
+        with patch(
+            "app.modules.subtitles.io.subtitle_builder.subprocess.run",
+            side_effect=fake_run,
+        ):
+            SubtitleBuilder().build(
+                audio_path=audio_path,
+                output_path=output_path,
+                **build_options,
+            )
+        return whisper_json, whisper_timing_path(output_path).read_text(encoding="utf-8")
+
+    def test_subtitle_builder_records_the_voice_pauses_in_the_timing_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, written = self._build_subtitles(
+                directory,
+                voice_pauses=((0.75, 1.25), (2.0, 3.5)),
+            )
+
+        data = json.loads(written)
+        self.assertEqual(
+            [{"start": 0.75, "end": 1.25}, {"start": 2.0, "end": 3.5}],
+            data["voice_pauses"],
+        )
+        self.assertEqual(
+            [{"word": " Hola", "start": 0.0, "end": 0.5}],
+            data["segments"][0]["words"],
+        )
+
+    def test_subtitle_builder_without_pauses_keeps_the_whisper_json(self):
+        for build_options in ({}, {"voice_pauses": ()}):
+            with self.subTest(build_options=build_options):
+                with tempfile.TemporaryDirectory() as directory:
+                    original, written = self._build_subtitles(directory, **build_options)
+
+                self.assertEqual(original, written)
 
 
 if __name__ == "__main__":

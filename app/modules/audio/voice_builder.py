@@ -46,6 +46,9 @@ class VoiceBuilder:
         self._workspace_parent = (
             Path(workspace_parent) if workspace_parent is not None else None
         )
+        # Silences the backend wrote into the last published voice
+        # (``TtsPause``, seconds of the published audio); empty otherwise.
+        self.last_pauses = ()
 
     def build(
         self,
@@ -55,6 +58,7 @@ class VoiceBuilder:
         """Generate and publish one voice artifact at the established path."""
         ProgressLogger.start("GENERANDO VOCES")
         start = time.perf_counter()
+        self.last_pauses = ()
 
         if not str(text).strip():
             raise ValueError(
@@ -88,6 +92,7 @@ class VoiceBuilder:
             # metadata. Subtitle timing now resolves from Whisper or None.
             self._timing_adapter.adapt(result.word_timings)
             self._publish_audio(result.staged_audio, output_path)
+            self.last_pauses = result.pauses
         except OperationalError:
             raise
         except Exception as error:

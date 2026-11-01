@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 import re
@@ -115,6 +115,9 @@ class SubtitleTiming:
     duration: float | None = None
     reliability: str = "unknown"
     fallback_reason: str | None = None
+    # Ordered ``(start, end)`` silences, in seconds, that the voice backend
+    # wrote into the transcribed audio; see ``fit_words_to_voice_pauses``.
+    voice_pauses: tuple[tuple[float, float], ...] = ()
 
     @property
     def words(
@@ -421,7 +424,13 @@ class WhisperTimingParser:
                 segments
             ),
             duration=all_words[-1].end,
-            reliability="secondary"
+            reliability="secondary",
+            voice_pauses=_parse_voice_pauses(
+                data.get(
+                    "voice_pauses",
+                    []
+                )
+            )
         )
 
 
@@ -438,11 +447,138 @@ class SubtitleTimingResolver:
             return None
 
         try:
-            timing = WhisperTimingParser().parse(path)
+            timing = fit_words_to_voice_pauses(
+                WhisperTimingParser().parse(path)
+            )
         except (OSError, ValueError):
             return None
 
         return timing if timing.is_usable() else None
+
+
+def fit_words_to_voice_pauses(
+    timing: SubtitleTiming
+) -> SubtitleTiming:
+    """Keep the timed words out of the silences the voice backend wrote.
+
+    A word that starts before a pause and ends inside it ends where the pause
+    starts; a word that starts inside a pause starts where the pause ends
+    (one wholly inside it is left with zero duration there). A word that
+    spans the whole pause keeps the side where more of its time lies. Each
+    segment then spans its fitted words. Without ``voice_pauses`` the timing
+    is returned unchanged.
+    """
+    if not timing.voice_pauses:
+        return timing
+
+    segments = []
+
+    for segment in timing.segments:
+        words = tuple(
+            _fit_word_to_pauses(
+                word,
+                timing.voice_pauses
+            )
+            for word in segment.words
+        )
+
+        segments.append(
+            SpeechSegment(
+                start=words[0].start if words else segment.start,
+                end=words[-1].end if words else segment.end,
+                words=words
+            )
+        )
+
+    return replace(
+        timing,
+        segments=tuple(
+            segments
+        )
+    )
+
+
+def _fit_word_to_pauses(
+    word: WordTiming,
+    pauses
+) -> WordTiming:
+    start = word.start
+    end = word.end
+
+    for pause_start, pause_end in pauses:
+        if start >= pause_end or end <= pause_start:
+            continue
+
+        if start < pause_start and (
+            end <= pause_end
+            or pause_start - start >= end - pause_end
+        ):
+            end = pause_start
+        else:
+            start = pause_end
+            end = max(
+                end,
+                pause_end
+            )
+
+    if (start, end) == (word.start, word.end):
+        return word
+
+    return replace(
+        word,
+        start=start,
+        end=end
+    )
+
+
+def _parse_voice_pauses(
+    raw_pauses
+) -> tuple[tuple[float, float], ...]:
+    if not isinstance(
+        raw_pauses,
+        list
+    ):
+        raise ValueError(
+            "Metadata Whisper con voice_pauses inválido."
+        )
+
+    pauses = []
+    previous_end = None
+
+    for raw_pause in raw_pauses:
+        try:
+            start = float(
+                raw_pause["start"]
+            )
+            end = float(
+                raw_pause["end"]
+            )
+        except (
+            KeyError,
+            TypeError,
+            ValueError
+        ) as error:
+            raise ValueError(
+                "Metadata Whisper con voice_pauses inválido."
+            ) from error
+
+        if (
+            start < 0
+            or end <= start
+            or (previous_end is not None and start < previous_end)
+        ):
+            raise ValueError(
+                "Metadata Whisper con voice_pauses inválido."
+            )
+
+        pauses.append(
+            (start, end)
+        )
+        previous_end = end
+
+    return tuple(
+        pauses
+    )
 
 
 def parse_srt_blocks(

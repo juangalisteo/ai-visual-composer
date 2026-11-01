@@ -17,6 +17,7 @@ from app.modules.audio.tts_contracts import (
     ResolvedTtsVoice,
     TtsBackendError,
     TtsBackendErrorKind,
+    TtsPause,
     TtsProsody,
     TtsSynthesisRequest,
     TtsSynthesisWorkspace,
@@ -592,6 +593,18 @@ def test_writes_exact_sentence_and_paragraph_pauses_between_chunks(tmp_path, sam
         "cinco.",
         "Seis",
     ]
+    chunk, sentence_s, paragraph_s = CHUNK_FRAMES / sample_rate, 0.5, 1.5
+    starts = []
+    position = 0.0
+    for pause in (sentence_s, sentence_s, paragraph_s, sentence_s, paragraph_s):
+        position += chunk
+        starts.append((position, position + pause))
+        position += pause
+    assert len(result.pauses) == 5
+    assert all(isinstance(pause, TtsPause) for pause in result.pauses)
+    for pause, (start, end) in zip(result.pauses, starts):
+        assert pause.start_seconds == pytest.approx(start)
+        assert pause.end_seconds == pytest.approx(end)
 
 
 def test_zero_pauses_write_chunks_back_to_back(tmp_path):
@@ -606,6 +619,7 @@ def test_zero_pauses_write_chunks_back_to_back(tmp_path):
     frames = _frames(result.staged_audio.path)
     assert frames == b"\x01" * 2 * 4 * CHUNK_FRAMES
     assert _silence_runs(frames) == []
+    assert result.pauses == ()
 
 
 def test_text_without_blank_lines_only_gets_sentence_pauses(tmp_path):
@@ -642,3 +656,23 @@ def test_paragraph_pause_does_not_add_the_sentence_pause(tmp_path):
     )
 
     assert _silence_runs(_frames(result.staged_audio.path)) == []
+
+
+def test_reported_pauses_are_the_exact_written_samples(tmp_path):
+    relative, _ = _write_model_pair(tmp_path)
+    backend, _, _ = _backend(tmp_path, FakePiperVoice(sample_rate=16000))
+
+    result = backend.synthesize(
+        _request(
+            tmp_path,
+            relative,
+            text="Uno. Dos.\n\nTres.",
+            sentence_pause_seconds=0.25,
+            paragraph_pause_seconds=1.0,
+        )
+    )
+
+    assert result.pauses == (
+        TtsPause(CHUNK_FRAMES / 16000, (CHUNK_FRAMES + 4000) / 16000),
+        TtsPause((2 * CHUNK_FRAMES + 4000) / 16000, (2 * CHUNK_FRAMES + 20000) / 16000),
+    )

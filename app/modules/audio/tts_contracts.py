@@ -196,12 +196,33 @@ class TtsWordTiming:
 
 
 @dataclass(frozen=True)
+class TtsPause:
+    """One silence the backend inserted, in seconds of the staged audio."""
+
+    start_seconds: float
+    end_seconds: float
+
+    def __post_init__(self):
+        _require_finite_number(self.start_seconds, "start_seconds")
+        _require_finite_number(self.end_seconds, "end_seconds")
+        if self.start_seconds < 0:
+            raise ValueError("pause start_seconds must not be negative.")
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("pause end_seconds must follow start_seconds.")
+
+
+@dataclass(frozen=True)
 class TtsSynthesisResult:
-    """Backend result before VoiceBuilder validates and publishes artifacts."""
+    """Backend result before VoiceBuilder validates and publishes artifacts.
+
+    ``pauses`` are the silences the backend wrote into the audio itself, in
+    order; a backend that inserts none leaves them empty.
+    """
 
     staged_audio: TtsAudioArtifact
     word_timings: tuple[TtsWordTiming, ...] | None
     diagnostic: TtsBackendDiagnostic | None = None
+    pauses: tuple[TtsPause, ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.staged_audio, TtsAudioArtifact):
@@ -227,6 +248,16 @@ class TtsSynthesisResult:
             TtsBackendDiagnostic,
         ):
             raise TypeError("diagnostic must be a TtsBackendDiagnostic or None.")
+
+        pauses = tuple(self.pauses)
+        previous_end = None
+        for pause in pauses:
+            if not isinstance(pause, TtsPause):
+                raise TypeError("pauses must contain TtsPause values.")
+            if previous_end is not None and pause.start_seconds < previous_end:
+                raise ValueError("pauses must be ordered and non-overlapping.")
+            previous_end = pause.end_seconds
+        object.__setattr__(self, "pauses", pauses)
 
 
 def _required_text(value: object, name: str) -> str:

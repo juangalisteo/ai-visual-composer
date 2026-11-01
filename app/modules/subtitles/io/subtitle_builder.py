@@ -1,4 +1,5 @@
 from collections import Counter
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -45,8 +46,20 @@ class SubtitleBuilder:
     def build(
         self,
         audio_path=None,
-        output_path=None
+        output_path=None,
+        voice_pauses=()
     ):
+        """Transcribe ``audio_path`` with Whisper into an SRT and its JSON.
+
+        ``voice_pauses`` are the ``(start, end)`` silences, in seconds, that
+        the voice backend wrote into that audio. They are recorded in the JSON
+        as ``voice_pauses`` so the timing resolution can keep words out of
+        them; Whisper's own word times are stored unchanged.
+        """
+        voice_pauses = tuple(
+            (float(start), float(end))
+            for start, end in voice_pauses
+        )
         ProgressLogger.start(
             "GENERANDO TRANSCRIPCI\u00d3N TEMPORAL"
         )
@@ -157,6 +170,12 @@ class SubtitleBuilder:
                     )
                 )
 
+            if voice_pauses and generated_json.exists():
+                self._record_voice_pauses(
+                    generated_json,
+                    voice_pauses
+                )
+
             shutil.move(
                 str(generated_srt),
                 str(output_path)
@@ -212,6 +231,20 @@ class SubtitleBuilder:
         )
 
         return output_path
+
+    @staticmethod
+    def _record_voice_pauses(timing_path, voice_pauses):
+        data = json.loads(
+            timing_path.read_text(encoding="utf-8")
+        )
+        data["voice_pauses"] = [
+            {"start": start, "end": end}
+            for start, end in voice_pauses
+        ]
+        timing_path.write_text(
+            json.dumps(data),
+            encoding="utf-8"
+        )
 
     @classmethod
     def _discarded_message(cls, discarded):

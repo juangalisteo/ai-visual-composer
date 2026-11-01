@@ -10,6 +10,7 @@ from app.core.execution_request import (
     StudioExecutionRequest,
 )
 from app.core import start
+from app.modules.audio.tts_contracts import TtsPause
 from app.modules.design import DesignExecutionCoordinator
 from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import StudioInputMode, StudioVideoAudioSrtPlan
@@ -243,6 +244,10 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
         standard, "SrtOptimizer"
     ) as optimizer:
         voice_builder.return_value.build.return_value = project.audio_path.return_value
+        voice_builder.return_value.last_pauses = (
+            TtsPause(1.0, 1.5),
+            TtsPause(3.25, 3.75),
+        )
         audio_mixer.return_value.build.return_value = project.final_audio_path.return_value
         subtitle_builder.return_value.build.return_value = project.subtitle_path.return_value
         optimizer.return_value.optimize.return_value = project.subtitle_path.return_value
@@ -253,6 +258,7 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     subtitle_builder.return_value.build.assert_called_once_with(
         audio_path=project.audio_path.return_value,
         output_path=project.subtitle_path.return_value,
+        voice_pauses=((1.0, 1.5), (3.25, 3.75)),
     )
     assert optimizer.call_args.kwargs["project"] is project
 

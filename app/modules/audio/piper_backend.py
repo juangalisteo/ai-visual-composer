@@ -19,6 +19,7 @@ from app.modules.audio.tts_contracts import (
     TtsBackendDiagnostic,
     TtsBackendError,
     TtsBackendErrorKind,
+    TtsPause,
     TtsSynthesisRequest,
     TtsSynthesisResult,
 )
@@ -111,7 +112,7 @@ class PiperBackend:
             ) from error
 
         audio_path = request.workspace.path / _STAGED_AUDIO_NAME
-        _synthesize_wav(
+        pauses = _synthesize_wav(
             voice=voice,
             text=request.text,
             audio_path=audio_path,
@@ -142,6 +143,7 @@ class PiperBackend:
                 channels=1,
             ),
             word_timings=None,
+            pauses=pauses,
         )
 
     def _validate_request(self, request: object) -> None:
@@ -346,8 +348,11 @@ def _synthesize_wav(
     sample_rate_hz: int,
     sentence_pause_seconds: float,
     paragraph_pause_seconds: float,
-) -> None:
-    """Write one WAV without allowing ``wave.close`` to hide synth failure."""
+) -> tuple[TtsPause, ...]:
+    """Write one WAV without allowing ``wave.close`` to hide synth failure.
+
+    Returns the silences written between chunks.
+    """
     try:
         audio_path.parent.mkdir(parents=True, exist_ok=True)
         wav_file = wave.open(str(audio_path), "wb")
@@ -358,7 +363,7 @@ def _synthesize_wav(
         ) from error
 
     try:
-        _write_paced_chunks(
+        pauses = _write_paced_chunks(
             voice=voice,
             text=text,
             wav_file=wav_file,
@@ -383,6 +388,7 @@ def _synthesize_wav(
             TtsBackendErrorKind.AUDIO_INVALID,
             "Piper no finalizó un WAV de staging válido.",
         ) from error
+    return pauses
 
 
 def _write_paced_chunks(
@@ -393,34 +399,44 @@ def _write_paced_chunks(
     synthesis_config: object,
     sentence_pause_frames: int,
     paragraph_pause_frames: int,
-) -> None:
+) -> tuple[TtsPause, ...]:
     """Write Piper sentence chunks with declared silence between them.
 
     A paragraph break replaces the sentence pause; nothing is added before the
-    first chunk or after the last one.
+    first chunk or after the last one. Returns where each written silence
+    starts and ends, in seconds of the written audio.
     """
     pending_pause_frames = 0
     wrote_audio = False
+    written_frames = 0
+    frame_rate = None
+    pauses = []
     for paragraph_index, paragraph in enumerate(_split_paragraphs(text)):
         if paragraph_index > 0 and wrote_audio:
             pending_pause_frames = paragraph_pause_frames
         for piece in _split_after_ellipses(paragraph):
             for chunk in voice.synthesize(piece, syn_config=synthesis_config):
+                frame_bytes = chunk.sample_width * chunk.sample_channels
                 if not wrote_audio:
                     wav_file.setframerate(chunk.sample_rate)
                     wav_file.setsampwidth(chunk.sample_width)
                     wav_file.setnchannels(chunk.sample_channels)
+                    frame_rate = chunk.sample_rate
                     wrote_audio = True
                 if pending_pause_frames:
-                    wav_file.writeframes(
-                        bytes(
-                            pending_pause_frames
-                            * chunk.sample_width
-                            * chunk.sample_channels
+                    wav_file.writeframes(bytes(pending_pause_frames * frame_bytes))
+                    pauses.append(
+                        TtsPause(
+                            start_seconds=written_frames / frame_rate,
+                            end_seconds=(written_frames + pending_pause_frames)
+                            / frame_rate,
                         )
                     )
+                    written_frames += pending_pause_frames
                 wav_file.writeframes(chunk.audio_int16_bytes)
+                written_frames += len(chunk.audio_int16_bytes) // frame_bytes
                 pending_pause_frames = sentence_pause_frames
+    return tuple(pauses)
 
 
 def _pause_frames(seconds: float, sample_rate_hz: int) -> int:
