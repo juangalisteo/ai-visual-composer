@@ -7,6 +7,7 @@ import tempfile
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.audio import PUBLISHED_MP3_SAMPLE_RATE_HZ
 from app.modules.audio.tts_contracts import (
     TtsAudioArtifact,
     TtsBackendError,
@@ -152,10 +153,12 @@ class VoiceBuilder:
     ) -> None:
         """Publish a neutral staging artifact at the current public path.
 
-        The established public contract is ``voz.mp3``. Native MP3 artifacts
-        retain the historical byte-for-byte publication. Lossless WAV staging
-        is encoded only at this public boundary, where current consumers need
-        an MP3 artifact; it is never down-converted inside a backend workspace.
+        The established public contract is ``voz.mp3`` at
+        ``PUBLISHED_MP3_SAMPLE_RATE_HZ``. Native MP3 artifacts at that rate
+        retain the historical byte-for-byte publication. Any other staging
+        (lossless WAV or MP3 at another rate) is encoded only at this public
+        boundary, where current consumers need an MP3 artifact; it is never
+        down-converted inside a backend workspace.
         """
         staged_audio_path = staged_audio.path
         if cls._can_copy_to_public_path(staged_audio, output_path):
@@ -183,6 +186,7 @@ class VoiceBuilder:
             output_path.suffix.casefold() == ".mp3"
             and staged_audio.container.casefold() == "mp3"
             and staged_audio.codec.casefold() == "mp3"
+            and staged_audio.sample_rate_hz == PUBLISHED_MP3_SAMPLE_RATE_HZ
         )
 
     @staticmethod
@@ -199,6 +203,8 @@ class VoiceBuilder:
             "libmp3lame",
             "-q:a",
             "0",
+            "-ar",
+            str(PUBLISHED_MP3_SAMPLE_RATE_HZ),
             str(output_path),
         ]
         subprocess.run(command, capture_output=True, text=True, check=True)

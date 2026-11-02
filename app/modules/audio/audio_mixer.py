@@ -4,6 +4,7 @@ import subprocess
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.audio import PUBLISHED_MP3_SAMPLE_RATE_HZ
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
 from app.shared.operational_error import create_operational_error, summarize_technical_text
@@ -156,6 +157,8 @@ class AudioMixer:
             "libmp3lame",
             "-b:a",
             "192k",
+            "-ar",
+            str(PUBLISHED_MP3_SAMPLE_RATE_HZ),
             str(output_path)
         ]
 

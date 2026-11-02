@@ -100,7 +100,7 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
                 "-v",
                 "error",
                 "-show_entries",
-                "stream=codec_name,channels",
+                "stream=codec_name,sample_rate,channels",
                 "-of",
                 "json",
                 str(output_path),
@@ -114,7 +114,8 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
         assert result == output_path
         assert output_path.is_file()
         assert output_path.stat().st_size > 0
-        assert stream == {"codec_name": "mp3", "channels": 1}
+        # Published at 44 100 Hz (MPEG-1) whatever the model rate.
+        assert stream == {"codec_name": "mp3", "sample_rate": "44100", "channels": 1}
         assert tuple(workspace_parent.iterdir()) == ()
         assert provider.backend_key == "piper_onnx"
         assert observed_sample_rates == [expected_sample_rate]

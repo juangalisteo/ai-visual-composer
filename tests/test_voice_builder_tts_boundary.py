@@ -40,10 +40,22 @@ class _ConfigurationManager:
 class _Backend:
     backend_key = "piper_onnx"
 
-    def __init__(self, *, timings=None, error=None, pauses=()):
+    def __init__(
+        self,
+        *,
+        timings=None,
+        error=None,
+        pauses=(),
+        container="mp3",
+        codec="mp3",
+        sample_rate_hz=44_100,
+    ):
         self.timings = timings
         self.error = error
         self.pauses = pauses
+        self.container = container
+        self.codec = codec
+        self.sample_rate_hz = sample_rate_hz
         self.requests = []
 
     def synthesize(self, request):
@@ -57,9 +69,9 @@ class _Backend:
         return TtsSynthesisResult(
             staged_audio=TtsAudioArtifact(
                 path=staged_audio,
-                container="mp3",
-                codec="mp3",
-                sample_rate_hz=24_000,
+                container=self.container,
+                codec=self.codec,
+                sample_rate_hz=self.sample_rate_hz,
                 channels=1,
             ),
             word_timings=self.timings,
@@ -99,6 +111,37 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
             self.assertEqual(output_path, result)
             self.assertEqual(b"neutral staged audio", output_path.read_bytes())
             self.assertEqual("Texto de prueba", backend.requests[0].text)
+
+    def test_staged_audio_not_at_44100_hz_is_published_as_44100_hz_mp3(self):
+        cases = {
+            "wav": _Backend(container="wav", codec="pcm_s16le", sample_rate_hz=22_050),
+            "mpeg2_mp3": _Backend(sample_rate_hz=24_000),
+        }
+        for label, backend in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                output_path = root / "audio" / "voz.mp3"
+                commands = []
+
+                def encode(command, **kwargs):
+                    commands.append(command)
+                    Path(command[-1]).write_bytes(b"encoded audio")
+
+                with patch(
+                    "app.modules.audio.voice_builder.subprocess.run",
+                    side_effect=encode,
+                ):
+                    _builder(
+                        _voice_configuration(),
+                        backend,
+                        root / "workspaces",
+                    ).build("Texto de prueba", output_path=output_path)
+
+                self.assertEqual(1, len(commands))
+                command = commands[0]
+                self.assertEqual("44100", command[command.index("-ar") + 1])
+                self.assertEqual("libmp3lame", command[command.index("-c:a") + 1])
+                self.assertEqual(b"encoded audio", output_path.read_bytes())
 
     def test_default_registry_registers_only_piper_without_synthesizing(self):
         builder = VoiceBuilder(
