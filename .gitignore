@@ -70,31 +70,39 @@ assets/audio/voices/
 # Local backup of user input content
 /input/_backup_local/
 
-# STUDIO input folders: keep only the folder structure (.gitkeep)
+# STUDIO input folders: keep only the folder structure (.gitkeep) and the
+# README of each folder; user media never enters Git
 input/studio/*
 !input/studio/srt_video/
 input/studio/srt_video/*
 !input/studio/srt_video/.gitkeep
+!input/studio/srt_video/README_SRT_VIDEO.md
 !input/studio/video/
 input/studio/video/*
 !input/studio/video/.gitkeep
+!input/studio/video/README_VIDEO.md
 !input/studio/montaje_videos/
 input/studio/montaje_videos/*
 !input/studio/montaje_videos/.gitkeep
+!input/studio/montaje_videos/README_MONTAJE_VIDEOS.md
 !input/studio/exportar_srt/
 input/studio/exportar_srt/*
 !input/studio/exportar_srt/transcribir/
 input/studio/exportar_srt/transcribir/*
 !input/studio/exportar_srt/transcribir/.gitkeep
+!input/studio/exportar_srt/transcribir/README_TRANSCRIBIR.md
 !input/studio/exportar_srt/convertir/
 input/studio/exportar_srt/convertir/*
 !input/studio/exportar_srt/convertir/.gitkeep
+!input/studio/exportar_srt/convertir/README_CONVERTIR.md
 !input/studio/intro_outro/
 input/studio/intro_outro/*
 !input/studio/intro_outro/.gitkeep
+!input/studio/intro_outro/README_INTRO_OUTRO.md
 !input/studio/video_audio_srt/
 input/studio/video_audio_srt/*
 !input/studio/video_audio_srt/.gitkeep
+!input/studio/video_audio_srt/README_VIDEO_AUDIO_SRT.md
 
 # ============================================================
 # Local assets, runtimes and models
