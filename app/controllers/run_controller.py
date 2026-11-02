@@ -167,6 +167,7 @@ class RunController:
         self.studio_montage_selection = studio_montage_selection or StudioMontageSelection(
             self.studio_montage_planning_service,
             self.terminal,
+            self._exit_application,
         )
         self.studio_intro_outro_route_selection = (
             studio_intro_outro_route_selection

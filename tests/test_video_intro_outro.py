@@ -185,7 +185,7 @@ class IntroOutroTest(unittest.TestCase):
                 "builtins.print",
                 side_effect=answers.print,
             ), self.assertRaisesRegex(
-                FileNotFoundError,
+                OperationalError,
                 "vertical/intro/",
             ):
                 controller.select_intro_outro("vertical")
@@ -204,7 +204,7 @@ class IntroOutroTest(unittest.TestCase):
             with patch("builtins.input", side_effect=answers.input), patch(
                 "builtins.print", side_effect=answers.print
             ), self.assertRaisesRegex(
-                FileNotFoundError,
+                OperationalError,
                 "vertical/outro/",
             ):
                 controller.select_intro_outro("vertical")

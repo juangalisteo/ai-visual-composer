@@ -21,6 +21,8 @@ from app.modules.studio import (
     StudioMontageInputError,
     StudioMontagePlanningService,
 )
+from app.shared.error_context import ExitKind
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -231,6 +233,29 @@ class StudioMontagePhase1Test(unittest.TestCase):
         self.assertEqual(("A.mp4", "C.mp4", "B.mp4"), tuple(
             clip.original_name for clip in plan.clips
         ))
+
+    def test_cli_order_zero_cancels_like_the_other_menus(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._write_clips(root, ("A.mp4", "B.mp4"))
+            controller = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(root)
+            )
+            answers = MenuAnswers(Typed(" 0 "))
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ), self.assertRaises(OperationalError) as raised:
+                controller.select_studio_montage_plan(
+                    self.profile_key,
+                    self.profile,
+                )
+
+        context = raised.exception.context
+        self.assertIs(ExitKind.CANCELLATION, context.exit_kind)
+        self.assertEqual(
+            "La operación fue cancelada por el usuario.",
+            context.user_message,
+        )
 
     def test_cli_records_transitions_no_without_a_mode(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -16,6 +16,7 @@ from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -294,8 +295,9 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ):
-                    with self.assertRaises(
-                        FileNotFoundError
+                    with self.assertRaisesRegex(
+                        OperationalError,
+                        "No existe input/guion.txt."
                     ):
                         start.run_application(
                             request=_standard_request(

@@ -76,15 +76,12 @@ está mal, se para con un error y no muestra ningún menú.
 ## 3. Parada
 
 - **Salir desde un menú:** escribe `0` en cualquier menú (también en
-  «Nombre:»). La terminal muestra:
+  «Nombre:» y en «Introduce el orden de montaje:»). La terminal muestra:
 
   ```text
   CANCELADO
   La operación fue cancelada por el usuario.
   ```
-
-  La única excepción es «Introduce el orden de montaje:» de MONTAJE VÍDEOS, que
-  solo acepta números de clip; ahí se sale con Ctrl+C.
 - **Cortar una ejecución en marcha:** Ctrl+C («La operación fue interrumpida
   por el usuario.»). Lo que estuviera a medias en `output/<proyecto>/` queda
   incompleto.
@@ -368,9 +365,12 @@ de Git: se puede borrar cuando quieras.
 | «No se pudo completar la solicitud a Ollama.» | Arranca Ollama y comprueba que el modelo esté descargado ([INSTALL.md](INSTALL.md)) |
 | «ComfyUI no pudo generar la imagen solicitada.» o «… el clip de video solicitado.» | Comprueba que ComfyUI esté abierto en `http://127.0.0.1:8188` |
 | «No se puede eliminar OUTPUT porque uno de sus archivos está siendo utilizado por otro programa.» | Cierra el programa que tiene abierto ese archivo (reproductor, editor de vídeo…) y vuelve a lanzar |
-| «ERROR INTERNO» y «Se produjo un error interno inesperado.» al acabar los menús o tras uno de ellos | Este mensaje sale también con fallos de entrada que no nombra. Antes de buscar otra causa, revisa: que el `.txt` de `input/` que usa la ruta exista y no esté vacío; en SOLO VIDEO y SRT + VIDEO, que la carpeta tenga un `.mp4` y, en SRT + VIDEO, un `.srt` válido; si elegiste intro u outro, que haya algún `.mp4` en `assets/videos/intro_outro/<formato>/intro/` o `…/outro/` |
-| «ERROR: No se encontró ningún archivo … en input\studio\…» | Pon el archivo con la extensión correcta en la carpeta del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
-| «ERROR: El archivo SRT de STUDIO debe estar codificado en UTF-8», «… está vacío» o «… no contiene cues utilizables» | Guarda el `.srt` en UTF-8 y revisa el formato de sus bloques |
+| «El archivo input/guion.txt está vacío.» o «No existe input/guion.txt.» (lo mismo con `input/tema.txt`) | Escribe el guion en `input/guion.txt` (Guion) o el tema en `input/tema.txt` (Imagen y Video) y vuelve a lanzar |
+| «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-ruta-diseño)) y vuelve a lanzar |
+| «No hay archivos MP4 disponibles para INTRO en assets/videos/intro_outro/vertical/intro/.» (o para OUTRO, o en `horizontal/`) | Pon al menos un `.mp4` en esa carpeta o elige otra opción en INTRO / OUTRO |
+| «No se encontró ningún archivo … en input\studio\…» | Pon el archivo con la extensión correcta en la carpeta del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
+| «El archivo SRT de STUDIO debe estar codificado en UTF-8», «… está vacío» o «… no contiene cues utilizables» | Guarda el `.srt` en UTF-8 y revisa el formato de sus bloques |
+| «No se pudo sacar el audio de input\studio\exportar_srt\transcribir\… para transcribirlo.» | El `.mp4` no es un vídeo válido o no tiene sonido: usa otro |
 | «Selecciona al menos dos clips para MONTAJE VÍDEOS.» | Escribe dos o más números de clip separados por espacios |
 | Una generación tarda mucho | Es normal: Ollama y Wan no tienen tiempo límite. Espera o córtala con Ctrl+C |
 | Falta una dependencia o un programa externo | [INSTALL.md](INSTALL.md) |

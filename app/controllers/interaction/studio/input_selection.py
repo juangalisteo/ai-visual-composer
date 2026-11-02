@@ -1,6 +1,10 @@
 """Preparación de entradas VIDEO y SRT + VIDEO de STUDIO."""
 
-from app.modules.studio import StudioInputMode
+from app.modules.studio import (
+    StudioInputMode,
+    coerce_studio_input_mode,
+    to_studio_operational_error,
+)
 
 
 class StudioInputSelection:
@@ -9,7 +13,7 @@ class StudioInputSelection:
         self._resource_selection = resource_selection
 
     def select_files(self, profile, input_mode, writer=None, selector=None):
-        candidates = self._preparation_service.discover(profile, input_mode)
+        candidates = self._discover(profile, coerce_studio_input_mode(input_mode))
         if candidates.mode is StudioInputMode.VIDEO:
             video_path = self._resource_selection.select_studio_input_candidate(
                 "VIDEO",
@@ -48,3 +52,26 @@ class StudioInputSelection:
             video_path=video_path,
             subtitle_path=subtitle_path,
         )
+
+    def _discover(self, profile, input_mode):
+        """Report a missing or invalid input file as an input error."""
+        try:
+            return self._preparation_service.discover(profile, input_mode)
+        except (FileNotFoundError, NotADirectoryError) as error:
+            raise to_studio_operational_error(
+                error,
+                mode=input_mode.value,
+                recommended_action=(
+                    f"Pon en esa carpeta los archivos que pide {input_mode.label} "
+                    "y vuelve a intentarlo."
+                ),
+            ) from error
+        except ValueError as error:
+            raise to_studio_operational_error(
+                error,
+                mode=input_mode.value,
+                recommended_action=(
+                    "Guarda el SRT en UTF-8, con bloques de número, tiempos y "
+                    "texto, y vuelve a intentarlo."
+                ),
+            ) from error

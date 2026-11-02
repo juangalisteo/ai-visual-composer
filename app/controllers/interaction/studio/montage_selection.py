@@ -4,9 +4,10 @@ from app.modules.studio import StudioMontageInputError
 
 
 class StudioMontageSelection:
-    def __init__(self, planning_service, terminal):
+    def __init__(self, planning_service, terminal, on_cancel=None):
         self._planning_service = planning_service
         self._terminal = terminal
+        self._on_cancel = on_cancel
 
     @staticmethod
     def _write(message, writer):
@@ -36,9 +37,12 @@ class StudioMontageSelection:
     def select_order(self, candidates, writer=None):
         self._write("\nIntroduce el orden de montaje:", writer)
         while True:
+            answer = self._terminal.read("\n> ")
+            if str(answer or "").strip() == "0" and self._on_cancel is not None:
+                self._on_cancel()
             try:
                 return self._planning_service.parse_order(
-                    self._terminal.read("\n> "),
+                    answer,
                     candidates,
                 )
             except StudioMontageInputError as error:

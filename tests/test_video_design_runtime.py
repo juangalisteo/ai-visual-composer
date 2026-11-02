@@ -380,13 +380,48 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 / "guion_video.txt"
             )
 
-            with self.assertRaisesRegex(
-                FileNotFoundError,
-                "guion_video.txt"
-            ):
+            with self.assertRaises(
+                OperationalError
+            ) as raised:
                 VideoDesignPreparationService().prepare(
                     input_path=missing_path
                 )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "No existe el diseño visual de vídeo: "
+                f"{missing_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Crea {missing_path.as_posix()} con el diseño del clip "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
+
+    def test_video_design_rejects_empty_guion_video_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            design_path = Path(temp_dir) / "guion_video.txt"
+            design_path.write_text(" \n", encoding="utf-8")
+
+            with self.assertRaises(
+                OperationalError
+            ) as raised:
+                VideoDesignPreparationService().prepare(
+                    input_path=design_path
+                )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "El diseño visual de vídeo está vacío: "
+                f"{design_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Escribe el diseño del clip en {design_path.as_posix()} "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
 
     def test_video_design_adapter_generates_single_visual_truth_scene(self):
         prepared = VideoDesignPreparationService(

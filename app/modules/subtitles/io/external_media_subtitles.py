@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+import subprocess
 
 from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
 from app.modules.subtitles.io.whisper_diagnostics import (
@@ -14,7 +15,10 @@ from app.modules.subtitles.policies.timing import (
     whisper_timing_path,
 )
 from app.modules.video.ffmpeg.runner import Runner
-from app.shared.operational_error import create_operational_error
+from app.shared.operational_error import (
+    create_operational_error,
+    summarize_technical_text,
+)
 
 
 @dataclass(frozen=True)
@@ -79,22 +83,7 @@ class ExternalMediaSubtitlePreparationService:
         subtitle_path = working_directory / "whisper.srt"
         if extension == ".mp4":
             audio_path = working_directory / "source_audio.wav"
-            self.runner.run([
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(source_path),
-                "-map",
-                "0:a:0",
-                "-vn",
-                "-ac",
-                "1",
-                "-ar",
-                "16000",
-                "-c:a",
-                "pcm_s16le",
-                str(audio_path),
-            ])
+            self._extract_audio(source_path, audio_path)
             if not audio_path.is_file() or audio_path.stat().st_size <= 0:
                 raise RuntimeError(
                     "No se generó el audio de trabajo para Whisper."
@@ -125,6 +114,49 @@ class ExternalMediaSubtitlePreparationService:
             timing=timing,
             diagnostics=diagnostics,
         )
+
+    def _extract_audio(self, source_path, audio_path):
+        command = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source_path),
+            "-map",
+            "0:a:0",
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "pcm_s16le",
+            str(audio_path),
+        ]
+        try:
+            self.runner.run(command)
+        except subprocess.CalledProcessError as error:
+            # The usual cause is the input: an invalid video or one without sound.
+            metadata = {
+                "command": tuple(map(str, error.cmd or command)),
+                "returncode": error.returncode,
+                "phase": "audio_extraction",
+            }
+            stderr = summarize_technical_text(error.stderr)
+            if stderr:
+                metadata["stderr_summary"] = stderr
+            raise create_operational_error(
+                family="FFMPEG",
+                user_message=(
+                    f"No se pudo sacar el audio de {source_path} "
+                    "para transcribirlo."
+                ),
+                recommended_action=(
+                    "Comprueba que el archivo sea un vídeo válido "
+                    "y que tenga sonido."
+                ),
+                operation="Extraer el audio para Whisper",
+                technical_metadata=metadata,
+            ) from error
 
     def _resolve_diagnostics(self, subtitle_path):
         transcription_config = getattr(

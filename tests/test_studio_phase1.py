@@ -25,6 +25,7 @@ from app.modules.studio import (
     StudioProfileLoader,
 )
 from app.shared.config_manager import ConfigManager
+from app.shared.error_context import ErrorSeverity
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
@@ -381,6 +382,73 @@ class StudioPhase1Test(unittest.TestCase):
                         self.profile,
                         StudioInputMode.SRT_VIDEO,
                     )
+
+    def _select_input_error(self, root, input_mode):
+        controller = RunController(
+            studio_input_preparation_service=StudioInputPreparationService(root)
+        )
+        with patch.object(controller, "_print"), patch("builtins.input"):
+            with self.assertRaises(OperationalError) as raised:
+                controller.select_studio_input_files(self.profile, input_mode)
+        return raised.exception.context
+
+    def test_controller_reports_missing_studio_inputs_as_input_errors(self):
+        cases = (
+            ("solo video sin carpeta", StudioInputMode.VIDEO, None, "No existe la carpeta de entrada STUDIO: {directory}"),
+            ("solo video sin mp4", StudioInputMode.VIDEO, (), "No se encontró ningún archivo MP4 en {directory}."),
+            ("srt + video sin carpeta", StudioInputMode.SRT_VIDEO, None, "No existe la carpeta de entrada STUDIO: {directory}"),
+            ("srt + video sin mp4", StudioInputMode.SRT_VIDEO, ("captions.srt",), "No se encontró ningún archivo MP4 en {directory}."),
+            ("srt + video sin srt", StudioInputMode.SRT_VIDEO, ("source.mp4",), "No se encontró ningún archivo SRT en {directory}."),
+        )
+        for name, input_mode, files, message in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                input_dir = root / input_mode.value
+                if files is not None:
+                    input_dir.mkdir()
+                for file_name in files or ():
+                    (input_dir / file_name).write_text(
+                        "1\n00:00:00,000 --> 00:00:01,000\nHola\n",
+                        encoding="utf-8",
+                    )
+
+                context = self._select_input_error(root, input_mode)
+
+                self.assertIs(ErrorSeverity.FATAL_OPERATIONAL, context.severity)
+                self.assertEqual(message.format(directory=input_dir), context.user_message)
+                self.assertEqual(f"STUDIO/{input_mode.value}", context.operation)
+                self.assertEqual(
+                    f"Pon en esa carpeta los archivos que pide {input_mode.label} "
+                    "y vuelve a intentarlo.",
+                    context.recommended_action,
+                )
+
+    def test_controller_reports_invalid_srt_as_input_error(self):
+        cases = (
+            ("vacío", "".encode("utf-8"), "está vacío"),
+            ("no UTF-8", "1\n00:00:00,000 --> 00:00:01,000\ncanción\n".encode("latin-1"), "codificado en UTF-8"),
+            ("texto que no es SRT", b"esto no es un srt\n", "no contiene cues utilizables"),
+            ("tiempos al revés", b"1\n00:00:01,000 --> 00:00:00,500\nHola\n", "no contiene cues utilizables"),
+        )
+        for name, content, message in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                input_dir = root / "srt_video"
+                input_dir.mkdir()
+                (input_dir / "source.mp4").write_bytes(b"video")
+                (input_dir / "captions.srt").write_bytes(content)
+
+                context = self._select_input_error(root, StudioInputMode.SRT_VIDEO)
+
+                self.assertIs(ErrorSeverity.FATAL_OPERATIONAL, context.severity)
+                self.assertIn(message, context.user_message)
+                self.assertIn(str(input_dir / "captions.srt"), context.user_message)
+                self.assertEqual("STUDIO/srt_video", context.operation)
+                self.assertEqual(
+                    "Guarda el SRT en UTF-8, con bloques de número, tiempos y "
+                    "texto, y vuelve a intentarlo.",
+                    context.recommended_action,
+                )
 
     def test_profile_contract_fails_fast_for_missing_critical_field(self):
         raw = ProfileResolver().load_operational(self.operational_key)

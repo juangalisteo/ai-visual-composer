@@ -4,6 +4,7 @@ from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
+from app.shared.operational_error import create_operational_error
 
 
 class IntroOutroSelector:
@@ -66,10 +67,18 @@ class IntroOutroSelector:
     def require_assets(self, profile_format, position):
         assets = self._intro_outro_catalog.discover(profile_format, position)
         if not assets:
-            raise FileNotFoundError(
-                "No hay archivos MP4 disponibles para "
-                f"{position.upper()} en assets/videos/intro_outro/"
-                f"{profile_format}/{position}/."
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message=(
+                    "No hay archivos MP4 disponibles para "
+                    f"{position.upper()} en assets/videos/intro_outro/"
+                    f"{profile_format}/{position}/."
+                ),
+                recommended_action=(
+                    "Pon al menos un vídeo .mp4 en esa carpeta "
+                    "y vuelve a intentarlo."
+                ),
+                operation="Seleccionar INTRO / OUTRO",
             )
         return assets
 

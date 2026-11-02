@@ -8,6 +8,8 @@ from app.controllers.interaction.intro_outro_selection import IntroOutroSelector
 from app.controllers.interaction.resource_selection import ResourceSelection
 from app.controllers.interaction.terminal import Terminal
 from app.controllers.run_controller import RunController
+from app.shared.error_context import ErrorSeverity
+from app.shared.operational_error import OperationalError
 from tests.test_menu_helpers import MenuAnswers, Typed
 
 
@@ -76,17 +78,24 @@ def test_intro_outro_none_skips_discovery_and_returns_none():
     ]
 
 
-def test_intro_outro_keeps_the_existing_missing_assets_error():
+def test_intro_outro_without_assets_is_an_input_error():
     catalog = Mock()
     catalog.discover.return_value = ()
 
-    with pytest.raises(
-        FileNotFoundError,
-        match="No hay archivos MP4 disponibles para INTRO.*vertical/intro/",
-    ):
+    with pytest.raises(OperationalError) as raised:
         _selector(catalog, MenuAnswers("SOLO INTRO")).select_intro_outro(
             "vertical"
         )
+
+    context = raised.value.context
+    assert context.severity is ErrorSeverity.FATAL_OPERATIONAL
+    assert context.user_message == (
+        "No hay archivos MP4 disponibles para INTRO en "
+        "assets/videos/intro_outro/vertical/intro/."
+    )
+    assert context.recommended_action == (
+        "Pon al menos un vídeo .mp4 en esa carpeta y vuelve a intentarlo."
+    )
 
 
 def test_studio_adapter_derives_the_format_from_profile_key():

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -34,6 +35,7 @@ from app.modules.subtitles.io.external_media_subtitles import (
     ExternalMediaSubtitlePreparationService,
 )
 from app.modules.subtitles.policies.timing import whisper_timing_path
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -237,6 +239,42 @@ class ExternalMediaSubtitlePreparationTest(unittest.TestCase):
             self.assertEqual([(source, root / "work" / "whisper.srt")], builder.calls)
             self.assertTrue(prepared.timing.is_usable())
             self.assertEqual(b"source-mp3", source.read_bytes())
+
+    def test_mp4_without_readable_audio_is_an_input_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.mp4"
+            source.write_bytes(b"no es video")
+            runner = Mock()
+            runner.run.side_effect = subprocess.CalledProcessError(
+                1,
+                ["ffmpeg"],
+                stderr="Invalid data found when processing input",
+            )
+            builder = _WhisperBuilder()
+            service = ExternalMediaSubtitlePreparationService(
+                runner=runner,
+                subtitle_builder=builder,
+            )
+
+            with self.assertRaises(OperationalError) as raised:
+                service.prepare(media_path=source, working_directory=root / "work")
+
+            context = raised.exception.context
+            self.assertEqual("FFMPEG", context.family)
+            self.assertEqual(
+                f"No se pudo sacar el audio de {source} para transcribirlo.",
+                context.user_message,
+            )
+            self.assertEqual(
+                "Comprueba que el archivo sea un vídeo válido y que tenga sonido.",
+                context.recommended_action,
+            )
+            self.assertEqual(
+                "Invalid data found when processing input",
+                context.technical_metadata["stderr_summary"],
+            )
+            self.assertEqual([], builder.calls)
 
 
 class StudioSubtitleExportServiceTest(unittest.TestCase):

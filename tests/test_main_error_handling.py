@@ -2,6 +2,8 @@ import unittest
 import os
 import tempfile
 import inspect
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import main
@@ -12,8 +14,10 @@ from app.core.execution_request import (
     DesignExecutionRequest,
     StudioExecutionRequest,
 )
+from app.modules.script import ScriptPreparationService
 from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import (
+    StudioInputPreparationService,
     StudioMontageError,
     StudioSubtitleExportInputError,
     StudioVideoAudioSrtError,
@@ -410,6 +414,73 @@ class MainErrorHandlingTest(unittest.TestCase):
         self.assertIn("SOLO VIDEO necesita audio", output)
         self.assertIn("STUDIO/video", output)
         self.assertNotIn("Traceback", output)
+
+    def test_menu_input_error_is_user_visible_without_starting_runtime(self):
+        profile = SimpleNamespace(
+            video_extensions=(".mp4",),
+            subtitle_extensions=(".srt",),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "video"
+            input_dir.mkdir()
+            controller = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(
+                    directory
+                )
+            )
+            with patch("main.RunController") as controller_mock, patch(
+                "main.run_application"
+            ) as run_application_mock, patch("builtins.print") as print_mock:
+                controller_mock.return_value.run.side_effect = (
+                    lambda: controller.select_studio_input_files(profile, "video")
+                )
+
+                result = main.main()
+
+        self.assertEqual(1, result)
+        run_application_mock.assert_not_called()
+        print_mock.assert_called_once_with(
+            "ERROR\n"
+            f"No se encontró ningún archivo MP4 en {input_dir}.\n"
+            "Operación: STUDIO/video\n"
+            "Acción recomendada: Pon en esa carpeta los archivos que pide "
+            "SOLO VIDEO y vuelve a intentarlo."
+        )
+
+    def test_runtime_input_error_is_user_visible_not_internal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_script = Path(directory) / "guion.txt"
+            input_script.write_text("", encoding="utf-8")
+
+            def prepare_empty_script(request):
+                ScriptPreparationService().prepare(
+                    builders={"script": True},
+                    ai_config={},
+                    profile={},
+                    input_script_path=input_script,
+                    input_topic_path=Path(directory) / "tema.txt",
+                    output_script_path=Path(directory) / "salida.txt",
+                    source_mode="manual",
+                )
+
+            with patch.dict(os.environ, {}, clear=True), patch(
+                "main.RunController"
+            ) as controller_mock, patch(
+                "main.run_application",
+                side_effect=prepare_empty_script,
+            ), patch("builtins.print") as print_mock:
+                controller_mock.return_value.run.return_value = self.design_request()
+
+                result = main.main()
+
+        self.assertEqual(1, result)
+        print_mock.assert_called_once_with(
+            "ERROR\n"
+            f"El archivo {input_script.as_posix()} está vacío.\n"
+            "Operación: Preparar el guion\n"
+            f"Acción recomendada: Escribe el guion en {input_script.as_posix()} "
+            "y vuelve a intentarlo."
+        )
 
     def test_output_reset_blocked_error_stops_pipeline_cleanly(self):
         request = self.design_request(

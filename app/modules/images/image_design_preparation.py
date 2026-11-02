@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.modules.images.image_design_models import PreparedImageDesign
 from app.modules.visual_design import VisualDesignInterpreter
+from app.shared.operational_error import create_operational_error
 
 
 class ImageDesignPreparationService:
@@ -25,9 +26,17 @@ class ImageDesignPreparationService:
         )
 
         if not design_path.exists():
-            raise FileNotFoundError(
-                "No existe el diseño visual manual: "
-                f"{design_path}"
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message=(
+                    "No existe el diseño visual manual: "
+                    f"{design_path.as_posix()}."
+                ),
+                recommended_action=(
+                    f"Crea {design_path.as_posix()} con el diseño de la imagen "
+                    "y vuelve a intentarlo."
+                ),
+                operation="Preparar el diseño de imagen",
             )
 
         text = design_path.read_text(
@@ -35,8 +44,17 @@ class ImageDesignPreparationService:
         ).strip()
 
         if not text:
-            raise ValueError(
-                "El diseño visual manual está vacío."
+            raise create_operational_error(
+                family="VALIDATION",
+                user_message=(
+                    "El diseño visual manual está vacío: "
+                    f"{design_path.as_posix()}."
+                ),
+                recommended_action=(
+                    f"Escribe el diseño de la imagen en {design_path.as_posix()} "
+                    "y vuelve a intentarlo."
+                ),
+                operation="Preparar el diseño de imagen",
             )
 
         return PreparedImageDesign(

@@ -35,6 +35,7 @@ from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -191,7 +192,7 @@ class StudioPhase5Test(unittest.TestCase):
             with patch("builtins.input", side_effect=answers.input), patch(
                 "builtins.print", side_effect=answers.print
             ), self.assertRaisesRegex(
-                FileNotFoundError, "No hay archivos MP4"
+                OperationalError, "No hay archivos MP4"
             ):
                 controller.select_studio_intro_outro(self.profile_key)
 

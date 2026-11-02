@@ -4,7 +4,23 @@ from app.core.prompt_engine import PromptEngine
 from app.modules.script.models import PreparedScript
 from app.modules.script.script_builder import ScriptBuilder
 from app.modules.script.validator import count_script_words
+from app.shared.operational_error import create_operational_error
 from app.shared.progress_logger import ProgressLogger
+
+
+def _script_input_error(
+    *,
+    family,
+    user_message,
+    recommended_action
+):
+    """User input error: the input file is missing or empty."""
+    return create_operational_error(
+        family=family,
+        user_message=user_message,
+        recommended_action=recommended_action,
+        operation="Preparar el guion"
+    )
 
 
 class ScriptPreparationService:
@@ -125,13 +141,28 @@ class ScriptPreparationService:
             )
 
         if input_script_path.exists():
-            raise ValueError(
-                "El archivo input/guion.txt "
-                "está vacío."
+            raise _script_input_error(
+                family="VALIDATION",
+                user_message=(
+                    f"El archivo {input_script_path.as_posix()} "
+                    "está vacío."
+                ),
+                recommended_action=(
+                    "Escribe el guion en "
+                    f"{input_script_path.as_posix()} "
+                    "y vuelve a intentarlo."
+                )
             )
 
-        raise FileNotFoundError(
-            "No existe input/guion.txt."
+        raise _script_input_error(
+            family="FILESYSTEM",
+            user_message=(
+                f"No existe {input_script_path.as_posix()}."
+            ),
+            recommended_action=(
+                f"Crea {input_script_path.as_posix()} "
+                "con el guion y vuelve a intentarlo."
+            )
         )
 
     def _prepare_generated(
@@ -143,8 +174,15 @@ class ScriptPreparationService:
         output_script_path
     ) -> PreparedScript:
         if not input_topic_path.exists():
-            raise FileNotFoundError(
-                "No existe input/tema.txt."
+            raise _script_input_error(
+                family="FILESYSTEM",
+                user_message=(
+                    f"No existe {input_topic_path.as_posix()}."
+                ),
+                recommended_action=(
+                    f"Crea {input_topic_path.as_posix()} "
+                    "con el tema del vídeo y vuelve a intentarlo."
+                )
             )
 
         topic = input_topic_path.read_text(
@@ -152,9 +190,17 @@ class ScriptPreparationService:
         ).strip()
 
         if not topic:
-            raise ValueError(
-                "El archivo input/tema.txt "
-                "está vacío."
+            raise _script_input_error(
+                family="VALIDATION",
+                user_message=(
+                    f"El archivo {input_topic_path.as_posix()} "
+                    "está vacío."
+                ),
+                recommended_action=(
+                    "Escribe el tema del vídeo en "
+                    f"{input_topic_path.as_posix()} "
+                    "y vuelve a intentarlo."
+                )
             )
 
         prompt = (
