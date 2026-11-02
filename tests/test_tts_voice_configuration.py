@@ -218,7 +218,7 @@ def test_current_voice_documents_declare_sentence_and_paragraph_pauses():
         prosody = load_tts_voice_configuration(_document(stem)).voice.prosody
 
         assert prosody.sentence_pause_seconds == 0.5
-        assert prosody.paragraph_pause_seconds == 1.5
+        assert prosody.paragraph_pause_seconds == 0.35
 
 
 def test_current_voice_documents_share_the_same_slower_length_scale():

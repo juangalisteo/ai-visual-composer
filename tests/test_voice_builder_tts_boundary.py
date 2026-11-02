@@ -299,7 +299,7 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
                 self.assertIsNone(request.voice.backend_voice_id)
                 self.assertEqual(1.0, request.voice.prosody.speaking_rate)
                 self.assertEqual(0.5, request.voice.prosody.sentence_pause_seconds)
-                self.assertEqual(1.5, request.voice.prosody.paragraph_pause_seconds)
+                self.assertEqual(0.35, request.voice.prosody.paragraph_pause_seconds)
 
     def test_facade_has_no_direct_client_or_component_backend_knowledge(self):
         from app.modules.audio import voice_builder

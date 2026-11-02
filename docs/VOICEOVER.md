@@ -42,7 +42,7 @@ Otros documentos:
   (`x_low`) es más basto (apartado 4). El volumen es el del modelo
   (`volume_gain_db` 0.0); `speaking_rate` sigue en 1.0, pero `length_scale`
   manda sobre él (apartado 2).
-- Las dos hacen una pausa de 0,5 s tras cada frase y de 1,5 s entre párrafos
+- Las dos hacen una pausa de 0,5 s tras cada frase y de 0,35 s entre párrafos
   (apartado 5).
 - Los modelos (`.onnx` y su `.onnx.json`) no están en el repositorio: se
   descargan al instalar ([INSTALL.md](INSTALL.md)).
@@ -166,12 +166,18 @@ La voz hace dos pausas, que declara cada documento de voz en `prosody`:
 | Clave | Dónde | Valor en las dos voces |
 |---|---|---|
 | `sentence_pause_seconds` | Tras cada final de frase (`.`, `?`, `!`, `…`) | 0,5 s |
-| `paragraph_pause_seconds` | Entre párrafos: una o más líneas en blanco | 1,5 s |
+| `paragraph_pause_seconds` | Entre párrafos: una o más líneas en blanco | 0,35 s |
 
 - **0 = sin pausa extra.** Las dos claves son opcionales; sin ellas, 0.
 - El valor es silencio **añadido** al que el modelo ya deja al final de cada
   frase (hasta unos 0,25 s con Davefx).
 - Un cambio de párrafo lleva solo la pausa de párrafo (no se suman las dos).
+  Por eso, con estos valores, el silencio entre párrafos es algo más corto
+  que el de tras frase (elección del propietario).
+- **Silencio medido** (02-11-2026, las dos voces, cuatro textos, `silencedetect`
+  de FFmpeg a −45 dB): tras frase, 0,55–0,86 s; entre párrafos, 0,37–0,66 s
+  (unos 0,55 s de media; con la pausa de párrafo de 1,5 s anterior eran
+  1,52–1,81 s).
   No se añade silencio al principio ni al final del audio.
 - **Un salto de línea simple no hace nada especial:** las dos líneas se leen
   seguidas, como una sola frase si no hay punto entre ellas. Un texto sin

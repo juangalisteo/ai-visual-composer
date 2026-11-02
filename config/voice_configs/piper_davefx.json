@@ -8,7 +8,7 @@
     "speaking_rate": 1.0,
     "volume_gain_db": 0.0,
     "sentence_pause_seconds": 0.5,
-    "paragraph_pause_seconds": 1.5
+    "paragraph_pause_seconds": 0.35
   },
   "backend_options": {
     "model": {
