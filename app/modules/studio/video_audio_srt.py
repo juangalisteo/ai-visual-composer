@@ -61,6 +61,11 @@ class StudioVideoAudioSrtInputService:
         self.directory = Path(directory)
 
     def discover(self, subtitles=False):
+        if not self.directory.is_dir():
+            raise StudioVideoAudioSrtInputError(
+                f"No existe la carpeta de entrada {_MODE_LABEL}: "
+                f"{self.directory}."
+            )
         videos = self._candidates((".mp4",))
         audios = self._candidates(self.audio_extensions)
         subtitle_paths = (

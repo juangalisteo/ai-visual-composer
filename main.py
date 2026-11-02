@@ -6,17 +6,10 @@ from app.cli.studio_summary import print_studio_summary
 from app.controllers.run_controller import RunController
 from app.core.execution_request import StudioExecutionRequest
 from app.core.start import run_application
-from app.managers.output_manager import (
-    OutputManager,
-    OutputResetBlockedError,
-)
+from app.managers.output_manager import OutputManager
 from app.modules.studio import (
     StudioMontageError,
-    StudioMontageInputError,
-    StudioSubtitleExportInputError,
-    StudioIntroOutroInputError,
     StudioVideoAudioSrtError,
-    StudioVideoAudioSrtInputError,
     to_studio_operational_error,
 )
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
@@ -55,17 +48,7 @@ def _run_main():
     # A broken format catalog fails here, before the first menu.
     FormatCatalog().validate(ProfileResolver())
 
-    controller = RunController()
-    try:
-        request = controller.run()
-    except (
-        StudioMontageInputError,
-        StudioSubtitleExportInputError,
-        StudioIntroOutroInputError,
-        StudioVideoAudioSrtInputError,
-    ) as error:
-        print(f"ERROR: {error}")
-        return 1
+    request = RunController().run()
 
     studio_route = (
         request.route
@@ -73,11 +56,7 @@ def _run_main():
         else None
     )
     if request.clear_output:
-        try:
-            OutputManager().reset()
-        except OutputResetBlockedError as error:
-            print(f"ERROR: {error}")
-            return 1
+        OutputManager().reset()
 
     studio_start = time.perf_counter()
     try:

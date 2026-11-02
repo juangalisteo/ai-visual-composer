@@ -3,6 +3,12 @@
 from app.shared.operational_error import OperationalError, create_operational_error
 
 
+SRT_INPUT_ACTION = (
+    "Pon en esa carpeta un SRT en UTF-8, con bloques de número, tiempos y "
+    "texto, y vuelve a intentarlo."
+)
+
+
 def to_studio_operational_error(
     error,
     mode,

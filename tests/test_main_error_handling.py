@@ -18,11 +18,14 @@ from app.modules.script import ScriptPreparationService
 from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import (
     StudioInputPreparationService,
+    StudioIntroOutroInputService,
     StudioMontageError,
-    StudioSubtitleExportInputError,
+    StudioSubtitleExportInputService,
+    StudioSubtitleExportMode,
     StudioVideoAudioSrtError,
+    StudioVideoAudioSrtInputService,
 )
-from app.managers.output_manager import OutputResetBlockedError
+from app.managers.output_manager import OutputManager
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey
@@ -368,26 +371,136 @@ class MainErrorHandlingTest(unittest.TestCase):
             self.assertNotIn(forbidden_name, boundary_source)
 
     def test_studio_export_empty_input_is_user_visible_without_starting_runtime(self):
-        with patch("main.RunController") as controller_mock, patch(
-            "main.run_application"
-        ) as run_application_mock, patch("builtins.print") as print_mock:
-            controller_mock.return_value.run.side_effect = (
-                StudioSubtitleExportInputError(
-                    "No se encontró ningún archivo MP4 o MP3 en:\n"
-                    "input/studio/exportar_srt/transcribir/\n\n"
-                    "Añade un archivo válido e inténtalo de nuevo."
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "exportar_srt" / "transcribir"
+            input_dir.mkdir(parents=True)
+            controller = RunController(
+                studio_subtitle_export_input_service=(
+                    StudioSubtitleExportInputService(directory)
                 )
             )
+            with patch("main.RunController") as controller_mock, patch(
+                "main.run_application"
+            ) as run_application_mock, patch("builtins.print") as print_mock:
+                controller_mock.return_value.run.side_effect = (
+                    lambda: controller.select_studio_subtitle_export_plan(
+                        StudioSubtitleExportMode.TRANSCRIBIR
+                    )
+                )
 
-            result = main.main()
+                result = main.main()
 
         self.assertEqual(1, result)
         run_application_mock.assert_not_called()
         print_mock.assert_called_once_with(
-            "ERROR: No se encontró ningún archivo MP4 o MP3 en:\n"
-            "input/studio/exportar_srt/transcribir/\n\n"
-            "Añade un archivo válido e inténtalo de nuevo."
+            "ERROR\n"
+            f"No se encontró ningún archivo MP4 o MP3 en {input_dir}.\n"
+            "Operación: STUDIO/exportar_srt\n"
+            "Acción recomendada: Pon en esa carpeta el vídeo .mp4 o el audio "
+            ".mp3 que quieres transcribir y vuelve a intentarlo."
         )
+
+    def test_studio_menu_input_errors_use_the_error_block(self):
+        srt_action = (
+            "Acción recomendada: Pon en esa carpeta un SRT en UTF-8, con "
+            "bloques de número, tiempos y texto, y vuelve a intentarlo."
+        )
+        media_action = (
+            "Acción recomendada: Pon en esa carpeta el vídeo .mp4 y el audio "
+            "que pide VIDEO + AUDIO | SRT y vuelve a intentarlo."
+        )
+        bad_srt = "esto no es un srt\n"
+
+        def intro_outro_without_folder(root):
+            folder = root / "intro_outro"
+            controller = RunController(
+                studio_intro_outro_input_service=StudioIntroOutroInputService(
+                    folder
+                )
+            )
+            return (
+                lambda: controller.select_studio_intro_outro_plan(
+                    OperationalProfileKey("studio", "vertical", "studio_vertical")
+                ),
+                "No existe la carpeta de entrada para INTRO / OUTRO: "
+                f"{folder}.\n"
+                "Operación: STUDIO/intro_outro\n"
+                "Acción recomendada: Pon en esa carpeta el vídeo .mp4 al que "
+                "quieres añadir la intro o el outro y vuelve a intentarlo.",
+            )
+
+        def video_audio_srt_without_folder(root):
+            folder = root / "video_audio_srt"
+            controller = RunController(
+                studio_video_audio_srt_input_service=(
+                    StudioVideoAudioSrtInputService(folder)
+                )
+            )
+            return (
+                controller.select_studio_video_audio_srt_inputs,
+                "No existe la carpeta de entrada VIDEO + AUDIO | SRT: "
+                f"{folder}.\n"
+                "Operación: STUDIO/video_audio_srt\n"
+                f"{media_action}",
+            )
+
+        def video_audio_srt_with_invalid_srt(root):
+            folder = root / "video_audio_srt"
+            folder.mkdir()
+            (folder / "clip.mp4").write_bytes(b"video")
+            (folder / "voz.mp3").write_bytes(b"audio")
+            (folder / "malo.srt").write_text(bad_srt, encoding="utf-8")
+            controller = RunController(
+                studio_video_audio_srt_input_service=(
+                    StudioVideoAudioSrtInputService(folder)
+                )
+            )
+            return (
+                controller.select_studio_video_audio_srt_subtitle,
+                "El archivo SRT de STUDIO no contiene cues utilizables: "
+                f"{folder / 'malo.srt'}.\n"
+                "Operación: STUDIO/video_audio_srt\n"
+                f"{srt_action}",
+            )
+
+        def convert_with_invalid_srt(root):
+            folder = root / "exportar_srt" / "convertir"
+            folder.mkdir(parents=True)
+            (folder / "malo.srt").write_text(bad_srt, encoding="utf-8")
+            controller = RunController(
+                studio_subtitle_export_input_service=(
+                    StudioSubtitleExportInputService(root)
+                )
+            )
+            return (
+                lambda: controller.select_studio_subtitle_export_plan(
+                    StudioSubtitleExportMode.CONVERTIR
+                ),
+                "El archivo SRT de STUDIO no contiene cues utilizables: "
+                f"{folder / 'malo.srt'}.\n"
+                "Operación: STUDIO/exportar_srt\n"
+                f"{srt_action}",
+            )
+
+        cases = {
+            "intro_outro_without_folder": intro_outro_without_folder,
+            "video_audio_srt_without_folder": video_audio_srt_without_folder,
+            "video_audio_srt_with_invalid_srt": video_audio_srt_with_invalid_srt,
+            "convert_with_invalid_srt": convert_with_invalid_srt,
+        }
+        for name, build in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                run, expected = build(Path(directory))
+                with patch("main.RunController") as controller_mock, patch(
+                    "main.run_application"
+                ) as run_application_mock, patch("builtins.print") as print_mock:
+                    controller_mock.return_value.run.side_effect = run
+
+                    result = main.main()
+
+                self.assertEqual(1, result)
+                run_application_mock.assert_not_called()
+                print_mock.assert_called_once_with(f"ERROR\n{expected}")
 
     def test_studio_solo_video_input_error_is_user_visible(self):
         request = self.studio_request(
@@ -492,24 +605,33 @@ class MainErrorHandlingTest(unittest.TestCase):
             "main.RunController"
         ) as controller_mock, patch("main.OutputManager") as output_manager, patch(
             "main.run_application"
-        ) as run_application_mock, patch("builtins.print") as print_mock:
+        ) as run_application_mock, patch(
+            "builtins.print"
+        ) as print_mock, tempfile.TemporaryDirectory() as directory:
             controller_mock.return_value.run.return_value = request
-            output_manager.return_value.reset.side_effect = (
-                OutputResetBlockedError(
-                    "No se puede eliminar OUTPUT porque uno de sus archivos "
-                    "está siendo utilizado por otro programa.\n\n"
-                    "Cierra el archivo y vuelve a intentarlo."
-                )
-            )
+            manager = OutputManager()
+            manager.output_path = Path(directory) / "output"
+            manager.output_path.mkdir()
+            locked = manager.output_path / "locked.mp4"
+            locked.write_bytes(b"video")
+            output_manager.return_value = manager
 
-            result = main.main()
+            with patch.object(
+                Path,
+                "unlink",
+                side_effect=PermissionError(13, "in use", str(locked), 32),
+            ):
+                result = main.main()
 
         self.assertEqual(1, result)
         run_application_mock.assert_not_called()
         print_mock.assert_called_once_with(
-            "ERROR: No se puede eliminar OUTPUT porque uno de sus archivos "
-            "está siendo utilizado por otro programa.\n\n"
-            "Cierra el archivo y vuelve a intentarlo."
+            "ERROR\n"
+            "No se puede eliminar OUTPUT porque uno de sus archivos "
+            "está siendo utilizado por otro programa.\n"
+            "Operación: Eliminar OUTPUT\n"
+            f"Recurso: {locked}\n"
+            "Acción recomendada: Cierra el archivo y vuelve a intentarlo."
         )
 
     def test_output_reset_normal_path_continues_to_runtime(self):

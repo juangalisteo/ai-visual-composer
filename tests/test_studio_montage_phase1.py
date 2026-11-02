@@ -407,17 +407,32 @@ class StudioMontagePhase1Test(unittest.TestCase):
         montage_summary.assert_called_once()
 
     def test_main_shows_expected_montage_input_error_without_traceback(self):
-        with patch("main.RunController") as controller, patch(
-            "builtins.print"
-        ) as printer:
-            controller.return_value.run.side_effect = StudioMontageInputError(
-                "No se encontró ningún archivo MP4."
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "montaje_videos"
+            input_dir.mkdir()
+            selector = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(
+                    directory
+                )
             )
-            result = main.main()
+            with patch("main.RunController") as controller, patch(
+                "builtins.print"
+            ) as printer:
+                controller.return_value.run.side_effect = (
+                    lambda: selector.select_studio_montage_plan(
+                        self.profile_key,
+                        self.profile,
+                    )
+                )
+                result = main.main()
 
         self.assertEqual(1, result)
         printer.assert_called_once_with(
-            "ERROR: No se encontró ningún archivo MP4."
+            "ERROR\n"
+            f"No se encontró ningún archivo MP4 en {input_dir}.\n"
+            "Operación: STUDIO/montaje_videos\n"
+            "Acción recomendada: Pon en esa carpeta dos o más vídeos .mp4 y "
+            "vuelve a intentarlo."
         )
 
 

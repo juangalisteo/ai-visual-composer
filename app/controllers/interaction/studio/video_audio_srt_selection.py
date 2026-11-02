@@ -2,6 +2,28 @@
 
 from dataclasses import replace
 
+from app.modules.studio import (
+    SRT_INPUT_ACTION,
+    StudioInputMode,
+    StudioVideoAudioSrtInputError,
+    to_studio_operational_error,
+)
+
+
+_MODE = StudioInputMode.VIDEO_AUDIO_SRT
+_MEDIA_INPUT_ACTION = (
+    f"Pon en esa carpeta el vídeo .mp4 y el audio que pide {_MODE.label} y "
+    "vuelve a intentarlo."
+)
+
+
+def _input_error(error, recommended_action):
+    return to_studio_operational_error(
+        error,
+        mode=_MODE.value,
+        recommended_action=recommended_action,
+    )
+
 
 class StudioVideoAudioSrtSelection:
     def __init__(
@@ -17,7 +39,10 @@ class StudioVideoAudioSrtSelection:
         self._music_selector = music_selector
 
     def select_inputs(self, writer=None, selector=None):
-        candidates = self._input_service.discover(False)
+        try:
+            candidates = self._input_service.discover(False)
+        except StudioVideoAudioSrtInputError as error:
+            raise _input_error(error, _MEDIA_INPUT_ACTION) from error
         return (
             self._resource_selection.select_studio_input_candidate(
                 "VIDEO",
@@ -36,7 +61,10 @@ class StudioVideoAudioSrtSelection:
         )
 
     def select_subtitle(self, writer=None, selector=None):
-        candidates = self._input_service.discover(True)
+        try:
+            candidates = self._input_service.discover(True)
+        except StudioVideoAudioSrtInputError as error:
+            raise _input_error(error, SRT_INPUT_ACTION) from error
         return self._resource_selection.select_studio_input_candidate(
             "SRT",
             candidates.subtitles,
@@ -58,12 +86,15 @@ class StudioVideoAudioSrtSelection:
             video_path, audio_path = select_inputs()
         if subtitles and subtitle_path is None:
             subtitle_path = select_subtitle()
-        return self._input_service.create_plan(
-            subtitles,
-            video_path=video_path,
-            audio_path=audio_path,
-            subtitle_path=subtitle_path,
-        )
+        try:
+            return self._input_service.create_plan(
+                subtitles,
+                video_path=video_path,
+                audio_path=audio_path,
+                subtitle_path=subtitle_path,
+            )
+        except StudioVideoAudioSrtInputError as error:
+            raise _input_error(error, _MEDIA_INPUT_ACTION) from error
 
     def select_audio_tail(self, plan, writer=None, selector=None):
         video_duration = self._media_probe.inspect(plan.video_path).duration

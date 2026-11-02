@@ -360,6 +360,18 @@ de Git: se puede borrar cuando quieras.
 
 ## 9. Problemas frecuentes
 
+Cuando algo falla, la terminal muestra siempre el mismo bloque: `ERROR`, qué
+pasa, la operación y qué hacer. Por ejemplo, en MONTAJE VÍDEOS sin vídeos:
+
+```text
+ERROR
+No se encontró ningún archivo MP4 en input\studio\montaje_videos.
+Operación: STUDIO/montaje_videos
+Acción recomendada: Pon en esa carpeta dos o más vídeos .mp4 y vuelve a intentarlo.
+```
+
+La tabla recoge los mensajes más frecuentes:
+
 | Lo que ves | Qué hacer |
 |---|---|
 | «No se pudo completar la solicitud a Ollama.» | Arranca Ollama y comprueba que el modelo esté descargado ([INSTALL.md](INSTALL.md)) |
@@ -368,10 +380,12 @@ de Git: se puede borrar cuando quieras.
 | «El archivo input/guion.txt está vacío.» o «No existe input/guion.txt.» (lo mismo con `input/tema.txt`) | Escribe el guion en `input/guion.txt` (Guion) o el tema en `input/tema.txt` (Imagen y Video) y vuelve a lanzar |
 | «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-ruta-diseño)) y vuelve a lanzar |
 | «No hay archivos MP4 disponibles para INTRO en assets/videos/intro_outro/vertical/intro/.» (o para OUTRO, o en `horizontal/`) | Pon al menos un `.mp4` en esa carpeta o elige otra opción en INTRO / OUTRO |
+| «No existe la carpeta de entrada STUDIO: input\studio\montaje_videos» (o «… para INTRO / OUTRO: input\studio\intro_outro.», «… VIDEO + AUDIO \| SRT: input\studio\video_audio_srt.», «… EXPORTAR SRT ➜  VIDEO: input\studio\exportar_srt\transcribir») | Crea esa carpeta y pon en ella los archivos del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «No se encontró ningún archivo … en input\studio\…» | Pon el archivo con la extensión correcta en la carpeta del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «El archivo SRT de STUDIO debe estar codificado en UTF-8», «… está vacío» o «… no contiene cues utilizables» | Guarda el `.srt` en UTF-8 y revisa el formato de sus bloques |
 | «No se pudo sacar el audio de input\studio\exportar_srt\transcribir\… para transcribirlo.» | El `.mp4` no es un vídeo válido o no tiene sonido: usa otro |
 | «Selecciona al menos dos clips para MONTAJE VÍDEOS.» | Escribe dos o más números de clip separados por espacios |
+| «ERROR INTERNO / Se produjo un error interno inesperado. / Operación: Ejecución principal» | Es un fallo del programa, no de tus archivos. El programa no guarda más detalle: copia esas líneas, apunta qué ruta y qué opciones elegiste y avisa |
 | Una generación tarda mucho | Es normal: Ollama y Wan no tienen tiempo límite. Espera o córtala con Ctrl+C |
 | Falta una dependencia o un programa externo | [INSTALL.md](INSTALL.md) |
 

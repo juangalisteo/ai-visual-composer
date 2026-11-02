@@ -146,9 +146,7 @@ class StudioSubtitleExportInputService:
             else "SRT"
         )
         raise StudioSubtitleExportInputError(
-            f"No se encontró ningún archivo {label} en:\n"
-            f"{directory}\n\n"
-            "Añade un archivo válido e inténtalo de nuevo."
+            f"No se encontró ningún archivo {label} en {directory}."
         )
 
     @staticmethod

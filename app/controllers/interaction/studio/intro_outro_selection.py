@@ -1,5 +1,10 @@
 """Preparación de la ruta STUDIO específica de INTRO / OUTRO."""
 
+from app.modules.studio import (
+    StudioInputMode,
+    StudioIntroOutroInputError,
+    to_studio_operational_error,
+)
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
@@ -26,6 +31,33 @@ class StudioIntroOutroRouteSelection:
         select_asset,
         writer=None,
         selector=None,
+    ):
+        """Report a missing source video as an input error."""
+        try:
+            return self._select_plan(
+                profile_key,
+                require_assets,
+                select_asset,
+                writer,
+                selector,
+            )
+        except StudioIntroOutroInputError as error:
+            raise to_studio_operational_error(
+                error,
+                mode=StudioInputMode.INTRO_OUTRO.value,
+                recommended_action=(
+                    "Pon en esa carpeta el vídeo .mp4 al que quieres añadir "
+                    "la intro o el outro y vuelve a intentarlo."
+                ),
+            ) from error
+
+    def _select_plan(
+        self,
+        profile_key,
+        require_assets,
+        select_asset,
+        writer,
+        selector,
     ):
         source_paths = self._input_service.discover_sources()
         source_path = self._resource_selection.select_studio_input_candidate(

@@ -1,6 +1,10 @@
 """Selección de planes de montaje STUDIO."""
 
-from app.modules.studio import StudioMontageInputError
+from app.modules.studio import (
+    StudioInputMode,
+    StudioMontageInputError,
+    to_studio_operational_error,
+)
 
 
 class StudioMontageSelection:
@@ -20,6 +24,33 @@ class StudioMontageSelection:
         select_order,
         select_transitions,
         writer=None,
+    ):
+        """Report missing clips as an input error; the order prompt retries."""
+        try:
+            return self._select_plan(
+                profile_key,
+                profile,
+                select_order,
+                select_transitions,
+                writer,
+            )
+        except StudioMontageInputError as error:
+            raise to_studio_operational_error(
+                error,
+                mode=StudioInputMode.MONTAJE_VIDEOS.value,
+                recommended_action=(
+                    "Pon en esa carpeta dos o más vídeos .mp4 y vuelve a "
+                    "intentarlo."
+                ),
+            ) from error
+
+    def _select_plan(
+        self,
+        profile_key,
+        profile,
+        select_order,
+        select_transitions,
+        writer,
     ):
         candidates = self._planning_service.discover(profile)
         self._write("\nVÍDEOS ENCONTRADOS\n", writer)
