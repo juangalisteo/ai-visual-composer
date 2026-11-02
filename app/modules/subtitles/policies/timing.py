@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 from dataclasses import dataclass, replace
+from itertools import accumulate
 import json
 from pathlib import Path
 import re
@@ -271,6 +273,120 @@ def approximate_word_timings(
             boundaries[1:]
         )
     )
+
+
+def approximate_voiced_word_timings(
+    start: float,
+    end: float,
+    texts,
+    voice_pauses=(),
+    breaks=()
+) -> tuple[WordTiming, ...]:
+    """Spread the words over the voiced time of ``start``–``end``, in
+    proportion to their characters, skipping the ``voice_pauses`` inside it.
+
+    The words before a pause end at its start at the latest, and the words
+    after it start at its end at the earliest. ``breaks`` holds, for each
+    text, whether it closes a sentence or a paragraph: when the texts before
+    the last one close as many as there are pauses inside, the words are
+    split there; otherwise each word goes to the voiced part where the
+    middle of its characters falls once they are spread over all the voiced
+    time. Each part's words are then spread with
+    ``approximate_word_timings``. Without a pause inside, this is
+    ``approximate_word_timings``.
+    """
+    flags = tuple(breaks) + (False,) * (len(texts) - len(breaks))
+    entries = [
+        (text, bool(closes))
+        for text, closes in zip(texts, flags)
+        if str(text).strip()
+    ]
+    parts = _voiced_parts(start, end, voice_pauses)
+
+    if len(parts) < 2:
+        part_start, part_end = parts[0] if parts else (start, end)
+        return approximate_word_timings(
+            part_start,
+            part_end,
+            [text for text, _ in entries]
+        )
+
+    cuts = [
+        index
+        for index, (_, closes) in enumerate(entries[:-1], start=1)
+        if closes
+    ]
+
+    if len(cuts) != len(parts) - 1:
+        cuts = _letter_cuts(
+            [text for text, _ in entries],
+            [part_end - part_start for part_start, part_end in parts]
+        )
+
+    bounds = [0, *cuts, len(entries)]
+
+    return tuple(
+        word
+        for (part_start, part_end), first, last in zip(
+            parts,
+            bounds,
+            bounds[1:]
+        )
+        for word in approximate_word_timings(
+            part_start,
+            part_end,
+            [text for text, _ in entries[first:last]]
+        )
+    )
+
+
+def _voiced_parts(start, end, voice_pauses):
+
+    parts = []
+    cursor = start
+
+    for pause_start, pause_end in voice_pauses:
+        if pause_end <= cursor or pause_start >= end:
+            continue
+
+        if pause_start > cursor:
+            parts.append(
+                (cursor, pause_start)
+            )
+
+        cursor = pause_end
+
+    if cursor < end:
+        parts.append(
+            (cursor, end)
+        )
+
+    return parts
+
+
+def _letter_cuts(texts, durations):
+
+    lengths = [
+        max(1, len(text))
+        for text in texts
+    ]
+    total_length = sum(lengths)
+    total_duration = sum(durations)
+    limits = list(accumulate(durations))[:-1]
+    part_of = []
+    cumulative = 0
+
+    for length in lengths:
+        middle = (cumulative + length / 2) / total_length * total_duration
+        part_of.append(
+            bisect_right(limits, middle)
+        )
+        cumulative += length
+
+    return [
+        sum(1 for part in part_of if part <= index)
+        for index in range(len(limits))
+    ]
 
 
 def whisper_timing_path(

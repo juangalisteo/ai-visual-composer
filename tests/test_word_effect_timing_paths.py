@@ -486,7 +486,7 @@ WHISPER_INTERVALS = [
 ]
 
 
-def _context_timing(tmp_path, whisper_words, script=SCRIPT):
+def _context_timing(tmp_path, whisper_words, script=SCRIPT, voice_pauses=None):
     """Return the timing the video context gets from the project's saved
     Whisper words and, when given, its script."""
     subtitle_path = tmp_path / "subtitulos.srt"
@@ -503,7 +503,17 @@ def _context_timing(tmp_path, whisper_words, script=SCRIPT):
                             for text, start, end in whisper_words
                         ],
                     }
-                ]
+                ],
+                **(
+                    {}
+                    if voice_pauses is None
+                    else {
+                        "voice_pauses": [
+                            {"start": start, "end": end}
+                            for start, end in voice_pauses
+                        ]
+                    }
+                ),
             }
         ),
         encoding="utf-8",
@@ -640,6 +650,27 @@ def test_guion_unequal_run_is_spread_by_letters_between_its_neighbours(
         (100, 400), (500, 800), (800, 1300), (2000, 2300), (2600, 3000),
     ]
 
+
+def test_guion_unequal_run_skips_the_voice_pause_inside_it(tmp_path):
+    # Whisper heard "tre so la" for "tres. Hola" and the voice paused after
+    # the sentence: "tres." ends where the pause starts, "Hola" starts
+    # where it ends.
+    whisper_words = _heard(
+        (2, ("tre", 1.0, 1.3)), (3, ("so", 1.35, 1.5))
+    ) + (("la", 2.0, 2.3),)
+    whisper_words = tuple(sorted(whisper_words, key=lambda word: word[1]))
+
+    timing = _context_timing(
+        tmp_path, whisper_words, voice_pauses=((1.6, 1.9),)
+    )
+
+    assert [
+        (word.text, round(word.start, 6), round(word.end, 6))
+        for word in timing.words
+    ] == [
+        ("Uno", 0.1, 0.4), ("dos", 0.5, 0.9), ("tres.", 1.0, 1.6),
+        ("Hola", 1.9, 2.3), ("mundo.", 2.6, 3.0),
+    ]
 
 # --- SRT + VIDEO ----------------------------------------------------------
 

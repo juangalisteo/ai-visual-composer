@@ -8,7 +8,7 @@ import unicodedata
 
 from app.modules.subtitles.policies.timing import (
     SubtitleTiming,
-    approximate_word_timings,
+    approximate_voiced_word_timings,
 )
 from app.shared.config_contract import require_bool, require_mapping
 
@@ -177,7 +177,8 @@ def _script_aligned_timing(script, timing):
     accents and punctuation. Equal words, and replaced runs with as many
     words on both sides, keep each timed word's times with the script's text.
     A replaced run with a different number of words spreads the script words
-    over its own time span in proportion to their letters. Script words that
+    over its own time span in proportion to their letters, outside the voice
+    pauses inside it (``approximate_voiced_word_timings``). Script words that
     were not heard join the previous run, or the next one when the previous
     word closes a sentence or a paragraph. Timed words that are not in the
     script are left out. An empty script leaves the timing unchanged.
@@ -225,10 +226,12 @@ def _script_aligned_timing(script, timing):
                 for word, text in zip(words, texts)
             ]
         else:
-            aligned = approximate_word_timings(
+            aligned = approximate_voiced_word_timings(
                 words[0].start,
                 words[-1].end,
-                texts
+                texts,
+                timing.voice_pauses,
+                [tokens[index][1] for index in token_indexes]
             )
 
         segment_words[segment_of[word_indexes[0]]].extend(aligned)

@@ -327,7 +327,7 @@ los tiempos ni el texto de la línea.
 
 | Ruta | De dónde salen los tiempos por palabra |
 |---|---|
-| GUION, IMAGEN y VIDEO | Del JSON de Whisper (`subtitles/subtitulos_whisper.json`), fuera de las pausas de la voz, y con las palabras del guion, alineadas con Whisper igual que en el SRT: cada palabra del guion emparejada con una de Whisper lleva su tiempo, aunque Whisper la escriba distinta; un tramo en que Whisper oye más o menos palabras que el guion se reparte por letras dentro de su propio tiempo, entre sus vecinas; las palabras que Whisper añade no salen |
+| GUION, IMAGEN y VIDEO | Del JSON de Whisper (`subtitles/subtitulos_whisper.json`), fuera de las pausas de la voz, y con las palabras del guion, alineadas con Whisper igual que en el SRT: cada palabra del guion emparejada con una de Whisper lleva su tiempo, aunque Whisper la escriba distinta; un tramo en que Whisper oye más o menos palabras que el guion se reparte por letras dentro de su propio tiempo, entre sus vecinas, sin poner texto en las pausas de la voz que caigan dentro (las palabras hasta un final de frase del guion van antes de la pausa); las palabras que Whisper añade no salen |
 | STUDIO, SOLO VIDEO | De Whisper; una línea que no coincide se reparte por letras |
 | STUDIO, SRT + VIDEO y VIDEO + AUDIO \| SRT | No hay Whisper: siempre se reparte por letras dentro de cada línea del SRT, que se pinta tal cual |
 

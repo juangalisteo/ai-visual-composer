@@ -366,7 +366,7 @@ class ScriptAlignedTimingTest(unittest.TestCase):
     """The script's words always win over what Whisper heard."""
 
     @staticmethod
-    def _timing(*segments):
+    def _timing(*segments, voice_pauses=()):
         return SubtitleTiming(
             source="whisper",
             segments=tuple(
@@ -380,6 +380,7 @@ class ScriptAlignedTimingTest(unittest.TestCase):
                 )
                 for words in segments
             ),
+            voice_pauses=voice_pauses,
         )
 
     @staticmethod
@@ -475,6 +476,135 @@ class ScriptAlignedTimingTest(unittest.TestCase):
             [("un", 0.0, 0.2), ("ser", 0.3, 0.675), ("y", 0.675, 0.8), ("misterioso", 0.9, 1.5)],
             self._spans(aligned),
         )
+
+    def test_unequal_run_around_a_pause_is_cut_at_the_script_sentence_end(self):
+        # Whisper heard "adelante. Ischopenhauer," for "delante. Y
+        # Schopenhauer,"; the voice paused after the sentence.
+        timing = self._timing(
+            [("hacia", 9.8, 10.3), ("adelante.", 10.4, 10.99),
+             ("Ischopenhauer,", 11.5, 12.34), ("se", 12.4, 12.6), ("reía.", 12.7, 13.0)],
+            voice_pauses=((10.995, 11.495),),
+        )
+
+        aligned = self._aligned("hacia delante. Y Schopenhauer, se reía.", timing)
+
+        self.assertEqual(
+            [
+                ("hacia", 9.8, 10.3),
+                ("delante.", 10.4, 10.995),
+                ("Y", 11.495, 11.555357),
+                ("Schopenhauer,", 11.555357, 12.34),
+                ("se", 12.4, 12.6),
+                ("reía.", 12.7, 13.0),
+            ],
+            self._spans(aligned),
+        )
+
+    def test_unequal_run_around_a_pause_without_a_sentence_end_is_cut_by_letters(self):
+        # Letters spread over the 1.0 s of voice: "dos" and "tres" fall in
+        # the 0.45 s before the pause, "cuatro" after it.
+        timing = self._timing(
+            [("uno", 0.0, 0.4), ("dostre", 0.5, 0.9), ("scuatro", 1.4, 1.9),
+             ("cinco", 2.0, 2.4)],
+            voice_pauses=((0.95, 1.35),),
+        )
+
+        aligned = self._aligned("uno dos tres cuatro cinco", timing)
+
+        self.assertEqual(
+            [
+                ("uno", 0.0, 0.4),
+                ("dos", 0.5, 0.692857),
+                ("tres", 0.692857, 0.95),
+                ("cuatro", 1.35, 1.9),
+                ("cinco", 2.0, 2.4),
+            ],
+            self._spans(aligned),
+        )
+
+    def test_unequal_run_around_two_pauses_keeps_each_sentence_on_its_side(self):
+        timing = self._timing(
+            [("Ben.", 0.0, 0.4), ("Mirra.", 1.0, 1.5), ("Marazul.", 2.1, 2.9)],
+            voice_pauses=((0.5, 1.0), (1.6, 2.1)),
+        )
+
+        aligned = self._aligned("Ven. Mira. Mar azul.", timing)
+
+        self.assertEqual(
+            [
+                ("Ven.", 0.0, 0.5),
+                ("Mira.", 1.0, 1.6),
+                ("Mar", 2.1, 2.4),
+                ("azul.", 2.4, 2.9),
+            ],
+            self._spans(aligned),
+        )
+
+    def test_pause_at_the_edge_of_an_unequal_run_changes_nothing(self):
+        pauses = ((0.2, 0.3), (0.8, 0.9))
+        timing = self._timing(
+            [("un", 0.0, 0.2), ("serie", 0.3, 0.8), ("misterioso", 0.9, 1.5)],
+            voice_pauses=pauses,
+        )
+
+        aligned = self._aligned("un ser y misterioso", timing)
+
+        self.assertEqual(
+            [("un", 0.0, 0.2), ("ser", 0.3, 0.675), ("y", 0.675, 0.8), ("misterioso", 0.9, 1.5)],
+            self._spans(aligned),
+        )
+        self.assertEqual(pauses, aligned.voice_pauses)
+
+    def test_pauses_outside_the_runs_leave_the_alignment_as_today(self):
+        script = "Un ser y misterioso.\n\nY quizá sea así."
+        segments = (
+            [("un", 0.0, 0.2), ("serie", 0.3, 0.8), ("misterioso.", 0.9, 1.5)],
+            [("Y", 2.0, 2.2), ("quizás", 2.3, 2.8), ("sea", 2.9, 3.1), ("así.", 3.2, 3.5)],
+        )
+
+        self.assertEqual(
+            self._spans(self._aligned(script, self._timing(*segments))),
+            self._spans(
+                self._aligned(
+                    script,
+                    self._timing(*segments, voice_pauses=((1.6, 1.95),)),
+                )
+            ),
+        )
+
+    def test_cue_transformer_shows_no_text_inside_the_pause_of_an_unequal_run(self):
+        timing = self._timing(
+            [("hacia", 9.8, 10.3), ("adelante.", 10.4, 10.99),
+             ("Ischopenhauer,", 11.5, 12.34), ("se", 12.4, 12.6), ("reía.", 12.7, 13.0)],
+            voice_pauses=((10.995, 11.495),),
+        )
+        transformer = SubtitleCueTransformer(
+            subtitle_profile=SimpleNamespace(
+                cue_policy={
+                    "mode": "single_line",
+                    "max_chars_per_line": 60,
+                    "min_duration": 1.0,
+                    "max_duration": 3.0,
+                    "significant_gap_threshold": 0.35,
+                    "punctuation": dict(SubtitlePunctuationTest.PUNCTUATION),
+                },
+            ),
+            render_fps=30,
+        )
+
+        rendered = transformer.transform(
+            "1\n00:00:09,800 --> 00:00:13,000\nhacia adelante. Ischopenhauer, se reía.",
+            timing=timing,
+            canonical_content="hacia delante. Y Schopenhauer, se reía.",
+        )
+
+        for block in rendered.split("\n\n"):
+            start, end = re.findall(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", block)[:2]
+            start, end = (
+                int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
+                for h, m, s, ms in (start, end)
+            )
+            self.assertFalse(start < 11.495 and end > 10.995, block)
 
     def test_differences_of_case_accents_and_signs_still_align(self):
         timing = self._timing(

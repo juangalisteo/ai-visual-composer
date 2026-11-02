@@ -13,6 +13,8 @@ from app.modules.subtitles.policies.timing import (
     SubtitleTimingResolver,
     WhisperTimingParser,
     WordTiming,
+    approximate_voiced_word_timings,
+    approximate_word_timings,
     fit_words_to_voice_pauses,
     whisper_timing_path,
 )
@@ -922,6 +924,51 @@ class VoicePauseFittingTest(unittest.TestCase):
                     original, written = self._build_subtitles(directory, **build_options)
 
                 self.assertEqual(original, written)
+
+
+class VoicedWordTimingsTest(unittest.TestCase):
+
+    @staticmethod
+    def _spans(words):
+        return [(word.text, round(word.start, 6), round(word.end, 6)) for word in words]
+
+    def test_without_a_pause_inside_it_is_the_plain_spread(self):
+        texts = ("uno", "dos", "tres")
+
+        for pauses in ((), ((0.0, 0.5),), ((2.0, 2.5),)):
+            with self.subTest(pauses=pauses):
+                self.assertEqual(
+                    approximate_word_timings(0.5, 2.0, texts),
+                    approximate_voiced_word_timings(0.5, 2.0, texts, pauses),
+                )
+
+    def test_words_never_fall_inside_a_pause(self):
+        words = approximate_voiced_word_timings(
+            0.0, 2.9, ("uno.", "dos", "tres", "cuatro."), ((1.0, 1.5),),
+            (True, False, False, True),
+        )
+
+        self.assertEqual(
+            [("uno.", 0.0, 1.0), ("dos", 1.5, 1.8), ("tres", 1.8, 2.2), ("cuatro.", 2.2, 2.9)],
+            self._spans(words),
+        )
+
+    def test_more_sentence_ends_than_pauses_cuts_by_letters(self):
+        # Two sentence ends for one pause: the cut comes from the letters
+        # (1.5 s of voice; "tres" is centred at 1.25 s, after the 1.0 s part).
+        words = approximate_voiced_word_timings(
+            0.0, 2.0, ("uno.", "dos.", "tres"), ((1.0, 1.5),), (True, True, False),
+        )
+
+        self.assertEqual(
+            [("uno.", 0.0, 0.5), ("dos.", 0.5, 1.0), ("tres", 1.5, 2.0)],
+            self._spans(words),
+        )
+
+    def test_a_pause_partly_over_the_span_edge_shortens_it(self):
+        words = approximate_voiced_word_timings(1.0, 2.0, ("uno", "dos"), ((0.5, 1.2),))
+
+        self.assertEqual([("uno", 1.2, 1.6), ("dos", 1.6, 2.0)], self._spans(words))
 
 
 if __name__ == "__main__":
