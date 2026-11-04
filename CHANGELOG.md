@@ -6,16 +6,61 @@ All notable changes to AI Visual Composer are documented in this file.
 
 ## [Unreleased]
 
-### V3 — Open
+### Añadido
 
-- Added STUDIO as the fourth main product component and its six current modes:
-  SOLO VIDEO, SRT + VIDEO, INTRO / OUTRO, MONTAJE VÍDEOS, VIDEO + AUDIO SRT,
-  and EXPORTAR SRT VIDEO.
-- Consolidated dynamic ESTÁNDAR/DISEÑO profile discovery under `estandar/` and
-  `design/`, with one self-contained JSON per DISEÑO.
-- Removed the retired CORTAR VIDEO mode and artificial runtime time limits for
-  Ollama and ComfyUI/Wan operations.
-- V3 remains open pending final owner manual validation.
+- STUDIO como cuarto componente del producto, con sus modos actuales: SOLO
+  VIDEO, SRT + VIDEO, INTRO / OUTRO, MONTAJE VÍDEOS, VIDEO + AUDIO | SRT y
+  EXPORTAR SRT ➜  VIDEO.
+- Perfiles de subtítulos declarados por componente (GUION, IMAGEN, VIDEO,
+  STUDIO) y formato, agrupados en 5 familias con 8 modos de presentación
+  (cue). Detalle completo en [SUBTITLES.md](docs/SUBTITLES.md).
+- Efectos por palabra en los subtítulos (resaltado, aparición progresiva,
+  karaoke).
+- Formatos declarados en `config/formats.json`: vertical (9:16) y horizontal
+  (16:9), cada uno con sus propios perfiles. Ver
+  [ARCHITECTURE.md §4](docs/ARCHITECTURE.md#4-formatos).
+- Pausas configurables en la voz, tras cada frase y entre párrafos. Ver
+  [VOICEOVER.md](docs/VOICEOVER.md).
+- Registro del error interno en `logs/` (fecha, operación, tipo, mensaje y
+  referencia al diagnóstico) cuando el programa falla de verdad.
+- README en cada carpeta de entrada de STUDIO (`input/studio/*/`).
+
+### Cambiado
+
+- La voz se genera con Piper (voces `piper_davefx` y `piper_carlfm`) en vez
+  de Edge TTS, con un ritmo algo más lento.
+- Los subtítulos usan siempre el texto del guion —también en los efectos por
+  palabra— y no muestran texto en las pausas de la voz.
+- Los MP3 de la voz y de la mezcla final se exportan a 44 100 Hz, para que
+  editores como Sony Vegas lean bien su duración.
+- La ejecución construye una única petición tipada que resuelven los
+  coordinadores (estándar, STUDIO y DISEÑO), en vez de pasar opciones
+  sueltas. Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- La terminal y la documentación están en español; el código se mantiene en
+  inglés.
+- La documentación de referencia, antes en la raíz, vive ahora en `docs/`.
+
+### Corregido
+
+- Los mensajes de error de entrada dicen qué falta y qué hacer, en vez de
+  mostrarse como un fallo interno.
+- El orden de montaje de MONTAJE VÍDEOS acepta `0` para cancelar, como el
+  resto de entradas.
+- Cada reintento de generación de imagen usa una semilla distinta, en vez de
+  repetir siempre la misma imagen.
+- Los nombres de los modos de STUDIO son los mismos en el menú, los
+  resúmenes y los mensajes de error.
+- Whisper ya no añade al SRT frases que no se dijeron en voz (repeticiones
+  al final del audio o sobre la música).
+
+### Retirado
+
+- Las variables de entorno `MC_*` (identidad operacional, configuración de
+  voz y overlays) y el modo «Solo guion».
+- `validation/` y `AGENT_AI/` dejan de versionarse en Git (la evidencia de
+  validación y la información privada de los asistentes siguen en el disco).
+- TRADUCTOR deja de anunciarse en el README como componente del producto
+  (sus archivos nunca llegaron a versionarse).
 
 ---
 
