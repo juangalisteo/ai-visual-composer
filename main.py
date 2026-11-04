@@ -14,6 +14,7 @@ from app.modules.studio import (
 )
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.format_catalog import FormatCatalog
+from app.shared.internal_error_log import write_internal_error_log
 from app.shared.operational_error import OperationalError
 from app.shared.profile_resolver import ProfileResolver
 
@@ -91,18 +92,23 @@ def _run_main():
 
 
 def _present_unexpected_error(error):
-    """Present an INTERNAL incident while retaining evidence in its context."""
+    """Present an INTERNAL incident and keep its evidence in a log file."""
+    operation = "Ejecución principal"
+    error_traceback = "".join(traceback.format_exception(error))
     context = ErrorContext(
         family="INTERNAL",
         severity=ErrorSeverity.FATAL_INTERNAL,
         user_message="Se produjo un error interno inesperado.",
         exit_kind=ExitKind.INTERNAL_ERROR,
-        operation="Ejecución principal",
+        operation=operation,
+        diagnostic_reference=write_internal_error_log(
+            error,
+            error_traceback,
+            operation=operation,
+        ),
         technical_metadata={
             "exception_type": type(error).__name__,
-            "traceback": "".join(
-                traceback.format_exception(error)
-            ),
+            "traceback": error_traceback,
         },
     )
     _present_incident(ErrorPresenter().present_context(context))

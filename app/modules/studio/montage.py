@@ -193,6 +193,11 @@ class StudioMontagePlanningService:
         except (FileNotFoundError, NotADirectoryError, ValueError) as error:
             raise StudioMontageInputError(str(error)) from error
 
+        if len(candidates.videos) < 2:
+            raise StudioMontageInputError(
+                f"Solo se encontró un archivo MP4 en {candidates.directory}."
+            )
+
         clips = tuple(
             StudioMontageClip(
                 temporary_id=index,

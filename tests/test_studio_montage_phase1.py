@@ -188,7 +188,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
     def test_parser_rejects_clip_that_disappears_after_discovery(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            clips_directory = self._write_clips(root, ("A.mp4",))
+            clips_directory = self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             candidates = service.discover(self.profile)
             (clips_directory / "A.mp4").unlink()
@@ -196,7 +196,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 StudioMontageInputError,
                 "ya no existe",
             ):
-                service.parse_order("1", candidates)
+                service.parse_order("1 2", candidates)
 
     def test_cli_shows_discovery_order_and_transitions_without_mode(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -430,6 +430,38 @@ class StudioMontagePhase1Test(unittest.TestCase):
         printer.assert_called_once_with(
             "ERROR\n"
             f"No se encontró ningún archivo MP4 en {input_dir}.\n"
+            "Operación: STUDIO/montaje_videos\n"
+            "Acción recomendada: Pon en esa carpeta dos o más vídeos .mp4 y "
+            "vuelve a intentarlo."
+        )
+
+    def test_main_rejects_a_single_video_without_asking_for_the_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "montaje_videos"
+            input_dir.mkdir()
+            (input_dir / "A.mp4").write_bytes(b"video")
+            selector = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(
+                    directory
+                )
+            )
+            with patch("main.RunController") as controller, patch(
+                "builtins.input",
+                side_effect=EOFError,
+            ) as terminal_input, patch("builtins.print") as printer:
+                controller.return_value.run.side_effect = (
+                    lambda: selector.select_studio_montage_plan(
+                        self.profile_key,
+                        self.profile,
+                    )
+                )
+                result = main.main()
+
+        self.assertEqual(1, result)
+        terminal_input.assert_not_called()
+        printer.assert_called_once_with(
+            "ERROR\n"
+            f"Solo se encontró un archivo MP4 en {input_dir}.\n"
             "Operación: STUDIO/montaje_videos\n"
             "Acción recomendada: Pon en esa carpeta dos o más vídeos .mp4 y "
             "vuelve a intentarlo."

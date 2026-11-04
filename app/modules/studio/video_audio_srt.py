@@ -74,7 +74,7 @@ class StudioVideoAudioSrtInputService:
             else ()
         )
         self._require_candidates(videos, "MP4")
-        self._require_candidates(audios, "audio")
+        self._require_candidates(audios, "de audio")
         if subtitles:
             self._require_candidates(subtitle_paths, "SRT")
         return StudioVideoAudioSrtCandidates(

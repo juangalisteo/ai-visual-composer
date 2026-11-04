@@ -198,7 +198,10 @@ def test_input_requires_required_files_and_ignores_srt_when_disabled():
 
         video = root / "source.mp4"
         video.write_bytes(b"video")
-        with pytest.raises(StudioVideoAudioSrtInputError, match="audio"):
+        with pytest.raises(
+            StudioVideoAudioSrtInputError,
+            match="ningún archivo de audio en",
+        ):
             service.create_plan(False)
 
         audio = root / "new-audio.wav"

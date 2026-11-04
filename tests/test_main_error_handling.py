@@ -1,3 +1,4 @@
+import contextlib
 import unittest
 import os
 import tempfile
@@ -293,6 +294,9 @@ class MainErrorHandlingTest(unittest.TestCase):
             "main.run_application",
             side_effect=unexpected,
         ), patch("main.ErrorPresenter") as presenter_mock, patch(
+            "main.write_internal_error_log",
+            return_value=None,
+        ), patch(
             "builtins.print"
         ) as print_mock:
             controller_mock.return_value.run.return_value = self.design_request()
@@ -319,6 +323,9 @@ class MainErrorHandlingTest(unittest.TestCase):
         ) as controller_mock, patch(
             "main.run_application",
             side_effect=ValueError("internal validation detail"),
+        ), patch(
+            "main.write_internal_error_log",
+            return_value=None,
         ), patch("builtins.print") as print_mock:
             controller_mock.return_value.run.return_value = self.design_request()
 
@@ -332,6 +339,134 @@ class MainErrorHandlingTest(unittest.TestCase):
             print_mock.call_args.args[0],
         )
         self.assertNotIn("internal validation detail", print_mock.call_args.args[0])
+
+    def run_main_failing_with(self, error):
+        """Run main() until run_application raises; return (code, terminal)."""
+        with patch("main.FormatCatalog"), patch(
+            "main.RunController"
+        ) as controller_mock, patch(
+            "main.run_application",
+            side_effect=error,
+        ), patch("builtins.print") as print_mock:
+            controller_mock.return_value.run.return_value = self.design_request()
+            result = main.main()
+        return result, print_mock.call_args.args[0]
+
+    def test_internal_error_saves_its_detail_and_shows_the_relative_path(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(
+            directory
+        ):
+            result, output = self.run_main_failing_with(
+                RuntimeError("private failure ñ")
+            )
+            log_files = list(Path("logs").iterdir())
+            self.assertEqual(1, len(log_files))
+            log_name = log_files[0].name
+            content = log_files[0].read_text(encoding="utf-8")
+
+        self.assertEqual(1, result)
+        self.assertRegex(
+            log_name,
+            r"^error_interno_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_\d{6}\.txt$",
+        )
+        self.assertEqual(
+            "ERROR INTERNO\n"
+            "Se produjo un error interno inesperado.\n"
+            "Operación: Ejecución principal\n"
+            f"Diagnóstico técnico: logs/{log_name}",
+            output,
+        )
+        self.assertRegex(
+            content,
+            r"^Fecha: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\n"
+            r"Operación: Ejecución principal\n"
+            r"Tipo: RuntimeError\n"
+            r"Mensaje: private failure ñ\n\n"
+            r"Traceback \(most recent call last\):\n",
+        )
+        self.assertIn("_run_main", content)
+        self.assertTrue(content.endswith("RuntimeError: private failure ñ\n"))
+
+    def test_each_internal_error_gets_its_own_log_file(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(
+            directory
+        ):
+            self.run_main_failing_with(RuntimeError("first failure"))
+            self.run_main_failing_with(RuntimeError("second failure"))
+            contents = sorted(
+                path.read_text(encoding="utf-8")
+                for path in Path("logs").iterdir()
+            )
+
+        self.assertEqual(2, len(contents))
+        self.assertIn("first failure", contents[0])
+        self.assertIn("second failure", contents[1])
+
+    def test_internal_error_log_escapes_text_utf8_cannot_encode(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(
+            directory
+        ):
+            _, output = self.run_main_failing_with(
+                RuntimeError("bad name \udc80")
+            )
+            (log_file,) = Path("logs").iterdir()
+            content = log_file.read_text(encoding="utf-8")
+
+        self.assertIn(f"logs/{log_file.name}", output)
+        self.assertIn("Mensaje: bad name \\udc80\n", content)
+
+    def test_internal_error_stays_the_same_when_its_log_cannot_be_written(self):
+        for name, open_failure in (
+            ("logs is a file", None),
+            ("no permission", PermissionError("denied")),
+            ("unexpected failure", ValueError("broken")),
+        ):
+            with self.subTest(name), tempfile.TemporaryDirectory(
+            ) as directory, contextlib.chdir(directory), patch(
+                "main.write_internal_error_log",
+                wraps=main.write_internal_error_log,
+            ) as write_log:
+                if open_failure is None:
+                    Path("logs").write_text("not a folder", encoding="utf-8")
+                    failing_open = contextlib.nullcontext()
+                else:
+                    failing_open = patch.object(
+                        Path,
+                        "open",
+                        side_effect=open_failure,
+                    )
+                with failing_open:
+                    result, output = self.run_main_failing_with(
+                        RuntimeError("private failure")
+                    )
+
+                self.assertEqual(1, result)
+                self.assertEqual(
+                    "ERROR INTERNO\n"
+                    "Se produjo un error interno inesperado.\n"
+                    "Operación: Ejecución principal",
+                    output,
+                )
+                write_log.assert_called_once()
+
+    def test_input_errors_and_cancellations_do_not_write_a_log(self):
+        for error in (
+            OperationalError(
+                ErrorContext(
+                    family="INPUT",
+                    severity=ErrorSeverity.FATAL_OPERATIONAL,
+                    user_message="Falta el guion.",
+                    exit_kind=ExitKind.OPERATIONAL_ERROR,
+                )
+            ),
+            KeyboardInterrupt(),
+            EOFError(),
+        ):
+            with self.subTest(type(error).__name__), tempfile.TemporaryDirectory(
+            ) as directory, contextlib.chdir(directory):
+                self.run_main_failing_with(error)
+
+                self.assertFalse(Path("logs").exists())
 
     def test_legacy_studio_runtime_errors_use_shared_presentation(self):
         for error in (

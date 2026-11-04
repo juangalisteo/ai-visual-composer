@@ -103,11 +103,3 @@ class ProgressLogger:
             warnings=warnings,
             operation=operation,
         )
-
-    @staticmethod
-    def error(message, warnings=None, operation=None):
-        return ProgressLogger._safe_print(
-            f"ERROR: {message}",
-            warnings=warnings,
-            operation=operation,
-        )

@@ -384,8 +384,9 @@ La tabla recoge los mensajes más frecuentes:
 | «No se encontró ningún archivo … en input\studio\…» | Pon el archivo con la extensión correcta en la carpeta del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «El archivo SRT de STUDIO debe estar codificado en UTF-8», «… está vacío» o «… no contiene cues utilizables» | Guarda el `.srt` en UTF-8 y revisa el formato de sus bloques |
 | «No se pudo sacar el audio de input\studio\exportar_srt\transcribir\… para transcribirlo.» | El `.mp4` no es un vídeo válido o no tiene sonido: usa otro |
+| «Solo se encontró un archivo MP4 en input\studio\montaje_videos.» | Pon en esa carpeta dos o más vídeos `.mp4` y vuelve a lanzar |
 | «Selecciona al menos dos clips para MONTAJE VÍDEOS.» | Escribe dos o más números de clip separados por espacios |
-| «ERROR INTERNO / Se produjo un error interno inesperado. / Operación: Ejecución principal» | Es un fallo del programa, no de tus archivos. El programa no guarda más detalle: copia esas líneas, apunta qué ruta y qué opciones elegiste y avisa |
+| «ERROR INTERNO / Se produjo un error interno inesperado. / Operación: Ejecución principal / Diagnóstico técnico: logs/error_interno_….txt» | Es un fallo del programa, no de tus archivos. El detalle queda en ese archivo de `logs/`: avisa, adjunta el archivo (puede incluir rutas de tu equipo) y di qué ruta y qué opciones elegiste. Si no sale la línea «Diagnóstico técnico», el archivo no se pudo guardar: copia las líneas de la terminal |
 | Una generación tarda mucho | Es normal: Ollama y Wan no tienen tiempo límite. Espera o córtala con Ctrl+C |
 | Falta una dependencia o un programa externo | [INSTALL.md](INSTALL.md) |
 
