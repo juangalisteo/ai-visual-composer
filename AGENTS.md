@@ -49,7 +49,7 @@ cada archivo modificado.
   validación → capacidades → ejecución.
 - Componentes fijos: GUION, IMAGEN, VIDEO, STUDIO.
 - `OperationalProfileKey(component, format, profile_id)` y
-  `SubtitleProfileKey(component, format, family, profile_id)` son dominios
+  `SubtitleProfileKey(component, format, profile_id, family)` son dominios
   separados; no se fusionan.
 - Fixtures de test con nombres técnicos (`test_family`, `dummy_profile`), nunca
   nombres que parezcan de producto.
