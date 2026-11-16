@@ -96,7 +96,7 @@ def test_generic_selector_uses_the_explicit_operational_choice_not_display_name(
 
 
 def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
-    _write_operational_profile(
+    expected = _write_operational_profile(
         tmp_path,
         ProfileComponent.VIDEO,
         profile_id="test_profile",
@@ -108,6 +108,7 @@ def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
         "test_format",
     )
 
+    assert resolved == expected
     assert resolved == OperationalProfileKey(
         ProfileComponent.VIDEO, "test_format", "test_profile",
     )
