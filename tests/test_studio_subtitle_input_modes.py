@@ -737,7 +737,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 controller,
                 "_select_studio_operational_profile",
                 return_value=(operational_key, Mock()),
-            ) as operational:
+            ):
                 selection = controller._select_studio_profile_selection(
                     StudioInputMode.SRT_VIDEO.value,
                 )

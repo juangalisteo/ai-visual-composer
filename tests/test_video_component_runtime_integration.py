@@ -856,8 +856,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video_clips"
                 / "video_clips_manifest.json"
             )
-            subtitle_profile = object()
-
             class FakeConfig:
                 profile_resolver = ProfileResolver()
 

@@ -88,7 +88,7 @@ class StudioIntroOutroTest(unittest.TestCase):
     def test_source_selector_lists_multiple_videos_without_subtitle_selection(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            first = self._file(root, "first.mp4")
+            self._file(root, "first.mp4")
             second = self._file(root, "second.mp4")
             assets = root / "assets"
             assets.mkdir()

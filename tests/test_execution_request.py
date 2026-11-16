@@ -22,7 +22,6 @@ from app.core.execution_request import (
 )
 from app.modules.studio import (
     StudioInputMode,
-    StudioIntroOutroPlan,
     StudioVideoAudioSrtPlan,
 )
 from app.shared.profile_identity import (

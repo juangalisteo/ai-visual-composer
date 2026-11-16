@@ -4,8 +4,6 @@ from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
 from app.shared.profile_identity import ProfileComponent
-from app.shared.profile_resolver import ProfileResolver
-from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 

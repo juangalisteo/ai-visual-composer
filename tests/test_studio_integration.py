@@ -7,7 +7,6 @@ import sys
 import tempfile
 import unittest
 from array import array
-from copy import deepcopy
 from pathlib import Path
 
 from app.core import start

@@ -1,5 +1,4 @@
 from app.domain import (
-    FindingSeverity,
     StoryboardScene,
     VisualIntelligenceFinding,
     VisualReasoningResult,

@@ -129,7 +129,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
     def test_legacy_filename_without_declarative_contract_raises_configuration_error(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            legacy = self._write_document(
+            self._write_document(
                 root,
                 "vertical",
                 "wan_i2v_vertical.json",

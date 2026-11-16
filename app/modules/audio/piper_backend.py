@@ -13,7 +13,6 @@ from pathlib import Path
 import re
 import wave
 
-from app.modules.audio.tts_backend_registry import TtsBackend
 from app.modules.audio.tts_contracts import (
     TtsAudioArtifact,
     TtsBackendDiagnostic,

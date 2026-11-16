@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from app.modules.subtitles.policies.timing import (
     SpeechSegment,

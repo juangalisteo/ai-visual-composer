@@ -340,7 +340,7 @@ class OverlayFolderResolverTest(
     def test_rejects_empty_response(
         self
     ):
-        resolver = OverlayFolderResolver(
+        OverlayFolderResolver(
             provider=FakeProvider(
                 response=""
             )

@@ -22,7 +22,7 @@ def test_generic_selector_discovers_independent_complete_keys_for_components(
         ProfileComponent.IMAGEN,
         ProfileComponent.VIDEO,
     ):
-        operational_key = _write_operational_profile(
+        _write_operational_profile(
             tmp_path,
             component,
             profile_id="test_profile",
@@ -57,7 +57,7 @@ def test_generic_selector_discovers_independent_complete_keys_for_components(
 def test_generic_selector_uses_the_explicit_operational_choice_not_display_name(
     tmp_path,
 ):
-    first_key = _write_operational_profile(
+    _write_operational_profile(
         tmp_path,
         ProfileComponent.GUION,
         profile_id="test_profile_first",
@@ -96,7 +96,7 @@ def test_generic_selector_uses_the_explicit_operational_choice_not_display_name(
 
 
 def test_guion_video_bridge_requires_exactly_one_discovered_video_key(tmp_path):
-    expected = _write_operational_profile(
+    _write_operational_profile(
         tmp_path,
         ProfileComponent.VIDEO,
         profile_id="test_profile",

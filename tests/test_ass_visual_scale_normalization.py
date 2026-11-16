@@ -166,7 +166,7 @@ def test_official_dynamic_profiles_normalize_without_family_specific_logic(tmp_p
             content = Path(prepared.path).read_text(encoding="utf-8")
             assert prepared.backend.value == "DYNAMIC"
             assert (
-                f"Style: Default," in content
+                "Style: Default," in content
                 and f",{expected_font_size}," in content
             )
         finally:
