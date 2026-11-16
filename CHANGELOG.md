@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AI Visual Composer are documented in this file.
+Aquí se registran los cambios importantes de AI Visual Composer.
 
 ---
 
@@ -14,21 +14,25 @@ All notable changes to AI Visual Composer are documented in this file.
 - Perfiles de subtítulos declarados por componente (GUION, IMAGEN, VIDEO,
   STUDIO) y formato, agrupados en 5 familias con 8 modos de presentación
   (cue). Detalle completo en [SUBTITLES.md](docs/SUBTITLES.md).
-- Efectos por palabra en los subtítulos (resaltado, aparición progresiva,
-  karaoke).
+- Efectos por palabra en los subtítulos: Palabra en color, Palabra en
+  recuadro, Palabra aumentada, Revelado progresivo, Máquina de escribir y
+  Karaoke continuo. Ver [SUBTITLES.md](docs/SUBTITLES.md).
 - Formatos declarados en `config/formats.json`: vertical (9:16) y horizontal
   (16:9), cada uno con sus propios perfiles. Ver
   [ARCHITECTURE.md §4](docs/ARCHITECTURE.md#4-formatos).
 - Pausas configurables en la voz, tras cada frase y entre párrafos. Ver
   [VOICEOVER.md](docs/VOICEOVER.md).
-- Registro del error interno en `logs/` (fecha, operación, tipo, mensaje y
-  referencia al diagnóstico) cuando el programa falla de verdad.
+- Registro del error interno en `logs/` cuando el programa falla de verdad:
+  guarda la fecha, la operación, el tipo, el mensaje y el detalle técnico
+  (traceback), y la terminal dice en qué archivo está.
 - README en cada carpeta de entrada de STUDIO (`input/studio/*/`).
 
 ### Cambiado
 
 - La voz se genera con Piper (voces `piper_davefx` y `piper_carlfm`) en vez
-  de Edge TTS, con un ritmo algo más lento.
+  de Edge TTS.
+- Las dos voces de Piper leen algo más despacio que la velocidad normal de su
+  modelo. Ver [VOICEOVER.md](docs/VOICEOVER.md).
 - Los subtítulos usan siempre el texto del guion —también en los efectos por
   palabra— y no muestran texto en las pausas de la voz.
 - Los MP3 de la voz y de la mezcla final se exportan a 44 100 Hz, para que

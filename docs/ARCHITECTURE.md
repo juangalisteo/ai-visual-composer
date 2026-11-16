@@ -260,18 +260,20 @@ formato), usan el perfil operacional STUDIO del formato elegido
 (`OperationalProfileKey` con `component=studio`) y, cuando llevan subtítulos,
 un perfil de subtítulos STUDIO (`SubtitleProfileKey`).
 
-El menú ENTRADA ofrece seis modos (textos tal cual en la terminal):
+El menú ENTRADA ofrece seis modos (textos tal cual en la terminal). Qué hace
+cada uno por dentro:
 
-| Modo | Carpeta de entrada | Qué hace |
-|---|---|---|
-| `SOLO VIDEO` | `input/studio/video/` | Whisper transcribe el audio del vídeo y el SRT se adapta al perfil de subtítulos elegido antes de pintarlo. El vídeo tiene que tener audio |
-| `SRT + VIDEO` | `input/studio/srt_video/` | Pinta el SRT del usuario **tal cual** (siempre ORIGINAL): ni Whisper ni cambios de texto o de tiempos |
-| `INTRO / OUTRO` | `input/studio/intro_outro/` | Añade una intro, un outro o ambos al vídeo |
-| `MONTAJE VÍDEOS` | `input/studio/montaje_videos/` | Une varios vídeos en el orden que se elige, con o sin transiciones, y sin subtítulos |
-| `VIDEO + AUDIO \| SRT` | `input/studio/video_audio_srt/` | Sustituye el audio del vídeo por uno nuevo y, si hay SRT, lo pinta tal cual |
-| `EXPORTAR SRT ➜  VIDEO` | `input/studio/exportar_srt/transcribir/` y `…/convertir/` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
+| Modo | Qué hace |
+|---|---|
+| `SOLO VIDEO` | Whisper transcribe el audio del vídeo y el SRT se adapta al perfil de subtítulos elegido antes de pintarlo |
+| `SRT + VIDEO` | Pinta el SRT del usuario **tal cual** (siempre ORIGINAL): ni Whisper ni cambios de texto o de tiempos |
+| `INTRO / OUTRO` | Añade una intro, un outro o ambos al vídeo |
+| `MONTAJE VÍDEOS` | Une varios vídeos en el orden que se elige, con o sin transiciones, y sin subtítulos |
+| `VIDEO + AUDIO \| SRT` | Sustituye el audio del vídeo por uno nuevo y, si hay SRT, lo pinta tal cual |
+| `EXPORTAR SRT ➜  VIDEO` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
 
-Qué archivos van en cada carpeta y cómo se eligen está en [START.md](START.md).
+Qué archivo va en cada carpeta de `input/studio/`, cómo se eligen y qué
+pregunta cada menú: [START.md, apartado 7](START.md#7-studio).
 
 ### Cómo se tratan los subtítulos en STUDIO
 
@@ -333,12 +335,12 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 | `input/tema.txt` | IMAGEN y VIDEO | Un tema o una idea; la IA escribe el guion |
 | `input/guion_imagen.txt` | Ruta DISEÑO → Imagen | La descripción visual de una imagen |
 | `input/guion_video.txt` | Ruta DISEÑO → Video | La descripción visual de un clip |
-| `input/studio/<modo>/` | STUDIO | Vídeos, audios y SRT de cada modo ([apartado 8](#8-studio)) |
+| `input/studio/<modo>/` | STUDIO | Vídeos, audios y SRT de cada modo ([START.md, apartado 7](START.md#7-studio)) |
 
 - Los cuatro `.txt` están en el repositorio vacíos: el usuario escribe en ellos.
   Cómo evitar que sus cambios salgan en Git está en [INSTALL.md](INSTALL.md).
-- STUDIO descubre sus archivos por extensión, no por nombre: si hay un solo
-  candidato válido lo usa directamente; si hay varios, pregunta cuál. El
+- STUDIO descubre sus archivos por extensión, no por nombre; cómo los elige:
+  [START.md, apartado 7](START.md#qué-archivo-va-en-cada-carpeta). El
   contenido de `input/studio/` no se versiona.
 
 ---
@@ -448,6 +450,10 @@ AudioMixer                         mezcla la voz con la música → audio/audio_
   `assets/music/`) y una pista de ella. `AudioMixer` la pone en bucle por debajo
   de la voz, con entrada y salida suaves, y la corta a la duración de la voz;
   sin música, `audio_final.mp3` es una copia de `voz.mp3`.
+- **Frecuencia de los MP3.** `voz.mp3` y `audio_final.mp3` se publican siempre
+  a 44 100 Hz (`PUBLISHED_MP3_SAMPLE_RATE_HZ`, `app/modules/audio/`), sea cual
+  sea la frecuencia de la voz de Piper, para que los editores de vídeo lean bien
+  su duración.
 
 Duración de la locución y ritmo de las voces: [VOICEOVER.md](VOICEOVER.md).
 
@@ -506,7 +512,9 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   mayúsculas y signos. Una palabra igual, o cambiada por otra («quizás» por
   «quizá»), toma el tiempo de la de Whisper; un tramo con otro número de
   palabras («serie» por «ser y») reparte su tiempo entre las del guion en
-  proporción a sus letras; una palabra del guion que Whisper no oyó comparte el
+  proporción a sus letras, solo en el tiempo con voz: se salta las pausas de la
+  voz que caen dentro del tramo (`approximate_voiced_word_timings`,
+  `policies/timing.py`); una palabra del guion que Whisper no oyó comparte el
   tiempo de la anterior (o de la siguiente, si la anterior cierra frase o
   párrafo), y una palabra que Whisper añade se quita. `SrtOptimizer` pasa el SRT por
   `SubtitleCueTransformer`, que crea el modelo de corte con `CueModelRegistry`
