@@ -110,6 +110,8 @@ Visual Composer:
 
 El resto de librerías se instalan como dependencias de estas.
 
+Opcional, para desarrollo: `pre-commit` comprueba ruff y los formatos de archivo antes de cada commit (sin reescribir nada); se instala con `pip install pre-commit` y `pre-commit install`, y no forma parte de `requirements.txt`.
+
 ---
 
 ## 4. FFmpeg
