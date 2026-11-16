@@ -121,4 +121,4 @@ mejora sin preguntar antes al propietario.
 - **STUDIO, SRT + VIDEO usa siempre el SRT tal cual (ORIGINAL, sin Whisper).** Si
   SOLO VIDEO transcribe mal una palabra, el propietario corrige el SRT y usa
   SRT + VIDEO. No es una opción que haya que ofrecer ni "mejorar" (decisión P1 de
-  `AGENT_AI/TRABAJO/LIMPIEZA.md` §3.1).
+  `AGENT_AI/TRABAJO/TERMINADO/FASE_K/LIMPIEZA.md` §3.1).
