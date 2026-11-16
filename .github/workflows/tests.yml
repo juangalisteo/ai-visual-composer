@@ -1,0 +1,82 @@
+# Pruebas automáticas (fase F, lote F-7).
+# Solo comprueba: ruff y la suite de pytest. No cambia nada del repositorio.
+# Recursos fuera de Git (FFmpeg, voces Piper, ComfyUI, Ollama) no están: sus tests se omiten con guardas.
+name: Pruebas
+
+on:
+  push:
+    branches: [main, limpieza]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Pruebas (Windows, Python 3.13)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # Sin la música ni los overlays (~1,1 GB): los tests no los usan.
+      # blob:none + sparse-checkout solo descarga el contenido de lo que se deja en disco.
+      - name: Descargar el código (sin música ni overlays)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/assets/music/
+            !/assets/videos/overlays/
+
+      - name: Comprobar la descarga (tamaño de .git y carpetas excluidas)
+        run: |
+          if (-not (Test-Path .git)) { throw "Falta la carpeta .git (la necesita un test de git check-ignore)" }
+          git count-objects -vH
+          $bytes = (Get-ChildItem .git -Recurse -Force -File | Measure-Object Length -Sum).Sum
+          "Tamaño de .git: {0:N1} MB" -f ($bytes / 1MB)
+          foreach ($excluded in "assets/music", "assets/videos/overlays") {
+            "{0} en disco: {1}" -f $excluded, (Test-Path $excluded)
+          }
+
+      - name: Instalar Python 3.13
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # openai-whisper (y torch, que trae) no hace falta para los tests: se quita aquí,
+      # sin tocar requirements.txt.
+      - name: Instalar dependencias (sin openai-whisper) y ruff
+        run: |
+          $ciRequirements = Join-Path $env:RUNNER_TEMP "requirements-ci.txt"
+          Get-Content requirements.txt |
+            Where-Object { $_ -notmatch '^\s*openai-whisper' } |
+            Set-Content -Encoding utf8 $ciRequirements
+          python -m pip install --upgrade pip
+          python -m pip install -r $ciRequirements ruff==0.17.5
+          python -m pip list
+
+      # El modelo de models/ (fuera de Git) es el mismo archivo que trae el paquete nudenet.
+      - name: Copiar el modelo NudeNet del paquete instalado
+        run: |
+          $source = python -c "import importlib.util, pathlib; print(pathlib.Path(importlib.util.find_spec('nudenet').origin).parent / '320n.onnx')"
+          if (-not (Test-Path $source)) { throw "No se encuentra $source" }
+          New-Item -ItemType Directory -Force models/visual_safety | Out-Null
+          Copy-Item $source models/visual_safety/nudenet-320n.onnx
+          Get-FileHash models/visual_safety/nudenet-320n.onnx -Algorithm SHA256
+
+      - name: Revisar el código con ruff
+        run: ruff check --no-fix
+
+      - name: Ejecutar los tests
+        run: python -m pytest tests -q
