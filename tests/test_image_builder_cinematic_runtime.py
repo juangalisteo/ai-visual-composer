@@ -163,6 +163,12 @@ class RecordingBackendAdapter:
         )
 
 
+NUDENET_MODEL_AVAILABLE = (
+    Path(__file__).resolve().parents[1] / "models" / "visual_safety" / "nudenet-320n.onnx"
+).is_file()
+NUDENET_MODEL_REASON = "Falta el modelo NudeNet en models/visual_safety/."
+
+
 class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
     def test_build_invokes_single_cinematic_runtime_by_default(self):
@@ -720,6 +726,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
             self.assertFalse((output_dir / "_quality_attempts").exists())
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_runtime_invokes_orchestrator_and_prompt_translator(self):
         orchestrator = RecordingCinematicOrchestrator()
         translator = RecordingPromptTranslator()

@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -66,6 +67,10 @@ class AudioMixerSampleRateTest(unittest.TestCase):
         self.assertEqual("libmp3lame", command[command.index("-c:a") + 1])
         self.assertEqual("44100", command[command.index("-ar") + 1])
 
+    @unittest.skipUnless(
+        shutil.which("ffmpeg") and shutil.which("ffprobe"),
+        "FFmpeg y FFprobe son obligatorios para la mezcla real.",
+    )
     def test_real_mix_of_a_22050_hz_voice_is_44100_hz_and_keeps_its_duration(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

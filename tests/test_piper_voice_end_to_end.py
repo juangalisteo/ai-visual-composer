@@ -15,9 +15,27 @@ from app.modules.audio.voice_builder import VoiceBuilder
 from app.shared.config_manager import ConfigManager
 
 
+_PIPER_DIR = Path(__file__).resolve().parents[1] / "models" / "audio" / "piper"
+
+
+def _missing_voice_mark(voice_dir, model_name):
+    return pytest.mark.skipif(
+        not (_PIPER_DIR / voice_dir / model_name).is_file(),
+        reason=f"Falta la voz Piper en models/audio/piper/{voice_dir}/.",
+    )
+
+
 VOICE_CASES = (
-    ("piper_davefx", 22_050),
-    ("piper_carlfm", 16_000),
+    pytest.param(
+        "piper_davefx",
+        22_050,
+        marks=_missing_voice_mark("es_ES_davefx", "es_ES-davefx-medium.onnx"),
+    ),
+    pytest.param(
+        "piper_carlfm",
+        16_000,
+        marks=_missing_voice_mark("es_ES_carlfm", "es_ES-carlfm-x_low.onnx"),
+    ),
 )
 
 

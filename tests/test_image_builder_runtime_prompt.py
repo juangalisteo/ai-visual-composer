@@ -11,8 +11,15 @@ from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
 
 
+NUDENET_MODEL_AVAILABLE = (
+    Path(__file__).resolve().parents[1] / "models" / "visual_safety" / "nudenet-320n.onnx"
+).is_file()
+NUDENET_MODEL_REASON = "Falta el modelo NudeNet en models/visual_safety/."
+
+
 class ImageBuilderRuntimePromptTest(unittest.TestCase):
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_build_uses_single_cinematic_runtime_without_changing_manifest_contract(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -112,6 +119,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["visual_director"]["directives"]
             )
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_vertical_profile_adds_vertical_runtime_guidance(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -163,6 +171,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["prompt"]
             )
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_explicit_profile_bypasses_global_profile_resolution(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(

@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 import json
 from unittest.mock import patch
@@ -36,6 +38,14 @@ class FakeResponse:
 
 
 class OllamaProviderTest(unittest.TestCase):
+
+    def setUp(self):
+        # El proveedor escribe logs/ en el directorio actual: se aísla en una carpeta temporal.
+        previous_cwd = os.getcwd()
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.addCleanup(os.chdir, previous_cwd)
+        os.chdir(temp_dir.name)
 
     def test_generate_omits_request_timeout(self):
         with patch(
