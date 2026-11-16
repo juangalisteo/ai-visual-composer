@@ -39,7 +39,7 @@ desktop.ini
 !.env.example
 
 # ============================================================
-# Private agent state (Claude, Codex, ANTIGRAVITY)
+# Private agent state (Claude, Codex)
 # ============================================================
 AGENT_AI/
 CODEX/
