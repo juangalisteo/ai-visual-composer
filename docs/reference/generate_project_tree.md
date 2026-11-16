@@ -32,62 +32,37 @@ project_tree.txt
 
 en la raíz del proyecto.
 
-`project_tree.txt` representa la estructura arquitectónica prevista del proyecto en el momento de su ejecución.
+`project_tree.txt` representa la estructura versionada del proyecto en el momento de su ejecución. El propio archivo está fuera de Git.
 
 ## Funcionamiento
 
-La utilidad recorre el proyecto de forma recursiva utilizando exclusivamente la librería estándar de Python.
+La utilidad parte de la lista de archivos que versiona Git (`git ls-files`), de modo que el árbol contiene exactamente lo que hay en el repositorio y nada de lo ignorado o local (`validation/`, `.claude/`, `.env`, `models/`, `project_tree.txt`, etc.). Sobre esa lista construye el árbol en memoria y aplica las reglas de presentación.
 
 Reglas principales:
 
-- Ordena alfabéticamente.
-- Muestra siempre primero las carpetas.
-- Muestra después los archivos.
+- Ordena alfabéticamente, sin distinguir mayúsculas.
+- Muestra siempre primero las carpetas y después los archivos.
 - Usa formato de árbol UTF-8.
-- Detecta automáticamente la raíz desde el directorio actual de ejecución.
+- Toma como raíz el directorio actual de ejecución, que debe ser la raíz del repositorio.
 - Es compatible con Windows.
-- No usa dependencias externas.
-- No llama a comandos del sistema.
+- Solo usa la librería estándar de Python y necesita `git` en el PATH.
+- Si Git no está disponible, o la carpeta no es un repositorio, termina con un mensaje de error en español y no escribe nada.
 - Escribe `project_tree.txt` en UTF-8.
 
-Carpetas colapsadas:
+Al terminar imprime: carpetas recorridas, carpetas excluidas, archivos documentados y archivos versionados no listados (los de carpetas colapsadas u omitidas). Documentados + no listados = número de líneas de `git ls-files`.
 
-- `.venv`.
-- `cache`.
-- `data`.
-- `models`.
-- `node_modules`.
-- `temp`.
-- `venv`.
-- `assets/music`.
-- `assets/videos`.
-- carpetas que contienen únicamente recursos multimedia o binarios conocidos.
+Carpetas colapsadas (se muestra la carpeta, no su contenido):
+
+- `.venv`, `cache`, `data`, `models`, `node_modules`, `temp`, `venv`.
+- `assets/music` y `assets/videos`.
+- cualquier carpeta `backup_*`.
+- carpetas que contienen únicamente recursos multimedia o binarios conocidos (audio, imagen, vídeo, fuentes), para no documentar inventarios extensos.
 
 Carpetas omitidas completamente:
 
-- `.agents`.
-- `.git`.
-- `.mypy_cache`.
-- `.pytest_cache`.
-- `AGENT_AI`.
-- `CODEX`.
-- `ComfyUI`.
-- `input`.
-- `logs`.
-- `output`.
+- `.agents`, `.git`, `.mypy_cache`, `.pytest_cache`, `AGENT_AI`, `CODEX`, `ComfyUI`, `input`, `logs`, `output`.
 - cualquier carpeta `backup_*`.
 - `__pycache__` y cualquier carpeta cuyo nombre contenga `pycache`.
-
-Carpetas de assets no expandidas:
-
-- `assets/music`.
-- `assets/videos`.
-- cualquier contenido descendiente de ellas queda fuera del árbol porque no aporta valor arquitectónico.
-
-Carpetas de recursos binarios:
-
-- Si una carpeta contiene únicamente archivos multimedia o recursos binarios conocidos, se muestra solo la carpeta y no se expande.
-- Esto evita documentar inventarios extensos de audio, imagen, vídeo o fuentes.
 
 ## Cuando ejecutarlo
 
