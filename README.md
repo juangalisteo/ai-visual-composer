@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/versi%C3%B3n-2.0.0-FF5A1F?style=flat-square&labelColor=121214" alt="Versión 2.0.0">
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-FF5A1F?style=flat-square&labelColor=121214" alt="Windows 10 y 11">
   <img src="https://img.shields.io/badge/Python-3.13-FF5A1F?style=flat-square&labelColor=121214" alt="Python 3.13">
-  <img src="https://img.shields.io/badge/licencia-MIT-FF5A1F?style=flat-square&labelColor=121214" alt="Licencia MIT">
+  <img src="https://img.shields.io/badge/licencia-GPL--3.0-FF5A1F?style=flat-square&labelColor=121214" alt="Licencia GPL-3.0">
 </p>
 
 ---
@@ -109,6 +109,10 @@ El contenido que produce AI Visual Composer está generado con inteligencia arti
 
 ## Licencia
 
-Distribuido bajo la **Licencia MIT**. Consulta el archivo [LICENSE](LICENSE).
+Distribuido bajo la **Licencia Pública General de GNU v3.0** (GPL-3.0 o posterior). Consulta el archivo [LICENSE](LICENSE).
+
+Puedes usar, estudiar, compartir y modificar AI Visual Composer. Si repartes una versión modificada,
+también debe publicarse con licencia GPL y con su código fuente.
 
 Copyright © 2026 Juan Bautista Galisteo Marqués.
+Las versiones v1.2 y v2.0.0 se publicaron con licencia MIT.

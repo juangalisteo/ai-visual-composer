@@ -43,6 +43,7 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - La terminal y la documentación están en español; el código se mantiene en
   inglés.
 - La documentación de referencia, antes en la raíz, vive ahora en `docs/`.
+- Licencia cambiada de MIT a GPL-3.0 o posterior; las versiones anteriores siguen con MIT.
 
 ### Corregido
 
