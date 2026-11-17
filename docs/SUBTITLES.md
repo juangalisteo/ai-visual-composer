@@ -236,7 +236,7 @@ valida el bloque al descubrir el perfil.
 
 | Clave | Valores | Para qué sirve |
 |---|---|---|
-| `font` | texto | Fuente. `FontManager` traduce `anton`, `gotham`, `oswald` y `unisans` a las fuentes de `assets/fonts/`; otro nombre se pasa tal cual |
+| `font` | texto | Fuente. `FontManager` traduce `anton`, `gotham`, `oswald` y `unisans` a las fuentes de `assets/fonts/`; otro nombre se pasa tal cual. Si falta el archivo de `gotham` o `unisans`, se usa su reserva, Anton, y la terminal avisa |
 | `font_size` | entero (> 0) | Tamaño de letra |
 | `bold` | booleano | Negrita |
 | `primary_colour`, `outline_colour`, `back_colour` | color ASS `&HAABBGGRR` | Texto, contorno y sombra o caja |
