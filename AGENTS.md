@@ -79,7 +79,10 @@ cada archivo modificado.
 - Las preguntas triviales no requieren cierre.
 - Si el prompt del propietario indica otra cosa, prevalece el propietario.
 
-## 5. Privacidad
+## 5. Publicación y privacidad
+
+- Licencia **GPL-3.0-or-later** (`LICENSE`, texto oficial sin tocar). Autor: Juan Bautista Galisteo
+  Marqués (@juangalisteo).
 
 `AGENT_AI/` es privado y está fuera de Git. No se publica ni se incluye en releases.
 Si detectas un archivo de `AGENT_AI/` versionado, avísalo sin alterar Git.
