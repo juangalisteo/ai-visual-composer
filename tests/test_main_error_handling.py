@@ -342,7 +342,7 @@ class MainErrorHandlingTest(unittest.TestCase):
 
     def run_main_failing_with(self, error):
         """Run main() until run_application raises; return (code, terminal)."""
-        with patch("main.FormatCatalog"), patch(
+        with patch("main.FormatCatalog"), patch("main.FontManager"), patch(
             "main.RunController"
         ) as controller_mock, patch(
             "main.run_application",

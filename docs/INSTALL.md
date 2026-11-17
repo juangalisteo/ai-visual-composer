@@ -453,9 +453,9 @@ Su procedencia y condiciones de uso están en
 [assets/README.md](../assets/README.md).
 
 Si falta `Gotham Narrow Bold.otf` o `Uni Sans Heavy.otf`, los subtítulos
-usan su fuente de reserva, Anton (declarada en `FONT_FALLBACKS` de
-`app/managers/font_manager.py`), y la terminal avisa una vez por fuente; para
-usar la original, pon su archivo en `assets/fonts/`.
+usan su fuente de reserva, Anton (declarada en `config/fonts.json`), y la
+terminal avisa una vez por fuente; para usar la original, pon su archivo en
+`assets/fonts/`.
 
 Los assets generados en local quedan fuera de Git donde corresponde (por
 ejemplo, `assets/videos/intro_outro/`, que es contenido local propio).

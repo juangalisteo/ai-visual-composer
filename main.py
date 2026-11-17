@@ -6,6 +6,7 @@ from app.cli.studio_summary import print_studio_summary
 from app.controllers.run_controller import RunController
 from app.core.execution_request import StudioExecutionRequest
 from app.core.start import run_application
+from app.managers.font_manager import FontManager
 from app.managers.output_manager import OutputManager
 from app.modules.studio import (
     StudioMontageError,
@@ -46,8 +47,9 @@ def main():
 
 
 def _run_main():
-    # A broken format catalog fails here, before the first menu.
+    # A broken format or font catalog fails here, before the first menu.
     FormatCatalog().validate(ProfileResolver())
+    FontManager().validate()
 
     request = RunController().run()
 

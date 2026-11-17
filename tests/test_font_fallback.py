@@ -1,20 +1,37 @@
 """Fallback font: what FontManager does when a registered font file is missing (G3)."""
 
+import json
 import shutil
 from pathlib import Path
 
 import pytest
 
-from app.managers import font_manager
-from app.managers.font_manager import FontManager
+from app.managers.font_manager import FallbackNotices, FontManager
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.subtitles.subtitle_render_preparation import (
     SubtitleRenderPreparation,
 )
 
 
-# Bundled font that the fixture copies as the fallback file (metrics need a real font).
-REAL_FONT = FontManager.FONT_FILES["Anton"]
+# Bundled font that the fixture copies as every test file (metrics need a real font).
+REAL_FONT = FontManager().resolve_path("Anton")
+
+CATALOG = {
+    "fonts": {
+        "test_font": {
+            "file": "test_font.otf",
+            "aliases": ["test alias"],
+            "fallback": "test_fallback",
+        },
+        "test_other": {
+            "file": "test_other.otf",
+            "aliases": [],
+            "fallback": "test_fallback",
+        },
+        "test_fallback": {"file": "test_fallback.ttf", "aliases": []},
+        "test_lonely": {"file": "test_lonely.otf", "aliases": []},
+    }
+}
 
 STYLE = {
     "font_size": 22, "bold": True,
@@ -29,25 +46,23 @@ STYLE = {
 
 @pytest.fixture
 def fonts(tmp_path, monkeypatch):
-    """A registry in tmp_path: test_font and test_other fall back to test_fallback.
+    """A catalog in tmp_path: test_font and test_other fall back to test_fallback.
 
-    No file exists until the test creates it.
+    The test runs inside tmp_path, so config/fonts.json and assets/fonts/ are
+    the same relative paths as in the application. No font file exists until
+    the test creates it.
     """
-    files = {
-        "test_font": tmp_path / "test_font.otf",
-        "test_other": tmp_path / "test_other.otf",
-        "test_fallback": tmp_path / "test_fallback.ttf",
-        "test_lonely": tmp_path / "test_lonely.otf",
-    }
-    monkeypatch.setattr(FontManager, "FONT_ALIASES", {"test alias": "test_font"})
-    monkeypatch.setattr(FontManager, "FONT_FILES", files)
-    monkeypatch.setattr(
-        FontManager,
-        "FONT_FALLBACKS",
-        {"test_font": "test_fallback", "test_other": "test_fallback"},
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "fonts.json").write_text(
+        json.dumps(CATALOG), encoding="utf-8"
     )
-    monkeypatch.setattr(font_manager, "_reported_fallbacks", set())
-    return files
+    fonts_dir = tmp_path / "assets" / "fonts"
+    fonts_dir.mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    return {
+        font_name: fonts_dir / entry["file"]
+        for font_name, entry in CATALOG["fonts"].items()
+    }
 
 
 def _create(*paths):
@@ -64,7 +79,9 @@ def test_font_with_its_file_resolves_to_itself_without_warning(fonts, capsys):
     assert capsys.readouterr().out == ""
 
 
-def test_missing_font_uses_its_fallback_and_warns_once(fonts, capsys):
+@pytest.mark.parametrize("attempt", ("primera", "segunda"))
+def test_missing_font_uses_its_fallback_and_warns_once(fonts, capsys, attempt):
+    """Run twice: the second run proves each test starts with an empty registry."""
     _create(fonts["test_fallback"])
 
     for _ in range(3):
@@ -72,11 +89,23 @@ def test_missing_font_uses_its_fallback_and_warns_once(fonts, capsys):
         assert manager.resolve_name("test alias") == "test_fallback"
         assert manager.resolve_path("test_font") == fonts["test_fallback"].resolve()
 
+    assert capsys.readouterr().out == (
+        "ADVERTENCIA: falta la fuente «test_font.otf»; los subtítulos usan "
+        "«test_fallback» en su lugar. Para usar la original, pon ese archivo "
+        "en assets/fonts/.\n"
+    )
+
+
+def test_fallback_warning_never_shows_the_full_path_of_the_computer(fonts, capsys):
+    _create(fonts["test_fallback"])
+
+    FontManager().resolve_path("test_font")
+
     output = capsys.readouterr().out
-    assert output.count("ADVERTENCIA:") == 1
-    assert "falta la fuente «test_font.otf»" in output
-    assert "usan «test_fallback» en su lugar" in output
-    assert f"pon ese archivo en {fonts['test_font'].parent.as_posix()}/." in output
+    assert "en assets/fonts/." in output
+    for full_path in (Path.cwd(), Path.cwd().resolve(), fonts["test_font"]):
+        assert str(full_path) not in output
+        assert full_path.as_posix() not in output
 
 
 def test_each_missing_font_warns_once(fonts, capsys):
@@ -91,6 +120,19 @@ def test_each_missing_font_warns_once(fonts, capsys):
     assert len(lines) == 2
     assert "«test_font.otf»" in lines[0]
     assert "«test_other.otf»" in lines[1]
+
+
+def test_each_registry_warns_on_its_own_and_warns_again_after_reset(fonts, capsys):
+    _create(fonts["test_fallback"])
+    notices = FallbackNotices()
+
+    FontManager(fallback_notices=notices).resolve_name("test_font")
+    FontManager(fallback_notices=notices).resolve_name("test_font")
+    FontManager().resolve_name("test_font")
+    notices.reset()
+    FontManager(fallback_notices=notices).resolve_name("test_font")
+
+    assert capsys.readouterr().out.count("ADVERTENCIA:") == 3
 
 
 def test_missing_font_and_fallback_keep_todays_error(fonts, capsys):
@@ -158,11 +200,13 @@ def test_missing_font_renders_exactly_as_its_fallback(fonts, tmp_path, dynamic):
     assert replaced == direct
 
 
-def test_declared_fallbacks_are_bundled_registered_fonts():
-    """Each fallback is another registered font, needs no fallback itself and ships its file."""
-    for font_name, fallback in FontManager.FONT_FALLBACKS.items():
-        assert font_name in FontManager.FONT_FILES
-        assert fallback in FontManager.FONT_FILES
-        assert fallback != font_name
-        assert fallback not in FontManager.FONT_FALLBACKS
-        assert FontManager.FONT_FILES[fallback].is_file()
+def test_declared_fallbacks_ship_their_file():
+    """Each fallback of the repository catalog is a font whose file is bundled."""
+    manager = FontManager()
+
+    for font_name in manager.list_fonts():
+        fallback = manager.declaration(font_name).fallback
+        if fallback is None:
+            continue
+        with_file = manager.declaration(fallback)
+        assert (FontManager.FONTS_DIR / with_file.file).is_file(), font_name
