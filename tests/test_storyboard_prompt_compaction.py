@@ -176,7 +176,7 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
 
         self.assertEqual([1, 2], [scene["scene"] for scene in validated])
 
-        with self.assertRaisesRegex(ValueError, "numeracion"):
+        with self.assertRaisesRegex(ValueError, "numeración"):
             StoryboardValidator().validate(
                 visual_scenes=[
                     self._visual_scene(1),
@@ -197,7 +197,6 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
     def _profile(self):
         return {
             "tone": "modo_conciencia",
-            "platform": "instagram",
             "format": "vertical",
             "video_style": {
                 "storyboard": {

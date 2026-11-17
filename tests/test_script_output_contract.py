@@ -3,13 +3,13 @@ import unittest
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
-from app.core.start import cargar_o_generar_guion
 from app.modules.script import (
     InvalidScriptOutputError,
     ScriptBuilder,
     ScriptGenerationMetadata,
     ScriptGenerationResult,
     ScriptOutputValidator,
+    ScriptPreparationService,
 )
 from app.modules.script.validator import count_script_words
 
@@ -359,7 +359,6 @@ class ScriptOutputContractTest(unittest.TestCase):
             "conciencia",
             {
                 "tone": "modo_conciencia",
-                "platform": "youtube",
                 "format": "horizontal",
                 "duration": 10,
             },
@@ -420,22 +419,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             output_script = root / "guion.txt"
             long_script = _words(26)
 
-            script = cargar_o_generar_guion(
-                builders={
-                    "script": True
-                },
-                ai_config={
-                    "model": "test-model"
-                },
-                profile={
-                    "tone": "modo_conciencia",
-                    "platform": "youtube",
-                    "format": "horizontal",
-                    "duration": 10,
-                },
-                input_script_path=root / "missing_manual.txt",
-                input_topic_path=input_topic,
-                output_script_path=output_script,
+            script = ScriptPreparationService(
                 script_builder_factory=lambda ai_config: ScriptBuilder(
                     ai_config,
                     provider=FakeProvider(
@@ -444,7 +428,22 @@ class ScriptOutputContractTest(unittest.TestCase):
                         )
                     ),
                 ),
-            )
+            ).prepare(
+                builders={
+                    "script": True
+                },
+                ai_config={
+                    "model": "test-model"
+                },
+                profile={
+                    "tone": "modo_conciencia",
+                    "format": "horizontal",
+                    "duration": 10,
+                },
+                input_script_path=root / "missing_manual.txt",
+                input_topic_path=input_topic,
+                output_script_path=output_script,
+            ).text
 
             self.assertEqual(
                 script,
@@ -472,22 +471,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             with self.assertRaises(
                 InvalidScriptOutputError
             ):
-                cargar_o_generar_guion(
-                    builders={
-                        "script": True
-                    },
-                    ai_config={
-                        "model": "test-model"
-                    },
-                    profile={
-                        "tone": "modo_conciencia",
-                        "platform": "youtube",
-                        "format": "horizontal",
-                        "duration": 10,
-                    },
-                    input_script_path=root / "missing_manual.txt",
-                    input_topic_path=input_topic,
-                    output_script_path=output_script,
+                ScriptPreparationService(
                     script_builder_factory=lambda ai_config: ScriptBuilder(
                         ai_config,
                         provider=FakeProvider(
@@ -497,6 +481,21 @@ class ScriptOutputContractTest(unittest.TestCase):
                             )
                         ),
                     ),
+                ).prepare(
+                    builders={
+                        "script": True
+                    },
+                    ai_config={
+                        "model": "test-model"
+                    },
+                    profile={
+                        "tone": "modo_conciencia",
+                        "format": "horizontal",
+                        "duration": 10,
+                    },
+                    input_script_path=root / "missing_manual.txt",
+                    input_topic_path=input_topic,
+                    output_script_path=output_script,
                 )
 
             self.assertFalse(

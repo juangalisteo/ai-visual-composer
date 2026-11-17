@@ -1,44 +1,42 @@
 import json
-import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
 )
 from app.shared.config_manager import ConfigManager
-from app.shared.profile_identity import ProfileKey
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
 
 class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
     COMPONENTS = ("guion", "imagen", "video")
-    PLATFORMS = ("instagram", "youtube")
+    FORMATS = ("horizontal", "vertical")
     MODES = {
         "linea_unica": "single_line",
         "palabra_por_palabra": "word_by_word",
     }
     MAIN_PROFILES = {
-        ("guion", "instagram"): Path(
-            "config/profiles/guion/instagram/perfil_guion_instagram.json"
+        ("guion", "vertical"): Path(
+            "config/profiles/guion/vertical/perfil_guion_vertical.json"
         ),
-        ("guion", "youtube"): Path(
-            "config/profiles/guion/youtube/perfil_guion_youtube.json"
+        ("guion", "horizontal"): Path(
+            "config/profiles/guion/horizontal/perfil_guion_horizontal.json"
         ),
-        ("imagen", "instagram"): Path(
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json"
+        ("imagen", "vertical"): Path(
+            "config/profiles/imagen/vertical/perfil_imagen_vertical.json"
         ),
-        ("imagen", "youtube"): Path(
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json"
+        ("imagen", "horizontal"): Path(
+            "config/profiles/imagen/horizontal/perfil_imagen_horizontal.json"
         ),
-        ("video", "instagram"): Path(
-            "config/profiles/video/instagram/perfil_video_instagram.json"
+        ("video", "vertical"): Path(
+            "config/profiles/video/vertical/perfil_video_vertical.json"
         ),
-        ("video", "youtube"): Path(
-            "config/profiles/video/youtube/perfil_video_youtube.json"
+        ("video", "horizontal"): Path(
+            "config/profiles/video/horizontal/perfil_video_horizontal.json"
         ),
     }
     EXPECTED_CUE_POLICIES = {
@@ -49,10 +47,6 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "max_duration": 3.0,
             "significant_gap_threshold": 0.35,
             "text_case": "original",
-            "split_on_punctuation": True,
-            "avoid_orphan_words": True,
-            "merge_short_chunks": True,
-            "balance_duration": True,
             "punctuation": {
                 "remove_commas": False,
                 "remove_periods": False,
@@ -97,7 +91,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         },
     }
     EXPECTED_RENDER_STYLES = {
-        "instagram": {
+        "vertical": {
             "font": "unisans",
             "font_size": 14,
             "bold": False,
@@ -111,7 +105,7 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "margin_v": 55,
             "offset": -0.06,
         },
-        "youtube": {
+        "horizontal": {
             "font": "gotham",
             "font_size": 16,
             "bold": False,
@@ -126,6 +120,9 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
             "offset": 0.0,
         },
     }
+
+    # F5 (H7): the vertical format fits fewer characters per line.
+    EXPECTED_MAX_CHARS_PER_LINE = {"vertical": 20, "horizontal": 60}
 
     def test_tree_contains_expected_profiles(self):
         actual = {
@@ -143,15 +140,15 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     def test_profiles_have_valid_unique_canonical_identity(self):
         profile_ids = set()
 
-        for component, platform, suffix, mode, path in self._cases():
+        for component, profile_format, suffix, mode, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
-                expected_id = f"subtitulo_{component}_{platform}_{suffix}"
+                expected_id = f"subtitulo_{component}_{profile_format}_{suffix}"
 
                 self.assertEqual(
                     {
                     "component",
-                    "platform",
+                    "format",
                     "family",
                     "profile_id",
                     "display_name",
@@ -161,11 +158,11 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                     set(profile),
                 )
                 self.assertEqual(component, profile["component"])
-                self.assertEqual(platform, profile["platform"])
+                self.assertEqual(profile_format, profile["format"])
                 self.assertEqual("estandar", profile["family"])
                 self.assertEqual(expected_id, profile["profile_id"])
                 self.assertEqual(
-                    self._display_name_for(platform, mode),
+                    self._display_name_for(profile_format, mode),
                     profile["display_name"],
                 )
                 self.assertEqual(mode, profile["cue_policy"]["mode"])
@@ -175,15 +172,20 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
         self.assertEqual(len(self._expected_paths()), len(profile_ids))
 
     def test_profiles_preserve_the_final_cue_and_render_contract(self):
-        for _, platform, _, mode, path in self._cases():
+        for _, profile_format, _, mode, path in self._cases():
             with self.subTest(path=path):
                 profile = self._load(path)
+                expected_cue_policy = dict(self.EXPECTED_CUE_POLICIES[mode])
+                if "max_chars_per_line" in expected_cue_policy:
+                    expected_cue_policy["max_chars_per_line"] = (
+                        self.EXPECTED_MAX_CHARS_PER_LINE[profile_format]
+                    )
                 self.assertEqual(
-                    self.EXPECTED_CUE_POLICIES[mode],
+                    expected_cue_policy,
                     profile["cue_policy"],
                 )
                 self.assertEqual(
-                    self.EXPECTED_RENDER_STYLES[platform],
+                    self.EXPECTED_RENDER_STYLES[profile_format],
                     profile["render_style"],
                 )
 
@@ -223,20 +225,18 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
                 )
 
     def test_official_runtime_loads_new_cue_profiles(self):
-        for component, platform, _, _, path in self._cases():
-            profile_key = ProfileKey.for_component(component, platform)
-            environment = {
-                "MC_PROFILE_COMPONENT": component,
-                "MC_PROFILE_PLATFORM": platform,
-                "MC_PROFILE_ID": profile_key.profile_id,
-            }
+        for component, profile_format, _, _, path in self._cases():
+            subtitle_key = SubtitleProfileKey(
+                component,
+                profile_format,
+                self._load(path)["profile_id"],
+                "estandar",
+            )
 
-            with self.subTest(path=path), patch.dict(
-                os.environ,
-                environment,
-                clear=True,
-            ):
-                loaded = ConfigManager().get_subtitle_profile(path.stem)
+            with self.subTest(path=path):
+                loaded = ConfigManager().get_subtitle_profile_by_key(
+                    subtitle_key
+                )
 
             self.assertEqual(path, loaded.path)
             self.assertEqual(self._load(path)["cue_policy"], loaded.cue_policy)
@@ -244,8 +244,8 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
     def test_render_loader_accepts_new_profile_render_style(self):
         loader = SubtitleConfigLoader()
 
-        for component, platform, _, _, path in self._cases():
-            with self.subTest(component=component, platform=platform):
+        for component, profile_format, _, _, path in self._cases():
+            with self.subTest(component=component, profile_format=profile_format):
                 render_style = self._load(path)["render_style"]
                 loaded = loader.load_render_style(render_style)
 
@@ -256,28 +256,28 @@ class SubtitleProfileTreePhase4ATest(unittest.TestCase):
 
     def _cases(self):
         for component in self.COMPONENTS:
-            for platform in self.PLATFORMS:
+            for profile_format in self.FORMATS:
                 for suffix, mode in self.MODES.items():
                     yield (
                         component,
-                        platform,
+                        profile_format,
                         suffix,
                         mode,
                         Path("config/profiles")
                         / component
-                        / platform
+                        / profile_format
                         / "estandar" / "subtitulos"
-                        / f"subtitulo_{component}_{platform}_{suffix}.json",
+                        / f"subtitulo_{component}_{profile_format}_{suffix}.json",
                     )
 
     def _expected_paths(self):
         return {path for _, _, _, _, path in self._cases()}
 
     @staticmethod
-    def _display_name_for(platform, mode):
+    def _display_name_for(profile_format, mode):
         if mode == "single_line":
             return "Línea única"
-        return "Palabra única" if platform == "instagram" else "Palabra por palabra"
+        return "Palabra única" if profile_format == "vertical" else "Palabra por palabra"
 
     def _load(self, path):
         return json.loads(Path(path).read_text(encoding="utf-8"))

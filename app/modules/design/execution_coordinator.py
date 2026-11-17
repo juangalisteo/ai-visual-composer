@@ -20,6 +20,7 @@ from app.modules.video_component import (
     VideoDesignPreparationService,
     VideoDesignVisualTruthAdapter,
 )
+from app.modules.video_component import clip_batch
 from app.shared.config_manager import ConfigManager
 from app.modules.visual_design import VisualDesignInterpreter
 
@@ -140,8 +141,6 @@ class DesignExecutionCoordinator:
         profile_key=None,
         config_manager=None,
         ai_config=None,
-        generate_i2v_batch=None,
-        scene_clip_identity=None,
     ):
         if pipeline_start is None:
             pipeline_start = time.perf_counter()
@@ -213,7 +212,7 @@ class DesignExecutionCoordinator:
 
         video_clips_manifest_path, video_elapsed = (
             self._pipeline_telemetry.measure_stage(
-                generate_i2v_batch,
+                clip_batch.generate_video_clips,
                 storyboard_path=storyboard_path,
                 images_manifest_path=images_manifest_path,
                 project=project,
@@ -224,7 +223,7 @@ class DesignExecutionCoordinator:
 
         output_clip = self.ensure_single_video_design_clip(
             video_clips_manifest_path,
-            scene_clip_identity=scene_clip_identity,
+            scene_clip_identity=clip_batch.scene_clip_identity,
         )
 
         self._pipeline_telemetry.complete(

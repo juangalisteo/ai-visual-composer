@@ -28,10 +28,10 @@ class StudioOperationalIdentityTest(unittest.TestCase):
                 studio_profile_loader=Mock(load=Mock(return_value=SimpleNamespace())),
             )
             descriptor = subtitle_resolver.discover_profiles_for_family(
-                "studio", "test_platform", "test_family",
+                "studio", "test_format", "test_family",
             )[0]
             controller._select_from_list = Mock(
-                side_effect=("test_platform", "test_family", descriptor),
+                side_effect=("test_format", "test_family", descriptor),
             )
 
             selection = controller._select_studio_profile_selection(
@@ -42,7 +42,7 @@ class StudioOperationalIdentityTest(unittest.TestCase):
         self.assertEqual(
             OperationalProfileKey(
                 operational_key.component,
-                operational_key.platform,
+                operational_key.format,
                 operational_key.profile_id,
             ),
             selected_operational,
@@ -56,11 +56,15 @@ class StudioOperationalIdentityTest(unittest.TestCase):
         self.assertIsInstance(selection, StudioProfileSelection)
         self.assertFalse(hasattr(controller, "_active_studio_subtitle_key"))
 
-    def test_subtitle_selection_uses_operational_platform_as_discovery_context(self):
+    def test_subtitle_selection_uses_operational_format_as_discovery_context(self):
         controller = RunController()
-        descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "instagram", "estandar",
-        )[0]
+        descriptor = next(
+            item
+            for item in SubtitleProfileResolver().discover_profiles_for_family(
+                "studio", "vertical", "estandar",
+            )
+            if item.display_name == "Doble línea"
+        )
         messages = []
         controller._print = messages.append
         controller._select_from_list = Mock(
@@ -69,17 +73,17 @@ class StudioOperationalIdentityTest(unittest.TestCase):
 
         selected, original = controller._select_studio_subtitle_profile(
             StudioInputMode.SRT_VIDEO.value,
-            platform="instagram",
+            profile_format="vertical",
         )
 
         self.assertEqual(descriptor.key, selected)
         self.assertTrue(original)
-        self.assertNotIn("PLATAFORMA", "\n".join(messages))
+        self.assertNotIn("\nFORMATO\n", messages)
         controller._select_from_list.assert_any_call(
             labels.presentation_families(
                 SubtitleProfileResolver().discover_families(
                     "studio",
-                    "instagram",
+                    "vertical",
                 ),
             ),
         )
@@ -87,28 +91,28 @@ class StudioOperationalIdentityTest(unittest.TestCase):
     @staticmethod
     def _write_dynamic_profiles(root):
         operational_source = Path(
-            "config/profiles/studio/instagram/perfil_studio_instagram.json"
+            "config/profiles/studio/vertical/perfil_studio_vertical.json"
         )
         subtitle_source = Path(
-            "config/profiles/studio/instagram/estandar/subtitulos/"
-            "subtitulo_studio_instagram_linea_unica.json"
+            "config/profiles/studio/vertical/estandar/subtitulos/"
+            "subtitulo_studio_vertical_linea_unica.json"
         )
         operational = json.loads(operational_source.read_text(encoding="utf-8"))
         operational.update({
             "component": "studio",
-            "platform": "test_platform",
+            "format": "test_format",
             "profile_id": "test_operational",
             "display_name": "Operational test",
         })
         subtitle = json.loads(subtitle_source.read_text(encoding="utf-8"))
         subtitle.update({
             "component": "studio",
-            "platform": "test_platform",
+            "format": "test_format",
             "family": "test_family",
             "profile_id": "test_subtitle",
             "display_name": "Subtitle test",
         })
-        directory = root / "studio" / "test_platform"
+        directory = root / "studio" / "test_format"
         directory.mkdir(parents=True)
         (directory / "test_operational.json").write_text(
             json.dumps(operational), encoding="utf-8",
@@ -120,10 +124,10 @@ class StudioOperationalIdentityTest(unittest.TestCase):
         )
         return (
             ProfileResolver(root).discover_operational_profiles(
-                "studio", "test_platform",
+                "studio", "test_format",
             )[0].key,
             SubtitleProfileResolver(root).discover_profiles_for_family(
-                "studio", "test_platform", "test_family",
+                "studio", "test_format", "test_family",
             )[0].key,
         )
 

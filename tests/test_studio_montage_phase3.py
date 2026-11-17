@@ -140,7 +140,7 @@ class StudioMontagePhase3ContractTest(unittest.TestCase):
                 SimpleNamespace(video_extensions=(".mp4",))
             )
             plan = planner.create_plan(
-                OperationalProfileKey("studio", "instagram", "studio_instagram"),
+                OperationalProfileKey("studio", "vertical", "studio_vertical"),
                 False,
                 planner.parse_order("1 2", candidates),
             )
@@ -243,7 +243,7 @@ class StudioMontagePhase3RealFFmpegTest(unittest.TestCase):
         )
         candidates = planner.discover(SimpleNamespace(video_extensions=(".mp4",)))
         return planner.create_plan(
-            OperationalProfileKey("studio", "instagram", "studio_instagram"),
+            OperationalProfileKey("studio", "vertical", "studio_vertical"),
             False,
             planner.parse_order(order, candidates),
         )

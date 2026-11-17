@@ -2,6 +2,10 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -18,7 +22,7 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
 
     # Characters stripped only for detecting words that end in "-mente".
     # This does not modify the rendered subtitle text.
-    _MENTE_TRAILING_CHARS = ".,;:!?…¿¡-—\"'“”‘’«»()[]{}"
+    _ADVERB_SUFFIX_TRAILING_CHARS = ".,;:!?…¿¡-—\"'“”‘’«»()[]{}"
 
     def __init__(self, config):
         self.punctuation = PunctuationPolicy(config)
@@ -82,23 +86,37 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         return self._optimize_without_timing(blocks)
 
     def _optimize_with_timing(self, timing):
-        optimized = []
-        index = 1
+        timed_cues = []
 
         for segment in timing.segments:
             for word_group in self._split_words_by_gap(segment.words):
                 for cue_words in self._partition_words(word_group):
-                    optimized.append(
-                        self._format_block(
-                            index=index,
-                            start=self._seconds_to_time(cue_words[0].start),
-                            end=self._seconds_to_time(cue_words[-1].end),
-                            text=self._format_words(cue_words),
+                    timed_cues.append(
+                        (
+                            cue_words[0].start,
+                            cue_words[-1].end,
+                            cue_words,
+                            self._format_words(cue_words),
                         )
                     )
-                    index += 1
 
-        return optimized
+        return [
+            self._format_block(
+                index=index,
+                start=self._seconds_to_time(start),
+                end=self._seconds_to_time(end),
+                text=text,
+            )
+            for index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues,
+                    self.significant_gap_threshold,
+                    # Joined words go in front on a single line.
+                    text_joiner(self._format_line_words),
+                ),
+                start=1,
+            )
+        ]
 
     def _optimize_without_timing(self, blocks):
         optimized = []
@@ -149,14 +167,13 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         regular_group = []
 
         for word in words:
-            if self._is_mente_word(word):
+            if self._ends_with_adverb_suffix(word):
                 if regular_group:
                     chunks.extend(
                         self._partition_regular_group(tuple(regular_group))
                     )
                     regular_group = []
 
-                self._validate_single_word(word)
                 chunks.append((word,))
                 continue
 
@@ -210,7 +227,8 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
                 chunk.append(word)
 
             if not chunk:
-                self._validate_single_word(words[cursor])
+                # A word longer than the limit goes alone in its cue.
+                chunk.append(words[cursor])
 
             chunks.append(tuple(chunk))
             cursor += len(chunk)
@@ -220,23 +238,14 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
             return chunks
         return self._avoid_final_orphan(chunks)
 
-    def _validate_single_word(self, word):
-        text = self._word_text(word)
-
-        if len(text) > self.max_chars_per_line:
-            raise ValueError(
-                "Una palabra supera cue_policy.max_chars_per_line: "
-                f"{text}"
-            )
-
-    def _is_mente_word(self, word):
+    def _ends_with_adverb_suffix(self, word):
         text = self._word_text(word).strip().lower()
 
         if not text:
             return False
 
         normalized = text.rstrip(
-            self._MENTE_TRAILING_CHARS
+            self._ADVERB_SUFFIX_TRAILING_CHARS
         )
 
         return normalized.endswith("mente")
@@ -290,9 +299,6 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         current = []
 
         for word in words:
-            if word.end <= word.start:
-                continue
-
             if (
                 current
                 and word.start - current[-1].end
@@ -430,6 +436,9 @@ class ThreeTwoWordsModel(BaseSubtitleModel):
         )
 
     def _format_words(self, words):
+        return self._format_line_words(words)
+
+    def _format_line_words(self, words):
         text = " ".join(
             self._word_text(word)
             for word in words

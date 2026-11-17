@@ -253,7 +253,7 @@ class VideoBuildFactoriesTest(
             config_manager=config_manager,
         )
 
-    def test_context_factory_uses_injected_project_without_environment_lookup(self):
+    def test_context_factory_uses_injected_project_without_fallback_project(self):
         project = SimpleNamespace(
             subtitle_path=lambda: Path("project.srt"),
             storyboard_path=lambda: Path("project_storyboard.json"),
@@ -277,7 +277,7 @@ class VideoBuildFactoriesTest(
 
         with patch(
             "app.modules.video.video_build_context_factory.ProjectManager",
-            side_effect=AssertionError("No debe consultar MC_PROJECT_NAME."),
+            side_effect=AssertionError("No debe crear un proyecto de reserva."),
         ), patch(
             "app.modules.video.video_build_context_factory.AudioResolver"
         ) as audio_resolver_class, patch(
@@ -786,19 +786,14 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "off"
-            },
-            clear=False
-        ):
-            result = (
-                VideoBuildContextFactory()
-                ._apply_overlay_mode(
-                    config
-                )
+        result = (
+            VideoBuildContextFactory(
+                overlays_mode="off",
             )
+            ._apply_overlay_mode(
+                config
+            )
+        )
 
         self.assertFalse(
             result.overlays.enabled
@@ -813,7 +808,7 @@ class VideoBuildFactoriesTest(
             config.overlays.enabled
         )
 
-    def test_explicit_overlay_mode_overrides_conflicting_environment(
+    def test_explicit_overlay_mode_off_skips_folder_discovery(
         self
     ):
         config = video_config(
@@ -825,11 +820,7 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {"MC_OVERLAYS_MODE": "smart"},
-            clear=False,
-        ), patch(
+        with patch(
             "app.modules.video.video_build_context_factory"
             ".OverlayFolderResolver"
         ) as resolver_class:
@@ -841,35 +832,29 @@ class VideoBuildFactoriesTest(
         self.assertEqual(("Electricity",), result.overlays.folders)
         resolver_class.assert_not_called()
 
-    def test_explicit_absence_of_overlay_mode_ignores_environment(
+    def test_absent_overlay_mode_keeps_the_profile_overlays(
         self
     ):
         config = video_config(
             overlays=overlay_config(enabled=True)
         )
 
-        with patch.dict(
-            "os.environ",
-            {"MC_OVERLAYS_MODE": "off"},
-            clear=False,
+        for factory in (
+            VideoBuildContextFactory(),
+            VideoBuildContextFactory(overlays_mode=None),
         ):
-            result = VideoBuildContextFactory(
-                overlays_mode=None,
-            )._apply_overlay_mode(config)
+            result = factory._apply_overlay_mode(config)
 
-        self.assertTrue(result.overlays.enabled)
+            self.assertIs(config, result)
 
     def test_overlay_mode_on_overrides_a_disabled_profile(self):
         config = video_config(
             overlays=overlay_config(enabled=False)
         )
 
-        with patch.dict(
-            "os.environ",
-            {"MC_OVERLAYS_MODE": "on"},
-            clear=False,
-        ):
-            result = VideoBuildContextFactory()._apply_overlay_mode(config)
+        result = VideoBuildContextFactory(
+            overlays_mode="on",
+        )._apply_overlay_mode(config)
 
         self.assertTrue(result.overlays.enabled)
         self.assertFalse(config.overlays.enabled)
@@ -883,13 +868,7 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "smart"
-            },
-            clear=False
-        ), patch(
+        with patch(
             "app.modules.video.video_build_context_factory"
             ".OverlayFolderResolver"
         ) as resolver_class:
@@ -900,7 +879,9 @@ class VideoBuildFactoriesTest(
                 "Light Leaks"
             )
             result = (
-                VideoBuildContextFactory()
+                VideoBuildContextFactory(
+                    overlays_mode="smart",
+                )
                 ._apply_overlay_mode(
                     config
                 )
@@ -950,13 +931,7 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "smart"
-            },
-            clear=False
-        ), patch(
+        with patch(
             "app.modules.video.video_build_context_factory"
             ".OverlayFolderResolver"
         ) as resolver_class:
@@ -966,7 +941,9 @@ class VideoBuildFactoriesTest(
                 "Light Leaks"
             )
             result = (
-                VideoBuildContextFactory()
+                VideoBuildContextFactory(
+                    overlays_mode="smart",
+                )
                 ._apply_overlay_mode(
                     config
                 )
@@ -1002,13 +979,7 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "smart"
-            },
-            clear=False
-        ), patch(
+        with patch(
             "app.modules.video.video_build_context_factory"
             ".OverlayFolderResolver"
         ) as resolver_class:
@@ -1018,7 +989,9 @@ class VideoBuildFactoriesTest(
                 "Smoke"
             )
             result = (
-                VideoBuildContextFactory()
+                VideoBuildContextFactory(
+                    overlays_mode="smart",
+                )
                 ._apply_overlay_mode(
                     config
                 )
@@ -1041,13 +1014,7 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "smart"
-            },
-            clear=False
-        ), patch(
+        with patch(
             "app.modules.video.video_build_context_factory"
             ".OverlayFolderResolver"
         ) as resolver_class:
@@ -1057,7 +1024,9 @@ class VideoBuildFactoriesTest(
             )
 
             result = (
-                VideoBuildContextFactory()
+                VideoBuildContextFactory(
+                    overlays_mode="smart",
+                )
                 ._apply_overlay_mode(
                     config
                 )
@@ -1082,13 +1051,7 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "smart"
-            },
-            clear=False
-        ), patch(
+        with patch(
             "app.modules.video.video_build_context_factory"
             ".OverlayFolderResolver"
         ) as resolver_class:
@@ -1096,7 +1059,9 @@ class VideoBuildFactoriesTest(
             resolver.discover_valid_folders.return_value = ()
 
             result = (
-                VideoBuildContextFactory()
+                VideoBuildContextFactory(
+                    overlays_mode="smart",
+                )
                 ._apply_overlay_mode(
                     config
                 )
@@ -1114,8 +1079,8 @@ class VideoBuildFactoriesTest(
         self
     ):
         profile_path = Path(
-            "config/profiles/video/youtube/"
-            "perfil_video_youtube.json"
+            "config/profiles/video/horizontal/"
+            "perfil_video_horizontal.json"
         )
         before = profile_path.read_text(
             encoding="utf-8"
@@ -1126,16 +1091,11 @@ class VideoBuildFactoriesTest(
             )
         )
 
-        with patch.dict(
-            "os.environ",
-            {
-                "MC_OVERLAYS_MODE": "off"
-            },
-            clear=False
-        ):
-            VideoBuildContextFactory()._apply_overlay_mode(
-                config
-            )
+        VideoBuildContextFactory(
+            overlays_mode="off",
+        )._apply_overlay_mode(
+            config
+        )
 
         after = profile_path.read_text(
             encoding="utf-8"

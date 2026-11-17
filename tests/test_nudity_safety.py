@@ -24,6 +24,12 @@ class RecordingDetector:
         return next(self.responses)
 
 
+NUDENET_MODEL_AVAILABLE = (
+    Path(__file__).resolve().parents[1] / "models" / "visual_safety" / "nudenet-320n.onnx"
+).is_file()
+NUDENET_MODEL_REASON = "Falta el modelo NudeNet en models/visual_safety/."
+
+
 class NuditySafetyCheckTest(unittest.TestCase):
     def _asset(self, image_path, metadata=()):
         return create_generated_asset(
@@ -63,6 +69,7 @@ class NuditySafetyCheckTest(unittest.TestCase):
             )
             self.assertEqual([str(image_path)], detector.paths)
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_only_configured_exposed_classes_trigger_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
             image_path = Path(directory) / "candidate.png"
@@ -120,6 +127,7 @@ class NuditySafetyCheckTest(unittest.TestCase):
             self.assertEqual([], calls)
             self.assertEqual(1, len(result.history.generated_assets))
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_two_nudity_retries_then_forced_acceptance(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -165,6 +173,7 @@ class NuditySafetyCheckTest(unittest.TestCase):
                 result.history.validation_reports[-1].status,
             )
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_safe_retry_candidate_is_accepted(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -1,10 +1,11 @@
 from dataclasses import replace
-import os
 from pathlib import Path
 
 from app.managers.project_manager import ProjectManager
 from app.shared.progress_logger import ProgressLogger
 
+from app.modules.subtitles.policies.punctuation import reconcile_timing_text
+from app.modules.subtitles.policies.timing import SubtitleTimingResolver
 from app.modules.video.media.audio_resolver import AudioResolver
 from app.modules.video.media.media_loader import MediaLoader
 from app.modules.video.media.timeline_builder import TimelineBuilder
@@ -15,9 +16,6 @@ from app.modules.video.video_build_context import VideoBuildContext
 from app.modules.video.video_config import VideoConfigLoader
 
 
-_OVERLAYS_MODE_UNSET = object()
-
-
 class VideoBuildContextFactory:
 
     def __init__(
@@ -26,7 +24,7 @@ class VideoBuildContextFactory:
         warnings=None,
         config_manager=None,
         project=None,
-        overlays_mode=_OVERLAYS_MODE_UNSET,
+        overlays_mode=None,
     ):
         self.subtitle_profile = subtitle_profile
         self.warnings = warnings
@@ -164,25 +162,61 @@ class VideoBuildContextFactory:
             f"{video_config.fps}"
         )
 
+        subtitle_timing = (
+            self._subtitle_timing(
+                subtitle_path=media.subtitle_path,
+                project=project
+            )
+            if render_subtitles
+            else None
+        )
+
         return VideoBuildContext(
             config=video_config,
             media=media,
             timeline=timeline,
             render_subtitles=bool(render_subtitles),
+            subtitle_timing=subtitle_timing,
+        )
+
+    @staticmethod
+    def _subtitle_timing(
+        subtitle_path,
+        project
+    ):
+        """Return the word times for the subtitles.
+
+        When the project has a script, its words go on the Whisper times
+        with the same alignment the SRT got (``reconcile_timing_text``), so
+        the word effects see the words of the SRT lines.
+        """
+        timing = SubtitleTimingResolver().resolve(
+            subtitle_path=subtitle_path
+        )
+
+        if timing is None:
+            return None
+
+        script_path = Path(
+            project.script_path()
+        )
+
+        if not script_path.is_file():
+            return timing
+
+        return reconcile_timing_text(
+            script_path.read_text(
+                encoding="utf-8"
+            ),
+            timing,
+            authoritative=True
         )
 
     def _apply_overlay_mode(
         self,
         video_config
     ):
-        if self._overlays_mode is _OVERLAYS_MODE_UNSET:
-            overlays_mode = os.environ.get(
-                "MC_OVERLAYS_MODE",
-                "",
-            )
-        else:
-            overlays_mode = self._overlays_mode or ""
-        overlays_mode = overlays_mode.strip().lower()
+        overlays_mode = (self._overlays_mode or "").strip().lower()
 
         if not overlays_mode:
             return video_config

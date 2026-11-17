@@ -25,8 +25,8 @@ def _video_config(profile):
 def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
     resolver = ProfileResolver()
     expected_dimensions = {
-        "instagram": (1080, 1920),
-        "youtube": (1920, 1080),
+        "vertical": (1080, 1920),
+        "horizontal": (1920, 1080),
     }
 
     for component in (
@@ -34,8 +34,8 @@ def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
         ProfileComponent.IMAGEN,
         ProfileComponent.VIDEO,
     ):
-        for platform, dimensions in expected_dimensions.items():
-            key = OperationalProfileKey(component, platform, f"{component.value}_{platform}")
+        for profile_format, dimensions in expected_dimensions.items():
+            key = OperationalProfileKey(component, profile_format, f"{component.value}_{profile_format}")
             profile = resolver.load_operational(key)
 
             assert "resolution" not in profile
@@ -46,7 +46,7 @@ def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
 def test_legacy_resolution_and_format_do_not_determine_runtime_pixels():
     resolver = ProfileResolver()
     profile = resolver.load_operational(
-        OperationalProfileKey("imagen", "instagram", "imagen_instagram")
+        OperationalProfileKey("imagen", "vertical", "imagen_vertical")
     )
     variant = deepcopy(profile)
     variant["resolution"] = "1x1"
@@ -59,16 +59,15 @@ def test_legacy_resolution_and_format_do_not_determine_runtime_pixels():
 def test_studio_output_dimensions_are_the_only_geometry_authority():
     resolver = ProfileResolver()
     expected_dimensions = {
-        "instagram": (1080, 1920),
-        "youtube": (1920, 1080),
+        "vertical": (1080, 1920),
+        "horizontal": (1920, 1080),
     }
 
-    for platform, dimensions in expected_dimensions.items():
-        key = OperationalProfileKey("studio", platform, f"studio_{platform}")
+    for profile_format, dimensions in expected_dimensions.items():
+        key = OperationalProfileKey("studio", profile_format, f"studio_{profile_format}")
         profile = resolver.load_operational(key)
         variant = deepcopy(profile)
         variant["resolution"] = "1x1"
-        variant["format"] = "horizontal" if platform == "instagram" else "vertical"
 
         loaded = StudioProfileLoader().load(variant, key)
 

@@ -286,7 +286,7 @@ def _length_reference_from_prompt(
         prompt,
         "aproximadamente entre"
     )
-    recommended_max_words = _extract_number_after_y(
+    recommended_max_words = _extract_range_upper_bound(
         prompt
     )
     target_words = _extract_number_after(
@@ -335,7 +335,7 @@ def _extract_number_after(
     )
 
 
-def _extract_number_after_y(
+def _extract_range_upper_bound(
     text: str
 ) -> int:
     lower_text = text.lower()

@@ -6,7 +6,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+)
+from app.managers.project_manager import ProjectManager
+from app.modules.design import DesignExecutionCoordinator
 from app.modules.images import ImageDesignPreparationService
+from app.shared.profile_identity import (
+    OperationalProfileKey,
+    ProfileComponent,
+)
 
 
 class FakeVisualDesignInterpreter:
@@ -117,17 +127,24 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "design_image",
-                        "MC_PROJECT_NAME": "design start",
-                    },
-                    clear=False
-                ), patch(
-                    "app.core.start.ConfigManager",
+                operational_profile_key = OperationalProfileKey(
+                    ProfileComponent.IMAGEN,
+                    "test_format",
+                    "test_profile",
+                )
+                request = ApplicationExecutionRequest(
+                    project_name="design start",
+                    clear_output=False,
+                    operational_profile_key=operational_profile_key,
+                    subtitle_profile_key=None,
+                    route=DesignExecutionRequest(mode="design_image"),
+                )
+                with patch(
+                    "app.core.start.ConfigManager"
+                ) as config_manager, patch(
+                    "app.modules.standard.execution_coordinator.ScriptOperation",
                     side_effect=AssertionError(
-                        "ConfigManager must not run before design route"
+                        "ScriptOperation must not run before design route"
                     )
                 ), patch(
                     "app.modules.design.execution_coordinator.ImageDesignPreparationService",
@@ -138,14 +155,23 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     "app.modules.design.execution_coordinator.ImageBuilder",
                     return_value=fake_image_builder
                 ), patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
-                    result = start.iniciar()
+                    config_manager.return_value.get_profile_config.return_value = None
+                    config_manager.return_value.get_ai_config.return_value = None
+                    result = start.run_application(request=request)
 
+                config_manager.assert_called_once_with(
+                    operational_profile_key=operational_profile_key
+                )
                 self.assertEqual(
                     "images_manifest.json",
                     Path(result).name
+                )
+                self.assertIn(
+                    "design start",
+                    Path(result).parts
                 )
                 self.assertEqual(
                     1,
@@ -192,63 +218,57 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "design_image",
-                        "MC_PROJECT_NAME": "design image",
-                    },
-                    clear=False
-                ), patch(
-                    "app.core.start.ScriptOperation",
+                with patch(
+                    "app.modules.script.operation.ScriptOperation.execute",
                     side_effect=AssertionError(
                         "ScriptOperation must not run"
                     )
                 ), patch(
-                    "app.core.start.ScriptPreparationService",
+                    "app.modules.script.operation.ScriptPreparationService",
                     side_effect=AssertionError(
                         "ScriptPreparationService must not run"
                     )
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.audio.voice_builder.VoiceBuilder.build",
                     side_effect=AssertionError(
                         "VoiceBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.audio.music_selector.MusicSelector.select",
                     side_effect=AssertionError(
                         "MusicSelector must not run"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer",
+                    "app.modules.audio.audio_mixer.AudioMixer.build",
                     side_effect=AssertionError(
                         "AudioMixer must not run"
                     )
                 ), patch(
-                    "app.core.start.SubtitleBuilder",
+                    "app.modules.subtitles.io.subtitle_builder.SubtitleBuilder.build",
                     side_effect=AssertionError(
                         "SubtitleBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.SrtOptimizer",
+                    "app.modules.subtitles.pipeline.srt_optimizer.SrtOptimizer.optimize",
                     side_effect=AssertionError(
                         "SrtOptimizer must not run"
                     )
                 ), patch(
-                    "app.core.start.StoryboardBuilder",
+                    "app.modules.storyboard.storyboard_builder.StoryboardBuilder.build",
                     side_effect=AssertionError(
                         "StoryboardBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.VideoBuilder",
+                    "app.modules.video.video_builder.VideoBuilder.build",
                     side_effect=AssertionError(
                         "VideoBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
-                    result = start.ejecutar_diseno_imagen(
+                    result = DesignExecutionCoordinator().run_image(
+                        project=ProjectManager(project_name="design image"),
                         preparation_service=ImageDesignPreparationService(
                             visual_interpreter=(
                                 FakeVisualDesignInterpreter()
@@ -313,7 +333,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
         with self.assertRaises(
             ValueError
         ):
-            start._ensure_single_design_scene(
+            DesignExecutionCoordinator.ensure_single_design_scene(
                 [
                     {
                         "scene": 1
@@ -327,14 +347,14 @@ class ImageDesignRuntimeTest(unittest.TestCase):
     def test_design_uses_target_image_profile_dimensions(self):
         cases = (
             (
-                "config/profiles/imagen/instagram/"
-                "perfil_imagen_instagram.json",
+                "config/profiles/imagen/vertical/"
+                "perfil_imagen_vertical.json",
                 1080,
                 1920
             ),
             (
-                "config/profiles/imagen/youtube/"
-                "perfil_imagen_youtube.json",
+                "config/profiles/imagen/horizontal/"
+                "perfil_imagen_horizontal.json",
                 1920,
                 1080
             ),
@@ -357,18 +377,6 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                 self.assertEqual(
                     expected_height,
                     profile["video_style"]["height"]
-                )
-                self.assertEqual(
-                    False,
-                    bool(
-                        profile.get(
-                            "image_validation",
-                            {}
-                        ).get(
-                            "enabled",
-                            False
-                        )
-                    )
                 )
 
 

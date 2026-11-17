@@ -40,8 +40,15 @@ class FailureCheck(ValidationCheck):
         )
 
 
+NUDENET_MODEL_AVAILABLE = (
+    Path(__file__).resolve().parents[1] / "models" / "visual_safety" / "nudenet-320n.onnx"
+).is_file()
+NUDENET_MODEL_REASON = "Falta el modelo NudeNet en models/visual_safety/."
+
+
 class ImageQualityFlowCoordinatorTest(unittest.TestCase):
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_approved_flow_creates_approved_asset_and_history(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             image_path = Path(

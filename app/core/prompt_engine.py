@@ -48,7 +48,6 @@ class PromptEngine:
             )
 
         tone = profile["tone"]
-        platform = profile["platform"]
         format_type = profile["format"]
         duration = int(profile["duration"])
 
@@ -70,11 +69,6 @@ class PromptEngine:
         task_text = self.read_prompt_file(
             "tasks",
             "script"
-        )
-
-        platform_text = self.read_prompt_file(
-            "platforms",
-            platform
         )
 
         format_text = self.read_prompt_file(
@@ -107,9 +101,6 @@ IDENTIDAD Y TONO:
 
 TAREA:
 {task_text}
-
-PLATAFORMA:
-{platform_text}
 
 FORMATO:
 {format_text}
@@ -148,7 +139,6 @@ SALIDA OBLIGATORIA:
             )
 
         tone = profile["tone"]
-        platform = profile["platform"]
         format_type = profile["format"]
 
         tone_text = self.read_prompt_file(
@@ -159,11 +149,6 @@ SALIDA OBLIGATORIA:
         task_text = self.read_prompt_file(
             "tasks",
             "storyboard"
-        )
-
-        platform_text = self.read_prompt_file(
-            "platforms",
-            platform
         )
 
         format_text = self.read_prompt_file(
@@ -206,9 +191,6 @@ IDENTIDAD Y TONO:
 
 TAREA VISUAL:
 {task_text}
-
-PLATAFORMA:
-{platform_text}
 
 FORMATO:
 {format_text}

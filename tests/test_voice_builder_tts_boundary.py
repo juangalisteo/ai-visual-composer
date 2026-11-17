@@ -11,6 +11,7 @@ from app.modules.audio.tts_contracts import (
     TtsBackendDiagnostic,
     TtsBackendError,
     TtsBackendErrorKind,
+    TtsPause,
     TtsSynthesisResult,
     TtsWordTiming,
 )
@@ -39,9 +40,22 @@ class _ConfigurationManager:
 class _Backend:
     backend_key = "piper_onnx"
 
-    def __init__(self, *, timings=None, error=None):
+    def __init__(
+        self,
+        *,
+        timings=None,
+        error=None,
+        pauses=(),
+        container="mp3",
+        codec="mp3",
+        sample_rate_hz=44_100,
+    ):
         self.timings = timings
         self.error = error
+        self.pauses = pauses
+        self.container = container
+        self.codec = codec
+        self.sample_rate_hz = sample_rate_hz
         self.requests = []
 
     def synthesize(self, request):
@@ -55,12 +69,13 @@ class _Backend:
         return TtsSynthesisResult(
             staged_audio=TtsAudioArtifact(
                 path=staged_audio,
-                container="mp3",
-                codec="mp3",
-                sample_rate_hz=24_000,
+                container=self.container,
+                codec=self.codec,
+                sample_rate_hz=self.sample_rate_hz,
                 channels=1,
             ),
             word_timings=self.timings,
+            pauses=self.pauses,
         )
 
 
@@ -96,6 +111,37 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
             self.assertEqual(output_path, result)
             self.assertEqual(b"neutral staged audio", output_path.read_bytes())
             self.assertEqual("Texto de prueba", backend.requests[0].text)
+
+    def test_staged_audio_not_at_44100_hz_is_published_as_44100_hz_mp3(self):
+        cases = {
+            "wav": _Backend(container="wav", codec="pcm_s16le", sample_rate_hz=22_050),
+            "mpeg2_mp3": _Backend(sample_rate_hz=24_000),
+        }
+        for label, backend in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                output_path = root / "audio" / "voz.mp3"
+                commands = []
+
+                def encode(command, **kwargs):
+                    commands.append(command)
+                    Path(command[-1]).write_bytes(b"encoded audio")
+
+                with patch(
+                    "app.modules.audio.voice_builder.subprocess.run",
+                    side_effect=encode,
+                ):
+                    _builder(
+                        _voice_configuration(),
+                        backend,
+                        root / "workspaces",
+                    ).build("Texto de prueba", output_path=output_path)
+
+                self.assertEqual(1, len(commands))
+                command = commands[0]
+                self.assertEqual("44100", command[command.index("-ar") + 1])
+                self.assertEqual("libmp3lame", command[command.index("-c:a") + 1])
+                self.assertEqual(b"encoded audio", output_path.read_bytes())
 
     def test_default_registry_registers_only_piper_without_synthesizing(self):
         builder = VoiceBuilder(
@@ -149,6 +195,27 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
             self.assertFalse(backend.requests[0].workspace.path.exists())
             self.assertEqual((), tuple(workspace_parent.iterdir()))
 
+    def test_exposes_the_backend_pauses_of_the_last_published_voice(self):
+        pauses = (TtsPause(0.4, 0.9), TtsPause(1.6, 3.1))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            builder = _builder(
+                _voice_configuration(),
+                _Backend(pauses=pauses),
+                root / "workspaces",
+            )
+            self.assertEqual((), builder.last_pauses)
+
+            builder.build("Uno. Dos.", output_path=root / "audio" / "voz.mp3")
+            self.assertEqual(pauses, builder.last_pauses)
+
+            builder._backend_registry = TtsBackendRegistry(
+                (_Backend(error=RuntimeError("fallo")),)
+            )
+            with self.assertRaises(OperationalError):
+                builder.build("Uno. Dos.", output_path=root / "audio" / "voz.mp3")
+            self.assertEqual((), builder.last_pauses)
+
     def test_backend_error_is_neutral_operational_error_with_full_cause_chain(self):
         original_cause = RuntimeError("transport unavailable")
         backend_error = TtsBackendError(
@@ -179,6 +246,38 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
         self.assertIs(caught.exception.__cause__, backend_error)
         self.assertIs(backend_error.__cause__, original_cause)
 
+    def test_invalid_pause_reaches_the_user_as_spanish_configuration_error(self):
+        document = json.loads(
+            Path("config/voice_configs/piper_davefx.json").read_text(encoding="utf-8")
+        )
+        document["prosody"]["paragraph_pause_seconds"] = -1
+
+        class _InvalidConfigurationManager:
+            def get_tts_voice_configuration(self):
+                return load_tts_voice_configuration(document)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            backend = _Backend()
+            builder = VoiceBuilder(
+                config_manager=_InvalidConfigurationManager(),
+                backend_registry=TtsBackendRegistry((backend,)),
+                workspace_parent=root / "workspaces",
+            )
+            with self.assertRaises(OperationalError) as caught:
+                builder.build("texto", output_path=root / "voz.mp3")
+
+        context = caught.exception.context
+        self.assertEqual("CONFIG", context.family)
+        self.assertEqual(
+            "La configuración de la voz no es válida: "
+            "prosody.paragraph_pause_seconds debe ser un número de segundos "
+            "mayor o igual que 0 (0 = sin pausa extra); se recibió -1.",
+            context.user_message,
+        )
+        self.assertIn("config/voice_configs/", context.recommended_action)
+        self.assertEqual([], backend.requests)
+
     def test_current_voice_documents_resolve_their_declared_piper_capability(self):
         expected = {
             "piper_carlfm": "piper_voice_carlfm",
@@ -199,6 +298,8 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
                 self.assertEqual(voice_id, request.voice.voice_id)
                 self.assertIsNone(request.voice.backend_voice_id)
                 self.assertEqual(1.0, request.voice.prosody.speaking_rate)
+                self.assertEqual(0.5, request.voice.prosody.sentence_pause_seconds)
+                self.assertEqual(0.35, request.voice.prosody.paragraph_pause_seconds)
 
     def test_facade_has_no_direct_client_or_component_backend_knowledge(self):
         from app.modules.audio import voice_builder
@@ -209,6 +310,7 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
 
         for component_path in (
             Path("app/core/start.py"),
+            Path("app/modules/standard/execution_coordinator.py"),
             Path("app/modules/images/image_builder.py"),
             Path("app/modules/video/video_builder.py"),
         ):

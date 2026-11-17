@@ -43,11 +43,8 @@ def _policy(**changes):
     policy = {
         "mode": "roll_up",
         "text_case": "original",
-        "uppercase": False,
         "max_chars_per_line": 8,
         "visible_lines": 3,
-        "min_duration": 1.0,
-        "max_duration": 7.0,
         "significant_gap_threshold": 0.35,
         "punctuation": PUNCTUATION,
     }
@@ -229,12 +226,12 @@ def test_shared_preparation_transports_roll_up_policy_to_dynamic_ass(tmp_path):
         prepared.cleanup()
 
 
-def test_instagram_karaoke_roll_up_profiles_are_discovered_declaratively():
+def test_vertical_karaoke_roll_up_profiles_are_discovered_declaratively():
     resolver = SubtitleProfileResolver()
 
     for component in ProfileComponent:
         descriptors = resolver.discover_profiles_for_family(
-            component, "instagram", "karaoke"
+            component, "vertical", "karaoke"
         )
         descriptor = next(item for item in descriptors if item.mode == "roll_up")
         profile = resolver.load(descriptor.key)
@@ -243,7 +240,7 @@ def test_instagram_karaoke_roll_up_profiles_are_discovered_declaratively():
         assert profile.display_name == "Desplazamiento vertical"
         assert isinstance(CueModelRegistry().create(profile.cue_policy), RollUpModel)
         assert profile.cue_policy["visible_lines"] == 3
-        assert profile.cue_policy["max_chars_per_line"] == 40
+        assert profile.cue_policy["max_chars_per_line"] == 24
         assert render_style.scroll_duration_ms == 200
         assert render_style.dynamic is True
         assert profile.render_style == STYLE | {

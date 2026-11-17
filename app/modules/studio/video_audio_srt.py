@@ -11,7 +11,10 @@ from app.modules.video.subtitles.subtitle_render_preparation import (
 from app.modules.video.subtitles.ass_subtitle_builder import (
     SubtitleRenderBackend,
 )
-from app.modules.studio.input_preparation import StudioInputPreparationService
+from app.modules.studio.input_preparation import (
+    StudioInputMode,
+    StudioInputPreparationService,
+)
 from app.modules.studio.render_service import StudioOutputValidator
 from app.shared.media_probe import MediaProbe
 from app.shared.operational_error import (
@@ -19,6 +22,9 @@ from app.shared.operational_error import (
     create_operational_error,
     summarize_technical_text,
 )
+
+
+_MODE_LABEL = StudioInputMode.VIDEO_AUDIO_SRT.label
 
 
 class StudioVideoAudioSrtInputError(ValueError):
@@ -55,6 +61,11 @@ class StudioVideoAudioSrtInputService:
         self.directory = Path(directory)
 
     def discover(self, subtitles=False):
+        if not self.directory.is_dir():
+            raise StudioVideoAudioSrtInputError(
+                f"No existe la carpeta de entrada {_MODE_LABEL}: "
+                f"{self.directory}."
+            )
         videos = self._candidates((".mp4",))
         audios = self._candidates(self.audio_extensions)
         subtitle_paths = (
@@ -63,7 +74,7 @@ class StudioVideoAudioSrtInputService:
             else ()
         )
         self._require_candidates(videos, "MP4")
-        self._require_candidates(audios, "audio")
+        self._require_candidates(audios, "de audio")
         if subtitles:
             self._require_candidates(subtitle_paths, "SRT")
         return StudioVideoAudioSrtCandidates(
@@ -122,7 +133,7 @@ class StudioVideoAudioSrtInputService:
     def _require_candidates(self, candidates, label):
         if not candidates:
             raise StudioVideoAudioSrtInputError(
-                f"No se encontro ningun archivo {label} en {self.directory}."
+                f"No se encontró ningún archivo {label} en {self.directory}."
             )
 
     def _selected_candidate(self, candidates, selected_path, label):
@@ -130,14 +141,14 @@ class StudioVideoAudioSrtInputService:
             selected_path = Path(selected_path)
             if selected_path not in candidates:
                 raise StudioVideoAudioSrtInputError(
-                    "La seleccion VIDEO + AUDIO SRT de "
-                    f"{label} no es valida: {selected_path}."
+                    f"La selección {_MODE_LABEL} de "
+                    f"{label} no es válida: {selected_path}."
                 )
             return selected_path
         if len(candidates) > 1:
             names = ", ".join(path.name for path in candidates)
             raise StudioVideoAudioSrtInputError(
-                "VIDEO + AUDIO SRT requiere seleccionar un archivo "
+                f"{_MODE_LABEL} requiere seleccionar un archivo "
                 f"{label}. Se encontraron: {names}."
             )
         return candidates[0]
@@ -159,27 +170,27 @@ class StudioVideoAudioSrtService:
 
     def render(self, plan, output_path, profile, subtitle_profile=None):
         if not isinstance(plan, StudioVideoAudioSrtPlan):
-            raise TypeError("VIDEO + AUDIO SRT requiere un plan estructurado.")
+            raise TypeError(f"{_MODE_LABEL} requiere un plan estructurado.")
         if not plan.video_path.is_file():
             raise FileNotFoundError(
-                f"No existe el MP4 VIDEO + AUDIO SRT: {plan.video_path}"
+                f"No existe el MP4 {_MODE_LABEL}: {plan.video_path}"
             )
         if not plan.audio_path.is_file():
             raise FileNotFoundError(
-                f"No existe el audio VIDEO + AUDIO SRT: {plan.audio_path}"
+                f"No existe el audio {_MODE_LABEL}: {plan.audio_path}"
             )
         video = self.probe.inspect(plan.video_path)
         video_duration = video.duration
         if video_duration <= 0:
             raise StudioVideoAudioSrtError(
-                "La duracion del video debe ser positiva."
+                "La duración del video debe ser positiva."
             )
         try:
             audio_duration = self.probe.get_duration(plan.audio_path)
         except Exception as error:
-            raise StudioVideoAudioSrtError("No se pudo detectar la duracion del audio nuevo.") from error
+            raise StudioVideoAudioSrtError("No se pudo detectar la duración del audio nuevo.") from error
         if audio_duration <= 0:
-            raise StudioVideoAudioSrtError("La duracion del audio nuevo debe ser positiva.")
+            raise StudioVideoAudioSrtError("La duración del audio nuevo debe ser positiva.")
         music_path = self._validated_music_path(plan, audio_duration, video_duration)
         output_path = Path(output_path)
         if output_path.exists():
@@ -196,7 +207,7 @@ class StudioVideoAudioSrtService:
         filters = [
             f"[0:v:0]scale={profile.width}:{profile.height}:"
             f"force_original_aspect_ratio=decrease,pad={profile.width}:"
-            f"{profile.height}:(ow-iw)/2:(oh-ih),setsar=1,fps={profile.fps},"
+            f"{profile.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={profile.fps},"
             f"format={profile.pixel_format},trim=duration={video_duration:.6f},"
             "setpts=PTS-STARTPTS[studio_base]"
         ]
@@ -222,8 +233,11 @@ class StudioVideoAudioSrtService:
             filters.extend([
                 f"[1:a:0]aresample={profile.audio_sample_rate},"
                 f"atrim=duration={audio_duration:.6f},asetpts=PTS-STARTPTS[new_audio]",
-                f"[2:a:0]aresample={profile.audio_sample_rate},"
-                f"atrim=duration={remaining_duration:.6f},asetpts=PTS-STARTPTS[tail_music]",
+                f"[2:a:0]volume={profile.music.volume:.6f},"
+                f"aresample={profile.audio_sample_rate},"
+                f"atrim=duration={remaining_duration:.6f},asetpts=PTS-STARTPTS,"
+                f"alimiter=limit={profile.music.limiter_limit:.6f}:"
+                "level=false:latency=true[tail_music]",
                 "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]",
             ])
         elif audio_duration < video_duration:
@@ -261,7 +275,7 @@ class StudioVideoAudioSrtService:
                     metadata["stderr_summary"] = stderr
                 raise create_operational_error(
                     family="FFMPEG",
-                    user_message="FFmpeg no pudo generar VIDEO + AUDIO SRT.",
+                    user_message=f"FFmpeg no pudo generar {_MODE_LABEL}.",
                     recommended_action="Revisa los archivos de entrada y el diagnóstico del proceso.",
                     operation="STUDIO/video_audio_srt",
                     resource=str(output_path),
@@ -279,18 +293,18 @@ class StudioVideoAudioSrtService:
             return None
         if plan.audio_tail_mode not in {"silence", "music"}:
             raise ValueError(
-                "El tratamiento final de audio VIDEO + AUDIO SRT no es valido."
+                f"El tratamiento final de audio {_MODE_LABEL} no es válido."
             )
         if plan.audio_tail_mode == "silence":
             return None
         if plan.music_path is None:
             raise ValueError(
-                "COMPLETAR CON MUSICA requiere una pista musical seleccionada."
+                "COMPLETAR CON MÚSICA requiere una pista musical seleccionada."
             )
         music_path = Path(plan.music_path)
         if not music_path.is_file():
             raise FileNotFoundError(
-                f"No existe la musica VIDEO + AUDIO SRT: {music_path}"
+                f"No existe la música {_MODE_LABEL}: {music_path}"
             )
         return music_path
 
@@ -298,16 +312,16 @@ class StudioVideoAudioSrtService:
         if subtitle_path is None:
             if subtitle_profile is not None:
                 raise ValueError(
-                    "VIDEO + AUDIO SRT sin subtitulos no admite perfil de subtitulos."
+                    f"{_MODE_LABEL} sin subtítulos no admite perfil de subtítulos."
                 )
             return None
         if subtitle_profile is None:
             raise ValueError(
-                "VIDEO + AUDIO SRT con SRT requiere perfil de subtitulos STUDIO."
+                f"{_MODE_LABEL} con SRT requiere perfil de subtítulos STUDIO."
             )
         if not Path(subtitle_path).is_file():
             raise FileNotFoundError(
-                f"No existe el SRT VIDEO + AUDIO SRT: {subtitle_path}"
+                f"No existe el SRT {_MODE_LABEL}: {subtitle_path}"
             )
         if not self.FONTS_DIRECTORY.is_dir():
             raise FileNotFoundError(
@@ -318,7 +332,7 @@ class StudioVideoAudioSrtService:
         )
         if abs(render_style.offset) > 0.000001:
             raise ValueError(
-                "STUDIO requiere offset=0 para preservar los timings SRT."
+                "STUDIO requiere offset=0 para preservar los tiempos del SRT."
             )
         return SubtitleRenderPreparation(
             style_builder=self.style_builder

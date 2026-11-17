@@ -25,9 +25,9 @@ def _document():
     return WanVideoComponentDocument(
         kind="video_component",
         operational_profile=OperationalProfileKey(
-            "video", "fixture_platform", "fixture_profile"
+            "video", "fixture_format", "fixture_profile"
         ),
-        platform="fixture_platform",
+        format="fixture_format",
         generation=WanGenerationParameters(
             width=448,
             height=800,
@@ -36,7 +36,7 @@ def _document():
             seed_mode="fixed",
             seed=7,
         ),
-        delivery=WanDeliveryParameters(width=1080, height=1920),
+        delivery=WanDeliveryParameters(),
         sampling=WanSamplingParameters(
             steps=20,
             cfg=5.0,
@@ -57,8 +57,6 @@ def _clip(scene_number=1):
         fps=12,
         generation_width=448,
         generation_height=800,
-        target_width=1080,
-        target_height=1920,
         steps=20,
         cfg=5.0,
         sampler="uni_pc",
@@ -75,13 +73,9 @@ class WanContractsTest(unittest.TestCase):
 
     def test_delivery_parameters_validate_supported_intermediate_outputs(self):
         lossless = WanDeliveryParameters(
-            width=1080,
-            height=1920,
             intermediate_output="lossless_ffv1",
         )
         legacy = WanDeliveryParameters(
-            width=1080,
-            height=1920,
             intermediate_output="savevideo_h264",
         )
 
@@ -95,7 +89,7 @@ class WanContractsTest(unittest.TestCase):
         )
 
     def test_delivery_parameters_adapt_legacy_absence_to_savevideo_h264(self):
-        delivery = WanDeliveryParameters(width=1080, height=1920)
+        delivery = WanDeliveryParameters()
 
         self.assertEqual(
             WanIntermediateOutput.SAVEVIDEO_H264,
@@ -105,8 +99,6 @@ class WanContractsTest(unittest.TestCase):
     def test_delivery_parameters_reject_invalid_intermediate_output(self):
         with self.assertRaisesRegex(ValueError, "intermediate_output"):
             WanDeliveryParameters(
-                width=1080,
-                height=1920,
                 intermediate_output="unsupported_output",
             )
 
@@ -116,20 +108,20 @@ class WanContractsTest(unittest.TestCase):
         self.assertTrue(is_dataclass(document))
         self.assertTrue(document.__dataclass_params__.frozen)
         self.assertEqual("fixture_profile", document.operational_profile.profile_id)
-        self.assertEqual("fixture_platform", document.platform)
+        self.assertEqual("fixture_format", document.format)
         self.assertNotIn("display_name", {field.name for field in fields(document)})
         with self.assertRaises(FrozenInstanceError):
-            document.platform = "other_platform"
+            document.format = "other_format"
 
-    def test_document_requires_video_identity_and_matching_platform(self):
+    def test_document_requires_video_identity_and_matching_format(self):
         values = _document()
         with self.assertRaises(ValueError):
             WanVideoComponentDocument(
                 kind="video_component",
                 operational_profile=OperationalProfileKey(
-                    "imagen", "fixture_platform", "fixture_profile"
+                    "imagen", "fixture_format", "fixture_profile"
                 ),
-                platform="fixture_platform",
+                format="fixture_format",
                 generation=values.generation,
                 delivery=values.delivery,
                 sampling=values.sampling,
@@ -138,7 +130,7 @@ class WanContractsTest(unittest.TestCase):
             WanVideoComponentDocument(
                 kind="video_component",
                 operational_profile=values.operational_profile,
-                platform="other_platform",
+                format="other_format",
                 generation=values.generation,
                 delivery=values.delivery,
                 sampling=values.sampling,

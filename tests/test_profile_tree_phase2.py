@@ -14,69 +14,69 @@ from app.shared.profile_resolver import ProfileResolver
 class ProfileTreePhase2Test(unittest.TestCase):
 
     COMPONENT_PATHS = {
-        "guion_instagram": Path(
-            "config/profiles/guion/instagram/"
-            "perfil_guion_instagram.json"
+        "guion_vertical": Path(
+            "config/profiles/guion/vertical/"
+            "perfil_guion_vertical.json"
         ),
-        "guion_youtube": Path(
-            "config/profiles/guion/youtube/"
-            "perfil_guion_youtube.json"
+        "guion_horizontal": Path(
+            "config/profiles/guion/horizontal/"
+            "perfil_guion_horizontal.json"
         ),
-        "imagen_instagram": Path(
-            "config/profiles/imagen/instagram/"
-            "perfil_imagen_instagram.json"
+        "imagen_vertical": Path(
+            "config/profiles/imagen/vertical/"
+            "perfil_imagen_vertical.json"
         ),
-        "imagen_youtube": Path(
-            "config/profiles/imagen/youtube/"
-            "perfil_imagen_youtube.json"
+        "imagen_horizontal": Path(
+            "config/profiles/imagen/horizontal/"
+            "perfil_imagen_horizontal.json"
         ),
-        "video_instagram": Path(
-            "config/profiles/video/instagram/"
-            "perfil_video_instagram.json"
+        "video_vertical": Path(
+            "config/profiles/video/vertical/"
+            "perfil_video_vertical.json"
         ),
-        "video_youtube": Path(
-            "config/profiles/video/youtube/"
-            "perfil_video_youtube.json"
+        "video_horizontal": Path(
+            "config/profiles/video/horizontal/"
+            "perfil_video_horizontal.json"
         ),
-        "studio_instagram": Path(
-            "config/profiles/studio/instagram/"
-            "perfil_studio_instagram.json"
+        "studio_vertical": Path(
+            "config/profiles/studio/vertical/"
+            "perfil_studio_vertical.json"
         ),
-        "studio_youtube": Path(
-            "config/profiles/studio/youtube/"
-            "perfil_studio_youtube.json"
+        "studio_horizontal": Path(
+            "config/profiles/studio/horizontal/"
+            "perfil_studio_horizontal.json"
         ),
     }
 
     WAN_PATHS = {
-        "instagram": Path(
-            "config/profiles/video/instagram/"
-            "wan_i2v_instagram.json"
+        "vertical": Path(
+            "config/profiles/video/vertical/"
+            "wan_i2v_vertical.json"
         ),
-        "youtube": Path(
-            "config/profiles/video/youtube/"
-            "wan_i2v_youtube.json"
+        "horizontal": Path(
+            "config/profiles/video/horizontal/"
+            "wan_i2v_horizontal.json"
         ),
     }
 
     BASE_IDENTITIES = {
-        "guion_instagram": ("guion", "instagram", "guion_instagram"),
-        "guion_youtube": ("guion", "youtube", "guion_youtube"),
-        "imagen_instagram": ("imagen", "instagram", "imagen_instagram"),
-        "imagen_youtube": ("imagen", "youtube", "imagen_youtube"),
-        "video_instagram": ("video", "instagram", "video_instagram"),
-        "video_youtube": ("video", "youtube", "video_youtube"),
-        "studio_instagram": ("studio", "instagram", "studio_instagram"),
-        "studio_youtube": ("studio", "youtube", "studio_youtube"),
+        "guion_vertical": ("guion", "vertical", "guion_vertical"),
+        "guion_horizontal": ("guion", "horizontal", "guion_horizontal"),
+        "imagen_vertical": ("imagen", "vertical", "imagen_vertical"),
+        "imagen_horizontal": ("imagen", "horizontal", "imagen_horizontal"),
+        "video_vertical": ("video", "vertical", "video_vertical"),
+        "video_horizontal": ("video", "horizontal", "video_horizontal"),
+        "studio_vertical": ("studio", "vertical", "studio_vertical"),
+        "studio_horizontal": ("studio", "horizontal", "studio_horizontal"),
     }
 
     REMOVED_LEGACY_PATHS = (
-        Path("config/profiles/guion/instagram.json"),
-        Path("config/profiles/guion/youtube.json"),
-        Path("config/profiles/video/instagram.json"),
-        Path("config/profiles/video/youtube.json"),
-        Path("config/profiles/instagram/modo_conciencia.json"),
-        Path("config/profiles/youtube/modo_conciencia.json"),
+        Path("config/profiles/guion/vertical.json"),
+        Path("config/profiles/guion/horizontal.json"),
+        Path("config/profiles/video/vertical.json"),
+        Path("config/profiles/video/horizontal.json"),
+        Path("config/profiles/vertical/modo_conciencia.json"),
+        Path("config/profiles/horizontal/modo_conciencia.json"),
         Path("config/profiles/diseno"),
     )
 
@@ -102,12 +102,12 @@ class ProfileTreePhase2Test(unittest.TestCase):
                 path = self.COMPONENT_PATHS[profile_id]
                 data = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual(expected[0], data["component"])
-                self.assertEqual(expected[1], data["platform"])
+                self.assertEqual(expected[1], data["format"])
                 self.assertEqual(expected[2], data["profile_id"])
 
     def test_component_profiles_can_diverge_independently(self):
-        image_source = self.COMPONENT_PATHS["imagen_instagram"]
-        video_source = self.COMPONENT_PATHS["video_instagram"]
+        image_source = self.COMPONENT_PATHS["imagen_vertical"]
+        video_source = self.COMPONENT_PATHS["video_vertical"]
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -122,35 +122,35 @@ class ProfileTreePhase2Test(unittest.TestCase):
             self.assertNotEqual(image_copy.read_bytes(), video_copy.read_bytes())
             self.assertEqual(original_video, video_copy.read_bytes())
 
-    def test_platform_profiles_can_diverge_independently(self):
-        instagram_source = self.COMPONENT_PATHS["imagen_instagram"]
-        youtube_source = self.COMPONENT_PATHS["imagen_youtube"]
+    def test_format_profiles_can_diverge_independently(self):
+        vertical_source = self.COMPONENT_PATHS["imagen_vertical"]
+        horizontal_source = self.COMPONENT_PATHS["imagen_horizontal"]
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            instagram_copy = root / "instagram.json"
-            youtube_copy = root / "youtube.json"
-            shutil.copyfile(instagram_source, instagram_copy)
-            shutil.copyfile(youtube_source, youtube_copy)
-            original_youtube = youtube_copy.read_bytes()
+            vertical_copy = root / "vertical.json"
+            horizontal_copy = root / "horizontal.json"
+            shutil.copyfile(vertical_source, vertical_copy)
+            shutil.copyfile(horizontal_source, horizontal_copy)
+            original_horizontal = horizontal_copy.read_bytes()
 
-            instagram_copy.write_bytes(instagram_copy.read_bytes() + b"\n")
+            vertical_copy.write_bytes(vertical_copy.read_bytes() + b"\n")
 
             self.assertNotEqual(
-                instagram_copy.read_bytes(),
-                youtube_copy.read_bytes(),
+                vertical_copy.read_bytes(),
+                horizontal_copy.read_bytes(),
             )
-            self.assertEqual(original_youtube, youtube_copy.read_bytes())
+            self.assertEqual(original_horizontal, horizontal_copy.read_bytes())
 
     def test_profile_resolver_uses_component_scoped_paths(self):
         resolver = ProfileResolver()
 
         for component in ProfileComponent:
-            for platform in ("instagram", "youtube"):
+            for profile_format in ("horizontal", "vertical"):
                 profile_key = OperationalProfileKey(
                     component,
-                    platform,
-                    f"{component.value}_{platform}",
+                    profile_format,
+                    f"{component.value}_{profile_format}",
                 )
                 with self.subTest(profile_id=profile_key.profile_id):
                     self.assertEqual(
@@ -161,13 +161,13 @@ class ProfileTreePhase2Test(unittest.TestCase):
     def test_profile_resolver_uses_component_scoped_wan_paths(self):
         resolver = ProfileResolver()
 
-        for platform, expected_path in self.WAN_PATHS.items():
+        for profile_format, expected_path in self.WAN_PATHS.items():
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                platform,
-                f"video_{platform}",
+                profile_format,
+                f"video_{profile_format}",
             )
-            with self.subTest(platform=platform):
+            with self.subTest(profile_format=profile_format):
                 self.assertEqual(
                     expected_path,
                     resolver.resolve_video_component(profile_key),

@@ -21,18 +21,17 @@ from app.shared.profile_identity import (
 def _video_identity():
     return OperationalProfileKey(
         ProfileComponent.VIDEO,
-        "fixture_platform",
+        "fixture_format",
         "fixture_video_profile",
     )
 
 
 def _video_component_profile(intermediate_output):
     return {
-        "platform": "fixture_platform",
+        "format": "fixture_format",
         "video_component": {
             "profile": "technical-profile",
             "generation": {"width": 448, "height": 800},
-            "target": {"width": 1080, "height": 1920},
             "delivery": {"intermediate_output": intermediate_output},
             "frames": 49,
             "fps": 12,
@@ -96,8 +95,6 @@ class _FakeDirectVideoBuilder:
             fps=overrides["fps"],
             generation_width=overrides["generation_width"],
             generation_height=overrides["generation_height"],
-            target_width=overrides["target_width"],
-            target_height=overrides["target_height"],
             steps=overrides["steps"],
             cfg=overrides["cfg"],
             sampler=overrides["sampler"],
@@ -128,8 +125,6 @@ class DirectI2VRequestTest(unittest.TestCase):
             fps=12.0,
             generation_width=448,
             generation_height=800,
-            target_width=1080,
-            target_height=1920,
             steps=20,
             cfg=5.0,
             sampler="uni_pc",
@@ -204,7 +199,7 @@ class DirectI2VRequestTest(unittest.TestCase):
                     generation=generation,
                     profile_key=OperationalProfileKey(
                         ProfileComponent.IMAGEN,
-                        "fixture_platform",
+                        "fixture_format",
                         "fixture_image_profile",
                     ),
                     intermediate_output=WanIntermediateOutput.LOSSLESS_FFV1,
@@ -304,7 +299,7 @@ class DirectI2VRequestTest(unittest.TestCase):
             tuple(field.name for field in fields(request)),
         )
         self.assertIs(profile_key, request.profile_key)
-        self.assertEqual("fixture_platform", request.profile_key.platform)
+        self.assertEqual("fixture_format", request.profile_key.format)
         self.assertEqual(
             "fixture_video_profile",
             request.profile_key.profile_id,
@@ -346,7 +341,7 @@ class DirectI2VRequestTest(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "OperationalProfileKey"):
             DirectI2VRequest(
                 source_image=Path("source.png"),
-                profile_key="video_instagram",
+                profile_key="video_vertical",
                 output_dir=Path("output"),
                 output_stem="clip",
             )
@@ -356,7 +351,7 @@ class DirectI2VRequestTest(unittest.TestCase):
                 source_image=Path("source.png"),
                 profile_key=OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "fixture_platform",
+                    "fixture_format",
                     "fixture_image_profile",
                 ),
                 output_dir=Path("output"),

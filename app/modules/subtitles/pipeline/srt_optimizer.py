@@ -118,16 +118,16 @@ class SrtOptimizer:
                 )
             )
             ProgressLogger.info(
-                "Subtitle timing source: "
+                "Tiempos de subtítulos: "
                 f"{timing.source} | "
-                f"words timed: {timing.word_count} | "
-                f"gaps detected: "
+                f"palabras con tiempo: {timing.word_count} | "
+                f"huecos: "
                 f"{count_gaps(timing.words, gap_threshold)}"
             )
 
             if timing.fallback_reason:
                 ProgressLogger.info(
-                    "Subtitle timing fallback: "
+                    "Tiempos de subtítulos de reserva: "
                     f"{timing.fallback_reason}"
                 )
 
@@ -139,14 +139,14 @@ class SrtOptimizer:
 
             if stats is not None and stats.detected:
                 ProgressLogger.info(
-                    "Micro-cues detected: "
+                    "Micro-cues detectados: "
                     f"{stats.detected} | "
-                    "Micro-cues merged: "
+                    "micro-cues fusionados: "
                     f"{stats.merged}"
                 )
         else:
             ProgressLogger.info(
-                "Subtitle timing source: Legacy SRT"
+                "Tiempos de subtítulos: SRT sin tiempos por palabra"
             )
 
         output_path.write_text(

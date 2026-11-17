@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import time
 from dataclasses import dataclass
@@ -17,15 +16,13 @@ from certification.models import CertificationScenario
 class RealImageRunnerConfig:
     campaign_id: str = "rc0_quick"
     base_output_dir: Path = Path("output") / "certification"
-    platform: str = "youtube"
-    image_format: str = "horizontal"
+    format: str = "horizontal"
     image_width: int = 1920
     image_height: int = 1080
     workflow_path: Path = Path(
         "config/comfyui_flux_workflow_api.json"
     )
     comfyui_url: str = "http://127.0.0.1:8188"
-    image_validation_enabled: bool = True
     keep_rejected_heavy_artifacts: bool = False
 
 
@@ -53,9 +50,6 @@ class RealImageComponentRunner:
         project_name = (
             f"{self.config.campaign_id}_{scenario.scenario_id}"
         )
-        previous_project = os.environ.get(
-            "MC_PROJECT_NAME"
-        )
 
         try:
             profile = self._build_campaign_profile()
@@ -63,11 +57,9 @@ class RealImageComponentRunner:
                 profile,
                 scenario_dir
             )
-            os.environ[
-                "MC_PROJECT_NAME"
-            ] = project_name
-
-            project = ProjectManager()
+            project = ProjectManager(
+                project_name=project_name
+            )
             project.setup()
             self._write_storyboard(
                 project.storyboard_path(),
@@ -77,7 +69,8 @@ class RealImageComponentRunner:
             manifest_path = ImageBuilder(
                 comfyui_url=self.config.comfyui_url,
                 workflow_path=self.config.workflow_path,
-                profile=profile
+                profile=profile,
+                project=project,
             ).build(
                 storyboard_path=project.storyboard_path(),
                 output_dir=project.images_dir(),
@@ -171,18 +164,12 @@ class RealImageComponentRunner:
                 ),
                 metadata=metadata,
             )
-        finally:
-            _restore_env(
-                "MC_PROJECT_NAME",
-                previous_project
-            )
 
     def _build_campaign_profile(
         self
     ) -> dict[str, object]:
         return {
-            "platform": self.config.platform,
-            "format": self.config.image_format,
+            "format": self.config.format,
             "resolution": (
                 f"{self.config.image_width}x"
                 f"{self.config.image_height}"
@@ -190,9 +177,6 @@ class RealImageComponentRunner:
             "video_style": {
                 "width": self.config.image_width,
                 "height": self.config.image_height,
-            },
-            "image_validation": {
-                "enabled": self.config.image_validation_enabled
             },
             "visual_director": {
                 "enabled": True
@@ -610,18 +594,3 @@ def _file_fingerprint(
                 chunk
             )
     return digest.hexdigest()
-
-
-def _restore_env(
-    name: str,
-    value: str | None
-) -> None:
-    if value is None:
-        os.environ.pop(
-            name,
-            None
-        )
-    else:
-        os.environ[
-            name
-        ] = value

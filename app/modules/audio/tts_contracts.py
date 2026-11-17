@@ -56,18 +56,30 @@ class TtsBackendError(RuntimeError):
         super().__init__(diagnostic.detail)
 
 
+class TtsVoiceConfigurationError(ValueError):
+    """Invalid voice-document value whose Spanish message reaches the user."""
+
+
 @dataclass(frozen=True)
 class TtsProsody:
-    """Backend-neutral semantic prosody expressed in stable units."""
+    """Backend-neutral semantic prosody expressed in stable units.
+
+    The pauses are extra silence, in seconds, written after a sentence end and
+    between paragraphs (one or more blank lines); 0 adds no extra silence.
+    """
 
     speaking_rate: float = 1.0
     volume_gain_db: float = 0.0
+    sentence_pause_seconds: float = 0.0
+    paragraph_pause_seconds: float = 0.0
 
     def __post_init__(self):
         _require_finite_number(self.speaking_rate, "speaking_rate")
         if self.speaking_rate <= 0:
             raise ValueError("speaking_rate must be greater than zero.")
         _require_finite_number(self.volume_gain_db, "volume_gain_db")
+        _require_pause_seconds(self.sentence_pause_seconds, "sentence_pause_seconds")
+        _require_pause_seconds(self.paragraph_pause_seconds, "paragraph_pause_seconds")
 
 
 @dataclass(frozen=True)
@@ -184,12 +196,33 @@ class TtsWordTiming:
 
 
 @dataclass(frozen=True)
+class TtsPause:
+    """One silence the backend inserted, in seconds of the staged audio."""
+
+    start_seconds: float
+    end_seconds: float
+
+    def __post_init__(self):
+        _require_finite_number(self.start_seconds, "start_seconds")
+        _require_finite_number(self.end_seconds, "end_seconds")
+        if self.start_seconds < 0:
+            raise ValueError("pause start_seconds must not be negative.")
+        if self.end_seconds <= self.start_seconds:
+            raise ValueError("pause end_seconds must follow start_seconds.")
+
+
+@dataclass(frozen=True)
 class TtsSynthesisResult:
-    """Backend result before VoiceBuilder validates and publishes artifacts."""
+    """Backend result before VoiceBuilder validates and publishes artifacts.
+
+    ``pauses`` are the silences the backend wrote into the audio itself, in
+    order; a backend that inserts none leaves them empty.
+    """
 
     staged_audio: TtsAudioArtifact
     word_timings: tuple[TtsWordTiming, ...] | None
     diagnostic: TtsBackendDiagnostic | None = None
+    pauses: tuple[TtsPause, ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.staged_audio, TtsAudioArtifact):
@@ -215,6 +248,16 @@ class TtsSynthesisResult:
             TtsBackendDiagnostic,
         ):
             raise TypeError("diagnostic must be a TtsBackendDiagnostic or None.")
+
+        pauses = tuple(self.pauses)
+        previous_end = None
+        for pause in pauses:
+            if not isinstance(pause, TtsPause):
+                raise TypeError("pauses must contain TtsPause values.")
+            if previous_end is not None and pause.start_seconds < previous_end:
+                raise ValueError("pauses must be ordered and non-overlapping.")
+            previous_end = pause.end_seconds
+        object.__setattr__(self, "pauses", pauses)
 
 
 def _required_text(value: object, name: str) -> str:
@@ -247,6 +290,19 @@ def _require_finite_number(value: object, name: str) -> None:
         raise TypeError(f"{name} must be a number.")
     if not math.isfinite(value):
         raise ValueError(f"{name} must be finite.")
+
+
+def _require_pause_seconds(value: object, name: str) -> None:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value < 0
+    ):
+        raise TtsVoiceConfigurationError(
+            f"prosody.{name} debe ser un número de segundos mayor o igual que 0 "
+            f"(0 = sin pausa extra); se recibió {value!r}."
+        )
 
 
 def _require_positive_int(value: object, name: str) -> None:

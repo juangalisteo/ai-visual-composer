@@ -1,0 +1,16 @@
+{
+  "formats": {
+    "vertical": {
+      "display_name": "Vertical 9:16",
+      "order": 1,
+      "orientation": "portrait",
+      "image_guidance": "vertical 9:16"
+    },
+    "horizontal": {
+      "display_name": "Horizontal 16:9",
+      "order": 2,
+      "orientation": "landscape",
+      "image_guidance": "wide horizontal 16:9"
+    }
+  }
+}

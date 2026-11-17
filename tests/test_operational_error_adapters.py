@@ -6,9 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 import main
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    DesignExecutionRequest,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -40,13 +44,13 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_invalid_operational_profile_json_preserves_path_and_cause(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            path = root / "video/instagram/broken.json"
+            path = root / "video/vertical/broken.json"
             path.parent.mkdir(parents=True)
             path.write_text("{invalid", encoding="utf-8")
 
             with self.assertRaises(OperationalError) as caught:
                 ProfileResolver(root).resolve_operational(
-                    OperationalProfileKey("video", "instagram", "test_profile")
+                    OperationalProfileKey("video", "vertical", "test_profile")
                 )
 
         self.assertEqual("CONFIG", caught.exception.context.family)
@@ -57,10 +61,10 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             operational_key = OperationalProfileKey(
-                "video", "instagram", "test_profile"
+                "video", "vertical", "test_profile"
             )
             subtitle_key = SubtitleProfileKey(
-                "video", "instagram", "test_profile", "estandar"
+                "video", "vertical", "test_profile", "estandar"
             )
 
             with self.assertRaises(OperationalError) as operational:
@@ -78,12 +82,12 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
     def test_duplicate_operational_profiles_are_ambiguity_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            folder = root / "video/instagram"
+            folder = root / "video/vertical"
             folder.mkdir(parents=True)
-            key = OperationalProfileKey("video", "instagram", "test_profile")
+            key = OperationalProfileKey("video", "vertical", "test_profile")
             data = {
                 "component": "video",
-                "platform": "instagram",
+                "format": "vertical",
                 "profile_id": "test_profile",
             }
             for name in ("first.json", "second.json"):
@@ -100,7 +104,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             key = SubtitleProfileKey(
-                "video", "instagram", "test_profile", "estandar"
+                "video", "vertical", "test_profile", "estandar"
             )
             path = root / key.relative_path
             path.parent.mkdir(parents=True)
@@ -108,7 +112,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
                 json.dumps(
                     {
                         "component": "video",
-                        "platform": "instagram",
+                        "format": "vertical",
                         "family": "estandar",
                         "profile_id": "test_profile",
                         "display_name": "Test profile",
@@ -131,33 +135,29 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
             error = None
             try:
                 ProfileResolver(Path(directory)).resolve_operational(
-                    OperationalProfileKey("video", "instagram", "test_profile")
+                    OperationalProfileKey("video", "vertical", "test_profile")
                 )
             except OperationalError as caught:
                 error = caught
 
-            options = {
-                "profile_component": "video",
-                "profile_platform": "instagram",
-                "profile_id": "test_profile",
-                "subtitle_config": "",
-                "voice_config": "",
-                "music_category": None,
-                "overlays_mode": "off",
-                "project_name": "adapter error",
-                "visual_pipeline": "video",
-                "script_source": "manual_design",
-                "design_target": "video",
-                "pipeline_mode": "design_video",
-                "clear_output": False,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="adapter error",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "video",
+                    "vertical",
+                    "test_profile",
+                ),
+                subtitle_profile_key=None,
+                route=DesignExecutionRequest(mode="design_video"),
+            )
             with patch.dict(os.environ, {}, clear=True), patch(
                 "main.RunController"
             ) as controller_mock, patch(
-                "main.iniciar",
+                "main.run_application",
                 side_effect=error,
             ), patch("builtins.print") as print_mock:
-                controller_mock.return_value.run.return_value = options
+                controller_mock.return_value.run.return_value = request
 
                 result = main.main()
 

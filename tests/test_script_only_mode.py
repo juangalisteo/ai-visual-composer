@@ -7,15 +7,19 @@ from unittest.mock import ANY, patch
 import main as app_main
 
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.modules.script import PreparedScript
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import OperationalProfileDescriptor
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -24,31 +28,19 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 class FakeConfigManager:
 
     subtitle_profile = object()
-    script_profile_key = ProfileKey(
-        component=ProfileComponent.GUION,
-        platform="test_platform",
-        family="test_family",
-        profile_id="test_profile",
-    )
-    video_profile_key = ProfileKey(
-        component=ProfileComponent.VIDEO,
-        platform="test_platform",
-        family="test_family",
-        profile_id="test_profile",
-    )
     script_operational_key = OperationalProfileKey(
         ProfileComponent.GUION,
-        "test_platform",
+        "test_format",
         "test_profile",
     )
     video_operational_key = OperationalProfileKey(
         ProfileComponent.VIDEO,
-        "test_platform",
+        "test_format",
         "test_profile",
     )
     subtitle_profile_key = SubtitleProfileKey(
         component=ProfileComponent.GUION,
-        platform="test_platform",
+        format="test_format",
         family="test_family",
         profile_id="test_profile",
     )
@@ -60,11 +52,6 @@ class FakeConfigManager:
     ):
         self._operational_profile_key = operational_profile_key
         self._voice_config_id = voice_config_id
-
-    def get_profile_key(
-        self
-    ):
-        return self.script_profile_key
 
     def get_operational_profile_key(self):
         return (
@@ -84,7 +71,6 @@ class FakeConfigManager:
     ):
         return {
             "tone": "modo_conciencia",
-            "platform": "youtube",
             "format": "horizontal",
             "duration": 10,
             "builders": {
@@ -100,12 +86,6 @@ class FakeConfigManager:
             },
         }
 
-    def get_subtitle_profile(
-        self,
-        style
-    ):
-        return self.subtitle_profile
-
     def get_subtitle_profile_by_key(
         self,
         subtitle_profile_key,
@@ -118,10 +98,10 @@ class FakeConfigManager:
 
 
 class FakeProfileResolver:
-    def discover_operational_profiles(self, component, platform):
+    def discover_operational_profiles(self, component, profile_format):
         if (
             component is not ProfileComponent.VIDEO
-            or platform != FakeConfigManager.video_operational_key.platform
+            or profile_format != FakeConfigManager.video_operational_key.format
         ):
             raise AssertionError("La prueba debe conservar la identidad VIDEO.")
         return (
@@ -134,6 +114,28 @@ class FakeProfileResolver:
 
 
 FakeConfigManager.profile_resolver = FakeProfileResolver()
+
+
+def _standard_request(
+    *,
+    project_name,
+    pipeline_mode,
+    script_source,
+    visual_pipeline="image",
+    subtitle_profile_key=None,
+):
+    return ApplicationExecutionRequest(
+        project_name=project_name,
+        clear_output=False,
+        operational_profile_key=FakeConfigManager.script_operational_key,
+        subtitle_profile_key=subtitle_profile_key,
+        route=StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline=visual_pipeline,
+            script_source=script_source,
+            voice_config_id="test_voice",
+        ),
+    )
 
 
 class FakePromptEngine:
@@ -238,7 +240,7 @@ class FakeScriptOperation:
         )
 
 
-def fake_ejecutar_guion(
+def fake_script_execute(
     *,
     output_script_path,
     **_
@@ -268,103 +270,6 @@ def fake_ejecutar_guion(
 
 class ScriptOnlyModeTest(unittest.TestCase):
 
-    def test_main_script_component_uses_manual_script_and_stops(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(
-                temp_dir
-            )
-            previous_cwd = Path.cwd()
-
-            try:
-                os.chdir(
-                    root
-                )
-                input_dir = root / "input"
-                input_dir.mkdir()
-                (
-                    input_dir
-                    / "guion.txt"
-                ).write_text(
-                    "Guion manual del componente principal.",
-                    encoding="utf-8"
-                )
-                (
-                    input_dir
-                    / "tema.txt"
-                ).write_text(
-                    "este tema no debe usarse",
-                    encoding="utf-8"
-                )
-
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_VISUAL_PIPELINE": "script",
-                        "MC_SCRIPT_SOURCE": "manual",
-                        "MC_PIPELINE_MODE": "script",
-                        "MC_PROJECT_NAME": "guion component",
-                    },
-                    clear=False
-                ), patch(
-                    "app.core.start.ConfigManager",
-                    FakeConfigManager
-                ), patch(
-                    "app.core.start.VoiceBuilder",
-                    side_effect=AssertionError(
-                        "VoiceBuilder must not run"
-                    )
-                ), patch(
-                    "app.core.start.AudioMixer",
-                    side_effect=AssertionError(
-                        "AudioMixer must not run"
-                    )
-                ), patch(
-                    "app.core.start.SubtitleBuilder",
-                    side_effect=AssertionError(
-                        "SubtitleBuilder must not run"
-                    )
-                ), patch(
-                    "app.core.start.StoryboardBuilder",
-                    side_effect=AssertionError(
-                        "StoryboardBuilder must not run"
-                    )
-                ), patch(
-                    "app.core.start.ImageBuilder",
-                    side_effect=AssertionError(
-                        "ImageBuilder must not run"
-                    )
-                ), patch(
-                    "app.core.start.VideoBuilder",
-                    side_effect=AssertionError(
-                        "VideoBuilder must not run"
-                    )
-                ):
-                    result = start.iniciar()
-
-                script_path = (
-                    root
-                    / "output"
-                    / "guion component"
-                    / "scripts"
-                    / "guion.txt"
-                )
-                self.assertTrue(
-                    os.path.samefile(
-                        script_path,
-                        root / result
-                    )
-                )
-                self.assertEqual(
-                    "Guion manual del componente principal.",
-                    script_path.read_text(
-                        encoding="utf-8"
-                    )
-                )
-            finally:
-                os.chdir(
-                    previous_cwd
-                )
-
     def test_main_script_component_does_not_generate_from_topic(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -386,23 +291,22 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_VISUAL_PIPELINE": "script",
-                        "MC_SCRIPT_SOURCE": "manual",
-                        "MC_PIPELINE_MODE": "script",
-                        "MC_PROJECT_NAME": "guion component",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ):
-                    with self.assertRaises(
-                        FileNotFoundError
+                    with self.assertRaisesRegex(
+                        OperationalError,
+                        "No existe input/guion.txt."
                     ):
-                        start.iniciar()
+                        start.run_application(
+                            request=_standard_request(
+                                project_name="guion component",
+                                pipeline_mode="audio",
+                                visual_pipeline="image",
+                                script_source="manual",
+                            ),
+                        )
 
                 self.assertFalse(
                     (
@@ -483,52 +387,52 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "ScriptBuilder must not run for manual source"
                     )
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ), patch.dict(
                     os.environ,
                     {},
                     clear=False
                 ):
-                    run_controller.return_value.run.return_value = {
-                        "visual_pipeline": "image",
-                        "script_source": "manual",
-                        "pipeline_mode": "full",
-                        "profile_path": (
-                            "config/profiles/guion/instagram/estandar/"
-                            "perfil_guion_instagram.json"
-                        ),
-                        "subtitle_profile_key": (
-                            FakeConfigManager.subtitle_profile_key
-                        ),
-                        "subtitle_config": None,
-                        "voice_config": "masculina",
-                        "music_category": None,
-                        "overlays_mode": "smart",
-                        "intro_outro_selection": intro_outro_selection,
-                        "project_name": "guion component",
-                        "clear_output": True
-                    }
+                    run_controller.return_value.run.return_value = (
+                        ApplicationExecutionRequest(
+                            project_name="guion component",
+                            clear_output=True,
+                            operational_profile_key=None,
+                            subtitle_profile_key=(
+                                FakeConfigManager.subtitle_profile_key
+                            ),
+                            route=StandardExecutionRequest(
+                                pipeline_mode="full",
+                                visual_pipeline="image",
+                                script_source="manual",
+                                voice_config_id="masculina",
+                                music_category=None,
+                                overlays_mode="smart",
+                                intro_outro_plan=intro_outro_selection,
+                            ),
+                        )
+                    )
                     audio_mixer.return_value.build.return_value = Path(
                         "output/guion component/audio/audio_final.mp3"
                     )
@@ -633,10 +537,6 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 ) as run_controller, patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
-                ), patch.object(
-                    FakeConfigManager,
-                    "get_profile_key",
-                    return_value=FakeConfigManager.script_profile_key,
                 ), patch(
                     "app.modules.script.preparation.PromptEngine",
                     side_effect=AssertionError(
@@ -648,56 +548,55 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "ScriptBuilder must not run for manual source"
                     )
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.generar_video_clips_i2v"
+                    "app.modules.standard.execution_coordinator.generate_video_clips"
                 ) as video_clips_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ), patch.dict(
                     os.environ,
                     {},
                     clear=False
                 ):
-                    run_controller.return_value.run.return_value = {
-                        "visual_pipeline": "video",
-                        "script_source": "manual",
-                        "pipeline_mode": "full",
-                        "profile_component": "guion",
-                        "profile_platform": (
-                            FakeConfigManager.script_profile_key.platform
-                        ),
-                        "profile_id": (
-                            FakeConfigManager.script_profile_key.profile_id
-                        ),
-                        "subtitle_profile_key": (
-                            FakeConfigManager.subtitle_profile_key
-                        ),
-                        "subtitle_config": None,
-                        "voice_config": "masculina",
-                        "music_category": None,
-                        "overlays_mode": "smart",
-                        "project_name": "guion video",
-                        "clear_output": False
-                    }
+                    run_controller.return_value.run.return_value = (
+                        ApplicationExecutionRequest(
+                            project_name="guion video",
+                            clear_output=False,
+                            operational_profile_key=(
+                                FakeConfigManager.script_operational_key
+                            ),
+                            subtitle_profile_key=(
+                                FakeConfigManager.subtitle_profile_key
+                            ),
+                            route=StandardExecutionRequest(
+                                pipeline_mode="full",
+                                visual_pipeline="video",
+                                script_source="manual",
+                                voice_config_id="masculina",
+                                music_category=None,
+                                overlays_mode="smart",
+                            ),
+                        )
+                    )
                     audio_mixer.return_value.build.return_value = Path(
                         "output/guion video/audio/audio_final.mp3"
                     )
@@ -778,48 +677,40 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "full_without_subtitles",
-                        "MC_PROJECT_NAME": "full without subtitles",
-                        "MC_MUSIC_CATEGORY": "",
-                    },
-                    clear=False,
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager,
                 ), patch.object(
                     FakeConfigManager,
-                    "get_subtitle_profile",
+                    "get_subtitle_profile_by_key",
                     side_effect=AssertionError(
                         "Subtitle profile must not be resolved"
                     ),
                 ), patch(
-                    "app.core.start.ejecutar_guion",
-                    side_effect=fake_ejecutar_guion,
+                    "app.modules.standard.execution_coordinator.ScriptOperation.execute",
+                    side_effect=fake_script_execute,
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder,
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     ),
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None,
                 ):
                     final_video = Path(
@@ -837,7 +728,13 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     )
                     video_builder.return_value.build.return_value = final_video
 
-                    result = start.iniciar()
+                    result = start.run_application(
+                        request=_standard_request(
+                            project_name="full without subtitles",
+                            pipeline_mode="full_without_subtitles",
+                            script_source="generated",
+                        ),
+                    )
 
                 self.assertEqual(final_video, result)
                 subtitle_builder.assert_not_called()
@@ -845,7 +742,10 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 video_builder.assert_called_once_with(
                     subtitle_profile=None,
                     warnings=ANY,
+                    overlays_mode=None,
                     render_subtitles=False,
+                    config_manager=ANY,
+                    project=ANY,
                 )
                 video_builder.return_value.build.assert_called_once_with()
                 self.assertFalse(
@@ -880,42 +780,34 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 FakeScriptBuilder.prompts = []
                 FakeVoiceBuilder.received_scripts = []
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_PIPELINE_MODE": "full",
-                        "MC_PROJECT_NAME": "full test",
-                        "MC_MUSIC_CATEGORY": "",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
-                    "app.core.start.ejecutar_guion",
-                    side_effect=fake_ejecutar_guion
+                    "app.modules.standard.execution_coordinator.ScriptOperation.execute",
+                    side_effect=fake_script_execute
                 ) as script_operation, patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
                     audio_mixer.return_value.build.return_value = Path(
@@ -937,9 +829,12 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "output/full test/video/full test.mp4"
                     )
 
-                    result = start.iniciar(
-                        subtitle_profile_key=(
-                            FakeConfigManager.subtitle_profile_key
+                    result = start.run_application(
+                        request=_standard_request(
+                            project_name="full test",
+                            pipeline_mode="full",
+                            script_source="generated",
+                            subtitle_profile_key=FakeConfigManager.subtitle_profile_key,
                         ),
                     )
 
@@ -996,44 +891,34 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 FakeVoiceBuilder.received_scripts = []
                 FakeScriptOperation.instances = []
 
-                with patch.dict(
-                    os.environ,
-                    {
-                        "MC_VISUAL_PIPELINE": "image",
-                        "MC_SCRIPT_SOURCE": "generated",
-                        "MC_PIPELINE_MODE": "full",
-                        "MC_PROJECT_NAME": "full generated source",
-                        "MC_MUSIC_CATEGORY": "",
-                    },
-                    clear=False
-                ), patch(
+                with patch(
                     "app.core.start.ConfigManager",
                     FakeConfigManager
                 ), patch(
-                    "app.core.start.ScriptOperation",
+                    "app.modules.standard.execution_coordinator.ScriptOperation",
                     FakeScriptOperation
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.standard.execution_coordinator.VoiceBuilder",
                     FakeVoiceBuilder
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.standard.execution_coordinator.MusicSelector",
                     side_effect=AssertionError(
                         "MusicSelector must not run without music"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer"
+                    "app.modules.standard.execution_coordinator.AudioMixer"
                 ) as audio_mixer, patch(
-                    "app.core.start.SubtitleBuilder"
+                    "app.modules.standard.execution_coordinator.SubtitleBuilder"
                 ) as subtitle_builder, patch(
-                    "app.core.start.SrtOptimizer"
+                    "app.modules.standard.execution_coordinator.SrtOptimizer"
                 ) as srt_optimizer, patch(
-                    "app.core.start.StoryboardBuilder"
+                    "app.modules.standard.execution_coordinator.StoryboardBuilder"
                 ) as storyboard_builder, patch(
-                    "app.core.start.ImageBuilder"
+                    "app.modules.standard.execution_coordinator.ImageBuilder"
                 ) as image_builder, patch(
-                    "app.core.start.VideoBuilder"
+                    "app.modules.standard.execution_coordinator.VideoBuilder"
                 ) as video_builder, patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ):
                     audio_mixer.return_value.build.return_value = Path(
@@ -1055,9 +940,12 @@ class ScriptOnlyModeTest(unittest.TestCase):
                         "output/full generated source/video/full generated source.mp4"
                     )
 
-                    start.iniciar(
-                        subtitle_profile_key=(
-                            FakeConfigManager.subtitle_profile_key
+                    start.run_application(
+                        request=_standard_request(
+                            project_name="full generated source",
+                            pipeline_mode="full",
+                            script_source="generated",
+                            subtitle_profile_key=FakeConfigManager.subtitle_profile_key,
                         ),
                     )
 

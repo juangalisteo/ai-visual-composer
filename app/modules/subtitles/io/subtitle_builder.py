@@ -1,3 +1,5 @@
+from collections import Counter
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -5,6 +7,11 @@ import tempfile
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.subtitles.io.whisper_segment_filter import (
+    REPETITION_IN_SILENCE,
+    REPETITION_WITHOUT_SPEECH,
+    WhisperRepetitionFilter,
+)
 from app.modules.subtitles.io.whisper_transcription_config import (
     WhisperTranscriptionConfig,
 )
@@ -15,21 +22,44 @@ from app.shared.operational_error import create_operational_error
 
 class SubtitleBuilder:
 
+    DISCARD_REASON_LABELS = {
+        REPETITION_IN_SILENCE: "repetición en silencio",
+        REPETITION_WITHOUT_SPEECH: "repetición sin voz",
+    }
+
     def __init__(
         self,
         transcription_config: WhisperTranscriptionConfig | None = None,
+        segment_filter: WhisperRepetitionFilter | None = None,
     ):
         self.transcription_config = (
             transcription_config
             if transcription_config is not None
             else WhisperTranscriptionConfig()
         )
+        self.segment_filter = (
+            segment_filter
+            if segment_filter is not None
+            else WhisperRepetitionFilter()
+        )
 
     def build(
         self,
         audio_path=None,
-        output_path=None
+        output_path=None,
+        voice_pauses=()
     ):
+        """Transcribe ``audio_path`` with Whisper into an SRT and its JSON.
+
+        ``voice_pauses`` are the ``(start, end)`` silences, in seconds, that
+        the voice backend wrote into that audio. They are recorded in the JSON
+        as ``voice_pauses`` so the timing resolution can keep words out of
+        them; Whisper's own word times are stored unchanged.
+        """
+        voice_pauses = tuple(
+            (float(start), float(end))
+            for start, end in voice_pauses
+        )
         ProgressLogger.start(
             "GENERANDO TRANSCRIPCI\u00d3N TEMPORAL"
         )
@@ -90,8 +120,8 @@ class SubtitleBuilder:
             except subprocess.CalledProcessError as error:
                 raise create_operational_error(
                     family="SUBTITLES",
-                    user_message="Whisper no pudo generar los subtitulos temporales.",
-                    recommended_action="Comprueba la instalacion de Whisper y el audio de entrada.",
+                    user_message="Whisper no pudo generar los subtítulos temporales.",
+                    recommended_action="Comprueba la instalación de Whisper y el audio de entrada.",
                     operation="Transcribir audio con Whisper",
                     resource=str(audio_path),
                     technical_metadata={
@@ -122,14 +152,33 @@ class SubtitleBuilder:
                     technical_metadata={"phase": "transcription_output"},
                 ) from error
 
-            shutil.move(
-                str(generated_srt),
-                str(output_path)
-            )
-
             generated_json = (
                 temp_output_dir
                 / f"{audio_path.stem}.json"
+            )
+
+            discarded = self.segment_filter.apply(
+                generated_srt,
+                generated_json,
+                self.transcription_config.no_speech_threshold,
+            )
+
+            if discarded:
+                ProgressLogger.info(
+                    self._discarded_message(
+                        discarded
+                    )
+                )
+
+            if voice_pauses and generated_json.exists():
+                self._record_voice_pauses(
+                    generated_json,
+                    voice_pauses
+                )
+
+            shutil.move(
+                str(generated_srt),
+                str(output_path)
             )
 
             if generated_json.exists():
@@ -182,3 +231,45 @@ class SubtitleBuilder:
         )
 
         return output_path
+
+    @staticmethod
+    def _record_voice_pauses(timing_path, voice_pauses):
+        data = json.loads(
+            timing_path.read_text(encoding="utf-8")
+        )
+        data["voice_pauses"] = [
+            {"start": start, "end": end}
+            for start, end in voice_pauses
+        ]
+        timing_path.write_text(
+            json.dumps(data),
+            encoding="utf-8"
+        )
+
+    @classmethod
+    def _discarded_message(cls, discarded):
+        count = len(discarded)
+        noun = (
+            "segmento descartado"
+            if count == 1
+            else "segmentos descartados"
+        )
+        reasons = Counter(
+            cls.DISCARD_REASON_LABELS.get(
+                entry["reason"],
+                entry["reason"],
+            )
+            for entry in discarded
+        )
+        detail = (
+            next(iter(reasons))
+            if len(reasons) == 1
+            else ", ".join(
+                f"{number} por {label}"
+                for label, number in reasons.items()
+            )
+        )
+        return (
+            f"Whisper: {count} {noun} "
+            f"({detail})"
+        )

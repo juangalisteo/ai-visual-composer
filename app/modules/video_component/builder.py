@@ -57,11 +57,15 @@ class VideoComponentBuilder:
         source_path=None,
         storyboard_scene=None
     ) -> VideoPreparationResult:
+        if not source_path:
+            raise ValueError(
+                "Falta la imagen base del clip de vídeo (source_path)."
+            )
+
         visual_context = (
             self.source_image_analyzer.analyze(
                 Path(
                     source_path
-                    or "tests/fixtures/video/source.png"
                 )
             )
         )

@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.modules.studio.input_preparation import StudioInputMode
 from app.modules.video.intro_outro import IntroOutroPlan
+
+
+_MODE_LABEL = StudioInputMode.INTRO_OUTRO.label
 
 
 class StudioIntroOutroInputError(ValueError):
@@ -17,10 +21,10 @@ class StudioIntroOutroPlan:
         source_path = Path(self.source_path)
         if not source_path.is_file():
             raise StudioIntroOutroInputError(
-                f"No existe el video para INTRO / OUTRO: {source_path}."
+                f"No existe el video para {_MODE_LABEL}: {source_path}."
             )
         if not isinstance(self.intro_outro_plan, IntroOutroPlan):
-            raise TypeError("INTRO / OUTRO requiere un plan comun valido.")
+            raise TypeError(f"{_MODE_LABEL} requiere un plan común válido.")
         object.__setattr__(self, "source_path", source_path)
 
 
@@ -50,7 +54,7 @@ class StudioIntroOutroInputService:
         if len(candidates) > 1:
             names = ", ".join(path.name for path in candidates)
             raise StudioIntroOutroInputError(
-                "INTRO / OUTRO requiere exactamente un archivo MP4. "
+                f"{_MODE_LABEL} requiere exactamente un archivo MP4. "
                 f"Se encontraron: {names}."
             )
         return candidates[0]
@@ -59,12 +63,12 @@ class StudioIntroOutroInputService:
         directory = self.input_directory
         if not directory.exists():
             raise StudioIntroOutroInputError(
-                "No existe la carpeta de entrada para INTRO / OUTRO: "
+                f"No existe la carpeta de entrada para {_MODE_LABEL}: "
                 f"{directory}."
             )
         if not directory.is_dir():
             raise StudioIntroOutroInputError(
-                "La entrada de INTRO / OUTRO debe ser una carpeta: "
+                f"La entrada de {_MODE_LABEL} debe ser una carpeta: "
                 f"{directory}."
             )
         candidates = tuple(sorted(
@@ -78,7 +82,7 @@ class StudioIntroOutroInputService:
         ))
         if not candidates:
             raise StudioIntroOutroInputError(
-                "No se encontro ningun archivo MP4 para INTRO / OUTRO en "
+                f"No se encontró ningún archivo MP4 para {_MODE_LABEL} en "
                 f"{directory}."
             )
         return candidates

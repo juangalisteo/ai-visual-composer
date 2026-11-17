@@ -14,6 +14,7 @@ from app.modules.video.video_build_context import (
 )
 from app.modules.video.video_render_service import VideoRenderService
 from app.modules.video.video_validator import VideoValidator
+from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -50,13 +51,10 @@ class I2VCompositionTest(unittest.TestCase):
     def test_diagnostics_uses_structured_profile_identity(self):
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
         environment = {
-            "MC_PROFILE_COMPONENT": profile_key.component.value,
-            "MC_PROFILE_PLATFORM": profile_key.platform,
-            "MC_PROFILE_ID": profile_key.profile_id,
             "MC_PROFILE_PATH": "C:/arbitrary/profile.json",
         }
 
@@ -68,7 +66,10 @@ class I2VCompositionTest(unittest.TestCase):
             output_path = Path(directory) / "video" / "final.mp4"
             diagnostics = FFmpegDiagnostics(
                 output_path=output_path,
-                scene_count=2
+                scene_count=2,
+                config_manager=ConfigManager(
+                    operational_profile_key=profile_key
+                ),
             )
             persisted = json.loads(
                 diagnostics.path.read_text(
@@ -79,8 +80,8 @@ class I2VCompositionTest(unittest.TestCase):
         self.assertEqual(
             {
                 "component": "video",
-                "platform": "instagram",
-                "profile_id": "video_instagram",
+                "format": "vertical",
+                "profile_id": "video_vertical",
                 "path": str(
                     ProfileResolver().resolve_operational(profile_key)
                 ),
@@ -122,7 +123,7 @@ class I2VCompositionTest(unittest.TestCase):
             graph,
         )
 
-    def test_transform_preserves_instagram_contract(self):
+    def test_transform_preserves_vertical_contract(self):
         graph = I2VClipTransform().build_filter(
             source_frame_count=48,
             duration=4.4,
@@ -140,7 +141,7 @@ class I2VCompositionTest(unittest.TestCase):
         self.assertIn("format=yuv420p", graph)
         self.assertTrue(graph.endswith("[v0]"))
 
-    def test_transform_preserves_youtube_contract(self):
+    def test_transform_preserves_horizontal_contract(self):
         graph = I2VClipTransform().build_filter(
             source_frame_count=48,
             duration=4.4,

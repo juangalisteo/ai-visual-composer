@@ -1,8 +1,6 @@
 import json
-import os
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from app.modules.video_component.profile_parameters import (
     load_video_component_parameters,
@@ -12,16 +10,60 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
+}
+
+OFFICIAL_SUBTITLE_PROFILE_IDS = {
+    (ProfileComponent.GUION, "vertical"): (
+        "subtitulo_guion_vertical_palabra_por_palabra"
+    ),
+    (ProfileComponent.GUION, "horizontal"): "subtitulo_guion_horizontal_linea_unica",
+    (ProfileComponent.IMAGEN, "vertical"): (
+        "subtitulo_imagen_vertical_palabra_por_palabra"
+    ),
+    (ProfileComponent.IMAGEN, "horizontal"): "subtitulo_imagen_horizontal_linea_unica",
+    (ProfileComponent.VIDEO, "vertical"): (
+        "subtitulo_video_vertical_palabra_por_palabra"
+    ),
+    (ProfileComponent.VIDEO, "horizontal"): "subtitulo_video_horizontal_linea_unica",
+}
+
+
+def _profile_key(component, profile_format):
+    return OperationalProfileKey(
+        component,
+        profile_format,
+        OPERATIONAL_PROFILE_IDS[(component, profile_format)],
+    )
+
+
+def _official_subtitle_key(profile_key):
+    return SubtitleProfileKey(
+        profile_key.component,
+        profile_key.format,
+        OFFICIAL_SUBTITLE_PROFILE_IDS[
+            (profile_key.component, profile_key.format)
+        ],
+        "estandar",
+    )
 
 
 def _operational_key(profile_key):
     return OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
 
@@ -34,8 +76,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
         ProfileComponent.VIDEO,
     )
 
-    PLATFORM_EXPECTATIONS = {
-        "instagram": {
+    FORMAT_EXPECTATIONS = {
+        "vertical": {
             "format": "vertical",
             "width": 1080,
             "height": 1920,
@@ -47,7 +89,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_offset": -0.06,
             "seconds_per_image": 20,
         },
-        "youtube": {
+        "horizontal": {
             "format": "horizontal",
             "width": 1920,
             "height": 1080,
@@ -67,35 +109,30 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
     def test_guion_image_and_video_profiles_keep_effective_behavior(self):
         for component in self.RUNTIME_COMPONENTS:
-            for platform, expected in self.PLATFORM_EXPECTATIONS.items():
+            for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
                 with self.subTest(
                     component=component.value,
-                    platform=platform
+                    profile_format=profile_format
                 ):
-                    profile_key = ProfileKey.for_component(
+                    profile_key = _profile_key(
                         component,
-                        platform
+                        profile_format
                     )
                     profile = self.resolver.load_operational(
                         _operational_key(profile_key)
                     )
                     video_style = profile["video_style"]
-                    environment = self._identity_environment(
-                        profile_key
-                    )
-                    with patch.dict(
-                        os.environ,
-                        environment,
-                        clear=True
-                    ):
-                        subtitle_profile = ConfigManager().get_subtitle_profile(
-                            expected["subtitle_config"]
+                    subtitle_profile = (
+                        self._config_manager(profile_key)
+                        .get_subtitle_profile_by_key(
+                            _official_subtitle_key(profile_key)
                         )
+                    )
                     subtitles = subtitle_profile.render_style
 
                     self.assertEqual(
-                        platform,
-                        profile["platform"]
+                        profile_format,
+                        profile["format"]
                     )
                     self.assertEqual(
                         expected["format"],
@@ -158,14 +195,14 @@ class ProfileCharacterizationTest(unittest.TestCase):
             ProfileComponent.IMAGEN,
             ProfileComponent.VIDEO,
         ):
-            for platform, expected in self.PLATFORM_EXPECTATIONS.items():
+            for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
                 with self.subTest(
                     target=target_component.value,
-                    platform=platform
+                    profile_format=profile_format
                 ):
-                    profile_key = ProfileKey.for_component(
+                    profile_key = _profile_key(
                         target_component,
-                        platform
+                        profile_format
                     )
                     operational_key = _operational_key(profile_key)
                     path = self.resolver.resolve_operational(
@@ -184,18 +221,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         Path("config/profiles/diseno").exists()
                     )
                     self.assertEqual(
-                        False,
-                        bool(
-                            profile.get(
-                                "image_validation",
-                                {}
-                            ).get(
-                                "enabled",
-                                False
-                            )
-                        )
-                    )
-                    self.assertEqual(
                         expected["width"],
                         profile["video_style"]["width"]
                     )
@@ -205,23 +230,17 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     )
 
     def test_video_wan_profiles_keep_current_parameters(self):
-        expected_by_platform = {
-            "instagram": (
-                (448, 800),
-                (1080, 1920),
-            ),
-            "youtube": (
-                (800, 448),
-                (1920, 1080),
-            ),
+        expected_by_format = {
+            "vertical": (448, 800),
+            "horizontal": (800, 448),
         }
 
-        for platform, dimensions in expected_by_platform.items():
-            with self.subTest(platform=platform):
+        for profile_format, dimensions in expected_by_format.items():
+            with self.subTest(profile_format=profile_format):
                 profile_key = OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    platform,
-                    f"video_{platform}",
+                    profile_format,
+                    f"video_{profile_format}",
                 )
                 path = self.resolver.resolve_video_component(
                     profile_key
@@ -233,22 +252,15 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
                 self.assertEqual(
                     Path("config/profiles/video")
-                    / platform
-                    / f"wan_i2v_{platform}.json",
+                    / profile_format
+                    / f"wan_i2v_{profile_format}.json",
                     path
                 )
                 self.assertEqual(
-                    dimensions[0],
+                    dimensions,
                     (
                         video["generation"]["width"],
                         video["generation"]["height"],
-                    )
-                )
-                self.assertEqual(
-                    dimensions[1],
-                    (
-                        video["target"]["width"],
-                        video["target"]["height"],
                     )
                 )
                 self.assertEqual(49, video["frames"])
@@ -265,26 +277,18 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 )
 
     def test_official_subtitle_configuration_is_unified_and_equivalent(self):
-        for platform, expected in self.PLATFORM_EXPECTATIONS.items():
-            with self.subTest(platform=platform):
-                profile_key = ProfileKey.for_component(
+        for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
+            with self.subTest(profile_format=profile_format):
+                profile_key = _profile_key(
                     ProfileComponent.VIDEO,
-                    platform
+                    profile_format
                 )
-                environment = self._identity_environment(
-                    profile_key
-                )
-                with patch.dict(
-                    os.environ,
-                    environment,
-                    clear=True
-                ):
-                    subtitle_profile = (
-                        ConfigManager()
-                        .get_subtitle_profile(
-                            expected["subtitle_config"]
-                        )
+                subtitle_profile = (
+                    self._config_manager(profile_key)
+                    .get_subtitle_profile_by_key(
+                        _official_subtitle_key(profile_key)
                     )
+                )
 
                 self.assertEqual(
                     expected["subtitle_config"],
@@ -296,36 +300,45 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 )
 
     def test_structured_identity_controls_wan_profile_resolution(self):
-        instagram_key = OperationalProfileKey(
+        vertical_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
 
         self.assertEqual(
-            self.resolver.load_video_component(instagram_key),
+            self.resolver.load_video_component(vertical_key),
             load_video_component_parameters(
-                instagram_key
+                vertical_key
             )
         )
 
     def test_wan_profile_rejects_legacy_platform_and_format_inference(self):
-        for legacy_profile in (
-            {
-                "platform": "instagram"
-            },
-            {
-                "format": "youtube"
-            },
+        video_formats = self.resolver.discover_formats(
+            ProfileComponent.VIDEO
+        )
+        self.assertTrue(video_formats)
+        legacy_profiles = [
             {
                 "video_component": {}
             },
-        ):
+        ]
+        for video_format in video_formats:
+            legacy_profiles.extend((
+                {
+                    "platform": video_format
+                },
+                {
+                    "format": video_format
+                },
+            ))
+
+        for legacy_profile in legacy_profiles:
             with self.subTest(
                 legacy_profile=legacy_profile
             ), self.assertRaisesRegex(
                 TypeError,
-                "identidad operacional VIDEO explicito"
+                "identidad operacional VIDEO explícita"
             ):
                 load_video_component_parameters(
                     legacy_profile
@@ -334,7 +347,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
     def test_wan_profile_rejects_missing_or_incompatible_identity(self):
         with self.assertRaisesRegex(
             TypeError,
-            "identidad operacional VIDEO explicito"
+            "identidad operacional VIDEO explícita"
         ):
             load_video_component_parameters(
                 None
@@ -342,8 +355,8 @@ class ProfileCharacterizationTest(unittest.TestCase):
 
         image_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         )
         with self.assertRaisesRegex(
             ValueError,
@@ -354,28 +367,22 @@ class ProfileCharacterizationTest(unittest.TestCase):
             )
 
     def test_runtime_objects_are_consistent_with_structured_identity(self):
-        for platform, expected in self.PLATFORM_EXPECTATIONS.items():
-            with self.subTest(platform=platform):
-                profile_key = ProfileKey.for_component(
+        for profile_format, expected in self.FORMAT_EXPECTATIONS.items():
+            with self.subTest(profile_format=profile_format):
+                profile_key = _profile_key(
                     ProfileComponent.VIDEO,
-                    platform
+                    profile_format
                 )
 
-                with patch.dict(
-                    os.environ,
-                    self._identity_environment(profile_key),
-                    clear=True
-                ):
-                    identity_profile = (
-                        ConfigManager()
-                        .get_profile_config()
-                    )
-                    subtitle_profile = ConfigManager().get_subtitle_profile(
-                        expected["subtitle_config"]
-                    )
-                    identity_video = VideoConfigLoader(
-                        subtitle_profile=subtitle_profile
-                    ).load()
+                config = self._config_manager(profile_key)
+                identity_profile = config.get_profile_config()
+                subtitle_profile = config.get_subtitle_profile_by_key(
+                    _official_subtitle_key(profile_key)
+                )
+                identity_video = VideoConfigLoader(
+                    subtitle_profile=subtitle_profile,
+                    config_manager=config,
+                ).load()
 
                 self.assertEqual(
                     self.resolver.load_operational(
@@ -400,15 +407,13 @@ class ProfileCharacterizationTest(unittest.TestCase):
                     )
                 )
 
-    def _identity_environment(
+    def _config_manager(
         self,
         profile_key
     ):
-        return {
-            "MC_PROFILE_COMPONENT": profile_key.component.value,
-            "MC_PROFILE_PLATFORM": profile_key.platform,
-            "MC_PROFILE_ID": profile_key.profile_id,
-        }
+        return ConfigManager(
+            operational_profile_key=_operational_key(profile_key)
+        )
 
     def _load(
         self,

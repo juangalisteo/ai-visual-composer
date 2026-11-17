@@ -1,5 +1,10 @@
 """Preparación de la ruta STUDIO específica de INTRO / OUTRO."""
 
+from app.modules.studio import (
+    StudioInputMode,
+    StudioIntroOutroInputError,
+    to_studio_operational_error,
+)
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
@@ -27,6 +32,33 @@ class StudioIntroOutroRouteSelection:
         writer=None,
         selector=None,
     ):
+        """Report a missing source video as an input error."""
+        try:
+            return self._select_plan(
+                profile_key,
+                require_assets,
+                select_asset,
+                writer,
+                selector,
+            )
+        except StudioIntroOutroInputError as error:
+            raise to_studio_operational_error(
+                error,
+                mode=StudioInputMode.INTRO_OUTRO.value,
+                recommended_action=(
+                    "Pon en esa carpeta el vídeo .mp4 al que quieres añadir "
+                    "la intro o el outro y vuelve a intentarlo."
+                ),
+            ) from error
+
+    def _select_plan(
+        self,
+        profile_key,
+        require_assets,
+        select_asset,
+        writer,
+        selector,
+    ):
         source_paths = self._input_service.discover_sources()
         source_path = self._resource_selection.select_studio_input_candidate(
             "VIDEO",
@@ -45,10 +77,10 @@ class StudioIntroOutroRouteSelection:
         intro = None
         outro = None
         if mode in {"intro", "both"}:
-            assets = require_assets(profile_key.platform, "intro")
+            assets = require_assets(profile_key.format, "intro")
             intro = IntroOutroSelection(select_asset(assets, "INTRO"), "intro")
         if mode in {"outro", "both"}:
-            assets = require_assets(profile_key.platform, "outro")
+            assets = require_assets(profile_key.format, "outro")
             outro = IntroOutroSelection(select_asset(assets, "OUTRO"), "outro")
         return self._input_service.create_plan(
             IntroOutroPlan(intro=intro, outro=outro),

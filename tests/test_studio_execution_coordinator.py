@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from app.modules.studio.execution_coordinator import (
     StudioExecutionCoordinator,
@@ -29,6 +29,14 @@ from app.modules.video.intro_outro import (
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
+)
+from app.shared.subtitle_profile_identity import (
+    SubtitleProfileKey,
+    require_subtitle_profile_key,
+)
+
+NORMALIZER = (
+    "app.modules.studio.execution_coordinator.require_subtitle_profile_key"
 )
 
 
@@ -117,14 +125,19 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         self.coordinator = StudioExecutionCoordinator()
         self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "instagram",
-            "studio_instagram",
+            "vertical",
+            "studio_vertical",
         )
-        self.subtitle_key = object()
+        self.subtitle_key = SubtitleProfileKey(
+            ProfileComponent.STUDIO,
+            "vertical",
+            "dummy_profile",
+            "test_family",
+        )
         self.profile = SimpleNamespace(fps=30)
         self.subtitle_profile = SimpleNamespace(cue_policy={})
 
-    def test_prepare_standard_uses_technical_identity_and_injected_normalizer(self):
+    def test_prepare_standard_uses_technical_identity_and_shared_normalizer(self):
         prepared_input = SimpleNamespace(
             video_path=Path("input/studio/video/source.mp4"),
             subtitle_path=None,
@@ -133,33 +146,27 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         config = _Config(self.profile_key, self.subtitle_profile)
         profile_loader = _ProfileLoader(self.profile)
         input_preparation = _InputPreparation(prepared_input)
-        normalizer_calls = []
 
-        preparation = self.coordinator.prepare_standard(
-            input_mode=StudioInputMode.VIDEO.value,
-            subtitle_profile_key=self.subtitle_key,
-            config_manager=config,
-            profile_loader=profile_loader,
-            input_preparation_service=input_preparation,
-            media_probe=SimpleNamespace(
-                inspect=lambda path: SimpleNamespace(has_audio=True),
-            ),
-            subtitle_profile_key_normalizer=(
-                lambda current_config, **options: (
-                    normalizer_calls.append((current_config, options))
-                    or options["subtitle_profile_key"]
-                )
-            ),
-        )
+        with patch(
+            NORMALIZER,
+            wraps=require_subtitle_profile_key,
+        ) as normalizer:
+            preparation = self.coordinator.prepare_standard(
+                input_mode=StudioInputMode.VIDEO.value,
+                subtitle_profile_key=self.subtitle_key,
+                config_manager=config,
+                profile_loader=profile_loader,
+                input_preparation_service=input_preparation,
+                media_probe=SimpleNamespace(
+                    inspect=lambda path: SimpleNamespace(has_audio=True),
+                ),
+            )
 
         self.assertEqual(self.profile_key, preparation.profile_key)
         self.assertIs(self.profile, preparation.profile)
         self.assertIs(self.subtitle_profile, preparation.subtitle_profile)
         self.assertEqual(StudioInputMode.VIDEO.value, preparation.input_mode)
-        self.assertEqual([(config, {
-            "subtitle_profile_key": self.subtitle_key,
-            "subtitle_style": None,
-        })], normalizer_calls)
+        normalizer.assert_called_once_with(self.subtitle_key)
         self.assertEqual(self.subtitle_key, config.requested_subtitle_key)
         self.assertEqual([(self.profile, "video", {})], input_preparation.calls)
 
@@ -179,9 +186,6 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 input_preparation_service=_InputPreparation(prepared_input),
                 media_probe=SimpleNamespace(
                     inspect=lambda path: SimpleNamespace(has_audio=False),
-                ),
-                subtitle_profile_key_normalizer=(
-                    lambda config, **options: options["subtitle_profile_key"]
                 ),
             )
 
@@ -204,24 +208,27 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
             renderer = _Renderer()
             persisted = []
 
-            result = self.coordinator.run_standard(
-                input_mode=StudioInputMode.SRT_VIDEO.value,
-                preparation_service=lambda **options: preparation,
-                render_service=renderer,
-                output_path_resolver=SimpleNamespace(
-                    resolve=lambda **options: output_path,
+            with patch.object(
+                self.coordinator,
+                "persist_subtitle_base",
+                lambda subtitle_path, current_output: (
+                    persisted.append((Path(subtitle_path), current_output))
+                    or base
                 ),
-                project=object(),
-                persist_subtitle_base=(
-                    lambda subtitle_path, current_output: (
-                        persisted.append((Path(subtitle_path), current_output))
-                        or base
-                    )
-                ),
-                persist_render_subtitle=(
-                    lambda **options: derived
-                ),
-            )
+            ), patch.object(
+                self.coordinator,
+                "persist_render_subtitle",
+                lambda **options: derived,
+            ):
+                result = self.coordinator.run_standard(
+                    input_mode=StudioInputMode.SRT_VIDEO.value,
+                    preparation_service=lambda **options: preparation,
+                    render_service=renderer,
+                    output_path_resolver=SimpleNamespace(
+                        resolve=lambda **options: output_path,
+                    ),
+                    project=object(),
+                )
             source_content = source.read_text(encoding="utf-8")
 
         self.assertEqual([(source, output_path)], persisted)
@@ -247,17 +254,24 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
             base = root / "subtitles" / "final.srt"
             derived = root / "subtitles" / "final_single_line.srt"
 
-            result = self.coordinator.render_prepared(
-                preparation=preparation,
-                project=object(),
-                music_path=None,
-                intro_outro_selection=None,
-                output_path=output_path,
-                render_service=renderer,
-                external_subtitle_preparation_service=external,
-                persist_subtitle_base=lambda *args: base,
-                persist_render_subtitle=lambda **options: derived,
-            )
+            with patch.object(
+                self.coordinator,
+                "persist_subtitle_base",
+                lambda *args: base,
+            ), patch.object(
+                self.coordinator,
+                "persist_render_subtitle",
+                lambda **options: derived,
+            ):
+                result = self.coordinator.render_prepared(
+                    preparation=preparation,
+                    project=object(),
+                    music_path=None,
+                    intro_outro_selection=None,
+                    output_path=output_path,
+                    render_service=renderer,
+                    external_subtitle_preparation_service=external,
+                )
 
         self.assertFalse(external.working_directory.exists())
         self.assertEqual(derived, renderer.options["subtitle_path"])
@@ -283,7 +297,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
             self.assertEqual("texto humano", persisted.read_text(encoding="utf-8"))
 
     def test_run_standard_rejects_original_outside_srt_video(self):
-        with self.assertRaisesRegex(ValueError, "ORIGINAL solo esta disponible"):
+        with self.assertRaisesRegex(ValueError, "ORIGINAL solo está disponible"):
             self.coordinator.run_standard(
                 input_mode=StudioInputMode.VIDEO.value,
                 subtitle_original=True,
@@ -314,23 +328,23 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 2.5,
                 ("ffmpeg",),
             )
-            normalizer = Mock(return_value=self.subtitle_key)
-
-            result = self.coordinator.run_video_audio_srt(
-                StudioVideoAudioSrtPlan(
-                    video_path,
-                    audio_path,
-                    source_subtitle_path,
-                ),
-                subtitle_style="single_line",
-                subtitle_profile_key=self.subtitle_key,
-                project=project,
-                config_manager=config,
-                profile_loader=_ProfileLoader(self.profile),
-                output_path_resolver=resolver,
-                service=service,
-                subtitle_profile_key_normalizer=normalizer,
-            )
+            with patch(
+                NORMALIZER,
+                wraps=require_subtitle_profile_key,
+            ) as normalizer:
+                result = self.coordinator.run_video_audio_srt(
+                    StudioVideoAudioSrtPlan(
+                        video_path,
+                        audio_path,
+                        source_subtitle_path,
+                    ),
+                    subtitle_profile_key=self.subtitle_key,
+                    project=project,
+                    config_manager=config,
+                    profile_loader=_ProfileLoader(self.profile),
+                    output_path_resolver=resolver,
+                    service=service,
+                )
 
             base_path = root / "subtitles" / "final.srt"
             derived_path = root / "subtitles" / "final_original.srt"
@@ -347,11 +361,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 profile_key=self.profile_key,
                 project=project,
             )
-            normalizer.assert_called_once_with(
-                config,
-                subtitle_profile_key=self.subtitle_key,
-                subtitle_style="single_line",
-            )
+            normalizer.assert_called_once_with(self.subtitle_key)
 
     def test_run_video_audio_srt_rejects_invalid_subtitle_combinations(self):
         plan_without_srt = StudioVideoAudioSrtPlan(
@@ -367,7 +377,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sin SRT no admite"):
             self.coordinator.run_video_audio_srt(
                 plan_without_srt,
-                subtitle_style="single_line",
+                subtitle_profile_key=self.subtitle_key,
             )
         with self.assertRaisesRegex(ValueError, "con SRT requiere"):
             self.coordinator.run_video_audio_srt(plan_with_srt)
@@ -408,29 +418,26 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
         service = Mock()
         expected = object()
         service.export.return_value = expected
-        normalizer = Mock(return_value=self.subtitle_key)
         profile_loader = _ProfileLoader(self.profile)
 
-        result = self.coordinator.run_subtitle_export(
-            export_plan,
-            subtitle_style="single_line",
-            subtitle_profile_key=self.subtitle_key,
-            project=project,
-            config_manager=config,
-            profile_loader=profile_loader,
-            export_service=service,
-            subtitle_profile_key_normalizer=normalizer,
-        )
+        with patch(
+            NORMALIZER,
+            wraps=require_subtitle_profile_key,
+        ) as normalizer:
+            result = self.coordinator.run_subtitle_export(
+                export_plan,
+                subtitle_profile_key=self.subtitle_key,
+                project=project,
+                config_manager=config,
+                profile_loader=profile_loader,
+                export_service=service,
+            )
 
         self.assertIs(expected, result)
         project.setup.assert_called_once_with()
         self.assertEqual([(config.get_profile_config(), self.profile_key)], profile_loader.calls)
         self.assertEqual(self.subtitle_key, config.requested_subtitle_key)
-        normalizer.assert_called_once_with(
-            config,
-            subtitle_profile_key=self.subtitle_key,
-            subtitle_style="single_line",
-        )
+        normalizer.assert_called_once_with(self.subtitle_key)
         service.export.assert_called_once_with(
             plan=export_plan,
             project=project,

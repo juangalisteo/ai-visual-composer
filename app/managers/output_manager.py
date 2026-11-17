@@ -1,11 +1,8 @@
 from pathlib import Path
 import shutil
 
+from app.shared.operational_error import create_operational_error
 from app.shared.progress_logger import ProgressLogger
-
-
-class OutputResetBlockedError(RuntimeError):
-    """Expected user-facing error when Windows keeps an output file open."""
 
 
 class OutputManager:
@@ -36,10 +33,15 @@ class OutputManager:
         except PermissionError as error:
             if getattr(error, "winerror", None) != 32:
                 raise
-            raise OutputResetBlockedError(
-                "No se puede eliminar OUTPUT porque uno de sus archivos "
-                "esta siendo utilizado por otro programa.\n\n"
-                "Cierra el archivo y vuelve a intentarlo."
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message=(
+                    "No se puede eliminar OUTPUT porque uno de sus archivos "
+                    "está siendo utilizado por otro programa."
+                ),
+                recommended_action="Cierra el archivo y vuelve a intentarlo.",
+                operation="Eliminar OUTPUT",
+                resource=error.filename,
             ) from error
 
         ProgressLogger.info(

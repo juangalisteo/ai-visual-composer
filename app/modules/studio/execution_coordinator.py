@@ -46,14 +46,72 @@ from app.shared.media_probe import MediaProbe
 from app.shared.profile_identity import ProfileComponent
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.progress_logger import ProgressLogger
+from app.shared.subtitle_profile_identity import require_subtitle_profile_key
 
 
 class StudioExecutionCoordinator:
     """Coordinate the typed STUDIO preparation and execution routes."""
 
+    def run_route(
+        self,
+        route,
+        subtitle_profile_key,
+        config_manager,
+        project,
+    ):
+        """Dispatch a typed STUDIO route without reconstructing its plan."""
+        subtitle_options = {}
+        if subtitle_profile_key is not None:
+            subtitle_options["subtitle_profile_key"] = subtitle_profile_key
+        if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT:
+            return self.run_video_audio_srt(
+                route.plan,
+                config_manager=config_manager,
+                project=project,
+                **subtitle_options,
+            )
+        if route.input_mode is StudioInputMode.INTRO_OUTRO:
+            return self.run_intro_outro(
+                route.plan,
+                config_manager=config_manager,
+                project=project,
+            )
+        if route.input_mode is StudioInputMode.EXPORTAR_SRT:
+            return self.run_subtitle_export(
+                route.plan,
+                config_manager=config_manager,
+                project=project,
+                **subtitle_options,
+            )
+        if route.input_mode is StudioInputMode.MONTAJE_VIDEOS:
+            montage_options = {}
+            if route.music_path is not None:
+                montage_options["music_path"] = route.music_path
+            if route.intro_outro_plan is not None:
+                montage_options["intro_outro_selection"] = route.intro_outro_plan
+            montage_options["project"] = project
+            return self.run_montage(route.plan, **montage_options)
+
+        studio_options = {
+            "music_path": route.music_path,
+            "input_mode": route.input_mode.value,
+        }
+        studio_options.update(subtitle_options)
+        if route.subtitle_original:
+            studio_options["subtitle_original"] = True
+        if route.intro_outro_plan is not None:
+            studio_options["intro_outro_selection"] = route.intro_outro_plan
+        if route.video_path is not None:
+            studio_options["video_path"] = route.video_path
+        if route.subtitle_path is not None:
+            studio_options["subtitle_path"] = route.subtitle_path
+        studio_options["config_manager"] = config_manager
+        project.setup()
+        studio_options["project"] = project
+        return self.run_standard(**studio_options)
+
     def prepare_standard(
         self,
-        subtitle_style=None,
         input_mode=None,
         subtitle_profile_key=None,
         config_manager=None,
@@ -63,7 +121,6 @@ class StudioExecutionCoordinator:
         video_path=None,
         subtitle_path=None,
         subtitle_original=False,
-        subtitle_profile_key_normalizer=None,
     ):
         """Validate and transport standard STUDIO inputs without a project."""
         config = config_manager or ConfigManager()
@@ -74,21 +131,15 @@ class StudioExecutionCoordinator:
             )
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError(
-                "La ejecucion STUDIO requiere component=studio."
+                "La ejecución STUDIO requiere component=studio."
             )
 
         profile = (profile_loader or StudioProfileLoader()).load(
             config.get_profile_config(),
             profile_key,
         )
-        if subtitle_profile_key_normalizer is None:
-            raise TypeError(
-                "STUDIO requiere un normalizador de SubtitleProfileKey."
-            )
-        subtitle_profile_key = subtitle_profile_key_normalizer(
-            config,
-            subtitle_profile_key=subtitle_profile_key,
-            subtitle_style=subtitle_style,
+        subtitle_profile_key = require_subtitle_profile_key(
+            subtitle_profile_key
         )
         subtitle_profile = config.get_subtitle_profile_by_key(
             subtitle_profile_key,
@@ -115,7 +166,8 @@ class StudioExecutionCoordinator:
             if not media_info.has_audio:
                 raise ValueError(
                     "El video seleccionado no contiene una pista de audio. "
-                    "SOLO VIDEO necesita audio para generar los subtitulos."
+                    f"{StudioInputMode.VIDEO.label} "
+                    "necesita audio para generar los subtítulos."
                 )
 
         return StudioPreparation(
@@ -133,13 +185,13 @@ class StudioExecutionCoordinator:
         """Validate the structured STUDIO montage boundary."""
         if not isinstance(montage_plan, StudioMontagePlan):
             raise TypeError(
-                "MONTAJE DE VÍDEOS requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.MONTAJE_VIDEOS.label} "
+                "requiere un plan STUDIO estructurado."
             )
         return montage_plan
 
     def run_standard(
         self,
-        subtitle_style=None,
         input_mode=None,
         subtitle_profile_key=None,
         music_path=None,
@@ -153,10 +205,6 @@ class StudioExecutionCoordinator:
         subtitle_path=None,
         subtitle_original=False,
         config_manager=None,
-        subtitle_profile_key_normalizer=None,
-        persist_subtitle_base=None,
-        persist_render_subtitle=None,
-        with_subtitle_artifacts=None,
     ):
         """Run the standard STUDIO route with existing collaborators."""
         if (
@@ -164,15 +212,14 @@ class StudioExecutionCoordinator:
             and input_mode != StudioInputMode.SRT_VIDEO.value
         ):
             raise ValueError(
-                "ORIGINAL solo esta disponible para STUDIO SRT + VIDEO."
+                "ORIGINAL solo está disponible para STUDIO "
+                f"{StudioInputMode.SRT_VIDEO.label}."
             )
         preparation_options = {"input_mode": input_mode}
         if subtitle_profile_key is not None:
             preparation_options["subtitle_profile_key"] = (
                 subtitle_profile_key
             )
-        elif subtitle_style is not None:
-            preparation_options["subtitle_style"] = subtitle_style
         if subtitle_original:
             preparation_options["subtitle_original"] = True
         if video_path is not None:
@@ -183,9 +230,6 @@ class StudioExecutionCoordinator:
             preparation = self.prepare_standard(
                 **preparation_options,
                 config_manager=config_manager,
-                subtitle_profile_key_normalizer=(
-                    subtitle_profile_key_normalizer
-                ),
             )
         else:
             preparation = preparation_service(**preparation_options)
@@ -209,9 +253,6 @@ class StudioExecutionCoordinator:
             external_subtitle_preparation_service=(
                 external_subtitle_preparation_service
             ),
-            persist_subtitle_base=persist_subtitle_base,
-            persist_render_subtitle=persist_render_subtitle,
-            with_subtitle_artifacts=with_subtitle_artifacts,
         )
 
     def render_prepared(
@@ -223,23 +264,8 @@ class StudioExecutionCoordinator:
         output_path,
         render_service=None,
         external_subtitle_preparation_service=None,
-        persist_subtitle_base=None,
-        persist_render_subtitle=None,
-        with_subtitle_artifacts=None,
     ):
         """Render one prepared standard STUDIO input unchanged."""
-        persist_subtitle_base = (
-            persist_subtitle_base
-            or self.persist_subtitle_base
-        )
-        persist_render_subtitle = (
-            persist_render_subtitle
-            or self.persist_render_subtitle
-        )
-        with_subtitle_artifacts = (
-            with_subtitle_artifacts
-            or self.with_subtitle_artifacts
-        )
         subtitles_enabled = getattr(
             preparation,
             "subtitles_enabled",
@@ -260,11 +286,11 @@ class StudioExecutionCoordinator:
         if not subtitles_enabled:
             return renderer.render(**render_options)
         if preparation.input_mode == StudioInputMode.SRT_VIDEO.value:
-            base_subtitle_path = persist_subtitle_base(
+            base_subtitle_path = self.persist_subtitle_base(
                 preparation.subtitle_path,
                 output_path,
             )
-            render_subtitle_path = persist_render_subtitle(
+            render_subtitle_path = self.persist_render_subtitle(
                 base_subtitle_path=base_subtitle_path,
                 output_path=output_path,
                 subtitle_profile=preparation.subtitle_profile,
@@ -273,7 +299,7 @@ class StudioExecutionCoordinator:
             )
             render_options["subtitle_path"] = render_subtitle_path
             rendered = renderer.render(**render_options)
-            return with_subtitle_artifacts(
+            return self.with_subtitle_artifacts(
                 rendered,
                 base_subtitle_path=base_subtitle_path,
                 render_subtitle_path=render_subtitle_path,
@@ -301,11 +327,11 @@ class StudioExecutionCoordinator:
                 "SUBTÍTULOS PREPARADOS",
                 subtitle_preparation_duration,
             )
-            base_subtitle_path = persist_subtitle_base(
+            base_subtitle_path = self.persist_subtitle_base(
                 subtitles.subtitle_path,
                 output_path,
             )
-            render_subtitle_path = persist_render_subtitle(
+            render_subtitle_path = self.persist_render_subtitle(
                 base_subtitle_path=base_subtitle_path,
                 output_path=output_path,
                 subtitle_profile=preparation.subtitle_profile,
@@ -316,7 +342,7 @@ class StudioExecutionCoordinator:
             render_options["subtitle_path"] = render_subtitle_path
             render_options["subtitle_timing"] = subtitles.timing
             rendered = renderer.render(**render_options)
-            return with_subtitle_artifacts(
+            return self.with_subtitle_artifacts(
                 rendered,
                 base_subtitle_path=base_subtitle_path,
                 render_subtitle_path=render_subtitle_path,
@@ -326,38 +352,34 @@ class StudioExecutionCoordinator:
     def run_video_audio_srt(
         self,
         plan,
-        subtitle_style=None,
         subtitle_profile_key=None,
         project=None,
         config_manager=None,
         profile_loader=None,
         output_path_resolver=None,
         service=None,
-        subtitle_profile_key_normalizer=None,
-        persist_subtitle_base=None,
-        persist_render_subtitle=None,
     ):
         """Run the structured STUDIO VIDEO + AUDIO + SRT route."""
         if not isinstance(plan, StudioVideoAudioSrtPlan):
             raise TypeError(
-                "VIDEO + AUDIO SRT requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "requiere un plan STUDIO estructurado."
             )
         if (
             plan.subtitle_path is None
-            and (
-                subtitle_style is not None
-                or subtitle_profile_key is not None
-            )
+            and subtitle_profile_key is not None
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT sin SRT no admite estilo de subtitulos."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "sin SRT no admite estilo de subtítulos."
             )
         if (
             plan.subtitle_path is not None
-            and not (subtitle_style or subtitle_profile_key)
+            and not subtitle_profile_key
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT con SRT requiere un estilo de subtitulos."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "con SRT requiere un estilo de subtítulos."
             )
 
         project = project or ProjectManager()
@@ -369,7 +391,8 @@ class StudioExecutionCoordinator:
             or profile_key.component is not ProfileComponent.STUDIO
         ):
             raise ValueError(
-                "VIDEO + AUDIO SRT requiere identidad STUDIO estructurada."
+                f"{StudioInputMode.VIDEO_AUDIO_SRT.label} "
+                "requiere identidad STUDIO estructurada."
             )
         profile = (profile_loader or StudioProfileLoader()).load(
             config.get_profile_config(),
@@ -388,31 +411,17 @@ class StudioExecutionCoordinator:
         render_subtitle_path = None
         render_plan = plan
         if plan.subtitle_path is not None:
-            if subtitle_profile_key_normalizer is None:
-                raise TypeError(
-                    "STUDIO requiere un normalizador de SubtitleProfileKey."
-                )
-            subtitle_profile_key = subtitle_profile_key_normalizer(
-                config,
-                subtitle_profile_key=subtitle_profile_key,
-                subtitle_style=subtitle_style,
+            subtitle_profile_key = require_subtitle_profile_key(
+                subtitle_profile_key
             )
             subtitle_profile = config.get_subtitle_profile_by_key(
                 subtitle_profile_key,
             )
-            persist_subtitle_base = (
-                persist_subtitle_base
-                or self.persist_subtitle_base
-            )
-            persist_render_subtitle = (
-                persist_render_subtitle
-                or self.persist_render_subtitle
-            )
-            base_subtitle_path = persist_subtitle_base(
+            base_subtitle_path = self.persist_subtitle_base(
                 plan.subtitle_path,
                 output_path,
             )
-            render_subtitle_path = persist_render_subtitle(
+            render_subtitle_path = self.persist_render_subtitle(
                 base_subtitle_path=base_subtitle_path,
                 output_path=output_path,
                 subtitle_profile=subtitle_profile,
@@ -448,36 +457,32 @@ class StudioExecutionCoordinator:
     def run_subtitle_export(
         self,
         export_plan,
-        subtitle_style=None,
         subtitle_profile_key=None,
         project=None,
         config_manager=None,
         profile_loader=None,
         export_service=None,
-        subtitle_profile_key_normalizer=None,
     ):
         """Run the structured STUDIO subtitle export route."""
         if not isinstance(export_plan, StudioSubtitleExportPlan):
             raise TypeError(
-                "EXPORTAR SRT requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.EXPORTAR_SRT.label} "
+                "requiere un plan STUDIO estructurado."
             )
         project = project or ProjectManager()
         project.setup()
         service = export_service or StudioSubtitleExportService()
         if export_plan.mode is StudioSubtitleExportMode.TRANSCRIBIR:
-            if (
-                subtitle_style is not None
-                or subtitle_profile_key is not None
-            ):
+            if subtitle_profile_key is not None:
                 raise ValueError(
-                    "TRANSCRIBIR no admite formato de subtitulos."
+                    "TRANSCRIBIR no admite formato de subtítulos."
                 )
             return service.export(
                 plan=export_plan,
                 project=project,
             )
 
-        if subtitle_profile_key is None and subtitle_style is None:
+        if subtitle_profile_key is None:
             raise ValueError("CONVERTIR requiere una SubtitleProfileKey.")
         config = config_manager or ConfigManager()
         profile_key = config.get_operational_profile_key()
@@ -492,14 +497,8 @@ class StudioExecutionCoordinator:
             config.get_profile_config(),
             profile_key,
         )
-        if subtitle_profile_key_normalizer is None:
-            raise TypeError(
-                "STUDIO requiere un normalizador de SubtitleProfileKey."
-            )
-        subtitle_profile_key = subtitle_profile_key_normalizer(
-            config,
-            subtitle_profile_key=subtitle_profile_key,
-            subtitle_style=subtitle_style,
+        subtitle_profile_key = require_subtitle_profile_key(
+            subtitle_profile_key
         )
         subtitle_profile = config.get_subtitle_profile_by_key(
             subtitle_profile_key,
@@ -523,7 +522,8 @@ class StudioExecutionCoordinator:
         """Run the structured STUDIO INTRO / OUTRO route."""
         if not isinstance(intro_outro_plan, StudioIntroOutroPlan):
             raise TypeError(
-                "INTRO / OUTRO requiere un plan STUDIO estructurado."
+                f"{StudioInputMode.INTRO_OUTRO.label} "
+                "requiere un plan STUDIO estructurado."
             )
         project = project or ProjectManager()
         project.setup()
@@ -534,7 +534,8 @@ class StudioExecutionCoordinator:
             or profile_key.component is not ProfileComponent.STUDIO
         ):
             raise ValueError(
-                "INTRO / OUTRO requiere identidad STUDIO estructurada."
+                f"{StudioInputMode.INTRO_OUTRO.label} "
+                "requiere identidad STUDIO estructurada."
             )
         profile = (profile_loader or StudioProfileLoader()).load(
             config.get_profile_config(),

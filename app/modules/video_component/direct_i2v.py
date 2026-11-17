@@ -1,9 +1,13 @@
-"""Pure request contract for a future programmatic direct-I2V API."""
+"""Direct IMAGE-to-VIDEO API: request, service and the P7 adapter."""
 
+import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from app.core.pipeline_telemetry import PipelineTelemetry
+from app.managers.pipeline_summary import PipelineSummary
+from app.managers.project_manager import ProjectManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -118,3 +122,64 @@ class DirectI2VRequest:
         object.__setattr__(self, "source_image", Path(self.source_image))
         object.__setattr__(self, "output_dir", Path(self.output_dir))
         object.__setattr__(self, "output_stem", output_stem)
+
+
+def run_direct_i2v(
+    *,
+    pipeline_start=None,
+    project=None,
+    profile_key=None,
+    source_path,
+    video_builder=None,
+):
+    """Generate one direct I2V clip in the project and print its summary (P7)."""
+    if pipeline_start is None:
+        pipeline_start = time.perf_counter()
+
+    project = (
+        project
+        or ProjectManager()
+    )
+
+    project.setup()
+
+    video_builder = (
+        video_builder
+        or VideoComponentBuilder()
+    )
+
+    output_dir = (
+        project.base_path
+        / "video_clips"
+    )
+
+    service = DirectI2VGenerationService(
+        video_builder=video_builder
+    )
+    request = DirectI2VRequest(
+        source_image=source_path,
+        profile_key=profile_key,
+        output_dir=output_dir,
+        output_stem="clip_001",
+    )
+    pipeline_telemetry = PipelineTelemetry()
+    result, video_elapsed = pipeline_telemetry.measure_stage(
+        service.generate,
+        request,
+    )
+
+    summary = PipelineSummary(
+        project.project_name
+    )
+    summary.set_media_duration(
+        result.generation.duration_seconds
+    )
+    pipeline_telemetry.complete(
+        summary=summary,
+        stage_times={
+            "Video I2V": video_elapsed,
+        },
+        pipeline_start=pipeline_start,
+    )
+
+    return result.generation.output_clip

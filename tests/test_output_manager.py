@@ -3,10 +3,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.managers.output_manager import (
-    OutputManager,
-    OutputResetBlockedError,
-)
+from app.managers.output_manager import OutputManager
+from app.shared.operational_error import OperationalError
 
 
 class OutputManagerTest(unittest.TestCase):
@@ -41,11 +39,25 @@ class OutputManagerTest(unittest.TestCase):
             locked.write_bytes(b"video")
             error = PermissionError(13, "in use", str(locked), 32)
 
-            with patch.object(Path, "unlink", side_effect=error), self.assertRaisesRegex(
-                OutputResetBlockedError,
-                "No se puede eliminar OUTPUT",
-            ):
+            with patch.object(Path, "unlink", side_effect=error), self.assertRaises(
+                OperationalError,
+            ) as raised:
                 manager.reset()
+
+        context = raised.exception.context
+        self.assertEqual("FILESYSTEM", context.family)
+        self.assertEqual(
+            "No se puede eliminar OUTPUT porque uno de sus archivos "
+            "está siendo utilizado por otro programa.",
+            context.user_message,
+        )
+        self.assertEqual(
+            "Cierra el archivo y vuelve a intentarlo.",
+            context.recommended_action,
+        )
+        self.assertEqual("Eliminar OUTPUT", context.operation)
+        self.assertEqual(str(locked), context.resource)
+        self.assertIs(error, raised.exception.__cause__)
 
     def test_reset_reraises_unrelated_permission_error(self):
         with tempfile.TemporaryDirectory() as directory:

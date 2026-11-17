@@ -25,6 +25,9 @@ from app.shared.operational_error import (
 )
 
 
+_MODE_LABEL = StudioInputMode.MONTAJE_VIDEOS.label
+
+
 class StudioMontageInputError(ValueError):
     """Expected user-facing error while preparing a STUDIO montage plan."""
 
@@ -45,7 +48,7 @@ class StudioMontageClip:
         if temporary_id <= 0:
             raise ValueError("El ID temporal del clip debe ser positivo.")
         if not path.name:
-            raise ValueError("El clip de MONTAJE DE VIDEOS debe tener nombre.")
+            raise ValueError(f"El clip de {_MODE_LABEL} debe tener nombre.")
         if self.original_name != path.name:
             raise ValueError(
                 "El nombre original del clip debe coincidir con su ruta."
@@ -61,11 +64,11 @@ class StudioMontageCandidates:
 
     def __post_init__(self):
         if not self.clips:
-            raise ValueError("MONTAJE DE VIDEOS requiere al menos un clip.")
+            raise ValueError(f"{_MODE_LABEL} requiere al menos un clip.")
         ids = tuple(clip.temporary_id for clip in self.clips)
         if ids != tuple(range(1, len(ids) + 1)):
             raise ValueError(
-                "Los IDs temporales de MONTAJE DE VIDEOS deben ser consecutivos."
+                f"Los IDs temporales de {_MODE_LABEL} deben ser consecutivos."
             )
 
 
@@ -77,26 +80,26 @@ class StudioMontagePlan:
 
     def __post_init__(self):
         if not isinstance(self.profile_key, OperationalProfileKey):
-            raise TypeError("MONTAJE DE VIDEOS requiere identidad operacional explicita.")
+            raise TypeError(f"{_MODE_LABEL} requiere identidad operacional explícita.")
         if self.profile_key.component is not ProfileComponent.STUDIO:
-            raise ValueError("MONTAJE DE VIDEOS requiere component=studio.")
+            raise ValueError(f"{_MODE_LABEL} requiere component=studio.")
         if not isinstance(self.transitions_enabled, bool):
             raise TypeError("transitions_enabled debe ser booleano.")
         if len(self.clips) < 2:
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS requiere al menos dos clips."
+                f"El plan de {_MODE_LABEL} requiere al menos dos clips."
             )
         if any(not isinstance(clip, StudioMontageClip) for clip in self.clips):
-            raise TypeError("El plan contiene un clip de montaje no valido.")
+            raise TypeError("El plan contiene un clip de montaje no válido.")
         ids = tuple(clip.temporary_id for clip in self.clips)
         if len(set(ids)) != len(ids):
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS contiene IDs duplicados."
+                f"El plan de {_MODE_LABEL} contiene IDs duplicados."
             )
         paths = tuple(clip.path for clip in self.clips)
         if len(set(paths)) != len(paths):
             raise StudioMontageInputError(
-                "El plan de MONTAJE DE VIDEOS contiene clips duplicados."
+                f"El plan de {_MODE_LABEL} contiene clips duplicados."
             )
         missing = next((path for path in paths if not path.is_file()), None)
         if missing is not None:
@@ -107,8 +110,8 @@ class StudioMontagePlan:
         object.__setattr__(self, "clips", tuple(self.clips))
 
     @property
-    def platform(self):
-        return self.profile_key.platform
+    def format(self):
+        return self.profile_key.format
 
     @property
     def profile_id(self):
@@ -190,6 +193,11 @@ class StudioMontagePlanningService:
         except (FileNotFoundError, NotADirectoryError, ValueError) as error:
             raise StudioMontageInputError(str(error)) from error
 
+        if len(candidates.videos) < 2:
+            raise StudioMontageInputError(
+                f"Solo se encontró un archivo MP4 en {candidates.directory}."
+            )
+
         clips = tuple(
             StudioMontageClip(
                 temporary_id=index,
@@ -205,11 +213,11 @@ class StudioMontagePlanningService:
 
     def parse_order(self, value, candidates):
         if not isinstance(candidates, StudioMontageCandidates):
-            raise TypeError("Los candidatos de MONTAJE DE VIDEOS no son validos.")
+            raise TypeError(f"Los candidatos de {_MODE_LABEL} no son válidos.")
         text = "" if value is None else str(value).strip()
         if not text:
             raise StudioMontageInputError(
-                "Introduce uno o mas IDs de clip separados por espacios."
+                "Introduce uno o más IDs de clip separados por espacios."
             )
 
         tokens = text.split()
@@ -229,12 +237,12 @@ class StudioMontagePlanningService:
             clip = available.get(temporary_id)
             if clip is None:
                 raise StudioMontageInputError(
-                    "El ID de clip no existe en esta ejecucion: "
+                    "El ID de clip no existe en esta ejecución: "
                     f"{temporary_id}."
                 )
             if temporary_id in seen:
                 raise StudioMontageInputError(
-                    "No se permiten clips duplicados en MONTAJE DE VIDEOS: "
+                    f"No se permiten clips duplicados en {_MODE_LABEL}: "
                     f"{temporary_id}."
                 )
             if not clip.path.is_file():
@@ -246,7 +254,7 @@ class StudioMontagePlanningService:
             selected.append(clip)
         if len(selected) < 2:
             raise StudioMontageInputError(
-                "Selecciona al menos dos clips para MONTAJE DE VIDEOS."
+                f"Selecciona al menos dos clips para {_MODE_LABEL}."
             )
         return tuple(selected)
 
@@ -267,8 +275,8 @@ class StudioMontageService:
     """Build one validated principal from a fixed STUDIO montage plan."""
 
     _COMPATIBILITY_FIELDS = (
-        ("resolucion", "width"),
-        ("resolucion", "height"),
+        ("resolución", "width"),
+        ("resolución", "height"),
         ("FPS", "fps"),
         ("FPS nominal", "nominal_fps"),
         ("codec de video", "video_codec"),
@@ -353,7 +361,7 @@ class StudioMontageService:
                         )
                     except OSError as error:
                         raise StudioMontageError(
-                            "No se pudo crear el graph temporal de transiciones."
+                            "No se pudo crear el grafo temporal de transiciones."
                         ) from error
                     command = self.build_transition_command(
                         sources=tuple(prepared.path for prepared in prepared_clips),
@@ -373,7 +381,7 @@ class StudioMontageService:
                         )
                     except OSError as error:
                         raise StudioMontageError(
-                            "No se pudo crear el manifest temporal del montaje."
+                            "No se pudo crear el manifiesto temporal del montaje."
                         ) from error
                     command = self.build_concat_command(
                         manifest_path=manifest_path,
@@ -421,8 +429,8 @@ class StudioMontageService:
                     subprocess.CalledProcessError,
                 ) as error:
                     raise StudioMontageError(
-                        "El video montado no supero la validacion. "
-                        f"Comprobacion: {error}"
+                        "El video montado no superó la validación. "
+                        f"Comprobación: {error}"
                     ) from error
                 temporary_path.replace(output_path)
                 montage_duration = time.perf_counter() - montage_start
@@ -433,7 +441,7 @@ class StudioMontageService:
                 output_path.unlink()
 
         ProgressLogger.finish(
-            "MONTAJE DE VIDEOS COMPLETADO",
+            f"{_MODE_LABEL} COMPLETADO",
             montage_duration,
         )
         return StudioMontageResult(
@@ -454,7 +462,7 @@ class StudioMontageService:
 
     def prepare(self, plan, profile, temporary_directory):
         if not isinstance(plan, StudioMontagePlan):
-            raise TypeError("MONTAJE DE VIDEOS requiere StudioMontagePlan.")
+            raise TypeError(f"{_MODE_LABEL} requiere StudioMontagePlan.")
         if plan.transitions_enabled and len(plan.clips) < 2:
             raise StudioMontageError(
                 "Se necesitan al menos 2 clips para aplicar transiciones."
@@ -652,7 +660,7 @@ class StudioMontageService:
         for source in sources:
             command.extend(["-i", str(Path(source))])
         command.extend([
-            "-filter_complex_script",
+            "-/filter_complex",
             str(Path(filter_path)),
             "-map",
             "[vout]",
@@ -695,7 +703,7 @@ class StudioMontageService:
 
     def _require_executable_plan(self, plan):
         if not isinstance(plan, StudioMontagePlan):
-            raise TypeError("MONTAJE DE VIDEOS requiere StudioMontagePlan.")
+            raise TypeError(f"{_MODE_LABEL} requiere StudioMontagePlan.")
         return plan
 
     def _require_transition_durations(self, inspected, profile):
@@ -704,8 +712,8 @@ class StudioMontageService:
             duration = getattr(info, "duration", None)
             if duration is None or duration <= transition_duration:
                 raise StudioMontageError(
-                    "El clip no tiene duracion suficiente para una "
-                    f"transicion de {transition_duration:.2f} s: "
+                    "El clip no tiene duración suficiente para una "
+                    f"transición de {transition_duration:.2f} s: "
                     f"{clip.original_name}."
                 )
 
@@ -932,7 +940,7 @@ class StudioMontageService:
             actual_value = getattr(actual, attribute)
             if not self._same_field(attribute, expected_value, actual_value):
                 raise StudioMontageError(
-                    "El clip preparado no cumple el contrato comun. "
+                    "El clip preparado no cumple el contrato común. "
                     f"Archivo: {clip.original_name}. Campo: {label}. "
                     f"Esperado: {expected_value}. Encontrado: {actual_value}."
                 )
@@ -974,7 +982,7 @@ class StudioMontageService:
         except (FileNotFoundError, RuntimeError) as error:
             raise StudioMontageError(
                 "No se pudo normalizar el clip: "
-                f"{clip.original_name}. Comprobacion: {error}"
+                f"{clip.original_name}. Comprobación: {error}"
             ) from error
 
     def _inspect_prepared_clip(self, clip, path):

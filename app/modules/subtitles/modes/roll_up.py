@@ -2,6 +2,10 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -16,12 +20,6 @@ class RollUpModel(BaseSubtitleModel):
         self.visible_lines = require_int(
             config, "visible_lines", "cue_policy.visible_lines"
         )
-        self.min_duration = require_float(
-            config, "min_duration", "cue_policy.min_duration"
-        )
-        self.max_duration = require_float(
-            config, "max_duration", "cue_policy.max_duration"
-        )
         self.significant_gap_threshold = require_float(
             config,
             "significant_gap_threshold",
@@ -32,12 +30,6 @@ class RollUpModel(BaseSubtitleModel):
             raise ValueError("cue_policy.max_chars_per_line debe ser superior a cero.")
         if self.visible_lines not in (2, 3, 4):
             raise ValueError("cue_policy.visible_lines debe ser 2, 3 o 4.")
-        if self.min_duration <= 0 or self.max_duration <= 0:
-            raise ValueError("Las duraciones de cue_policy deben ser superiores a cero.")
-        if self.max_duration < self.min_duration:
-            raise ValueError(
-                "cue_policy.max_duration no puede ser menor que cue_policy.min_duration."
-            )
         if self.significant_gap_threshold <= 0:
             raise ValueError(
                 "cue_policy.significant_gap_threshold debe ser superior a cero."
@@ -49,21 +41,33 @@ class RollUpModel(BaseSubtitleModel):
         return self._optimize_without_timing(blocks)
 
     def _optimize_with_timing(self, timing):
-        optimized = []
-        index = 1
-        for segment in timing.segments:
-            for group in self._split_words_by_gap(segment.words):
-                for line_words in self._fixed_width_lines(group):
-                    optimized.append(
-                        self._format_block(
-                            index,
-                            self._seconds_to_time(line_words[0].start),
-                            self._seconds_to_time(line_words[-1].end),
-                            self._format_words(line_words),
-                        )
-                    )
-                    index += 1
-        return optimized
+        timed_cues = [
+            (
+                line_words[0].start,
+                line_words[-1].end,
+                line_words,
+                self._format_words(line_words),
+            )
+            for segment in timing.segments
+            for group in self._split_words_by_gap(segment.words)
+            for line_words in self._fixed_width_lines(group)
+        ]
+        return [
+            self._format_block(
+                index,
+                self._seconds_to_time(start),
+                self._seconds_to_time(end),
+                text,
+            )
+            for index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues,
+                    self.significant_gap_threshold,
+                    text_joiner(self._format_words),
+                ),
+                start=1,
+            )
+        ]
 
     def _optimize_without_timing(self, blocks):
         optimized = []
@@ -91,8 +95,6 @@ class RollUpModel(BaseSubtitleModel):
         groups = []
         current = []
         for word in words:
-            if word.end <= word.start:
-                continue
             if (
                 current
                 and word.start - current[-1].end >= self.significant_gap_threshold
@@ -108,12 +110,7 @@ class RollUpModel(BaseSubtitleModel):
         lines = []
         current = []
         for word in words:
-            text = self._word_text(word)
-            if len(text) > self.max_chars_per_line:
-                raise ValueError(
-                    "Una palabra supera cue_policy.max_chars_per_line: "
-                    f"{text}"
-                )
+            # A word longer than the limit goes alone on its line.
             candidate = (*current, word)
             if current and len(self._join_words(candidate)) > self.max_chars_per_line:
                 lines.append(tuple(current))

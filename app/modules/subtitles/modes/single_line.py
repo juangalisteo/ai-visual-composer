@@ -4,6 +4,10 @@ from functools import lru_cache
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -134,8 +138,7 @@ class SingleLineModel(BaseSubtitleModel):
         return optimized_blocks
 
     def _optimize_with_timing(self, timing):
-        optimized_blocks = []
-        new_index = 1
+        timed_cues = []
 
         for segment in timing.segments:
             for word_group in self._split_words_by_gap(
@@ -158,16 +161,41 @@ class SingleLineModel(BaseSubtitleModel):
                     if not text:
                         continue
 
-                    optimized_blocks.append(
-                        f"{new_index}\n"
-                        f"{self._seconds_to_time(chunk_words[0].start)} --> "
-                        f"{self._seconds_to_time(chunk_words[-1].end)}\n"
-                        f"{text}"
+                    timed_cues.append(
+                        (
+                            chunk_words[0].start,
+                            chunk_words[-1].end,
+                            chunk_words,
+                            text
+                        )
                     )
 
-                    new_index += 1
+        return [
+            f"{new_index}\n"
+            f"{self._seconds_to_time(start)} --> "
+            f"{self._seconds_to_time(end)}\n"
+            f"{text}"
+            for new_index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues,
+                    self.significant_gap_threshold,
+                    text_joiner(
+                        self._format_timed_words
+                    )
+                ),
+                start=1
+            )
+        ]
 
-        return optimized_blocks
+    def _format_timed_words(self, words):
+        return self.punctuation.apply(
+            self._clean_text(
+                " ".join(
+                    word.text
+                    for word in words
+                )
+            )
+        )
 
     def _split_words_by_gap(self, words):
         groups = []
@@ -186,10 +214,9 @@ class SingleLineModel(BaseSubtitleModel):
                 )
                 current_group = []
 
-            if word.end > word.start:
-                current_group.append(
-                    word
-                )
+            current_group.append(
+                word
+            )
 
         if current_group:
             groups.append(

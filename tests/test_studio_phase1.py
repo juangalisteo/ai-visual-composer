@@ -14,73 +14,94 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio, preparar_studio, iniciar
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioInputPreparationService,
     StudioInputMode,
     StudioProfileLoader,
 )
 from app.shared.config_manager import ConfigManager
+from app.shared.error_context import ErrorSeverity
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
-STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID = (
-    "subtitulo_studio_instagram_dos_tres"
+STUDIO_VERTICAL_THREE_TWO_PROFILE_ID = (
+    "subtitulo_studio_vertical_dos_tres"
 )
+STUDIO_VERTICAL_THREE_TWO_KEY = SubtitleProfileKey(
+    "studio",
+    "vertical",
+    STUDIO_VERTICAL_THREE_TWO_PROFILE_ID,
+    "estandar",
+)
+
+
+STUDIO_PROFILE_IDS = {
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
+}
 
 
 class StudioPhase1Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = ProfileKey.for_component(
+        self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "instagram",
+            "vertical",
+            "studio_vertical",
         )
         self.operational_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "instagram",
-            "studio_instagram",
+            "vertical",
+            "studio_vertical",
         )
         self.profile = StudioProfileLoader().load(
             ProfileResolver().load_operational(self.operational_key),
             self.operational_key,
         )
 
+    def _config_manager(self):
+        return ConfigManager(operational_profile_key=self.operational_key)
+
     def test_studio_is_an_official_component_with_exact_profiles(self):
         resolver = ProfileResolver()
         self.assertEqual(ProfileComponent.STUDIO.value, "studio")
         self.assertEqual(
             Path(
-                "config/profiles/studio/instagram/"
-                "perfil_studio_instagram.json"
+                "config/profiles/studio/vertical/"
+                "perfil_studio_vertical.json"
             ),
             resolver.resolve_operational(self.operational_key),
         )
-        youtube_operational_key = OperationalProfileKey(
-            "studio", "youtube", "studio_youtube"
+        horizontal_operational_key = OperationalProfileKey(
+            "studio", "horizontal", "studio_horizontal"
         )
         self.assertEqual(
             Path(
-                "config/profiles/studio/youtube/"
-                "perfil_studio_youtube.json"
+                "config/profiles/studio/horizontal/"
+                "perfil_studio_horizontal.json"
             ),
-            resolver.resolve_operational(youtube_operational_key),
+            resolver.resolve_operational(horizontal_operational_key),
         )
 
     def test_studio_does_not_fall_back_to_video_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            video_path = root / "video/instagram"
+            video_path = root / "video/vertical"
             video_path.mkdir(parents=True)
-            (video_path / "perfil_video_instagram.json").write_text(
+            (video_path / "perfil_video_vertical.json").write_text(
                 "{}",
                 encoding="utf-8",
             )
@@ -92,27 +113,29 @@ class StudioPhase1Test(unittest.TestCase):
     def test_studio_subtitle_profiles_are_exact_and_independent(self):
         resolver = SubtitleProfileResolver()
         resolved = []
-        for platform in ("instagram", "youtube"):
-            profile_key = ProfileKey.for_component("studio", platform)
+        for profile_format in ("horizontal", "vertical"):
+            profile_key = OperationalProfileKey(
+                "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
+            )
             for descriptor in resolver.discover_profiles_for_family(
-                "studio", platform, "estandar",
+                "studio", profile_format, "estandar",
             ):
                 profile = resolver.load(descriptor.key)
                 resolved.append(profile.path)
                 self.assertEqual(profile_key.component, profile.key.component)
-                self.assertEqual(profile_key.platform, profile.key.platform)
+                self.assertEqual(profile_key.format, profile.key.format)
         self.assertEqual(len(resolved), len(set(resolved)))
 
     def test_studio_subtitle_discovery_rejects_an_unregistered_future_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            subtitle_dir = root / "studio/instagram/estandar/subtitulos"
+            subtitle_dir = root / "studio/vertical/estandar/subtitulos"
             subtitle_dir.mkdir(parents=True)
             data = {
                 "component": "studio",
-                "platform": "instagram",
+                "format": "vertical",
                 "family": "estandar",
-                "profile_id": "subtitulo_studio_instagram_cinematografico",
+                "profile_id": "subtitulo_studio_vertical_cinematografico",
                 "display_name": "Cinematografico",
                 "cue_policy": {"mode": "cinematografico"},
                 "render_style": {
@@ -130,12 +153,14 @@ class StudioPhase1Test(unittest.TestCase):
                     "offset": 0.0,
                 },
             }
-            path = subtitle_dir / "subtitulo_studio_instagram_cinematografico.json"
+            path = subtitle_dir / "subtitulo_studio_vertical_cinematografico.json"
             path.write_text(json.dumps(data), encoding="utf-8")
 
             resolver = SubtitleProfileResolver(root)
             with self.assertRaises(OperationalError) as captured:
-                resolver.discover_profiles(self.profile_key)
+                resolver.discover_profiles_for_family(
+                    "studio", "vertical", "estandar",
+                )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
 
@@ -285,8 +310,9 @@ class StudioPhase1Test(unittest.TestCase):
                     StudioInputPreparationService(root)
                 )
             )
-            with patch("builtins.input", return_value="2"), patch.object(
-                controller, "_print"
+            answers = MenuAnswers("second.mp4")
+            with patch("builtins.input", side_effect=answers.input), patch.object(
+                controller, "_print", side_effect=answers.write
             ) as printed:
                 prepared = controller.select_studio_input_files(
                     self.profile,
@@ -322,8 +348,9 @@ class StudioPhase1Test(unittest.TestCase):
                     StudioInputPreparationService(root)
                 )
             )
-            with patch("builtins.input", side_effect=("2", "1")), patch.object(
-                controller, "_print"
+            answers = MenuAnswers("second.mp4", "captions.srt")
+            with patch("builtins.input", side_effect=answers.input), patch.object(
+                controller, "_print", side_effect=answers.write
             ) as printed:
                 prepared = controller.select_studio_input_files(
                     self.profile,
@@ -356,6 +383,73 @@ class StudioPhase1Test(unittest.TestCase):
                         StudioInputMode.SRT_VIDEO,
                     )
 
+    def _select_input_error(self, root, input_mode):
+        controller = RunController(
+            studio_input_preparation_service=StudioInputPreparationService(root)
+        )
+        with patch.object(controller, "_print"), patch("builtins.input"):
+            with self.assertRaises(OperationalError) as raised:
+                controller.select_studio_input_files(self.profile, input_mode)
+        return raised.exception.context
+
+    def test_controller_reports_missing_studio_inputs_as_input_errors(self):
+        cases = (
+            ("solo video sin carpeta", StudioInputMode.VIDEO, None, "No existe la carpeta de entrada STUDIO: {directory}"),
+            ("solo video sin mp4", StudioInputMode.VIDEO, (), "No se encontró ningún archivo MP4 en {directory}."),
+            ("srt + video sin carpeta", StudioInputMode.SRT_VIDEO, None, "No existe la carpeta de entrada STUDIO: {directory}"),
+            ("srt + video sin mp4", StudioInputMode.SRT_VIDEO, ("captions.srt",), "No se encontró ningún archivo MP4 en {directory}."),
+            ("srt + video sin srt", StudioInputMode.SRT_VIDEO, ("source.mp4",), "No se encontró ningún archivo SRT en {directory}."),
+        )
+        for name, input_mode, files, message in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                input_dir = root / input_mode.value
+                if files is not None:
+                    input_dir.mkdir()
+                for file_name in files or ():
+                    (input_dir / file_name).write_text(
+                        "1\n00:00:00,000 --> 00:00:01,000\nHola\n",
+                        encoding="utf-8",
+                    )
+
+                context = self._select_input_error(root, input_mode)
+
+                self.assertIs(ErrorSeverity.FATAL_OPERATIONAL, context.severity)
+                self.assertEqual(message.format(directory=input_dir), context.user_message)
+                self.assertEqual(f"STUDIO/{input_mode.value}", context.operation)
+                self.assertEqual(
+                    f"Pon en esa carpeta los archivos que pide {input_mode.label} "
+                    "y vuelve a intentarlo.",
+                    context.recommended_action,
+                )
+
+    def test_controller_reports_invalid_srt_as_input_error(self):
+        cases = (
+            ("vacío", "".encode("utf-8"), "está vacío"),
+            ("no UTF-8", "1\n00:00:00,000 --> 00:00:01,000\ncanción\n".encode("latin-1"), "codificado en UTF-8"),
+            ("texto que no es SRT", b"esto no es un srt\n", "no contiene cues utilizables"),
+            ("tiempos al revés", b"1\n00:00:01,000 --> 00:00:00,500\nHola\n", "no contiene cues utilizables"),
+        )
+        for name, content, message in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                input_dir = root / "srt_video"
+                input_dir.mkdir()
+                (input_dir / "source.mp4").write_bytes(b"video")
+                (input_dir / "captions.srt").write_bytes(content)
+
+                context = self._select_input_error(root, StudioInputMode.SRT_VIDEO)
+
+                self.assertIs(ErrorSeverity.FATAL_OPERATIONAL, context.severity)
+                self.assertIn(message, context.user_message)
+                self.assertIn(str(input_dir / "captions.srt"), context.user_message)
+                self.assertEqual("STUDIO/srt_video", context.operation)
+                self.assertEqual(
+                    "Guarda el SRT en UTF-8, con bloques de número, tiempos y "
+                    "texto, y vuelve a intentarlo.",
+                    context.recommended_action,
+                )
+
     def test_profile_contract_fails_fast_for_missing_critical_field(self):
         raw = ProfileResolver().load_operational(self.operational_key)
         incomplete = deepcopy(raw)
@@ -363,18 +457,56 @@ class StudioPhase1Test(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "studio.output.video.crf"):
             StudioProfileLoader().load(incomplete, self.profile_key)
 
-    def test_transition_duration_is_isolated_by_studio_platform(self):
-        youtube_key = ProfileKey.for_component("studio", "youtube")
-        youtube_operational_key = OperationalProfileKey(
-            "studio", "youtube", "studio_youtube"
+    def test_video_extensions_accept_what_every_studio_mode_supports(self):
+        for profile_format in ("horizontal", "vertical"):
+            with self.subTest(profile_format=profile_format):
+                key = OperationalProfileKey(
+                    "studio", profile_format, f"studio_{profile_format}"
+                )
+                profile = StudioProfileLoader().load(
+                    ProfileResolver().load_operational(key),
+                    key,
+                )
+                self.assertEqual((".mp4",), profile.video_extensions)
+
+        raw = ProfileResolver().load_operational(self.operational_key)
+        variant = deepcopy(raw)
+        variant["studio"]["input"]["video_extensions"] = [".mp4", ".MP3"]
+
+        profile = StudioProfileLoader().load(variant, self.profile_key)
+
+        self.assertEqual((".mp4", ".mp3"), profile.video_extensions)
+
+    def test_video_extensions_reject_what_whisper_does_not_support(self):
+        raw = ProfileResolver().load_operational(self.operational_key)
+        invalid = deepcopy(raw)
+        invalid["studio"]["input"]["video_extensions"] = [".mp4", ".mov"]
+
+        with self.assertRaises(OperationalError) as caught:
+            StudioProfileLoader().load(invalid, self.profile_key)
+
+        context = caught.exception.context
+        self.assertEqual("CONFIG", context.family)
+        self.assertIn("incluye .mov, pero", context.user_message)
+        self.assertIn("SOLO VIDEO", context.user_message)
+        self.assertIn("Whisper", context.user_message)
+        self.assertEqual(
+            "studio/vertical/studio_vertical",
+            context.resource,
         )
-        youtube_profile = StudioProfileLoader().load(
-            ProfileResolver().load_operational(youtube_operational_key),
-            youtube_operational_key,
+        self.assertIsInstance(caught.exception.__cause__, ValueError)
+
+    def test_transition_duration_is_isolated_by_studio_format(self):
+        horizontal_operational_key = OperationalProfileKey(
+            "studio", "horizontal", "studio_horizontal"
+        )
+        horizontal_profile = StudioProfileLoader().load(
+            ProfileResolver().load_operational(horizontal_operational_key),
+            horizontal_operational_key,
         )
 
         self.assertEqual(0.25, self.profile.transition_duration)
-        self.assertEqual(0.50, youtube_profile.transition_duration)
+        self.assertEqual(0.50, horizontal_profile.transition_duration)
 
     def test_transition_duration_fails_fast_when_missing_or_invalid(self):
         raw = ProfileResolver().load_operational(self.operational_key)
@@ -418,10 +550,12 @@ class StudioPhase1Test(unittest.TestCase):
                         self.profile,
                     ),
                     subtitle=StudioSubtitleSelection(
-                        SubtitleProfileResolver().load_selection(
-                            self.profile_key,
-                            "subtitulo_studio_instagram_linea_unica",
-                        ).key,
+                        SubtitleProfileKey(
+                            "studio",
+                            "vertical",
+                            "subtitulo_studio_vertical_linea_unica",
+                            "estandar",
+                        ),
                         False,
                     ),
                 ),
@@ -454,35 +588,41 @@ class StudioPhase1Test(unittest.TestCase):
             "ask_clear_output",
             return_value=True,
         ):
-            options = controller.run()
+            request = controller.run()
 
-        self.assertEqual("studio", options["pipeline_mode"])
-        self.assertEqual("studio", options["profile_component"])
-        self.assertEqual(
-            "subtitulo_studio_instagram_linea_unica",
-            options["subtitle_config"],
-        )
-        self.assertFalse(options["studio_subtitle_original"])
-        self.assertEqual("srt_video", options["studio_input_mode"])
-        self.assertEqual(
-            str(Path("input/studio/srt_video/source.mp4")),
-            options["studio_video_path"],
+        self.assertIsInstance(request.route, StudioExecutionRequest)
+        self.assertIs(
+            ProfileComponent.STUDIO,
+            request.operational_profile_key.component,
         )
         self.assertEqual(
-            str(Path("input/studio/srt_video/source.srt")),
-            options["studio_subtitle_path"],
+            "subtitulo_studio_vertical_linea_unica",
+            request.subtitle_profile_key.profile_id,
         )
-        self.assertNotIn("studio_light_leaks_enabled", options)
-        self.assertIsNone(options["studio_music_path"])
-        self.assertEqual("studio project", options["project_name"])
-        self.assertTrue(options["clear_output"])
-        self.assertNotIn("overlays_mode", options)
-        self.assertIsNone(options["intro_outro_selection"])
+        self.assertFalse(request.route.subtitle_original)
+        self.assertIs(StudioInputMode.SRT_VIDEO, request.route.input_mode)
+        self.assertEqual(
+            Path("input/studio/srt_video/source.mp4"),
+            request.route.video_path,
+        )
+        self.assertEqual(
+            Path("input/studio/srt_video/source.srt"),
+            request.route.subtitle_path,
+        )
+        self.assertNotIn("studio_light_leaks_enabled", vars(request))
+        self.assertNotIn("studio_light_leaks_enabled", vars(request.route))
+        self.assertIsNone(request.route.music_path)
+        self.assertEqual("studio project", request.project_name)
+        self.assertTrue(request.clear_output)
+        self.assertNotIn("overlays_mode", vars(request))
+        self.assertNotIn("overlays_mode", vars(request.route))
+        self.assertIsNone(request.route.intro_outro_plan)
         self.assertEqual(["input", "subtitle"], order)
 
-    def test_studio_profile_menu_lists_platforms_without_video_profile_label(self):
-        with patch("builtins.input", side_effect=("1", "2", "1")), patch(
-            "builtins.print"
+    def test_studio_profile_menu_lists_formats_without_video_profile_label(self):
+        answers = MenuAnswers("Vertical 9:16", "ESTILO ESTÁNDAR", "Doble línea")
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
         ) as print_mock:
             selected = RunController().select_profile("studio")
 
@@ -492,39 +632,30 @@ class StudioPhase1Test(unittest.TestCase):
             if call.args
         )
         self.assertEqual(ProfileComponent.STUDIO, selected["profile_key"].component)
-        self.assertIn("1. Instagram", printed)
-        self.assertIn("2. Youtube", printed)
+        self.assertIn("1. Vertical 9:16", printed)
+        self.assertIn("2. Horizontal 16:9", printed)
         self.assertIn("Línea única", printed)
 
     def test_main_transports_studio_identity_without_resetting_output(self):
-        options = {
-            "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
-            "subtitle_config": "three_two_words",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio transport",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "srt_video",
-            "studio_video_path": "input/studio/srt_video/source.mp4",
-            "studio_subtitle_path": "input/studio/srt_video/source.srt",
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio transport",
+            clear_output=False,
+            operational_profile_key=self.profile_key,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                video_path=Path("input/studio/srt_video/source.mp4"),
+                subtitle_path=Path("input/studio/srt_video/source.srt"),
+                music_path=None,
+            ),
+        )
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
-        ) as controller, patch("main.iniciar") as start, patch(
+        ) as controller, patch("main.run_application") as start, patch(
             "main.OutputManager"
         ) as output_manager:
-            controller.return_value.run.return_value = options
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
-            self.assertNotIn("MC_PROFILE_COMPONENT", os.environ)
-            self.assertNotIn("MC_PROFILE_PLATFORM", os.environ)
-            self.assertNotIn("MC_PROFILE_ID", os.environ)
             self.assertNotIn("MC_PIPELINE_MODE", os.environ)
 
         start.assert_called_once()
@@ -538,78 +669,31 @@ class StudioPhase1Test(unittest.TestCase):
             Path("input/studio/srt_video/source.srt"),
             request.route.subtitle_path,
         )
-        self.assertEqual(
-            "three_two_words",
-            start.call_args.kwargs["subtitle_style"],
-        )
+        self.assertEqual({"request"}, set(start.call_args.kwargs))
         output_manager.assert_not_called()
 
     def test_main_resets_output_for_studio_when_selected(self):
-        options = {
-            "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
-            "subtitle_config": "three_two_words",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio project",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "srt_video",
-            "clear_output": True,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio project",
+            clear_output=True,
+            operational_profile_key=self.profile_key,
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                music_path=None,
+            ),
+        )
         with patch.dict(os.environ, {}, clear=True), patch(
             "main.RunController"
-        ) as controller, patch("main.iniciar"), patch(
+        ) as controller, patch("main.run_application"), patch(
             "main.OutputManager"
         ) as output_manager:
-            controller.return_value.run.return_value = options
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
-            self.assertNotIn("MC_PROJECT_NAME", os.environ)
         output_manager.return_value.reset.assert_called_once_with()
 
-    def test_start_routes_studio_without_initializing_project(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PIPELINE_MODE": "studio",
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ), patch("app.core.start.ProjectManager") as project_manager, patch(
-            "app.core.start.ejecutar_studio"
-        ) as render:
-            iniciar(
-                subtitle_style="three_two_words",
-                studio_input_mode="srt_video",
-                studio_video_path="input/studio/srt_video/source.mp4",
-                studio_subtitle_path="input/studio/srt_video/source.srt",
-            )
-
-        render.assert_called_once_with(
-            subtitle_style="three_two_words",
-            music_path=None,
-            input_mode="srt_video",
-            video_path="input/studio/srt_video/source.mp4",
-            subtitle_path="input/studio/srt_video/source.srt",
-        )
-        project_manager.assert_not_called()
-
     def test_phase_one_preparation_uses_external_input_without_rendering(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "srt_video"
             input_dir.mkdir()
@@ -620,9 +704,10 @@ class StudioPhase1Test(unittest.TestCase):
                 "1\n00:00:00,000 --> 00:00:01,000\nTexto intacto\n",
                 encoding="utf-8",
             )
-            result = preparar_studio(
-                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+            result = StudioExecutionCoordinator().prepare_standard(
+                subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                 input_mode="srt_video",
+                config_manager=self._config_manager(),
                 input_preparation_service=StudioInputPreparationService(input_root),
             )
 
@@ -631,15 +716,7 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual("three_two_words", result.subtitle_profile.cue_policy["mode"])
 
     def test_solo_video_requires_audio_before_whisper_or_render(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "video"
             input_dir.mkdir()
@@ -656,18 +733,21 @@ class StudioPhase1Test(unittest.TestCase):
             resolver = Mock()
 
             def prepare(**options):
-                return preparar_studio(
+                return StudioExecutionCoordinator().prepare_standard(
+                    config_manager=self._config_manager(),
                     input_preparation_service=input_service,
                     media_probe=probe,
                     **options,
                 )
 
-            with patch("app.core.start.ProjectManager") as projects, self.assertRaisesRegex(
+            with patch(
+                "app.modules.studio.execution_coordinator.ProjectManager"
+            ) as projects, self.assertRaisesRegex(
                 ValueError,
                 "no contiene una pista de audio",
             ):
-                ejecutar_studio(
-                    subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+                StudioExecutionCoordinator().run_standard(
+                    subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                     input_mode="video",
                     preparation_service=prepare,
                     external_subtitle_preparation_service=subtitle_service,
@@ -682,15 +762,7 @@ class StudioPhase1Test(unittest.TestCase):
         resolver.resolve.assert_not_called()
 
     def test_solo_video_with_audio_keeps_preparation_contract(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "video"
             input_dir.mkdir()
@@ -702,9 +774,10 @@ class StudioPhase1Test(unittest.TestCase):
                 )
             )
 
-            prepared = preparar_studio(
-                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+            prepared = StudioExecutionCoordinator().prepare_standard(
+                subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                 input_mode="video",
+                config_manager=self._config_manager(),
                 input_preparation_service=StudioInputPreparationService(
                     input_root
                 ),
@@ -716,15 +789,7 @@ class StudioPhase1Test(unittest.TestCase):
         probe.inspect.assert_called_once_with(video_path)
 
     def test_srt_video_does_not_probe_or_require_audio(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "studio",
-                "MC_PROFILE_PLATFORM": "instagram",
-                "MC_PROFILE_ID": "studio_instagram",
-            },
-            clear=True,
-        ):
+        with tempfile.TemporaryDirectory() as directory:
             input_root = Path(directory)
             input_dir = input_root / "srt_video"
             input_dir.mkdir()
@@ -735,9 +800,10 @@ class StudioPhase1Test(unittest.TestCase):
             )
             probe = Mock()
 
-            prepared = preparar_studio(
-                subtitle_style=STUDIO_INSTAGRAM_THREE_TWO_PROFILE_ID,
+            prepared = StudioExecutionCoordinator().prepare_standard(
+                subtitle_profile_key=STUDIO_VERTICAL_THREE_TWO_KEY,
                 input_mode="srt_video",
+                config_manager=self._config_manager(),
                 input_preparation_service=StudioInputPreparationService(
                     input_root
                 ),

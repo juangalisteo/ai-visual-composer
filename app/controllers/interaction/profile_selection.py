@@ -26,17 +26,17 @@ class ProfileSelection:
             return selector(items)
         return self._terminal.select_from_list(items, self._on_cancel)
 
-    def studio_operational_profiles_by_platform(self):
+    def studio_operational_profiles_by_format(self):
         component = ProfileComponent.STUDIO
-        profiles_by_platform = {}
-        for platform in self._profile_resolver.discover_platforms(component):
+        profiles_by_format = {}
+        for profile_format in self._profile_resolver.discover_formats(component):
             descriptors = self._profile_resolver.discover_operational_profiles(
                 component,
-                platform,
+                profile_format,
             )
             if descriptors:
-                profiles_by_platform[platform] = descriptors
-        return profiles_by_platform
+                profiles_by_format[profile_format] = descriptors
+        return profiles_by_format
 
     def select_profile_identity(
         self,
@@ -44,29 +44,30 @@ class ProfileSelection:
         writer=None,
         selector=None,
         label=None,
+        order=None,
     ):
-        profiles_by_platform = {}
-        for platform in self._profile_resolver.discover_platforms(component):
+        profiles_by_format = {}
+        for profile_format in self._profile_resolver.discover_formats(component):
             descriptors = self._profile_resolver.discover_operational_profiles(
                 component,
-                platform,
+                profile_format,
             )
             if descriptors:
-                profiles_by_platform[platform] = descriptors
+                profiles_by_format[profile_format] = descriptors
 
-        platforms = tuple(sorted(profiles_by_platform))
-        if not platforms:
+        profile_formats = tuple((order or sorted)(profiles_by_format))
+        if not profile_formats:
             raise FileNotFoundError(
-                "No hay perfiles operacionales validos para el componente "
+                "No hay perfiles operacionales válidos para el componente "
                 "seleccionado."
             )
         label = label or (lambda value: value)
-        self._write("\nPLATAFORMA\n", writer)
-        for index, platform in enumerate(platforms, start=1):
-            self._write(f"{index}. {label(platform)}", writer)
-        platform = self._select(platforms, selector)
+        self._write("\nFORMATO\n", writer)
+        for index, profile_format in enumerate(profile_formats, start=1):
+            self._write(f"{index}. {label(profile_format)}", writer)
+        profile_format = self._select(profile_formats, selector)
 
-        descriptors = profiles_by_platform[platform]
+        descriptors = profiles_by_format[profile_format]
         if len(descriptors) == 1:
             profile_key = descriptors[0].key
         else:
@@ -79,50 +80,51 @@ class ProfileSelection:
             "profile_key": profile_key,
         }
 
-    def select_studio_operational_platform(
+    def select_studio_operational_format(
         self,
-        profiles_by_platform,
+        profiles_by_format,
         writer=None,
         selector=None,
         label=None,
+        order=None,
     ):
-        platforms = tuple(sorted(profiles_by_platform))
-        if not platforms:
+        profile_formats = tuple((order or sorted)(profiles_by_format))
+        if not profile_formats:
             raise FileNotFoundError(
                 "No hay perfiles operacionales STUDIO disponibles."
             )
         label = label or (lambda value: value)
-        self._write("\nPLATAFORMA\n", writer)
-        for index, platform in enumerate(platforms, start=1):
-            self._write(f"{index}. {label(platform)}", writer)
-        return self._select(platforms, selector)
+        self._write("\nFORMATO\n", writer)
+        for index, profile_format in enumerate(profile_formats, start=1):
+            self._write(f"{index}. {label(profile_format)}", writer)
+        return self._select(profile_formats, selector)
 
     def select_studio_operational_profile(
         self,
-        platform=None,
-        profiles_by_platform=None,
-        profiles_by_platform_provider=None,
-        select_platform=None,
+        profile_format=None,
+        profiles_by_format=None,
+        profiles_by_format_provider=None,
+        select_format=None,
         writer=None,
         selector=None,
     ):
-        profiles_by_platform = (
-            profiles_by_platform
-            if profiles_by_platform is not None
-            else (profiles_by_platform_provider or self.studio_operational_profiles_by_platform)()
+        profiles_by_format = (
+            profiles_by_format
+            if profiles_by_format is not None
+            else (profiles_by_format_provider or self.studio_operational_profiles_by_format)()
         )
-        if platform is None:
-            select_platform = (
-                select_platform or self.select_studio_operational_platform
+        if profile_format is None:
+            select_format = (
+                select_format or self.select_studio_operational_format
             )
-            platform = select_platform(profiles_by_platform)
+            profile_format = select_format(profiles_by_format)
 
-        if platform not in profiles_by_platform:
+        if profile_format not in profiles_by_format:
             raise FileNotFoundError(
-                "No hay perfiles operacionales STUDIO para la plataforma "
-                f"{platform}."
+                "No hay perfiles operacionales STUDIO para el formato "
+                f"{profile_format}."
             )
-        descriptors = profiles_by_platform[platform]
+        descriptors = profiles_by_format[profile_format]
         if len(descriptors) == 1:
             profile_key = descriptors[0].key
         else:

@@ -5,24 +5,21 @@ import pytest
 
 from app.controllers.interaction.resource_selection import ResourceSelection
 from app.controllers.interaction.terminal import Terminal
+from tests.test_menu_helpers import MenuAnswers
 
 
-class SelectingTerminal:
-    def __init__(self, position):
-        self._position = position
-        self.messages = []
+class SelectingTerminal(MenuAnswers):
+    def __init__(self, *labels):
+        super().__init__(*labels)
         self.select_calls = 0
-
-    def write(self, message):
-        self.messages.append(message)
 
     def select_from_list(self, items, on_cancel):
         self.select_calls += 1
-        return items[self._position - 1]
+        return super().select_from_list(items, on_cancel)
 
 
 def test_studio_candidate_bypasses_the_menu_and_returns_the_original_path():
-    terminal = SelectingTerminal(1)
+    terminal = SelectingTerminal()
     candidate = Path("input/studio/video/source.mp4")
     selection = ResourceSelection(
         terminal,
@@ -42,7 +39,7 @@ def test_studio_candidate_bypasses_the_menu_and_returns_the_original_path():
 def test_studio_candidate_keeps_discovery_order_and_original_path():
     first = Path("input/studio/video/Zeta.mp4")
     second = Path("input/studio/video/alpha.mp4")
-    terminal = SelectingTerminal(2)
+    terminal = SelectingTerminal("alpha.mp4")
     selection = ResourceSelection(
         terminal,
         lambda: pytest.fail("No debe cancelar"),
@@ -63,7 +60,7 @@ def test_studio_candidate_keeps_discovery_order_and_original_path():
 
 def test_studio_music_skips_the_domain_selector_when_disabled():
     music_selector = Mock()
-    terminal = SelectingTerminal(2)
+    terminal = SelectingTerminal("No")
 
     assert ResourceSelection(
         terminal,
@@ -80,7 +77,7 @@ def test_studio_music_delegates_random_selection_only_when_enabled():
     music_selector.select.return_value = track
 
     assert ResourceSelection(
-        SelectingTerminal(1),
+        SelectingTerminal("Sí"),
         lambda: pytest.fail("No debe cancelar"),
         music_selector,
     ).select_studio_music() is track

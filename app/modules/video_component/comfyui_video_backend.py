@@ -221,8 +221,6 @@ class ComfyUIVideoBackend:
             fps=backend_prompt.fps,
             generation_width=backend_prompt.generation_width,
             generation_height=backend_prompt.generation_height,
-            target_width=backend_prompt.target_width,
-            target_height=backend_prompt.target_height,
             steps=backend_prompt.steps,
             cfg=backend_prompt.cfg,
             sampler=backend_prompt.sampler,
@@ -368,7 +366,7 @@ class ComfyUIVideoBackend:
             history = self._history(prompt_id)
             if not isinstance(history, dict):
                 raise ComfyUIVideoBackendError(
-                    "ComfyUI devolvio un history incompatible para la captura lossless WAN.",
+                    "ComfyUI devolvió un history incompatible para la captura lossless WAN.",
                     category="EXECUTION_ERROR",
                     prompt_id=prompt_id,
                 )
@@ -376,14 +374,14 @@ class ComfyUIVideoBackend:
                 history_item = history[prompt_id]
                 if not isinstance(history_item, dict):
                     raise ComfyUIVideoBackendError(
-                        "ComfyUI devolvio un item de history incompatible para la captura lossless WAN.",
+                        "ComfyUI devolvió un item de history incompatible para la captura lossless WAN.",
                         category="EXECUTION_ERROR",
                         prompt_id=prompt_id,
                     )
                 status = history_item.get("status", {})
                 if not isinstance(status, dict):
                     raise ComfyUIVideoBackendError(
-                        "ComfyUI devolvio un estado incompatible para la captura lossless WAN.",
+                        "ComfyUI devolvió un estado incompatible para la captura lossless WAN.",
                         category="EXECUTION_ERROR",
                         prompt_id=prompt_id,
                     )
@@ -393,7 +391,7 @@ class ComfyUIVideoBackend:
                 outputs = history_item.get("outputs", {})
                 if not isinstance(outputs, dict):
                     raise ComfyUIVideoBackendError(
-                        "ComfyUI devolvio outputs incompatibles para la captura lossless WAN.",
+                        "ComfyUI devolvió outputs incompatibles para la captura lossless WAN.",
                         category="EXECUTION_ERROR",
                         prompt_id=prompt_id,
                     )
@@ -401,7 +399,7 @@ class ComfyUIVideoBackend:
                 if capture_output is not None:
                     if not isinstance(capture_output, dict):
                         raise ComfyUIVideoBackendError(
-                            "ComfyUI devolvio una captura lossless WAN incompatible.",
+                            "ComfyUI devolvió una captura lossless WAN incompatible.",
                             category="EXECUTION_ERROR",
                             prompt_id=prompt_id,
                             node_id=plan.capture_node_id,
@@ -409,7 +407,7 @@ class ComfyUIVideoBackend:
                     images = capture_output.get("images")
                     if not isinstance(images, list):
                         raise ComfyUIVideoBackendError(
-                            "ComfyUI no devolvio un batch PNG valido para la captura lossless WAN.",
+                            "ComfyUI no devolvió un batch PNG válido para la captura lossless WAN.",
                             category="EXECUTION_ERROR",
                             prompt_id=prompt_id,
                             node_id=plan.capture_node_id,
@@ -419,7 +417,7 @@ class ComfyUIVideoBackend:
 
                 if status.get("status_str") == "success":
                     raise ComfyUIVideoBackendError(
-                        "ComfyUI termino sin el batch PNG lossless esperado.",
+                        "ComfyUI terminó sin el batch PNG lossless esperado.",
                         category="EXECUTION_ERROR",
                         prompt_id=prompt_id,
                         node_id=plan.capture_node_id,
@@ -477,7 +475,7 @@ class ComfyUIVideoBackend:
 
         if not output_path.exists():
             raise FileNotFoundError(
-                "No se guardo el clip esperado: "
+                "No se guardó el clip esperado: "
                 f"{output_path}"
             )
 
@@ -494,7 +492,7 @@ class ComfyUIVideoBackend:
         history = self._history(prompt_id)
         if prompt_id not in history:
             raise ComfyUIVideoBackendError(
-                "ComfyUI no devolvio el history final del prompt de video.",
+                "ComfyUI no devolvió el history final del prompt de video.",
                 category="EXECUTION_ERROR",
                 prompt_id=prompt_id,
             )
@@ -505,7 +503,7 @@ class ComfyUIVideoBackend:
         status = history_item.get("status", {})
         detail = _extract_error_detail(history_item, prompt_id)
         raise ComfyUIVideoBackendError(
-            "ComfyUI devolvio un error durante la generacion de video: "
+            "ComfyUI devolvió un error durante la generación de video: "
             f"{detail['category']}. {detail['exception_message']}",
             category=detail["category"],
             prompt_id=prompt_id,
@@ -722,7 +720,7 @@ def _operational_video_backend_error(
         family="EXTERNAL_SERVICE",
         user_message="ComfyUI no pudo generar el clip de video solicitado.",
         recommended_action=(
-            "Comprueba que ComfyUI y el backend Wan/I2V esten disponibles "
+            "Comprueba que ComfyUI y el backend Wan/I2V estén disponibles "
             "antes de reintentar."
         ),
         operation="Generar video I2V con ComfyUI",

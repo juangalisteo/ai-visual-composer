@@ -10,16 +10,22 @@ from unittest.mock import Mock
 from app.modules.studio import StudioProfileLoader, StudioRenderService
 from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS = {
+    "single_line": "subtitulo_studio_vertical_linea_unica",
+    "word_by_word": "subtitulo_studio_vertical_palabra_por_palabra",
+}
+
+
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -45,21 +51,25 @@ class StudioSubtitleAdaptationTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         self.profile = _load_studio_profile(self.profile_key)
 
     def _subtitle_profile(self, style):
         if style == "three_two_words":
             return SubtitleProfileResolver().load(
                 SubtitleProfileKey(
-                    "studio", "instagram",
-                    "subtitulo_studio_instagram_linea_unica", "estandar",
+                    "studio", "vertical",
+                    "subtitulo_studio_vertical_linea_unica", "estandar",
                 )
             )
         return SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.subtitle_parent_key, style)
+            SubtitleProfileKey(
+                "studio",
+                "vertical",
+                STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS[style],
+                "estandar",
+            )
         )
 
     def _transform(self, style, content=None):
@@ -263,8 +273,7 @@ class StudioSubtitleAdaptationRealFFmpegTest(unittest.TestCase):
             )
             source_hash = hashlib.sha256(source.read_bytes()).digest()
             subtitle_hash = hashlib.sha256(subtitle.read_bytes()).digest()
-            key = OperationalProfileKey("studio", "instagram", "studio_instagram")
-            subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
+            key = OperationalProfileKey("studio", "vertical", "studio_vertical")
             profile = _load_studio_profile(key)
             resolver = SubtitleProfileResolver()
             outputs = []
@@ -272,7 +281,12 @@ class StudioSubtitleAdaptationRealFFmpegTest(unittest.TestCase):
 
             for style in ("single_line", "word_by_word"):
                 subtitle_profile = resolver.load(
-                    SubtitleProfileKey.for_profile(subtitle_parent_key, style)
+                    SubtitleProfileKey(
+                        "studio",
+                        "vertical",
+                        STUDIO_VERTICAL_SUBTITLE_PROFILE_IDS[style],
+                        "estandar",
+                    )
                 )
                 rendered_subtitle = root / f"{style}.srt"
                 rendered_subtitle.write_text(

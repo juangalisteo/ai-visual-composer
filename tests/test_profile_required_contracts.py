@@ -2,7 +2,7 @@ import unittest
 from copy import deepcopy
 from types import SimpleNamespace
 
-from app.core.start import _required_builders
+from app.modules.standard.execution_coordinator import _required_builders
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.subtitles.modes.single_line import SingleLineModel
@@ -17,11 +17,41 @@ from app.modules.video.video_config import VideoConfigLoader
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+
+
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
+}
+
+WORD_BY_WORD_SUBTITLE_PROFILE_IDS = {
+    (ProfileComponent.GUION, "vertical"): (
+        "subtitulo_guion_vertical_palabra_por_palabra"
+    ),
+    (ProfileComponent.GUION, "horizontal"): (
+        "subtitulo_guion_horizontal_palabra_por_palabra"
+    ),
+    (ProfileComponent.IMAGEN, "vertical"): (
+        "subtitulo_imagen_vertical_palabra_por_palabra"
+    ),
+    (ProfileComponent.IMAGEN, "horizontal"): (
+        "subtitulo_imagen_horizontal_palabra_por_palabra"
+    ),
+    (ProfileComponent.VIDEO, "vertical"): (
+        "subtitulo_video_vertical_palabra_por_palabra"
+    ),
+    (ProfileComponent.VIDEO, "horizontal"): (
+        "subtitulo_video_horizontal_palabra_por_palabra"
+    ),
+}
 
 
 class RequiredProfileContractsTest(unittest.TestCase):
@@ -33,7 +63,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     )
 
     EXPECTED = {
-        "instagram": {
+        "vertical": {
             "format": "vertical",
             "width": 1080,
             "height": 1920,
@@ -47,7 +77,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "audio_codec": "aac",
             "audio_bitrate": "192k",
         },
-        "youtube": {
+        "horizontal": {
             "format": "horizontal",
             "width": 1920,
             "height": 1080,
@@ -69,14 +99,14 @@ class RequiredProfileContractsTest(unittest.TestCase):
 
     def test_official_profiles_preserve_effective_configuration(self):
         for component in self.RUNTIME_COMPONENTS:
-            for platform, expected in self.EXPECTED.items():
+            for profile_format, expected in self.EXPECTED.items():
                 with self.subTest(
                     component=component.value,
-                    platform=platform,
+                    profile_format=profile_format,
                 ):
                     profile_key, profile = self._profile(
                         component,
-                        platform,
+                        profile_format,
                     )
                     video_config = self._video_config(
                         profile_key,
@@ -84,7 +114,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     )
 
                     self.assertEqual(expected["format"], profile["format"])
-                    self.assertFalse(profile["image_validation"]["enabled"])
+                    self.assertNotIn("image_validation", profile)
                     self.assertEqual(profile["builders"], _required_builders(profile))
                     self.assertEqual(expected["width"], video_config.width)
                     self.assertEqual(expected["height"], video_config.height)
@@ -114,7 +144,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_video_loader_rejects_every_missing_critical_key(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         critical_paths = (
             ("video_style", "width"),
@@ -143,7 +173,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_visual_loaders_reject_missing_critical_keys(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         critical_paths = {
             "motion": (
@@ -188,7 +218,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_image_storyboard_and_builder_contracts_fail_fast(self):
         _, profile = self._profile(
             ProfileComponent.IMAGEN,
-            "instagram",
+            "vertical",
         )
         builder = ImageBuilder.__new__(ImageBuilder)
         storyboard = StoryboardBuilder.__new__(StoryboardBuilder)
@@ -197,11 +227,6 @@ class RequiredProfileContractsTest(unittest.TestCase):
         del without_format["format"]
         with self.assertRaisesRegex(ValueError, "format"):
             builder._profile_format_guidance(without_format)
-
-        without_validation = deepcopy(profile)
-        del without_validation["image_validation"]["enabled"]
-        with self.assertRaisesRegex(ValueError, "image_validation.enabled"):
-            builder._is_image_validation_enabled(without_validation)
 
         without_duration = deepcopy(profile)
         del without_duration["video_style"]["storyboard"][
@@ -220,7 +245,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def test_subtitle_render_style_rejects_missing_critical_keys(self):
         profile_key, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         subtitle = self._subtitle_profile(profile_key, profile)
 
@@ -235,15 +260,16 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     SubtitleConfigLoader().load_render_style(incomplete)
 
     def test_subtitle_cue_policy_rejects_missing_critical_keys(self):
-        for style in ("single_line", "word_by_word"):
+        for style, subtitle_profile_id in (
+            ("single_line", "subtitulo_video_vertical_linea_unica"),
+            ("word_by_word", "subtitulo_video_vertical_palabra_por_palabra"),
+        ):
             with self.subTest(style=style):
-                profile_key = ProfileKey.for_component(
+                subtitle_key = SubtitleProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
-                )
-                subtitle_key = SubtitleProfileKey.for_profile(
-                    profile_key,
-                    style,
+                    "vertical",
+                    subtitle_profile_id,
+                    "estandar",
                 )
                 cue_policy = deepcopy(
                     self.subtitle_resolver.load(subtitle_key).cue_policy
@@ -326,7 +352,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
 
         _, profile = self._profile(
             ProfileComponent.VIDEO,
-            "instagram",
+            "vertical",
         )
         self.assertEqual(
             7.5,
@@ -334,26 +360,25 @@ class RequiredProfileContractsTest(unittest.TestCase):
             ._resolve_scene_duration(profile, 7.5),
         )
 
-    def _profile(self, component, platform):
-        legacy_key = ProfileKey.for_component(component, platform)
+    def _profile(self, component, profile_format):
         key = OperationalProfileKey(
             component,
-            platform,
-            legacy_key.profile_id,
+            profile_format,
+            OPERATIONAL_PROFILE_IDS[(component, profile_format)],
         )
         return key, self.profile_resolver.load_operational(key)
 
     def _subtitle_profile(self, profile_key, profile):
         del profile
-        legacy_key = ProfileKey(
-            profile_key.component,
-            profile_key.platform,
-            profile_key.profile_id,
-            "estandar",
-        )
-        return self.subtitle_resolver.load_selection(
-            legacy_key,
-            "word_by_word",
+        return self.subtitle_resolver.load(
+            SubtitleProfileKey(
+                profile_key.component,
+                profile_key.format,
+                WORD_BY_WORD_SUBTITLE_PROFILE_IDS[
+                    (profile_key.component, profile_key.format)
+                ],
+                "estandar",
+            )
         )
 
     def _video_config(self, profile_key, profile):

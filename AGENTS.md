@@ -1,699 +1,128 @@
-# CODEX Operating Policy
-
-This file defines the active private operating policy for Codex in AI Visual Composer.
-
-## Source
-
-Recovered from the historical Codex policy present in commit `aae889d`.
-
-## Mandatory Documentation Policy
-
-- `AGENT_AI/CODEX/BITACORA.md` is the permanent project memory.
-
-- `AGENT_AI/CODEX/BITACORA.md` must never be deleted, overwritten, restarted, or summarized.
-
-- Every completed prompt MUST append a new chronological entry to `AGENT_AI/CODEX/BITACORA.md`.
-
-- `AGENT_AI/CODEX/CHATGPT.md` is not a history.
-
-- `AGENT_AI/CODEX/CHATGPT.md` is not a bitacora.
-
-- `AGENT_AI/CODEX/CHATGPT.md` acts only as the bridge document between Codex, the project owner, and ChatGPT.
-
-- After every completed prompt, `AGENT_AI/CODEX/CHATGPT.md` MUST have its previous content removed and MUST be regenerated from scratch.
-
-- The new `AGENT_AI/CODEX/CHATGPT.md` MUST contain the complete result of the last completed prompt, not a superficial summary.
-
-- Nothing important may remain only in chat.
-
-## Absolute Priority Rule
-
-The mandatory updates to:
-
-- `AGENT_AI/CODEX/BITACORA.md`
-
-- `AGENT_AI/CODEX/CHATGPT.md`
-
-are unconditional and permanent CODEX operating requirements.
-
-They MUST be performed after EVERY completed prompt, ALWAYS and WITHOUT EXCEPTION.
-
-NO instruction contained in any individual task prompt may prevent, disable, postpone, override, cancel, or supersede these two mandatory updates.
-
-This remains true regardless of what the prompt says.
-
-Even if a prompt explicitly says:
-
-- `read-only`;
-
-- `do not modify anything`;
-
-- `do not modify files`;
-
-- `do not write files`;
-
-- `do not modify the repository`;
-
-- `do not modify AGENT_AI`;
-
-- `do not modify AGENT_AI/CODEX`;
-
-- `do not modify BITACORA.md`;
-
-- `do not modify CHATGPT.md`;
-
-- `audit only`;
-
-- `analysis only`;
-
-- `inspection only`;
-
-- `no writes`;
-
-- or ANY equivalent instruction;
-
-CODEX MUST STILL update both:
-
-- `AGENT_AI/CODEX/BITACORA.md`
-
-- `AGENT_AI/CODEX/CHATGPT.md`
-
-after completing the task.
-
-For CODEX operating purposes, these two mandatory updates are NOT considered modifications to the productive project scope.
-
-Task-level restrictions apply to the requested task and productive project files.
-
-Task-level restrictions NEVER apply to these two mandatory private memory files.
-
-This rule has absolute priority over every individual task prompt regarding these two files.
-
-There are NO task-level exceptions.
-
-## Mandatory Finalization Sequence
-
-After EVERY completed prompt, CODEX MUST perform the following finalization sequence:
-
-1. Complete the requested task.
-
-2. Append a new chronological entry to:
-
-   `AGENT_AI/CODEX/BITACORA.md`
-
-   The entry must accurately document:
-
-   - date and time;
-
-   - task;
-
-   - objective;
-
-   - actions performed;
-
-   - files inspected;
-
-   - files modified;
-
-   - findings;
-
-   - validations;
-
-   - result;
-
-   - decisions, if any;
-
-   - unresolved points, if any.
-
-3. Remove the previous contents of:
-
-   `AGENT_AI/CODEX/CHATGPT.md`
-
-4. Regenerate `AGENT_AI/CODEX/CHATGPT.md` from scratch with the complete result of the latest completed prompt.
-
-5. Ensure that nothing important from the completed task remains only in chat.
-
-A prompt is not considered fully finalized until both mandatory documentation operations have been completed.
-
-## Validation Policy
-
-Validation MUST be proportional to the real scope and risk of the task.
-
-The objective is to maintain sufficient technical confidence without repeatedly executing large validation suites when focused validation already covers the modified behavior.
-
-### Small Changes / Isolated Functions
-
-Examples include:
-
-- menu changes;
-
-- literal changes;
-
-- isolated functions;
-
-- localized bug fixes;
-
-- small integrations;
-
-- isolated STUDIO functions;
-
-- small configuration changes;
-
-- changes with a clearly bounded impact surface.
-
-For these tasks, CODEX should execute only the validation necessary for the affected scope.
-
-Normally:
-
-- focused tests for the affected code;
-
-- `compileall` only for the necessary scope;
-
-- `git diff --check`;
-
-- JSON validation only when configuration or JSON files were modified.
-
-CODEX MUST NOT execute the full global suite:
-
-`python -m pytest tests -q`
-
-for a small or isolated task unless:
-
-- the project owner explicitly requests it;
-
-- the task closes a larger functional phase;
-
-- or CODEX finds concrete evidence that the change has a genuinely transversal impact requiring global regression validation.
-
-### Large Phases / Transversal Changes
-
-Examples include:
-
-- system-wide reorganization;
-
-- modularization;
-
-- architectural changes;
-
-- transversal refactors;
-
-- common subtitle-system changes;
-
-- shared infrastructure changes;
-
-- changes affecting multiple main components;
-
-- completion of a complete functional phase.
-
-For these tasks, the global suite may be executed:
-
-`python -m pytest tests -q`
-
-but it should normally be executed only ONCE at the end of the phase.
-
-Focused tests may still be used during implementation.
-
-### Checkpoints / Important Pre-Commit Validation
-
-Before an important checkpoint or explicitly authorized commit, validation may include:
-
-- global suite once;
-
-- final diff review;
-
-- relevant manual validation;
-
-- static validation required by the affected scope.
-
-The global suite should not be repeatedly executed during the same checkpoint unless a subsequent code change invalidates the previous result.
-
-### Prohibited Redundant Validation
-
-CODEX MUST NOT:
-
-- repeat a global suite because terminal output was truncated;
-
-- repeat the same large suite merely to obtain another summary format;
-
-- run hundreds or thousands of tests after every small modification;
-
-- repeat validation already adequately covered by focused tests;
-
-- rerun a global suite solely to recover an exit code;
-
-- execute multiple equivalent regression batteries without a technical reason;
-
-- treat every completed prompt as automatically requiring a global suite.
-
-If the exit code or complete result of a global suite is required, CODEX should capture it during the SAME execution.
-
-If output redirection or logging is required, it should be configured before launching the suite rather than launching the complete suite a second time.
-
-### Validation Principle
-
-Validation must be:
-
-- sufficient;
-
-- proportional;
-
-- non-redundant;
-
-- technically justified.
-
-Focused validation is the default for bounded changes.
-
-Global validation is reserved for:
-
-- large phases;
-
-- transversal changes;
-
-- significant checkpoints;
-
-- explicit owner requests;
-
-- or technically demonstrated regression risk.
-
-Passing more tests is not, by itself, justification for repeatedly executing unnecessary test suites.
-
-## Architectural Principle — Data / Config Driven
-
-AI Visual Composer MUST be data/config-driven.
-
-The code implements generic infrastructure, contracts, engines, capabilities, and reusable technical behavior.
-
-The configuration structure and declarative files determine which components, families, profiles, variants, and combinations exist.
-
-Technical IDs and values transport identity.
-
-Human-readable names such as:
-
-- `display_name`;
-
-- terminal labels;
-
-- menu labels;
-
-- profile names;
-
-- family names shown to the user;
-
-exist exclusively for human presentation and MUST NOT participate in functional decisions, routing, resolution, identity reconstruction, or runtime behavior.
-
-A new profile or family that uses capabilities already supported by the system MUST NOT require modification of Python code.
-
-### Structure Is Context
-
-The physical/configuration structure defines the context in which a configuration exists.
-
-Conceptually:
-
-`config/profiles/<component>/<platform>/<family>/<profile>.json`
-
-provides the structural context:
-
-- component;
-
-- platform;
-
-- family;
-
-- profile location.
-
-The system must discover that structure dynamically whenever the relevant architecture supports dynamic discovery.
-
-Python MUST NOT require prior nominal registration of future family or profile names.
-
-A future family must not require:
-
-- a new Enum member;
-
-- a new hardcoded list entry;
-
-- a new dictionary entry;
-
-- a new `if`;
-
-- a new `elif`;
-
-- a new match branch;
-
-- or another nominal Python registration;
-
-when that family only uses capabilities already supported by the engine.
-
-### Technical Identity
-
-`profile_id` and equivalent technical identifiers are identities.
-
-They MUST be treated as technical values, not as human labels and not as encoded instructions.
-
-Unless a legacy compatibility contract explicitly requires otherwise, code MUST NOT:
-
-- infer behavior from substrings contained in an ID;
-
-- require an ID to repeat component, platform, family, style, or display name;
-
-- parse an ID to rediscover context already known from configuration structure;
-
-- use `startswith`, `endswith`, `removeprefix`, `removesuffix`, splitting, regex extraction, or equivalent string interpretation to infer functional meaning from an otherwise opaque technical ID;
-
-- construct mandatory IDs by concatenating human or structural names when the complete identity is already represented by explicit fields/context.
-
-The complete technical context may be represented by separate values such as:
-
-- component;
-
-- platform;
-
-- family;
-
-- profile_id;
-
-rather than duplicating all of them inside one string.
-
-### Human Presentation
-
-`display_name` is presentation only.
-
-Changing `display_name` MUST NOT change:
-
-- identity;
-
-- routing;
-
-- resolution;
-
-- configuration loading;
-
-- behavior;
-
-- selected capabilities;
-
-- runtime execution;
-
-- file discovery;
-
-- technical relationships between profiles.
-
-The same principle applies to any other human-facing label.
-
-The terminal may show human-readable labels, but after selection it MUST transport technical identities/values.
-
-### Configuration Declares Behavior
-
-Profiles and declarative configuration select and configure capabilities.
-
-Code implements those capabilities generically.
-
-The system MUST prefer:
-
-`configuration -> capability -> runtime`
-
-over:
-
-`profile name -> special-case code -> runtime`
-
-If multiple profiles use the same capability, they MUST reuse the same generic implementation rather than creating profile-specific Python branches.
-
-### New Profiles and Families
-
-If the engine already supports all capabilities required by a new profile or family, creating that profile or family should normally require only:
-
-- creating the appropriate configuration structure;
-
-- creating the corresponding declarative file or files;
-
-- assigning technical IDs/values;
-
-- assigning optional human-readable labels;
-
-- configuring supported capabilities.
-
-It MUST NOT normally require modification of Python code.
-
-### New Engine Capabilities
-
-A genuinely new engine capability may require new Python implementation.
-
-When this happens, CODEX must implement the capability generically.
-
-It MUST NOT implement an exception tied only to the name of the profile or family that first requires it.
-
-Correct conceptual model:
-
-`new capability -> generic engine implementation -> configurable use by profiles`
-
-Incorrect conceptual model:
-
-`profile named X -> if X -> special behavior`
-
-### Discovery
-
-Where a subsystem is designed for dynamic discovery, the preferred flow is:
-
-`STRUCTURE / CONFIGURATION`
-
-→ `DISCOVERY`
-
-→ `TECHNICAL IDENTITY`
-
-→ `VALIDATION`
-
-→ `CAPABILITIES / CONFIGURATION`
-
-→ `RUNTIME`
-
-The architecture MUST NOT be inverted into:
-
-`NAME KNOWN BY PYTHON`
-
-→ `CONSTRUCT EXPECTED ID`
-
-→ `CONSTRUCT EXPECTED PATH`
-
-→ `SPECIAL-CASE BEHAVIOR`
-
-unless an explicitly documented legacy compatibility boundary temporarily requires it.
-
-### Generic Runtime Principle
-
-Runtime code should know:
-
-- technical contracts;
-
-- capabilities;
-
-- configuration values;
-
-- validated identities;
-
-- resources;
-
-- execution rules.
-
-Runtime code should not need to know:
-
-- creative profile names;
-
-- future family names;
-
-- marketing names;
-
-- human-facing labels;
-
-- examples used in tests;
-
-- names chosen by the project owner for future configurations.
-
-### Test Fixture Naming
-
-Tests MUST NOT use plausible product names in a way that can be mistaken for product architecture or future product decisions.
-
-Artificial dynamic fixtures should use explicitly technical names such as:
-
-- `test_family`;
-
-- `test_profile`;
-
-- `fixture_family`;
-
-- `dummy_profile`;
-
-or equivalent clearly non-product identifiers.
-
-A test fixture name MUST NOT become:
-
-- a production enum;
-
-- a production family;
-
-- a production profile;
-
-- a runtime branch;
-
-- a naming convention inferred for future product development.
-
-### Legacy Compatibility
-
-Existing legacy contracts may temporarily contain nominal knowledge where changing them belongs to a later authorized phase.
-
-Such exceptions MUST:
-
-- remain explicit;
-
-- remain documented;
-
-- not spread into new architecture;
-
-- not be used as a template for future implementations;
-
-- be removed or generalized when their designated migration phase is authorized.
-
-CODEX MUST distinguish between:
-
-- preserving an explicitly protected legacy compatibility contract;
-
-and
-
-- introducing new nominal coupling.
-
-Preserving legacy compatibility does NOT authorize new hardcoded names.
-
-### Architectural Review Rule
-
-When CODEX creates or modifies architecture, identity, discovery, selectors, profiles, configuration loaders, registries, routing, or runtime integration, it MUST verify that the implementation respects this principle.
-
-Before introducing a new nominal constant, Enum member, map entry, branch, suffix table, prefix parser, or special-case path, CODEX must determine whether the same behavior can and should be driven by configuration or technical identity instead.
-
-If an existing capability can support the requested configuration without new Python code, CODEX MUST prefer the data/config-driven solution.
-
-### Core Principle
-
-The permanent architectural direction of AI Visual Composer is:
-
-`STRUCTURE / CONFIGURATION`
-
-→ `DISCOVERY`
-
-→ `TECHNICAL IDENTITY`
-
-→ `CAPABILITIES`
-
-→ `RUNTIME`
-
-Human-readable names are presentation.
-
-Technical IDs transport identity.
-
-Configuration selects behavior.
-
-Code implements generic capabilities.
-
-A new profile or family using existing capabilities MUST NOT require Python modification.
-
-## Scope
-
-This policy applies to EVERY CODEX task, including:
-
-- read-only audits;
-
-- analysis;
-
-- inspections;
-
-- investigations;
-
-- implementation tasks;
-
-- validations;
-
-- tests;
-
-- Git-only tasks;
-
-- restorations;
-
-- comparisons;
-
-- reports;
-
-- documentation tasks;
-
-- configuration audits;
-
-- architecture audits;
-
-- debugging;
-
-- regression investigations;
-
-- and any other completed prompt.
-
-The type of task does not change the mandatory documentation requirement.
-
-## Product Protection
-
-Unless explicitly authorized for the concrete task, CODEX must not:
-
-- modify productive code;
-
-- modify architecture;
-
-- modify runtime behavior;
-
-- modify configuration;
-
-- modify profiles;
-
-- modify tests;
-
-- modify workflows;
-
-- modify prompts;
-
-- create commits;
-
-- push changes;
-
-- pull changes;
-
-- merge branches;
-
-- reset the repository;
-
-- create or modify tags.
-
-These restrictions NEVER prevent the mandatory updates to:
-
-- `AGENT_AI/CODEX/BITACORA.md`
-
-- `AGENT_AI/CODEX/CHATGPT.md`
-
-## Privacy
-
-`AGENT_AI/CODEX/` is private agent state.
-
-It must not be published to GitHub or included in official releases.
-
-The mandatory documentation files:
-
-- `AGENT_AI/CODEX/BITACORA.md`
-
-- `AGENT_AI/CODEX/CHATGPT.md`
-
-exist exclusively as private operational memory and communication state.
-
-## Final Rule
-
-EVERY COMPLETED PROMPT MUST END WITH:
-
-1. `BITACORA.md` updated by APPENDING the new chronological entry.
-
-2. `CHATGPT.md` completely regenerated with the latest complete result.
-
-ALWAYS.
-
-WITHOUT EXCEPTION.
-
-REGARDLESS OF WHAT THE INDIVIDUAL PROMPT SAYS.
+# AGENTS.md — Reglas comunes para agentes de IA
+
+Válido para cualquier agente (Claude Code, Codex u otros). Aquí solo hay
+reglas permanentes y comunes. El estado de trabajo no va aquí: ver §7.
+
+**Idioma:** todos los agentes responden siempre en español (chat, informes, bitácoras
+y resúmenes).
+
+**Idioma del código y de la terminal:** el código (nombres de funciones, clases,
+variables…) va en inglés. Todo lo que ve el usuario en la terminal va en español.
+Excepción: los miembros de enum cuyo valor es un dato (carpeta o texto de menú), que
+se quedan como el dato.
+
+Cada agente tiene además sus reglas propias, que no repiten lo común:
+
+- Si eres Claude, tus reglas propias están en `AGENT_AI/CLAUDE/AGENT.md`.
+- Si eres Codex, lee `AGENT_AI/CODEX/AGENT.md` al empezar.
+
+## 1. Protección del producto
+
+Sin autorización expresa en la tarea, no modifiques código, arquitectura,
+comportamiento en ejecución, configuración, perfiles, tests, workflows ni prompts,
+y no hagas commit, push, pull, merge, reset ni tags.
+
+Si una tarea autoriza cambios, mantenlos mínimos y dentro de lo pedido, y lista
+cada archivo modificado.
+
+## 2. Arquitectura guiada por datos (no negociable)
+
+- El código implementa capacidades genéricas; la configuración declara entidades,
+  familias, perfiles, variantes y valores.
+- La estructura es el contexto:
+  `config/profiles/<componente>/<formato>/[<familia>/]<perfil>.json`.
+  Se descubre dinámicamente donde la arquitectura lo permite; Python no registra
+  de antemano nombres de familias o perfiles futuros.
+- Los IDs técnicos (`profile_id` y equivalentes) son identidad opaca: no se analizan
+  (prefijos, sufijos, `split`, regex) para deducir comportamiento ni se construyen
+  concatenando nombres.
+- `display_name` y las etiquetas de terminal o menú son solo presentación; nunca
+  deciden identidad, enrutado, resolución, carga ni comportamiento.
+- Un perfil o familia nuevo que use capacidades existentes no requiere tocar Python.
+- Una capacidad nueva se implementa de forma genérica y configurable,
+  nunca como `if perfil == X`.
+- Flujo correcto: estructura/configuración → descubrimiento → identidad técnica →
+  validación → capacidades → ejecución.
+- Componentes fijos: GUION, IMAGEN, VIDEO, STUDIO.
+- `OperationalProfileKey(component, format, profile_id)` y
+  `SubtitleProfileKey(component, format, profile_id, family)` son dominios
+  separados; no se fusionan.
+- Fixtures de test con nombres técnicos (`test_family`, `dummy_profile`), nunca
+  nombres que parezcan de producto.
+- El acoplamiento nominal heredado se mantiene solo donde esté documentado como
+  compatibilidad; no se copia ni se extiende.
+- Al tocar identidad, descubrimiento, selectores, cargadores, registros, enrutado
+  o integración en ejecución, comprueba que se cumple esta sección y avisa de
+  cualquier incumplimiento que encuentres.
+
+## 3. Validación proporcional
+
+- Cambio acotado: tests focales del ámbito + `compileall` del ámbito +
+  `git diff --check` (+ validar JSON si se tocó JSON).
+- Suite global (`python -m pytest tests -q`) solo al cerrar una fase, ante impacto
+  transversal demostrado o si el propietario la pide; una sola vez, con la salida y
+  el código de salida capturados en esa misma ejecución.
+- No repetir suites por salida truncada, para obtener otro formato o para recuperar
+  el código de salida.
+
+## 4. Documentación de cierre
+
+- **Bitácora** (`AGENT_AI/<AGENTE>/BITACORA.md`): entrada de ≤ 15 líneas solo si la
+  tarea produjo cambios, hallazgos o decisiones. Solo se añade al final; nunca se
+  borra ni se reescribe.
+- **Estado** (`AGENT_AI/ESTADO.md`): se actualiza al cerrar cada tarea con cambios
+  (rama, línea activa, último resultado, decisiones pendientes, siguiente paso).
+- **Puente** (`AGENT_AI/<AGENTE>/PUENTE.md`): solo cuando el propietario lo pida o
+  al cerrar un lote. Se regenera desde cero.
+- **Informes**: un resultado largo va a `AGENT_AI/<AGENTE>/REPORTS/` o al documento
+  vivo de su línea en `AGENT_AI/TRABAJO/`; las demás piezas lo enlazan, no lo copian.
+- Las preguntas triviales no requieren cierre.
+- Si el prompt del propietario indica otra cosa, prevalece el propietario.
+
+## 5. Privacidad
+
+`AGENT_AI/` es privado y está fuera de Git. No se publica ni se incluye en releases.
+Si detectas un archivo de `AGENT_AI/` versionado, avísalo sin alterar Git.
+
+## 6. Estructura de `AGENT_AI/`
+
+```text
+AGENT_AI/
+  ESTADO.md            estado común y siguiente paso
+  TRABAJO/             documentos vivos de cada línea de trabajo (comunes)
+  <AGENTE>/            CLAUDE, CODEX…: misma estructura en todos
+    AGENT.md           reglas propias del agente
+    BITACORA.md        historia del agente
+    PUENTE.md          resultado para el propietario u otro asistente
+    REPORTS/           informes del agente
+```
+
+## 7. Dónde está el estado
+
+- Estado actual y siguiente paso: `AGENT_AI/ESTADO.md` (léelo al empezar).
+- Líneas de trabajo: `AGENT_AI/TRABAJO/<linea>.md`.
+- Historia: `AGENT_AI/<AGENTE>/BITACORA.md` (buscar, no leer entera).
+- Cómo redactar prompts: `PROMPTS.md`.
+
+## 8. Comportamientos intencionados (no cambiar sin preguntar)
+
+Parecen mejorables, pero son así a propósito. No se cambian ni se proponen como
+mejora sin preguntar antes al propietario.
+
+- **Ollama y WAN no tienen tiempo límite (timeout).** Con límites como 180 s se
+  cortaban generaciones válidas y daba fallos. No añadas timeouts a esas llamadas.
+- **STUDIO, SRT + VIDEO usa siempre el SRT tal cual (ORIGINAL, sin Whisper).** Si
+  SOLO VIDEO transcribe mal una palabra, el propietario corrige el SRT y usa
+  SRT + VIDEO. No es una opción que haya que ofrecer ni "mejorar" (decisión P1 de
+  `AGENT_AI/TRABAJO/TERMINADO/FASE_K/LIMPIEZA.md` §3.1).
+
+## 9. Flujo de trabajo con Git
+
+- Cada lote va en su propia rama, `g<n>-<tema>` (minúsculas y guiones; p. ej. `g2-licencia`),
+  creada desde `main` al día (`git switch main`, `git pull --ff-only`, `git switch -c <rama>`).
+- El ejecutor hace los cambios, las comprobaciones y los commits, sube la rama
+  (`git push -u origin <rama>`) y da en su resumen el enlace
+  `https://github.com/juangalisteo/ai-visual-composer/compare/main...<rama>?expand=1`.
+- El propietario abre el Pull Request, espera las pruebas en verde y el visto bueno del asesor,
+  y une con «Create a merge commit».
+- Nunca push directo a `main` ni push forzado.

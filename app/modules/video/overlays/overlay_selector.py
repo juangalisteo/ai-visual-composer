@@ -51,7 +51,7 @@ class OverlaySelector(
                 "superior a cero."
             ),
             invalid_scene_index_message=(
-                "El indice de escena no puede ser "
+                "El índice de escena no puede ser "
                 "negativo."
             )
         )

@@ -89,7 +89,7 @@ class LosslessWanFrameOutput:
             ) from error
         if not output_path.exists() or output_path.stat().st_size <= 0:
             raise LosslessWanFrameOutputError(
-                "La materializacion FFV1 WAN no produjo un clip valido."
+                "La materialización FFV1 WAN no produjo un clip válido."
             )
         return output_path
 
@@ -111,16 +111,16 @@ class LosslessWanFrameOutput:
             items = list(node_output["images"])
         except (KeyError, TypeError) as error:
             raise LosslessWanFrameOutputError(
-                "ComfyUI no devolvio los PNG lossless esperados para el job WAN."
+                "ComfyUI no devolvió los PNG lossless esperados para el job WAN."
             ) from error
         if len(items) != plan.expected_frame_count:
             raise LosslessWanFrameOutputError(
-                "La captura lossless WAN tiene un numero de frames inesperado."
+                "La captura lossless WAN tiene un número de frames inesperado."
             )
         locations = []
         for item in items:
             if not isinstance(item, dict):
-                raise LosslessWanFrameOutputError("Un output PNG WAN es invalido.")
+                raise LosslessWanFrameOutputError("Un output PNG WAN es inválido.")
             filename = str(item.get("filename", ""))
             if not filename.lower().endswith(".png"):
                 raise LosslessWanFrameOutputError("La captura lossless WAN requiere PNG.")
@@ -148,7 +148,7 @@ class LosslessWanFrameOutput:
     def _validate_png(path, plan):
         header = Path(path).read_bytes()[:33]
         if len(header) < 33 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
-            raise LosslessWanFrameOutputError("Un frame lossless WAN no es PNG valido.")
+            raise LosslessWanFrameOutputError("Un frame lossless WAN no es PNG válido.")
         width = int.from_bytes(header[16:20], "big")
         height = int.from_bytes(header[20:24], "big")
         bit_depth = header[24]

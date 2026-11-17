@@ -8,7 +8,6 @@ from app.domain import (
 )
 from app.visual_intelligence import (
     VisualConflictResolver,
-    VisualReasoningOrchestrator,
 )
 from tests.test_visual_synthesis_helpers import (
     analysis_and_reasoning,

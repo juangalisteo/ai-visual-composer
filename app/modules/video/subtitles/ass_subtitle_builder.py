@@ -9,6 +9,7 @@ from app.managers.font_manager import FontManager
 from app.modules.subtitles.effects.physics import KineticPhysicsEngine
 from app.modules.subtitles.effects.typewriter import TypewriterInterpolator
 from app.modules.subtitles.nlp.syllabifier import SyllabifierPolicy
+from app.modules.subtitles.policies.timing import approximate_word_timings
 from app.modules.subtitles.rendering.font_metrics import FontMetricsEngine
 
 
@@ -111,7 +112,7 @@ class AssSubtitleBuilder:
 
     def _document(self, cues, style, width, height, timing=None, cue_policy=None):
         if width <= 0 or height <= 0:
-            raise ValueError("La resolucion ASS debe ser positiva.")
+            raise ValueError("La resolución ASS debe ser positiva.")
         font = self.font_manager.resolve_name(style.font)
         secondary = style.secondary_colour or style.primary_colour
         values = (
@@ -185,8 +186,8 @@ class AssSubtitleBuilder:
             lines.append(
                 "Dialogue: 0,"
                 f"{self._ass_time(start)},{self._ass_time(end)},Default,,0,0,0,,"
-                f"{self._effect_tags(style.cue_effect, start, end, style, width, height)}"
-                f"{self._word_effect_tags(style.word_effect, start, end, text)}"
+                f"{self._effect_tags(style.cue_effect, start, end)}"
+                f"{self._word_effect_tags(style.word_effect)}"
                 f"{self._escape_text(text)}"
             )
         return "\n".join(lines) + "\n"
@@ -285,7 +286,13 @@ class AssSubtitleBuilder:
             "alpha_fade",
         }:
             return ()
-        words = self._words_for_cue(start, end, text, timing)
+        words = self._words_for_cue(start, end, text, timing) or (
+            approximate_word_timings(
+                start / 1000.0,
+                end / 1000.0,
+                text.replace("\n", " ").split(),
+            )
+        )
         if not words:
             return ()
         if effect.name == "typewriter":
@@ -546,7 +553,7 @@ class AssSubtitleBuilder:
             if len(lines) < 3:
                 raise ValueError("El SRT contiene un cue incompleto para ASS.")
             if "-->" not in lines[1]:
-                raise ValueError("El SRT contiene un timing invalido para ASS.")
+                raise ValueError("El SRT contiene un tiempo inválido para ASS.")
             start, end = (part.strip() for part in lines[1].split("-->", 1))
             cues.append((
                 self._milliseconds(start),
@@ -558,10 +565,10 @@ class AssSubtitleBuilder:
     def _milliseconds(self, value):
         match = self._TIMESTAMP.fullmatch(value)
         if match is None:
-            raise ValueError(f"Timestamp SRT invalido para ASS: {value!r}.")
+            raise ValueError(f"Marca de tiempo SRT inválida para ASS: {value!r}.")
         parts = {key: int(item) for key, item in match.groupdict().items()}
         if parts["minutes"] >= 60 or parts["seconds"] >= 60:
-            raise ValueError(f"Timestamp SRT invalido para ASS: {value!r}.")
+            raise ValueError(f"Marca de tiempo SRT inválida para ASS: {value!r}.")
         return (
             parts["hours"] * 3_600_000
             + parts["minutes"] * 60_000
@@ -586,48 +593,18 @@ class AssSubtitleBuilder:
             .replace("\n", r"\N")
         )
 
-    def _effect_tags(self, effect, start, end, style, width, height):
+    def _effect_tags(self, effect, start, end):
         if effect is None:
             return ""
-        duration = end - start
-        if duration <= 0:
-            raise ValueError("El cue ASS debe tener duracion positiva.")
-        name = effect.name
-        parameters = effect.parameters
-        if name == "fade":
-            fade_in, fade_out = self._fit_windows(
-                parameters["in_ms"], parameters["out_ms"], duration
-            )
-            return f"{{\\fad({fade_in},{fade_out})}}"
-        if name in ("pop", "zoom"):
-            target_x = style.scale_x if style.scale_x is not None else 100
-            target_y = style.scale_y if style.scale_y is not None else 100
-            if name == "zoom":
-                target_x = target_y = parameters["to_scale"]
-            window = min(parameters["in_ms"], duration)
-            scale = parameters["from_scale"]
-            return (
-                f"{{\\fscx{self._number(scale)}\\fscy{self._number(scale)}"
-                f"\\t(0,{window},\\fscx{self._number(target_x)}"
-                f"\\fscy{self._number(target_y)})}}"
-            )
-        if name == "slide":
-            base_x, base_y = self._base_position(style, width, height)
-            start_x, start_y = self._slide_origin(
-                parameters["direction"], base_x, base_y, width, height
-            )
-            window = min(parameters["duration_ms"], duration)
-            return (
-                f"{{\\move({self._number(start_x)},{self._number(start_y)},"
-                f"{self._number(base_x)},{self._number(base_y)},0,{window})}}"
-            )
-        if name == "gravity_drop":
+        if end - start <= 0:
+            raise ValueError("El cue ASS debe tener duración positiva.")
+        if effect.name == "gravity_drop":
             # Handled as coordinated micro-dialogues by _kinetic_dialogues.
             # A cue shorter than the kinetic safety window falls back to static.
             return ""
-        raise ValueError(f"Efecto ASS no soportado: {name!r}.")
+        raise ValueError(f"Efecto ASS no soportado: {effect.name!r}.")
 
-    def _word_effect_tags(self, effect, start, end, text):
+    def _word_effect_tags(self, effect):
         if effect is None:
             return ""
         if effect.name in {
@@ -638,39 +615,10 @@ class AssSubtitleBuilder:
             "typewriter",
             "alpha_fade",
         }:
+            # Handled by _in_sentence_dialogues; without usable words the cue
+            # falls back to a plain dialogue.
             return ""
-        if len(text.split()) != 1:
-            raise ValueError(
-                "Los word effects requieren cues finales de una sola palabra; "
-                "no se resegmenta el SRT para ASS."
-            )
-        duration = end - start
-        if duration <= 0:
-            raise ValueError("El cue ASS debe tener duracion positiva.")
-        if effect.name == "karaoke":
-            return f"{{\\kf{self._karaoke_centiseconds(duration)}}}"
-        if effect.name == "highlight":
-            return f"{{\\1c{effect.parameters['active_colour']}}}"
-        if effect.name == "progressive_reveal":
-            reveal = min(effect.parameters["reveal_ms"], duration)
-            return f"{{\\1a&HFF&\\t(0,{reveal},\\1a&H00&)}}"
         raise ValueError(f"Word effect ASS no soportado: {effect.name!r}.")
-
-    @staticmethod
-    def _karaoke_centiseconds(milliseconds):
-        # ASS karaoke uses centiseconds. Ceiling preserves a nonzero visual
-        # duration for source cues shorter than one centisecond.
-        return max(1, (milliseconds + 9) // 10)
-
-    @staticmethod
-    def _fit_windows(fade_in, fade_out, duration):
-        total = fade_in + fade_out
-        if total <= duration:
-            return fade_in, fade_out
-        if total == 0:
-            return 0, 0
-        fitted_in = round(fade_in * duration / total)
-        return fitted_in, duration - fitted_in
 
     @staticmethod
     def _base_position(style, width, height):
@@ -690,18 +638,6 @@ class AssSubtitleBuilder:
         else:
             y = style.margin_v
         return x, y
-
-    @staticmethod
-    def _slide_origin(direction, x, y, width, height):
-        if direction == "left":
-            return x - width, y
-        if direction == "right":
-            return x + width, y
-        if direction == "up":
-            return x, y - height
-        if direction == "down":
-            return x, y + height
-        raise ValueError(f"Direccion slide no soportada: {direction!r}.")
 
     @staticmethod
     def _number(value):

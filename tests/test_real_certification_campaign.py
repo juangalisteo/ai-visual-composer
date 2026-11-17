@@ -481,12 +481,10 @@ class RealCertificationCampaignTest(unittest.TestCase):
             config = RealImageRunnerConfig(
                 campaign_id="explicit_profile",
                 base_output_dir=root / "certification",
-                platform="youtube",
-                image_format="horizontal",
+                format="horizontal",
                 image_width=640,
                 image_height=360,
                 workflow_path=root / "workflow.json",
-                image_validation_enabled=True,
             )
             runner = RealImageComponentRunner(
                 config
@@ -525,16 +523,23 @@ class RealCertificationCampaignTest(unittest.TestCase):
             self.assertTrue(
                 observation.approved
             )
+            project_manager.assert_called_once_with(
+                project_name="explicit_profile_portrait"
+            )
+            self.assertIs(
+                project,
+                image_builder.call_args.kwargs["project"]
+            )
             injected_profile = image_builder.call_args.kwargs[
                 "profile"
             ]
-            self.assertTrue(
-                injected_profile["image_validation"]["enabled"]
+            self.assertNotIn(
+                "image_validation",
+                injected_profile
             )
             self.assertTrue(
                 injected_profile["visual_director"]["enabled"]
             )
-            self.assertEqual("youtube", injected_profile["platform"])
             self.assertEqual("horizontal", injected_profile["format"])
             self.assertEqual("640x360", injected_profile["resolution"])
             self.assertEqual(
@@ -575,15 +580,11 @@ class RealCertificationCampaignTest(unittest.TestCase):
 
         self.assertEqual(
             {
-                "platform": "youtube",
                 "format": "horizontal",
                 "resolution": "1920x1080",
                 "video_style": {
                     "width": 1920,
                     "height": 1080,
-                },
-                "image_validation": {
-                    "enabled": True,
                 },
                 "visual_director": {
                     "enabled": True,

@@ -1,4 +1,4 @@
-"""Normalize legacy SRT visual units for generated ASS documents."""
+"""Normalize SRT script-grid visual units for generated ASS documents."""
 
 from dataclasses import replace
 
@@ -23,7 +23,7 @@ class AssVisualScaleNormalizer:
 
     def normalize(self, style, width, height):
         if width <= 0 or height <= 0:
-            raise ValueError("La resolucion ASS debe ser positiva.")
+            raise ValueError("La resolución ASS debe ser positiva.")
 
         horizontal_scale = width / self.REFERENCE_PLAY_RES_X
         vertical_scale = height / self.REFERENCE_PLAY_RES_Y

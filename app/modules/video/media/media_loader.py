@@ -129,7 +129,7 @@ class MediaLoader:
 
         if render_subtitles and subtitle_path is None:
             raise ValueError(
-                "La renderizacion con subtitulos requiere subtitle_path."
+                "La renderización con subtítulos requiere subtitle_path."
             )
 
         if subtitle_path is not None and not subtitle_path.exists():

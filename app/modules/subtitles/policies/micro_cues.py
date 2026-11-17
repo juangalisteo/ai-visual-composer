@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from app.modules.subtitles.policies.timing import WordTiming
+from app.modules.subtitles.policies.timing import (
+    WordTiming,
+    stretch_zero_duration_cues,
+)
 
 
 @dataclass(frozen=True)
@@ -20,7 +23,7 @@ class SubtitleCue:
 
         if not text:
             raise ValueError(
-                "SubtitleCue text cannot be empty."
+                "SubtitleCue.text no puede estar vacío."
             )
 
         start = float(
@@ -32,17 +35,17 @@ class SubtitleCue:
 
         if start < 0:
             raise ValueError(
-                "SubtitleCue start cannot be negative."
+                "SubtitleCue.start no puede ser negativo."
             )
 
         if end <= start:
             raise ValueError(
-                "SubtitleCue end must be after start."
+                "SubtitleCue.end debe ser posterior a start."
             )
 
         if not self.words:
             raise ValueError(
-                "SubtitleCue must contain at least one source word."
+                "SubtitleCue debe contener al menos una palabra de origen."
             )
 
         object.__setattr__(
@@ -107,22 +110,22 @@ class MicroCuePolicy:
 
         if self.fps <= 0:
             raise ValueError(
-                "MicroCuePolicy fps must be greater than zero."
+                "MicroCuePolicy.fps debe ser mayor que cero."
             )
 
         if self.min_frames <= 0:
             raise ValueError(
-                "MicroCuePolicy min_frames must be greater than zero."
+                "MicroCuePolicy.min_frames debe ser mayor que cero."
             )
 
         if self.min_display_seconds <= 0:
             raise ValueError(
-                "MicroCuePolicy min_display_seconds must be greater than zero."
+                "MicroCuePolicy.min_display_seconds debe ser mayor que cero."
             )
 
         if self.significant_gap_threshold <= 0:
             raise ValueError(
-                "MicroCuePolicy significant_gap_threshold must be greater than zero."
+                "MicroCuePolicy.significant_gap_threshold debe ser mayor que cero."
             )
 
         if self.merge_preference not in {
@@ -130,7 +133,7 @@ class MicroCuePolicy:
             "previous"
         }:
             raise ValueError(
-                "MicroCuePolicy merge_preference must be next or previous."
+                "MicroCuePolicy.merge_preference debe ser next o previous."
             )
 
     @property
@@ -155,8 +158,7 @@ class MicroCuePolicy:
         prepared_words = tuple(
             word
             for word in words
-            if word.end > word.start
-            and formatter(word.text)
+            if formatter(word.text)
         )
 
         if not prepared_words:
@@ -168,11 +170,27 @@ class MicroCuePolicy:
         if not self.enabled:
             return MicroCueResult(
                 cues=tuple(
-                    self._cue_from_words(
-                        (word,),
-                        formatter
+                    SubtitleCue(
+                        text=" ".join(
+                            formatter(
+                                word.text
+                            )
+                            for word in cue_words
+                        ),
+                        start=start,
+                        end=end,
+                        words=cue_words
                     )
-                    for word in prepared_words
+                    for start, end, cue_words in stretch_zero_duration_cues(
+                        tuple(
+                            (word.start, word.end, (word,), (word,))
+                            for word in prepared_words
+                        ),
+                        self.significant_gap_threshold,
+                        lambda missing_words, cue_words: (
+                            missing_words + cue_words
+                        )
+                    )
                 ),
                 stats=MicroCueStats()
             )
@@ -381,10 +399,17 @@ class MicroCuePolicy:
             for word in words
         )
 
+        start = words[0].start
+        end = words[-1].end
+
+        # Words that all last zero seconds get the minimum visual duration.
+        if end <= start:
+            end = start + self.minimum_visual_duration
+
         return SubtitleCue(
             text=text,
-            start=words[0].start,
-            end=words[-1].end,
+            start=start,
+            end=end,
             words=words
         )
 

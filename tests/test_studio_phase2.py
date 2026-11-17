@@ -1,5 +1,4 @@
 import hashlib
-import os
 import shutil
 import subprocess
 import tempfile
@@ -9,28 +8,44 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from app.core.start import (
-    _persist_studio_render_subtitle,
-    ejecutar_studio,
-    iniciar,
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
 )
+from app.core.start import (
+    run_application,
+)
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
+from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
+    StudioInputMode,
     StudioOutputPathResolver,
     StudioOutputValidator,
     StudioProfileLoader,
     StudioRenderService,
 )
 from app.shared.media_probe import MediaInfo, MediaProbe
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+STUDIO_PROFILE_IDS = {
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
+}
+
+STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS = {
+    "vertical": "subtitulo_studio_vertical_linea_unica",
+    "horizontal": "subtitulo_studio_horizontal_linea_unica",
+}
+
+
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -43,14 +58,13 @@ class StudioPhase2Test(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
             SubtitleProfileKey(
-                "studio", "instagram",
-                "subtitulo_studio_instagram_linea_unica", "estandar",
+                "studio", "vertical",
+                "subtitulo_studio_vertical_linea_unica", "estandar",
             )
         )
         self.source_info = MediaInfo(
@@ -101,15 +115,17 @@ class StudioPhase2Test(unittest.TestCase):
 
         base_path = Path("output/studio/subtitles/result.srt")
         derived_path = Path("output/studio/subtitles/result_three_two_words.srt")
-        with patch(
-            "app.core.start._persist_studio_subtitle_base",
+        with patch.object(
+            StudioExecutionCoordinator,
+            "persist_subtitle_base",
             return_value=base_path,
-        ), patch(
-            "app.core.start._persist_studio_render_subtitle",
+        ), patch.object(
+            StudioExecutionCoordinator,
+            "persist_render_subtitle",
             return_value=derived_path,
         ):
-            result = ejecutar_studio(
-                subtitle_style="three_two_words",
+            result = StudioExecutionCoordinator().run_standard(
+                subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 preparation_service=prepare,
                 render_service=renderer,
@@ -119,7 +135,7 @@ class StudioPhase2Test(unittest.TestCase):
 
         self.assertEqual("rendered", result)
         prepare.assert_called_once_with(
-            subtitle_style="three_two_words",
+            subtitle_profile_key=self.subtitle_profile.key,
             input_mode="srt_video",
         )
         resolver.resolve.assert_called_once_with(
@@ -137,26 +153,28 @@ class StudioPhase2Test(unittest.TestCase):
         )
 
     def test_runtime_studio_bypasses_all_audiovisual_builders(self):
-        with patch.dict(
-            "os.environ",
-            {"MC_PIPELINE_MODE": "studio"},
-            clear=True,
-        ), patch("app.core.start.ejecutar_studio") as studio, patch(
-            "app.core.start.ProjectManager"
-        ) as projects, patch("app.core.start.VideoBuilder") as video, patch(
-            "app.core.start.SrtOptimizer"
-        ) as optimizer:
-            iniciar(
-                subtitle_style="three_two_words",
-                studio_input_mode="srt_video",
-            )
-
-        studio.assert_called_once_with(
-            subtitle_style="three_two_words",
-            music_path=None,
-            input_mode="srt_video",
+        request = ApplicationExecutionRequest(
+            project_name="demo",
+            clear_output=False,
+            operational_profile_key=self.profile_key,
+            subtitle_profile_key=self.subtitle_profile.key,
+            route=StudioExecutionRequest(input_mode=StudioInputMode.SRT_VIDEO),
         )
-        projects.assert_not_called()
+        with patch.object(StudioExecutionCoordinator, "run_standard") as studio, patch(
+            "app.core.start.ProjectManager"
+        ) as projects, patch("app.modules.standard.execution_coordinator.VideoBuilder") as video, patch(
+            "app.modules.standard.execution_coordinator.SrtOptimizer"
+        ) as optimizer:
+            run_application(request=request)
+
+        studio.assert_called_once()
+        self.assertEqual(
+            self.subtitle_profile.key,
+            studio.call_args.kwargs["subtitle_profile_key"],
+        )
+        self.assertIsNone(studio.call_args.kwargs["music_path"])
+        self.assertEqual("srt_video", studio.call_args.kwargs["input_mode"])
+        projects.assert_called_once_with(project_name="demo")
         video.assert_not_called()
         optimizer.assert_not_called()
 
@@ -197,14 +215,10 @@ class StudioPhase2Test(unittest.TestCase):
             self.assertEqual(b"valid-existing", output_path.read_bytes())
 
     def test_default_output_resolver_uses_project_manager_contract(self):
-        with patch.dict(
-            "os.environ",
-            {"MC_PROJECT_NAME": "Proyecto Studio"},
-            clear=True,
-        ):
-            output_path = StudioOutputPathResolver().resolve(
-                self.profile_key,
-            )
+        output_path = StudioOutputPathResolver().resolve(
+            self.profile_key,
+            project=ProjectManager(project_name="Proyecto Studio"),
+        )
 
         self.assertEqual(
             Path("output/Proyecto Studio/video/Proyecto Studio.mp4"),
@@ -252,36 +266,36 @@ class StudioPhase2Test(unittest.TestCase):
         graph = command[command.index("-filter_complex") + 1]
         self.assertIn("[1:a:0]aresample=48000", graph)
 
-    def test_instagram_and_youtube_keep_independent_output_contracts(self):
-        youtube_key = OperationalProfileKey("studio", "youtube", "studio_youtube")
-        youtube_profile = _load_studio_profile(youtube_key)
-        instagram_command = StudioRenderService().build_command(
+    def test_vertical_and_horizontal_keep_independent_output_contracts(self):
+        horizontal_key = OperationalProfileKey("studio", "horizontal", "studio_horizontal")
+        horizontal_profile = _load_studio_profile(horizontal_key)
+        vertical_command = StudioRenderService().build_command(
             "source.mp4",
             "source.srt",
-            "instagram.mp4",
+            "vertical.mp4",
             self.source_info,
             self.profile,
             "FontName=Arial",
         )
-        youtube_command = StudioRenderService().build_command(
+        horizontal_command = StudioRenderService().build_command(
             "source.mp4",
             "source.srt",
-            "youtube.mp4",
+            "horizontal.mp4",
             self.source_info,
-            youtube_profile,
+            horizontal_profile,
             "FontName=Arial",
         )
-        instagram_graph = instagram_command[
-            instagram_command.index("-filter_complex") + 1
+        vertical_graph = vertical_command[
+            vertical_command.index("-filter_complex") + 1
         ]
-        youtube_graph = youtube_command[
-            youtube_command.index("-filter_complex") + 1
+        horizontal_graph = horizontal_command[
+            horizontal_command.index("-filter_complex") + 1
         ]
-        self.assertIn("scale=1080:1920", instagram_graph)
-        self.assertIn("scale=1920:1080", youtube_graph)
-        self.assertEqual("slow", youtube_profile.preset)
-        self.assertEqual(16, youtube_profile.crf)
-        self.assertEqual(30, youtube_profile.fps)
+        self.assertIn("scale=1080:1920", vertical_graph)
+        self.assertIn("scale=1920:1080", horizontal_graph)
+        self.assertEqual("slow", horizontal_profile.preset)
+        self.assertEqual(16, horizontal_profile.crf)
+        self.assertEqual(30, horizontal_profile.fps)
 
     def test_command_uses_render_style_with_supplied_render_srt(self):
         command = StudioRenderService().build_command(
@@ -360,7 +374,7 @@ class StudioPhase2Test(unittest.TestCase):
             root = Path(directory)
             video_path, subtitle_path = self._sources(root)
             original = subtitle_path.read_bytes()
-            rendered_path = _persist_studio_render_subtitle(
+            rendered_path = StudioExecutionCoordinator.persist_render_subtitle(
                 base_subtitle_path=subtitle_path,
                 output_path=root / "demo" / "video" / "demo.mp4",
                 subtitle_profile=uppercase_profile,
@@ -445,20 +459,24 @@ class StudioPhase2Test(unittest.TestCase):
                 self.assertFalse(output_path.exists())
                 self.assertFalse(root.joinpath("result.rendering.mp4").exists())
 
-    def test_profile_and_subtitle_platforms_cannot_cross(self):
-        youtube_key = ProfileKey.for_component("studio", "youtube")
-        youtube_subtitles = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(youtube_key, "single_line")
+    def test_profile_and_subtitle_formats_cannot_cross(self):
+        horizontal_subtitles = SubtitleProfileResolver().load(
+            SubtitleProfileKey(
+                "studio",
+                "horizontal",
+                "subtitulo_studio_horizontal_linea_unica",
+                "estandar",
+            )
         )
         with tempfile.TemporaryDirectory() as directory:
             video_path, subtitle_path = self._sources(Path(directory))
-            with self.assertRaisesRegex(ValueError, "compartir plataforma"):
+            with self.assertRaisesRegex(ValueError, "compartir formato"):
                 self._service().render(
                     video_path,
                     subtitle_path,
                     self.profile_key,
                     self.profile,
-                    youtube_subtitles,
+                    horizontal_subtitles,
                     Path(directory) / "result.mp4",
                 )
 
@@ -540,12 +558,18 @@ class StudioPhase2Test(unittest.TestCase):
 )
 class StudioPhase2RealFFmpegTest(unittest.TestCase):
 
-    def _profile(self, platform="instagram"):
-        subtitle_parent_key = ProfileKey.for_component("studio", platform)
-        key = OperationalProfileKey("studio", platform, f"studio_{platform}")
+    def _profile(self, profile_format="vertical"):
+        key = OperationalProfileKey(
+            "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
+        )
         profile = _load_studio_profile(key)
         subtitles = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(subtitle_parent_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                profile_format,
+                STUDIO_SINGLE_LINE_SUBTITLE_PROFILE_IDS[profile_format],
+                "estandar",
+            )
         )
         return key, profile, subtitles
 

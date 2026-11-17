@@ -16,7 +16,12 @@ from app.controllers.interaction.contracts import (
     StudioSubtitleSelection,
 )
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio, iniciar
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
+from app.core.start import run_application
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
     StudioOutputPathResolver,
     StudioProfileLoader,
@@ -30,16 +35,18 @@ from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.operational_error import OperationalError
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
+from tests.test_menu_helpers import MenuAnswers
 
 
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -52,12 +59,16 @@ class StudioPhase5Test(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         self.profile = _load_studio_profile(self.profile_key)
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                "vertical",
+                "subtitulo_studio_vertical_linea_unica",
+                "estandar",
+            )
         )
 
     @staticmethod
@@ -83,7 +94,7 @@ class StudioPhase5Test(unittest.TestCase):
     def test_none_keeps_phase_four_controller_contract(self):
         controller = RunController()
         subtitle_key = controller.subtitle_profile_resolver.discover_profiles_for_family(
-            "studio", "instagram", "estandar",
+            "studio", "vertical", "estandar",
         )[0].key
         with patch.object(
             controller, "select_visual_pipeline", return_value="studio"
@@ -109,10 +120,6 @@ class StudioPhase5Test(unittest.TestCase):
                 subtitle_path=Path("input/studio/srt_video/source.srt"),
             ),
         ), patch.object(
-            controller,
-            "select_studio_subtitle_options",
-            return_value=("single_line", False),
-        ), patch.object(
             controller, "select_studio_music", return_value=None
         ), patch.object(
             controller, "select_studio_intro_outro", return_value=None
@@ -121,15 +128,15 @@ class StudioPhase5Test(unittest.TestCase):
         ), patch.object(
             controller, "ask_clear_output", return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
-        self.assertIsNone(options["intro_outro_selection"])
+        self.assertIsNone(request.route.intro_outro_plan)
 
     def test_studio_menu_selects_intro_outro_and_allows_same_asset(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            intro = root / "instagram" / "intro"
-            outro = root / "instagram" / "outro"
+            intro = root / "vertical" / "intro"
+            outro = root / "vertical" / "outro"
             intro.mkdir(parents=True)
             outro.mkdir(parents=True)
             intro_asset = intro / "brand.mp4"
@@ -139,7 +146,10 @@ class StudioPhase5Test(unittest.TestCase):
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
-            with patch("builtins.input", side_effect=("4", "1", "1")):
+            answers = MenuAnswers("INTRO + OUTRO", "brand.mp4", "brand.mp4")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ):
                 plan = controller.select_studio_intro_outro(self.profile_key)
 
         self.assertEqual(intro_asset, plan.intro.asset_path)
@@ -148,8 +158,8 @@ class StudioPhase5Test(unittest.TestCase):
     def test_studio_menu_selects_single_positions_dynamically(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            intro_directory = root / "instagram" / "intro"
-            outro_directory = root / "instagram" / "outro"
+            intro_directory = root / "vertical" / "intro"
+            outro_directory = root / "vertical" / "outro"
             intro_directory.mkdir(parents=True)
             outro_directory.mkdir(parents=True)
             first = intro_directory / "a.mp4"
@@ -161,9 +171,11 @@ class StudioPhase5Test(unittest.TestCase):
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
-            with patch("builtins.input", side_effect=("2", "2")):
+            answers = MenuAnswers("SOLO INTRO", "b.MP4", "SOLO OUTRO", "c.mp4")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ):
                 intro = controller.select_studio_intro_outro(self.profile_key)
-            with patch("builtins.input", side_effect=("3", "1")):
                 outro_plan = controller.select_studio_intro_outro(self.profile_key)
 
         self.assertEqual(second, intro.intro.asset_path)
@@ -176,62 +188,53 @@ class StudioPhase5Test(unittest.TestCase):
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(directory)
             )
-            with patch("builtins.input", return_value="2"), self.assertRaisesRegex(
-                FileNotFoundError, "No hay archivos MP4"
+            answers = MenuAnswers("SOLO INTRO")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ), self.assertRaisesRegex(
+                OperationalError, "No hay archivos MP4"
             ):
                 controller.select_studio_intro_outro(self.profile_key)
 
     def test_main_and_start_transport_structured_plan(self):
         intro = self._selection(
-            "assets/videos/intro_outro/instagram/intro/a.mp4",
+            "assets/videos/intro_outro/vertical/intro/a.mp4",
             "intro",
         )
         plan = IntroOutroPlan(intro=intro)
-        options = {
-            "profile_component": "studio",
-            "profile_platform": "instagram",
-            "profile_id": "studio_instagram",
-            "subtitle_config": "single_line",
-            "voice_config": "",
-            "music_category": None,
-            "project_name": "studio intro outro",
-            "visual_pipeline": "studio",
-            "script_source": "external",
-            "design_target": "",
-            "pipeline_mode": "studio",
-            "studio_music_path": None,
-            "studio_input_mode": "srt_video",
-            "intro_outro_selection": plan,
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="studio intro outro",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "studio", "vertical", "studio_vertical"
+            ),
+            subtitle_profile_key=None,
+            route=StudioExecutionRequest(
+                input_mode="srt_video",
+                music_path=None,
+                intro_outro_plan=plan,
+            ),
+        )
         with patch.dict("os.environ", {}, clear=True), patch(
             "main.RunController"
-        ) as controller, patch("main.iniciar") as start:
-            controller.return_value.run.return_value = options
+        ) as controller, patch("main.run_application") as start:
+            controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
         start.assert_called_once()
         request = start.call_args.kwargs["request"]
         self.assertIs(plan, request.route.intro_outro_plan)
         self.assertEqual("srt_video", request.route.input_mode.value)
-        self.assertEqual("single_line", start.call_args.kwargs["subtitle_style"])
+        self.assertEqual({"request"}, set(start.call_args.kwargs))
 
-        with patch.dict(
-            "os.environ", {"MC_PIPELINE_MODE": "studio"}, clear=True
-        ), patch("app.core.start.ejecutar_studio") as studio, patch(
+        with patch.object(StudioExecutionCoordinator, "run_standard") as studio, patch(
             "app.core.start.ProjectManager"
         ) as projects:
-            iniciar(
-                subtitle_style="single_line",
-                intro_outro_selection=plan,
-                studio_input_mode="srt_video",
-            )
-        studio.assert_called_once_with(
-            subtitle_style="single_line",
-            music_path=None,
-            input_mode="srt_video",
-            intro_outro_selection=plan,
-        )
-        projects.assert_not_called()
+            run_application(request=request)
+        studio.assert_called_once()
+        self.assertIs(plan, studio.call_args.kwargs["intro_outro_selection"])
+        self.assertIsNone(studio.call_args.kwargs["music_path"])
+        self.assertEqual("srt_video", studio.call_args.kwargs["input_mode"])
+        projects.assert_called_once_with(project_name="studio intro outro")
 
     def test_phase_two_transports_plan_to_project_output_and_renderer(self):
         plan = IntroOutroPlan(
@@ -251,17 +254,19 @@ class StudioPhase5Test(unittest.TestCase):
         resolver = Mock()
         resolver.resolve.return_value = Path("output/studio/result.mp4")
         project = Mock()
-        with patch(
-            "app.core.start._persist_studio_subtitle_base",
+        with patch.object(
+            StudioExecutionCoordinator,
+            "persist_subtitle_base",
             return_value=Path("output/studio/subtitles/result.srt"),
-        ), patch(
-            "app.core.start._persist_studio_render_subtitle",
+        ), patch.object(
+            StudioExecutionCoordinator,
+            "persist_render_subtitle",
             return_value=Path(
                 "output/studio/subtitles/result_single_line.srt"
             ),
         ):
-            result = ejecutar_studio(
-                subtitle_style="single_line",
+            result = StudioExecutionCoordinator().run_standard(
+                subtitle_profile_key=self.subtitle_profile.key,
                 input_mode="srt_video",
                 intro_outro_selection=plan,
                 preparation_service=Mock(return_value=preparation),
@@ -539,9 +544,8 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
 
     def setUp(self):
         self.profile_key = OperationalProfileKey(
-            "studio", "instagram", "studio_instagram"
+            "studio", "vertical", "studio_vertical"
         )
-        self.subtitle_parent_key = ProfileKey.for_component("studio", "instagram")
         profile = _load_studio_profile(self.profile_key)
         self.profile = replace(
             profile,
@@ -551,7 +555,12 @@ class StudioPhase5RealFFmpegTest(unittest.TestCase):
             preset="ultrafast",
         )
         self.subtitle_profile = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(self.subtitle_parent_key, "single_line")
+            SubtitleProfileKey(
+                "studio",
+                "vertical",
+                "subtitulo_studio_vertical_linea_unica",
+                "estandar",
+            )
         )
 
     @staticmethod

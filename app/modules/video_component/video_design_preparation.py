@@ -4,6 +4,7 @@ from app.modules.video_component.video_design_models import (
     PreparedVideoDesign,
 )
 from app.modules.visual_design import VisualDesignInterpreter
+from app.shared.operational_error import create_operational_error
 
 
 class VideoDesignPreparationService:
@@ -27,9 +28,17 @@ class VideoDesignPreparationService:
         )
 
         if not design_path.exists():
-            raise FileNotFoundError(
-                "No existe el diseño visual de vídeo: "
-                f"{design_path}"
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message=(
+                    "No existe el diseño visual de vídeo: "
+                    f"{design_path.as_posix()}."
+                ),
+                recommended_action=(
+                    f"Crea {design_path.as_posix()} con el diseño del clip "
+                    "y vuelve a intentarlo."
+                ),
+                operation="Preparar el diseño de vídeo",
             )
 
         text = design_path.read_text(
@@ -37,8 +46,17 @@ class VideoDesignPreparationService:
         ).strip()
 
         if not text:
-            raise ValueError(
-                "El diseño visual de vídeo está vacío."
+            raise create_operational_error(
+                family="VALIDATION",
+                user_message=(
+                    "El diseño visual de vídeo está vacío: "
+                    f"{design_path.as_posix()}."
+                ),
+                recommended_action=(
+                    f"Escribe el diseño del clip en {design_path.as_posix()} "
+                    "y vuelve a intentarlo."
+                ),
+                operation="Preparar el diseño de vídeo",
             )
 
         return PreparedVideoDesign(

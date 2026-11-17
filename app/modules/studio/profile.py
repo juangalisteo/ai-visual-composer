@@ -2,14 +2,18 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.modules.studio.input_preparation import StudioInputMode
+from app.modules.subtitles.io.external_media_subtitles import (
+    ExternalMediaSubtitlePreparationService,
+)
 from app.shared.config_contract import (
-    require_bool,
     require_float,
     require_int,
     require_mapping,
     require_sequence,
     require_text,
 )
+from app.shared.operational_error import create_operational_error
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -22,15 +26,13 @@ from app.shared.subtitle_profile_identity import (
 @dataclass(frozen=True)
 class StudioMusicConfig:
     volume: float
-    loop_shorter: bool
     limiter_limit: float
 
 
 @dataclass(frozen=True)
 class StudioProfile:
-    platform: str
-    profile_id: str
     format: str
+    profile_id: str
     video_extensions: tuple[str, ...]
     subtitle_extensions: tuple[str, ...]
     width: int
@@ -127,11 +129,6 @@ class StudioProfileLoader:
 
         music_config = StudioMusicConfig(
             volume=require_float(music, "volume", "studio.music.volume"),
-            loop_shorter=require_bool(
-                music,
-                "loop_shorter",
-                "studio.music.loop_shorter"
-            ),
             limiter_limit=require_float(
                 music,
                 "limiter_limit",
@@ -139,16 +136,17 @@ class StudioProfileLoader:
             ),
         )
         self._validate_music(music_config)
+        video_extensions = self._extensions(
+            input_config,
+            "video_extensions",
+            "studio.input.video_extensions"
+        )
+        self._validate_video_extensions(video_extensions, profile_key)
 
         return StudioProfile(
-            platform=require_text(profile, "platform", "platform"),
-            profile_id=require_text(profile, "profile_id", "profile_id"),
             format=require_text(profile, "format", "format"),
-            video_extensions=self._extensions(
-                input_config,
-                "video_extensions",
-                "studio.input.video_extensions"
-            ),
+            profile_id=require_text(profile, "profile_id", "profile_id"),
+            video_extensions=video_extensions,
             subtitle_extensions=self._extensions(
                 input_config,
                 "subtitle_extensions",
@@ -186,7 +184,7 @@ class StudioProfileLoader:
     def _require_identity(self, profile, profile_key):
         expected = {
             "component": profile_key.component.value,
-            "platform": profile_key.platform,
+            "format": profile_key.format,
             "profile_id": profile_key.profile_id,
         }
         actual = {key: profile.get(key) for key in expected}
@@ -211,19 +209,56 @@ class StudioProfileLoader:
             or len(set(normalized)) != len(normalized)
         ):
             raise ValueError(
-                f"La configuracion {path} debe contener extensiones unicas."
+                f"La configuración {path} debe contener extensiones únicas."
             )
         return normalized
+
+    @staticmethod
+    def _validate_video_extensions(video_extensions, profile_key):
+        # SRT + VIDEO y MONTAJE pasan el vídeo a FFmpeg sin filtrar la
+        # extensión; SOLO VIDEO lo transcribe con Whisper, que es el único
+        # modo que la restringe.
+        supported = ExternalMediaSubtitlePreparationService.SUPPORTED_EXTENSIONS
+        unsupported = tuple(
+            extension
+            for extension in video_extensions
+            if extension not in supported
+        )
+        if not unsupported:
+            return
+
+        error = ValueError(
+            "studio.input.video_extensions incluye extensiones que Whisper "
+            f"no admite: {', '.join(unsupported)}."
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                "studio.input.video_extensions incluye "
+                f"{', '.join(unsupported)}, pero "
+                f"{StudioInputMode.VIDEO.label} transcribe el "
+                "vídeo con Whisper, que solo admite "
+                f"{', '.join(supported)}."
+            ),
+            recommended_action=(
+                "Deja en studio.input.video_extensions solo "
+                f"{', '.join(supported)}."
+            ),
+            operation="Validar perfil STUDIO",
+            resource="/".join(
+                (
+                    profile_key.component.value,
+                    profile_key.format,
+                    profile_key.profile_id,
+                )
+            ),
+        ) from error
 
     @staticmethod
     def _validate_music(config):
         if not 0 < config.volume <= 1:
             raise ValueError(
                 "studio.music.volume debe estar entre 0 (exclusivo) y 1."
-            )
-        if not config.loop_shorter:
-            raise ValueError(
-                "studio.music.loop_shorter debe ser true en STUDIO V1."
             )
         if not 0.0625 <= config.limiter_limit <= 1:
             raise ValueError(

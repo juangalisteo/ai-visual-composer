@@ -11,6 +11,8 @@ from app.shared.profile_identity import (
     ProfileComponent,
 )
 
+from tests.test_menu_helpers import MenuAnswers
+
 
 class ScriptComponentProfilesTest(
     unittest.TestCase
@@ -19,12 +21,12 @@ class ScriptComponentProfilesTest(
     def test_script_profiles_are_independent_component_files(self):
         script_profiles = (
             Path(
-                "config/profiles/guion/instagram/"
-                "perfil_guion_instagram.json"
+                "config/profiles/guion/vertical/"
+                "perfil_guion_vertical.json"
             ),
             Path(
-                "config/profiles/guion/youtube/"
-                "perfil_guion_youtube.json"
+                "config/profiles/guion/horizontal/"
+                "perfil_guion_horizontal.json"
             ),
         )
 
@@ -42,18 +44,18 @@ class ScriptComponentProfilesTest(
         self.assertFalse(os.path.samefile(*script_profiles))
 
     def test_script_profiles_preserve_source_orientation(self):
-        instagram = json.loads(
+        vertical = json.loads(
             Path(
-                "config/profiles/guion/instagram/"
-                "perfil_guion_instagram.json"
+                "config/profiles/guion/vertical/"
+                "perfil_guion_vertical.json"
             ).read_text(
                 encoding="utf-8"
             )
         )
-        youtube = json.loads(
+        horizontal = json.loads(
             Path(
-                "config/profiles/guion/youtube/"
-                "perfil_guion_youtube.json"
+                "config/profiles/guion/horizontal/"
+                "perfil_guion_horizontal.json"
             ).read_text(
                 encoding="utf-8"
             )
@@ -61,37 +63,39 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             "vertical",
-            instagram["format"]
+            vertical["format"]
         )
         self.assertEqual(
             (1080, 1920),
             (
-                instagram["video_style"]["width"],
-                instagram["video_style"]["height"],
+                vertical["video_style"]["width"],
+                vertical["video_style"]["height"],
             ),
         )
         self.assertEqual(
             "horizontal",
-            youtube["format"]
+            horizontal["format"]
         )
         self.assertEqual(
             (1920, 1080),
             (
-                youtube["video_style"]["width"],
-                youtube["video_style"]["height"],
+                horizontal["video_style"]["width"],
+                horizontal["video_style"]["height"],
             ),
         )
-        self.assertNotIn("resolution", instagram)
-        self.assertNotIn("resolution", youtube)
+        self.assertNotIn("resolution", vertical)
+        self.assertNotIn("resolution", horizontal)
 
     def test_script_profile_selection_uses_script_profile_directory(self):
         controller = RunController()
 
+        answers = MenuAnswers("Vertical 9:16", "ESTILO ESTÁNDAR", "Doble línea")
         with patch(
             "builtins.input",
-            side_effect=("1", "2", "1")
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile(
                 "script"
@@ -99,8 +103,8 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/guion/instagram/"
-                "perfil_guion_instagram.json"
+                "config/profiles/guion/vertical/"
+                "perfil_guion_vertical.json"
             ),
             selected["path"]
         )
@@ -110,11 +114,11 @@ class ScriptComponentProfilesTest(
             if call.args
         )
         self.assertIn(
-            "1. Instagram",
+            "1. Vertical 9:16",
             printed
         )
         self.assertIn(
-            "2. Youtube",
+            "2. Horizontal 16:9",
             printed
         )
         self.assertNotIn(
@@ -125,11 +129,17 @@ class ScriptComponentProfilesTest(
     def test_image_profile_selection_excludes_script_profiles(self):
         controller = RunController()
 
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile(
                 "image"
@@ -137,8 +147,8 @@ class ScriptComponentProfilesTest(
 
         self.assertEqual(
             Path(
-                "config/profiles/imagen/instagram/"
-                "perfil_imagen_instagram.json"
+                "config/profiles/imagen/vertical/"
+                "perfil_imagen_vertical.json"
             ),
             selected["path"]
         )
@@ -148,7 +158,7 @@ class ScriptComponentProfilesTest(
             if call.args
         )
         self.assertIn(
-            "Instagram",
+            "Vertical",
             printed
         )
         self.assertNotIn(
@@ -159,23 +169,16 @@ class ScriptComponentProfilesTest(
     def test_config_manager_loads_selected_script_profile_identity(self):
         profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
-            "youtube",
-            "guion_youtube",
+            "horizontal",
+            "guion_horizontal",
         )
-        with patch.dict(
-            os.environ,
-            {
-                "MC_PROFILE_COMPONENT": "guion",
-                "MC_PROFILE_PLATFORM": "youtube",
-                "MC_PROFILE_ID": profile_key.profile_id,
-            },
-            clear=True
-        ):
-            profile = ConfigManager().get_profile_config()
+        profile = ConfigManager(
+            operational_profile_key=profile_key
+        ).get_profile_config()
 
         self.assertEqual(
-            "youtube",
-            profile["platform"]
+            "horizontal",
+            profile["format"]
         )
         self.assertEqual(
             "horizontal",

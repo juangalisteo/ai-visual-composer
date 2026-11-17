@@ -8,6 +8,10 @@ from unittest.mock import Mock, patch
 
 import main as app_main
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.modules.video.intro_outro import (
     IntroOutroCatalog,
     IntroOutroComposer,
@@ -20,6 +24,8 @@ from app.modules.video.intro_outro import (
 from app.modules.video.video_build_context import VideoBuildArtifacts
 from app.modules.video.video_render_service import VideoRenderService
 from app.shared.operational_error import OperationalError
+from app.shared.profile_identity import OperationalProfileKey
+from tests.test_menu_helpers import MenuAnswers
 
 
 class IntroOutroTest(unittest.TestCase):
@@ -72,8 +78,8 @@ class IntroOutroTest(unittest.TestCase):
     def test_catalog_lists_only_real_mp4_files_dynamically(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro_directory = root / "instagram" / "intro"
-            outro_directory = root / "instagram" / "outro"
+            intro_directory = root / "vertical" / "intro"
+            outro_directory = root / "vertical" / "outro"
             intro_directory.mkdir(parents=True)
             outro_directory.mkdir(parents=True)
             (intro_directory / "Zulu.MP4").write_bytes(b"z")
@@ -83,7 +89,7 @@ class IntroOutroTest(unittest.TestCase):
             (root / "flat_legacy.mp4").write_bytes(b"legacy")
             (intro_directory / "folder.mp4").mkdir()
 
-            assets = IntroOutroCatalog(root).discover("instagram", "intro")
+            assets = IntroOutroCatalog(root).discover("vertical", "intro")
 
         self.assertEqual(
             ["alpha.mp4", "Zulu.MP4"],
@@ -93,8 +99,8 @@ class IntroOutroTest(unittest.TestCase):
     def test_catalog_discovers_only_the_requested_position(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro = root / "instagram" / "intro"
-            outro = root / "instagram" / "outro"
+            intro = root / "vertical" / "intro"
+            outro = root / "vertical" / "outro"
             intro.mkdir(parents=True)
             outro.mkdir(parents=True)
             (intro / "canal_01.mp4").write_bytes(b"intro")
@@ -104,65 +110,65 @@ class IntroOutroTest(unittest.TestCase):
 
             self.assertEqual(
                 [intro / "canal_01.mp4"],
-                list(catalog.discover("instagram", "intro")),
+                list(catalog.discover("vertical", "intro")),
             )
             self.assertEqual(
                 [outro / "canal_01.mp4"],
-                list(catalog.discover("instagram", "outro")),
+                list(catalog.discover("vertical", "outro")),
             )
 
-    def test_catalog_never_mixes_platform_assets(self):
+    def test_catalog_never_mixes_format_assets(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            instagram_intro = root / "instagram" / "intro"
-            instagram_outro = root / "instagram" / "outro"
-            youtube_intro = root / "youtube" / "intro"
-            youtube_outro = root / "youtube" / "outro"
+            vertical_intro = root / "vertical" / "intro"
+            vertical_outro = root / "vertical" / "outro"
+            horizontal_intro = root / "horizontal" / "intro"
+            horizontal_outro = root / "horizontal" / "outro"
             for directory in (
-                instagram_intro,
-                instagram_outro,
-                youtube_intro,
-                youtube_outro,
+                vertical_intro,
+                vertical_outro,
+                horizontal_intro,
+                horizontal_outro,
             ):
                 directory.mkdir(parents=True)
-            (instagram_intro / "instagram-intro.mp4").write_bytes(b"i")
-            (instagram_outro / "instagram-outro.mp4").write_bytes(b"o")
-            (youtube_intro / "youtube-intro.mp4").write_bytes(b"y")
-            (youtube_outro / "youtube-outro.mp4").write_bytes(b"u")
+            (vertical_intro / "vertical-intro.mp4").write_bytes(b"i")
+            (vertical_outro / "vertical-outro.mp4").write_bytes(b"o")
+            (horizontal_intro / "horizontal-intro.mp4").write_bytes(b"y")
+            (horizontal_outro / "horizontal-outro.mp4").write_bytes(b"u")
             catalog = IntroOutroCatalog(root)
 
             self.assertEqual(
-                [instagram_intro / "instagram-intro.mp4"],
-                list(catalog.discover("instagram", "intro")),
+                [vertical_intro / "vertical-intro.mp4"],
+                list(catalog.discover("vertical", "intro")),
             )
             self.assertEqual(
-                [youtube_intro / "youtube-intro.mp4"],
-                list(catalog.discover("youtube", "intro")),
+                [horizontal_intro / "horizontal-intro.mp4"],
+                list(catalog.discover("horizontal", "intro")),
             )
             self.assertEqual(
-                [instagram_outro / "instagram-outro.mp4"],
-                list(catalog.discover("instagram", "outro")),
+                [vertical_outro / "vertical-outro.mp4"],
+                list(catalog.discover("vertical", "outro")),
             )
             self.assertEqual(
-                [youtube_outro / "youtube-outro.mp4"],
-                list(catalog.discover("youtube", "outro")),
+                [horizontal_outro / "horizontal-outro.mp4"],
+                list(catalog.discover("horizontal", "outro")),
             )
 
-    def test_catalog_accepts_a_future_platform_from_structure_only(self):
+    def test_catalog_accepts_a_future_format_from_structure_only(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            future_intro = root / "test_platform" / "intro"
+            future_intro = root / "test_format" / "intro"
             future_intro.mkdir(parents=True)
             asset = future_intro / "future.mp4"
             asset.write_bytes(b"future")
 
-            assets = IntroOutroCatalog(root).discover("test_platform", "intro")
+            assets = IntroOutroCatalog(root).discover("test_format", "intro")
 
         self.assertEqual([asset], list(assets))
 
     def test_catalog_rejects_an_invalid_position(self):
         with self.assertRaisesRegex(ValueError, "intro u outro"):
-            IntroOutroCatalog().discover("instagram", "apertura")
+            IntroOutroCatalog().discover("vertical", "apertura")
 
     def test_menu_fails_fast_when_selected_position_is_empty(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -171,30 +177,37 @@ class IntroOutroTest(unittest.TestCase):
                 intro_outro_catalog=catalog
             )
 
+            answers = MenuAnswers("SOLO INTRO")
             with patch(
                 "builtins.input",
-                side_effect=["2"],
+                side_effect=answers.input,
+            ), patch(
+                "builtins.print",
+                side_effect=answers.print,
             ), self.assertRaisesRegex(
-                FileNotFoundError,
-                "instagram/intro/",
+                OperationalError,
+                "vertical/intro/",
             ):
-                controller.select_intro_outro("instagram")
+                controller.select_intro_outro("vertical")
 
     def test_menu_fails_fast_for_an_empty_outro_without_using_intro_assets(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro_directory = root / "instagram" / "intro"
+            intro_directory = root / "vertical" / "intro"
             intro_directory.mkdir(parents=True)
             (intro_directory / "intro.mp4").write_bytes(b"intro")
             controller = RunController(
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
 
-            with patch("builtins.input", side_effect=["3"]), self.assertRaisesRegex(
-                FileNotFoundError,
-                "instagram/outro/",
+            answers = MenuAnswers("SOLO OUTRO")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ), self.assertRaisesRegex(
+                OperationalError,
+                "vertical/outro/",
             ):
-                controller.select_intro_outro("instagram")
+                controller.select_intro_outro("vertical")
 
     def test_menu_no_keeps_intro_outro_disabled(self):
         catalog = Mock()
@@ -202,11 +215,12 @@ class IntroOutroTest(unittest.TestCase):
             intro_outro_catalog=catalog
         )
 
+        answers = MenuAnswers("NINGUNO")
         with patch(
             "builtins.input",
-            side_effect=["1"],
-        ), patch.object(controller, "_print"):
-            selection = controller.select_intro_outro("instagram")
+            side_effect=answers.input,
+        ), patch.object(controller, "_print", side_effect=answers.write):
+            selection = controller.select_intro_outro("vertical")
 
         self.assertIsNone(selection)
         catalog.discover.assert_not_called()
@@ -214,8 +228,8 @@ class IntroOutroTest(unittest.TestCase):
     def test_menu_selects_position_specific_assets_for_both_sides(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            intro_directory = root / "instagram" / "intro"
-            outro_directory = root / "instagram" / "outro"
+            intro_directory = root / "vertical" / "intro"
+            outro_directory = root / "vertical" / "outro"
             intro_directory.mkdir(parents=True)
             outro_directory.mkdir(parents=True)
             first = intro_directory / "brand opening.mp4"
@@ -228,11 +242,16 @@ class IntroOutroTest(unittest.TestCase):
                 intro_outro_catalog=IntroOutroCatalog(root)
             )
 
+            answers = MenuAnswers(
+                "INTRO + OUTRO",
+                "second intro.mp4",
+                "closing reel.mp4",
+            )
             with patch(
                 "builtins.input",
-                side_effect=["4", "2", "1"],
-            ), patch.object(controller, "_print"):
-                plan = controller.select_intro_outro("instagram")
+                side_effect=answers.input,
+            ), patch.object(controller, "_print", side_effect=answers.write):
+                plan = controller.select_intro_outro("vertical")
 
         self.assertEqual(second, plan.intro.asset_path)
         self.assertEqual("intro", plan.intro.position)
@@ -241,26 +260,29 @@ class IntroOutroTest(unittest.TestCase):
 
     def test_main_transports_selection_without_environment_fallback(self):
         selection = IntroOutroSelection(
-            Path("assets/videos/intro_outro/instagram/intro/custom.mp4"),
+            Path("assets/videos/intro_outro/vertical/intro/custom.mp4"),
             "intro",
         )
         plan = IntroOutroPlan(intro=selection)
-        options = {
-            "profile_component": "video",
-            "profile_platform": "instagram",
-            "profile_id": "video_instagram",
-            "subtitle_config": "single_line",
-            "voice_config": "masculina",
-            "music_category": None,
-            "overlays_mode": "off",
-            "project_name": "project",
-            "visual_pipeline": "video",
-            "script_source": "generated",
-            "design_target": "",
-            "pipeline_mode": "full",
-            "intro_outro_selection": plan,
-            "clear_output": False,
-        }
+        controller_request = ApplicationExecutionRequest(
+            project_name="project",
+            clear_output=False,
+            operational_profile_key=OperationalProfileKey(
+                "video",
+                "vertical",
+                "video_vertical",
+            ),
+            subtitle_profile_key=None,
+            route=StandardExecutionRequest(
+                pipeline_mode="full",
+                visual_pipeline="video",
+                script_source="generated",
+                voice_config_id="masculina",
+                music_category=None,
+                overlays_mode="off",
+                intro_outro_plan=plan,
+            ),
+        )
 
         with patch.dict(
             "os.environ",
@@ -269,15 +291,15 @@ class IntroOutroTest(unittest.TestCase):
         ), patch(
             "main.RunController"
         ) as controller_class, patch(
-            "main.iniciar"
-        ) as iniciar_mock:
-            controller_class.return_value.run.return_value = options
+            "main.run_application"
+        ) as run_application_mock:
+            controller_class.return_value.run.return_value = controller_request
             app_main.main()
 
-        iniciar_mock.assert_called_once()
-        request = iniciar_mock.call_args.kwargs["request"]
+        run_application_mock.assert_called_once()
+        request = run_application_mock.call_args.kwargs["request"]
         self.assertIs(plan, request.route.intro_outro_plan)
-        self.assertEqual("single_line", iniciar_mock.call_args.kwargs["subtitle_style"])
+        self.assertEqual({"request"}, set(run_application_mock.call_args.kwargs))
 
     def test_compatible_asset_uses_stream_copy_and_intro_is_first(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

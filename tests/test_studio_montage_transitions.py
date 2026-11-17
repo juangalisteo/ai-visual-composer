@@ -18,15 +18,21 @@ from app.modules.studio import (
 )
 from app.modules.studio.montage import StudioMontageError
 from app.shared.media_probe import MediaInfo
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.modules.studio import StudioProfileLoader
+
+
+STUDIO_PROFILE_IDS = {
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
+}
 
 
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -94,7 +100,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
             clips.append(StudioMontageClip(index, path, path.name))
         return StudioMontagePlan(
             profile_key=OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             ),
             transitions_enabled=transitions_enabled,
             clips=tuple(clips),
@@ -192,7 +198,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
         self.assertNotIn("acrossfade=", script)
         self.assertNotIn("atrim=", script)
         self.assertIn("concat=n=230:v=0:a=1[aout]", script)
-        self.assertIn("-filter_complex_script", command)
+        self.assertIn("-/filter_complex", command)
         self.assertNotIn("-filter_complex", command)
 
     def test_one_clip_is_rejected_before_transition_execution(self):
@@ -214,7 +220,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
                 validator=Mock(),
             )
 
-            with self.assertRaisesRegex(StudioMontageError, "duracion suficiente"):
+            with self.assertRaisesRegex(StudioMontageError, "duración suficiente"):
                 service.compose(plan, root / "output.mp4", self.profile)
 
         runner.run.assert_not_called()
@@ -269,7 +275,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
             result = service.compose(plan, root / "output.mp4", self.profile)
 
         command = runner.run.call_args_list[0].args[0]
-        self.assertIn("-filter_complex_script", command)
+        self.assertIn("-/filter_complex", command)
         self.assertNotIn("copy", command)
         self.assertEqual(1, result.transition_count)
         self.assertEqual(4.0, result.expected_duration)
@@ -283,7 +289,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
         )
         self.assertIn("-c", command)
         self.assertEqual("copy", command[command.index("-c") + 1])
-        self.assertNotIn("-filter_complex_script", command)
+        self.assertNotIn("-/filter_complex", command)
 
 
 @unittest.skipUnless(
@@ -377,7 +383,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         )
         return StudioMontagePlan(
             profile_key=OperationalProfileKey(
-                "studio", "instagram", "studio_instagram"
+                "studio", "vertical", "studio_vertical"
             ),
             transitions_enabled=True,
             clips=clips,
@@ -585,8 +591,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
     def test_boundary_markers_keep_the_final_audible_samples_across_contracts(self):
         cases = (
             (
-                "compatible_to_compatible_instagram",
-                "instagram",
+                "compatible_to_compatible_vertical",
+                "vertical",
                 (
                     ("red", 600, 1600, "160x90", 24, 48000),
                     ("blue", 880, 1700, "160x90", 24, 48000),
@@ -597,8 +603,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
                 880,
             ),
             (
-                "normalized_to_compatible_instagram",
-                "instagram",
+                "normalized_to_compatible_vertical",
+                "vertical",
                 (
                     ("yellow", 300, 350, "160x90", 24, 48000),
                     ("red", 600, 1600, "320x180", 30, 44100),
@@ -610,8 +616,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
                 880,
             ),
             (
-                "compatible_to_normalized_instagram",
-                "instagram",
+                "compatible_to_normalized_vertical",
+                "vertical",
                 (
                     ("red", 600, 1600, "160x90", 24, 48000),
                     ("blue", 880, 1700, "320x180", 30, 44100),
@@ -622,8 +628,8 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
                 880,
             ),
             (
-                "compatible_to_compatible_youtube",
-                "youtube",
+                "compatible_to_compatible_horizontal",
+                "horizontal",
                 (
                     ("red", 600, 1600, "160x90", 24, 48000),
                     ("blue", 880, 1700, "160x90", 24, 48000),
@@ -636,7 +642,7 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         )
         for (
             label,
-            platform,
+            profile_format,
             source_specs,
             expected_normalized_count,
             boundary,
@@ -645,7 +651,9 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
         ) in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                profile_key = ProfileKey.for_component("studio", platform)
+                profile_key = OperationalProfileKey(
+                    "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
+                )
                 loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
                     loaded_profile,
@@ -795,14 +803,16 @@ class StudioMontageTransitionsRealFFmpegTest(unittest.TestCase):
             for path, digest in hashes.items():
                 self.assertEqual(digest, hashlib.sha256(path.read_bytes()).digest())
 
-    def test_real_transition_duration_uses_each_studio_platform_value(self):
-        for platform, expected_transition_duration in (
-            ("instagram", 0.25),
-            ("youtube", 0.50),
+    def test_real_transition_duration_uses_each_studio_format_value(self):
+        for profile_format, expected_transition_duration in (
+            ("vertical", 0.25),
+            ("horizontal", 0.50),
         ):
-            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
+            with self.subTest(profile_format=profile_format), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                profile_key = ProfileKey.for_component("studio", platform)
+                profile_key = OperationalProfileKey(
+                    "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
+                )
                 loaded_profile = _load_studio_profile(profile_key)
                 profile = replace(
                     loaded_profile,

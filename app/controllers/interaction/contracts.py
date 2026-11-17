@@ -1,8 +1,7 @@
 """Contratos inmutables para las selecciones explícitas de STUDIO.
 
-Este módulo solo transporta resultados ya resueltos. La selección efectiva
-permanece temporalmente en ``RunController`` hasta la fase de migración que
-consume estos contratos.
+Este módulo solo transporta resultados ya resueltos. ``RunController`` hace
+la selección y, con estos resultados, construye la petición STUDIO.
 """
 
 from dataclasses import dataclass

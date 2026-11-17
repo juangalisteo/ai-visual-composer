@@ -6,6 +6,7 @@ from app.modules.images import (
     ImageDesignPreparationService,
     PreparedImageDesign,
 )
+from app.shared.operational_error import OperationalError
 
 
 class FakeVisualDesignInterpreter:
@@ -97,11 +98,23 @@ class ImageDesignPreparationServiceTest(unittest.TestCase):
             )
 
             with self.assertRaises(
-                FileNotFoundError
-            ):
+                OperationalError
+            ) as raised:
                 ImageDesignPreparationService().prepare(
                     input_path=missing_path
                 )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "No existe el diseño visual manual: "
+                f"{missing_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Crea {missing_path.as_posix()} con el diseño de la imagen "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
 
     def test_fails_when_design_file_is_empty(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -115,11 +128,23 @@ class ImageDesignPreparationServiceTest(unittest.TestCase):
             )
 
             with self.assertRaises(
-                ValueError
-            ):
+                OperationalError
+            ) as raised:
                 ImageDesignPreparationService().prepare(
                     input_path=design_path
                 )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "El diseño visual manual está vacío: "
+                f"{design_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Escribe el diseño de la imagen en {design_path.as_posix()} "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
 
     def test_fails_when_design_file_is_whitespace(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -133,11 +158,23 @@ class ImageDesignPreparationServiceTest(unittest.TestCase):
             )
 
             with self.assertRaises(
-                ValueError
-            ):
+                OperationalError
+            ) as raised:
                 ImageDesignPreparationService().prepare(
                     input_path=design_path
                 )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "El diseño visual manual está vacío: "
+                f"{design_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Escribe el diseño de la imagen en {design_path.as_posix()} "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
 
 
 if __name__ == "__main__":

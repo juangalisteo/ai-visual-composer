@@ -2,6 +2,10 @@ import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
+from app.modules.subtitles.policies.timing import (
+    stretch_zero_duration_cues,
+    text_joiner,
+)
 from app.shared.config_contract import require_float, require_int
 
 
@@ -10,12 +14,6 @@ class AcousticBurstModel(BaseSubtitleModel):
 
     def __init__(self, config):
         self.punctuation = PunctuationPolicy(config)
-        self.min_duration = require_float(
-            config, "min_duration", "cue_policy.min_duration"
-        )
-        self.max_duration = require_float(
-            config, "max_duration", "cue_policy.max_duration"
-        )
         self.significant_gap_threshold = require_float(
             config,
             "significant_gap_threshold",
@@ -25,15 +23,6 @@ class AcousticBurstModel(BaseSubtitleModel):
             config, "hard_max_chars", "cue_policy.hard_max_chars"
         )
 
-        if self.min_duration <= 0 or self.max_duration <= 0:
-            raise ValueError(
-                "Las duraciones de cue_policy deben ser superiores a cero."
-            )
-        if self.max_duration < self.min_duration:
-            raise ValueError(
-                "cue_policy.max_duration no puede ser menor que "
-                "cue_policy.min_duration."
-            )
         if self.significant_gap_threshold <= 0:
             raise ValueError(
                 "cue_policy.significant_gap_threshold debe ser superior a cero."
@@ -49,21 +38,32 @@ class AcousticBurstModel(BaseSubtitleModel):
         return self._optimize_without_timing(blocks)
 
     def _optimize_with_timing(self, timing):
-        optimized = []
-        index = 1
-
-        for segment in timing.segments:
-            for cue_words in self._partition_timed_words(segment.words):
-                optimized.append(
-                    self._format_block(
-                        index,
-                        self._seconds_to_time(cue_words[0].start),
-                        self._seconds_to_time(cue_words[-1].end),
-                        self._format_words(cue_words),
-                    )
-                )
-                index += 1
-        return optimized
+        timed_cues = [
+            (
+                cue_words[0].start,
+                cue_words[-1].end,
+                cue_words,
+                self._format_words(cue_words),
+            )
+            for segment in timing.segments
+            for cue_words in self._partition_timed_words(segment.words)
+        ]
+        return [
+            self._format_block(
+                index,
+                self._seconds_to_time(start),
+                self._seconds_to_time(end),
+                text,
+            )
+            for index, (start, end, text) in enumerate(
+                stretch_zero_duration_cues(
+                    timed_cues,
+                    self.significant_gap_threshold,
+                    text_joiner(self._format_words),
+                ),
+                start=1,
+            )
+        ]
 
     def _optimize_without_timing(self, blocks):
         optimized = []
@@ -95,8 +95,6 @@ class AcousticBurstModel(BaseSubtitleModel):
         current = []
 
         for word in words:
-            if word.end <= word.start:
-                continue
             if current and (
                 word.start - current[-1].end >= self.significant_gap_threshold
                 or not self._fits((*current, word))

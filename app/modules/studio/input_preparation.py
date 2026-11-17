@@ -12,6 +12,21 @@ class StudioInputMode(str, Enum):
     INTRO_OUTRO = "intro_outro"
     VIDEO_AUDIO_SRT = "video_audio_srt"
 
+    @property
+    def label(self):
+        """Visible name of the mode, the same in menu, summaries and errors."""
+        return STUDIO_INPUT_MODE_LABELS[self]
+
+
+STUDIO_INPUT_MODE_LABELS = {
+    StudioInputMode.VIDEO: "SOLO VIDEO",
+    StudioInputMode.SRT_VIDEO: "SRT + VIDEO",
+    StudioInputMode.INTRO_OUTRO: "INTRO / OUTRO",
+    StudioInputMode.MONTAJE_VIDEOS: "MONTAJE VÍDEOS",
+    StudioInputMode.VIDEO_AUDIO_SRT: "VIDEO + AUDIO | SRT",
+    StudioInputMode.EXPORTAR_SRT: "EXPORTAR SRT ➜  VIDEO",
+}
+
 
 def coerce_studio_input_mode(value):
     if isinstance(value, StudioInputMode):
@@ -73,7 +88,8 @@ class StudioInputPreparationService:
 
         if candidates.mode is StudioInputMode.MONTAJE_VIDEOS:
             raise ValueError(
-                "MONTAJE DE VIDEOS requiere un plan de clips ordenado."
+                f"{StudioInputMode.MONTAJE_VIDEOS.label} "
+                "requiere un plan de clips ordenado."
             )
 
         subtitle_path = self._selected_candidate(
@@ -164,7 +180,7 @@ class StudioInputPreparationService:
     def _require_candidates(candidates, label, directory):
         if not candidates:
             raise FileNotFoundError(
-                f"No se encontro ningun archivo {label} "
+                f"No se encontró ningún archivo {label} "
                 f"en {directory}."
             )
 
@@ -173,7 +189,7 @@ class StudioInputPreparationService:
             selected_path = Path(selected_path)
             if selected_path not in candidates:
                 raise ValueError(
-                    f"La seleccion STUDIO de {label} no es valida: "
+                    f"La selección STUDIO de {label} no es válida: "
                     f"{selected_path}."
                 )
             return selected_path
@@ -198,7 +214,7 @@ class StudioInputPreparationService:
 
         if not content.strip():
             raise ValueError(
-                "El archivo SRT de STUDIO esta vacio: "
+                "El archivo SRT de STUDIO está vacío: "
                 f"{subtitle_path}."
             )
 

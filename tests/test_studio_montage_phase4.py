@@ -5,23 +5,29 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-import main
+from app.cli import studio_summary
 from app.controllers.run_controller import RunController
-from app.core.start import ejecutar_studio_montaje
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.studio import (
+    StudioInputMode,
     StudioMontageClip,
     StudioMontagePlan,
     StudioMontageRenderResult,
     StudioMontageResult,
     StudioRenderResult,
 )
+from app.modules.video.intro_outro import IntroOutroPlan, IntroOutroSelection
 from app.shared.profile_identity import OperationalProfileKey
 
 
 class StudioMontagePhase4Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+        self.profile_key = OperationalProfileKey("studio", "vertical", "studio_vertical")
         self.profile = SimpleNamespace(fps=30, max_duration_difference=0.2)
 
     def _plan(self, root, transitions_enabled=False):
@@ -75,7 +81,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
                 music_path=Path("music.mp3"), render_duration=0.4,
             )
 
-            result = ejecutar_studio_montaje(
+            result = StudioExecutionCoordinator().run_montage(
                 plan, music_path=Path("music.mp3"),
                 intro_outro_selection=SimpleNamespace(intro=object(), outro=None),
                 project=project, profile_resolver=resolver, profile_loader=loader,
@@ -103,7 +109,10 @@ class StudioMontagePhase4Test(unittest.TestCase):
             root = Path(directory)
             plan = self._plan(root)
             controller = RunController()
-            intro_outro = SimpleNamespace(intro=object(), outro=object())
+            intro_outro = IntroOutroPlan(
+                intro=IntroOutroSelection(root / "intro.mp4", "intro"),
+                outro=IntroOutroSelection(root / "outro.mp4", "outro"),
+            )
             controller.select_studio_input_mode = Mock(return_value="montaje_videos")
             controller._select_studio_operational_profile = Mock(
                 return_value=(self.profile_key, self.profile)
@@ -111,18 +120,16 @@ class StudioMontagePhase4Test(unittest.TestCase):
             controller.select_studio_montage_plan = Mock(return_value=plan)
             controller.select_studio_music = Mock(return_value=Path("music.mp3"))
             controller.select_studio_intro_outro = Mock(return_value=intro_outro)
-            controller.select_studio_subtitle_config = Mock(
-                side_effect=AssertionError("subtitle profile must not be selected")
-            )
             controller.ask_project_name = Mock(return_value="demo")
             controller.ask_clear_output = Mock(return_value=False)
 
-            options = controller._run_studio()
+            request = controller._run_studio()
 
-        self.assertIsNone(options["subtitle_config"])
-        self.assertNotIn("subtitle_profile_key", options)
-        self.assertEqual("music.mp3", options["studio_music_path"])
-        self.assertIs(intro_outro, options["intro_outro_selection"])
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
+        self.assertIsNone(request.subtitle_profile_key)
+        self.assertEqual(Path("music.mp3"), request.route.music_path)
+        self.assertIs(intro_outro, request.route.intro_outro_plan)
         controller._select_studio_operational_profile.assert_called_once_with()
         controller.select_studio_montage_plan.assert_called_once_with(
             self.profile_key, self.profile
@@ -146,13 +153,19 @@ class StudioMontagePhase4Test(unittest.TestCase):
                 silence_added=False, music_path=None, render_duration=0.4,
             )
             result = StudioMontageRenderResult(montage, rendered)
-            options = {
-                "project_name": "demo", "profile_id": "studio_instagram",
-                "profile_platform": "instagram", "studio_montage_plan": plan,
-                "studio_music_path": None, "intro_outro_selection": None,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="demo", clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio", "vertical", "studio_vertical"
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS, plan=plan,
+                    music_path=None, intro_outro_plan=None,
+                ),
+            )
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
-                main._print_studio_montage_summary(options, result, 1.0)
+                studio_summary.print_studio_summary(request, result, 1.0)
 
         output = logger.call_args.args[0]
         self.assertIn("Montaje de videos", output)

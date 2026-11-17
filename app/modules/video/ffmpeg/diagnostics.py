@@ -33,7 +33,7 @@ class FFmpegDiagnostics:
             "peak_rss_bytes": None,
             "peak_rss_note": (
                 "No se mide RSS para evitar dependencias "
-                "adicionales o una medicion fragil."
+                "adicionales o una medición frágil."
             ),
         }
         self._persist()
@@ -46,7 +46,7 @@ class FFmpegDiagnostics:
 
         return {
             "component": profile_key.component.value,
-            "platform": profile_key.platform,
+            "format": profile_key.format,
             "profile_id": profile_key.profile_id,
             "path": str(
                 config.profile_resolver.resolve_operational(

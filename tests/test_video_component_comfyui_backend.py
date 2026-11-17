@@ -368,13 +368,11 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                     source_trace=(
                         "VisualTruth.visible_subject",
                     ),
-                    target_width=1080,
-                    target_height=1920,
                     steps=12,
                     cfg=5.0,
                     sampler="uni_pc",
                     scheduler="simple",
-                    profile_name="Instagram",
+                    profile_name="Vertical",
                 ),
                 source_image_name="source.png",
                 output_prefix="vc1/clip_001",
@@ -417,20 +415,12 @@ class ComfyUIVideoBackendTest(unittest.TestCase):
                 result.workflow,
             )
             self.assertEqual(
-                "Instagram",
+                "Vertical",
                 result.profile_name
             )
             self.assertEqual(
                 123456789,
                 result.seed
-            )
-            self.assertEqual(
-                1080,
-                result.target_width
-            )
-            self.assertEqual(
-                1920,
-                result.target_height
             )
             self.assertEqual(
                 12,

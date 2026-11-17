@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
 
-from app.core.start import _resolve_single_video_operational_key
+from app.modules.standard.execution_coordinator import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -13,41 +13,32 @@ def _canonical_operational_identity(profile_key):
     """M1 target contract: subtitle family is not operational identity."""
     return (
         profile_key.component.value,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
 
 
 def test_m1_canonical_operational_identity_excludes_legacy_family():
-    standard = ProfileKey(
-        "guion", "instagram", "guion_instagram", "estandar",
-    )
-    design_context = ProfileKey(
-        "guion", "instagram", "guion_instagram", "design",
-    )
+    key = OperationalProfileKey("guion", "vertical", "guion_vertical")
 
-    assert _canonical_operational_identity(standard) == (
-        "guion", "instagram", "guion_instagram",
+    assert _canonical_operational_identity(key) == (
+        "guion", "vertical", "guion_vertical",
     )
-    assert _canonical_operational_identity(design_context) == (
-        "guion", "instagram", "guion_instagram",
-    )
-    # The different legacy route context remains observable until M2/M5.
-    assert standard.family != design_context.family
+    assert not hasattr(key, "family")
 
 
 def test_m1_root_operational_document_uses_canonical_discovery_only(tmp_path):
     path = (
-        tmp_path / "guion" / "test_platform"
-        / "perfil_guion_test_platform.json"
+        tmp_path / "guion" / "test_format"
+        / "perfil_guion_test_format.json"
     )
     path.parent.mkdir(parents=True)
     path.write_text(
         json.dumps(
             {
                 "component": "guion",
-                "platform": "test_platform",
-                "profile_id": "guion_test_platform",
+                "format": "test_format",
+                "profile_id": "guion_test_format",
                 "display_name": "Technical test profile",
             }
         ),
@@ -56,27 +47,27 @@ def test_m1_root_operational_document_uses_canonical_discovery_only(tmp_path):
 
     resolver = ProfileResolver(tmp_path)
 
-    assert resolver.discover_operational_profiles("guion", "test_platform")[0].path == path
+    assert resolver.discover_operational_profiles("guion", "test_format")[0].path == path
     assert not hasattr(resolver, "discover_families")
 
 
 def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
     source = Path(
-        "config/profiles/guion/instagram/estandar/subtitulos/"
-        "subtitulo_guion_instagram_linea_unica.json"
+        "config/profiles/guion/vertical/estandar/subtitulos/"
+        "subtitulo_guion_vertical_linea_unica.json"
     )
     data = json.loads(source.read_text(encoding="utf-8"))
     data.update(
         {
             "component": "guion",
-            "platform": "test_platform",
+            "format": "test_format",
             "family": "test_family",
             "profile_id": "test_profile",
             "display_name": "Technical test subtitle",
         }
     )
     path = (
-        tmp_path / "guion" / "test_platform" / "test_family"
+        tmp_path / "guion" / "test_format" / "test_family"
         / "subtitulos" / "test_profile.json"
     )
     path.parent.mkdir(parents=True)
@@ -84,37 +75,37 @@ def test_m1_subtitle_only_family_requires_no_operational_dummy(tmp_path):
 
     resolver = SubtitleProfileResolver(tmp_path)
 
-    assert resolver.discover_families("guion", "test_platform") == (
+    assert resolver.discover_families("guion", "test_format") == (
         "test_family",
     )
     descriptor = resolver.discover_profiles_for_family(
-        "guion", "test_platform", "test_family",
+        "guion", "test_format", "test_family",
     )[0]
     assert descriptor.key == SubtitleProfileKey(
-        "guion", "test_platform", "test_profile", "test_family",
+        "guion", "test_format", "test_profile", "test_family",
     )
     assert resolver.load(descriptor.key).path == path
 
 
 def test_m1_subtitle_key_family_is_independent_of_operational_legacy_family():
-    operational_key = ProfileKey(
-        "studio", "instagram", "studio_instagram", "estandar",
+    operational_key = OperationalProfileKey(
+        "studio", "vertical", "studio_vertical",
     )
     subtitle_key = SubtitleProfileKey(
-        "studio", "instagram", "modo_conciencia_reels", "design",
+        "studio", "vertical", "modo_conciencia_palabra_unica", "design",
     )
 
     resolved = SubtitleProfileResolver().load(subtitle_key)
 
     assert _canonical_operational_identity(operational_key) == (
-        "studio", "instagram", "studio_instagram",
+        "studio", "vertical", "studio_vertical",
     )
     assert subtitle_key.family == "design"
     assert resolved.key == subtitle_key
 
 
 def test_m1_studio_baseline_uses_general_operational_payload():
-    key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+    key = OperationalProfileKey("studio", "vertical", "studio_vertical")
     profile = ProfileResolver().load_operational(key)
     resolved = StudioProfileLoader().load(profile, key)
 
@@ -128,21 +119,21 @@ def test_m1_studio_baseline_uses_general_operational_payload():
 def test_m1_guion_video_bridge_remains_explicit_and_unambiguous():
     key = _resolve_single_video_operational_key(
         ProfileResolver(),
-        "instagram",
+        "vertical",
     )
 
     assert _canonical_operational_identity(key) == (
-        "video", "instagram", "video_instagram",
+        "video", "vertical", "video_vertical",
     )
 
 
 def test_m1_wan_i2v_remains_outside_operational_profile_contract():
-    video_key = OperationalProfileKey("video", "instagram", "video_instagram")
+    video_key = OperationalProfileKey("video", "vertical", "video_vertical")
     document = ProfileResolver().load_video_component(video_key)
 
     assert document["kind"] == "video_component"
     assert document["operational_profile_id"] == video_key.profile_id
-    assert document["platform"] == video_key.platform
+    assert document["format"] == video_key.format
     assert "video_component" in document
     assert "component" not in document
     assert "family" not in document

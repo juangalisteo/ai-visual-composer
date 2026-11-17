@@ -53,14 +53,16 @@ class RecordingBackend:
         scene_number,
         output_dir,
         width,
-        height
+        height,
+        seed=None
     ):
         self.calls.append({
             "prompt": prompt,
             "scene_number": scene_number,
             "output_dir": output_dir,
             "width": width,
-            "height": height
+            "height": height,
+            "seed": seed
         })
         output_dir.mkdir(
             parents=True,
@@ -177,6 +179,87 @@ class ComfyUIBackendTest(unittest.TestCase):
         self.assertEqual(
             expected,
             workflow
+        )
+
+    def test_inject_seed_replaces_noise_seed(self):
+        workflow = self._workflow()
+        expected = copy.deepcopy(
+            workflow
+        )
+        expected["25"]["inputs"]["noise_seed"] = 1234
+
+        result = ComfyUIBackend().inject_seed(
+            workflow,
+            1234
+        )
+
+        self.assertEqual(
+            expected,
+            result
+        )
+
+    def test_inject_seed_requires_noise_seed_node(self):
+        workflow = self._workflow()
+        del workflow["25"]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "noise_seed"
+        ):
+            ComfyUIBackend().inject_seed(
+                workflow,
+                1234
+            )
+
+    def test_generate_injects_seed_only_when_given(self):
+        queued = []
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            workflow_path = root / "workflow.json"
+            workflow_path.write_text(
+                json.dumps(
+                    self._workflow()
+                ),
+                encoding="utf-8"
+            )
+            backend = ComfyUIBackend(
+                workflow_path=workflow_path
+            )
+
+            with patch.object(
+                backend,
+                "queue_prompt",
+                side_effect=lambda workflow, client_id: (
+                    queued.append(workflow) or "abc"
+                )
+            ), patch.object(
+                backend,
+                "wait_for_image",
+                return_value={"filename": "image.png"}
+            ), patch.object(
+                backend,
+                "download_image",
+                return_value=root / "scene_001.png"
+            ):
+                for seed in (None, 1234):
+                    backend.generate(
+                        prompt="final prompt",
+                        scene_number=1,
+                        output_dir=root,
+                        width=640,
+                        height=360,
+                        seed=seed
+                    )
+
+        self.assertEqual(
+            [42, 1234],
+            [
+                workflow["25"]["inputs"]["noise_seed"]
+                for workflow in queued
+            ]
         )
 
     def test_queue_prompt_uses_same_endpoint_payload_and_headers(self):
@@ -605,6 +688,10 @@ class ComfyUIBackendTest(unittest.TestCase):
                 payload["prompt"]["30"]["inputs"]["height"]
             )
             self.assertEqual(
+                42,
+                payload["prompt"]["25"]["inputs"]["noise_seed"]
+            )
+            self.assertEqual(
                 output_dir / "scene_001.png",
                 image_path
             )
@@ -641,7 +728,8 @@ class ComfyUIBackendTest(unittest.TestCase):
                     "scene_number": 1,
                     "output_dir": image_path.parent,
                     "width": 640,
-                    "height": 360
+                    "height": 360,
+                    "seed": None
                 }
             ],
             backend.calls
@@ -698,6 +786,12 @@ class ComfyUIBackendTest(unittest.TestCase):
                     "height": 1024
                 },
                 "class_type": "ModelSamplingFlux"
+            },
+            "25": {
+                "inputs": {
+                    "noise_seed": 42
+                },
+                "class_type": "RandomNoise"
             },
             "99": {
                 "inputs": {

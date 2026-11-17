@@ -21,23 +21,19 @@ from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
-from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
 COMPONENTS = tuple(ProfileComponent)
-PLATFORMS = ("instagram", "youtube")
+FORMATS = ("horizontal", "vertical")
 GLOBAL_SUBTITLE_FORBIDDEN_KEYS = frozenset(
     {
-        "format",
         "resolution",
         "duration",
         "tone",
         "builders",
-        "image_validation",
         "video_style",
         "validation",
         "video",
@@ -47,20 +43,30 @@ GLOBAL_SUBTITLE_FORBIDDEN_KEYS = frozenset(
 )
 
 
-def _environment(profile_key):
-    return {
-        "MC_PROFILE_COMPONENT": profile_key.component.value,
-        "MC_PROFILE_PLATFORM": profile_key.platform,
-        "MC_PROFILE_ID": profile_key.profile_id,
-        "MC_PROFILE_FAMILY": profile_key.family,
-    }
+OPERATIONAL_PROFILE_IDS = {
+    (ProfileComponent.GUION, "vertical"): "guion_vertical",
+    (ProfileComponent.GUION, "horizontal"): "guion_horizontal",
+    (ProfileComponent.IMAGEN, "vertical"): "imagen_vertical",
+    (ProfileComponent.IMAGEN, "horizontal"): "imagen_horizontal",
+    (ProfileComponent.VIDEO, "vertical"): "video_vertical",
+    (ProfileComponent.VIDEO, "horizontal"): "video_horizontal",
+    (ProfileComponent.STUDIO, "vertical"): "studio_vertical",
+    (ProfileComponent.STUDIO, "horizontal"): "studio_horizontal",
+}
+
+
+def _operational_key(component, profile_format):
+    return OperationalProfileKey(
+        component,
+        profile_format,
+        OPERATIONAL_PROFILE_IDS[(component, profile_format)],
+    )
 
 
 def _operational_projection(profile, component):
     if component is ProfileComponent.STUDIO:
         studio = profile["studio"]
         return {
-            "format": profile["format"],
             "input": deepcopy(studio["input"]),
             "output": deepcopy(studio["output"]),
             "montage": deepcopy(studio["montage"]),
@@ -69,10 +75,9 @@ def _operational_projection(profile, component):
 
     return {
         "format": profile["format"],
-        "duration": profile["duration"],
+        "duration": profile.get("duration"),
         "tone": profile["tone"],
         "builders": deepcopy(profile["builders"]),
-        "image_validation": deepcopy(profile["image_validation"]),
         "video_style": deepcopy(profile["video_style"]),
         "validation": deepcopy(profile["validation"]),
         "video": deepcopy(profile["video"]),
@@ -81,45 +86,43 @@ def _operational_projection(profile, component):
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
-@pytest.mark.parametrize("platform", PLATFORMS)
+@pytest.mark.parametrize("profile_format", FORMATS)
 def test_phase0_standard_selection_preserves_system_operational_projection(
-    monkeypatch,
     component,
-    platform,
+    profile_format,
 ):
     """A STANDARD selection may resolve subtitle data, never mutate SYSTEM data."""
-    profile_key = ProfileKey.for_component(component, platform)
-    manager = ConfigManager()
+    operational_key = _operational_key(component, profile_format)
+    manager = ConfigManager(operational_profile_key=operational_key)
     resolver = SubtitleProfileResolver()
-    descriptor = resolver.discover_profiles(profile_key)[0]
+    descriptor = resolver.discover_profiles_for_family(
+        component, profile_format, "estandar",
+    )[0]
 
-    with monkeypatch.context() as context:
-        for name, value in _environment(profile_key).items():
-            context.setenv(name, value)
-
-        before = _operational_projection(
-            manager.get_profile_config(),
-            component,
-        )
-        resolved = manager.get_subtitle_profile(descriptor.profile_id)
-        after = _operational_projection(
-            manager.get_profile_config(),
-            component,
-        )
+    before = _operational_projection(
+        manager.get_profile_config(),
+        component,
+    )
+    resolved = manager.get_subtitle_profile_by_key(descriptor.key)
+    after = _operational_projection(
+        manager.get_profile_config(),
+        component,
+    )
 
     assert resolved.key.family == "estandar"
     assert resolved.key.component is component
-    assert resolved.key.platform == platform
+    assert resolved.key.format == profile_format
     assert before == after
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
-@pytest.mark.parametrize("platform", PLATFORMS)
-def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
-    profile_key = ProfileKey.for_component(component, platform)
+@pytest.mark.parametrize("profile_format", FORMATS)
+def test_phase0_standard_profiles_are_subtitle_specialists(component, profile_format):
     resolver = SubtitleProfileResolver()
 
-    descriptors = resolver.discover_profiles(profile_key)
+    descriptors = resolver.discover_profiles_for_family(
+        component, profile_format, "estandar",
+    )
     assert descriptors
 
     for descriptor in descriptors:
@@ -129,7 +132,7 @@ def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
         assert resolved.path.parts[-3:-1] == ("estandar", "subtitulos")
         assert raw.keys() == {
             "component",
-            "platform",
+            "format",
             "family",
             "profile_id",
             "display_name",
@@ -143,12 +146,12 @@ def test_phase0_standard_profiles_are_subtitle_specialists(component, platform):
 
 
 @pytest.mark.parametrize("component", COMPONENTS)
-def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
+def test_phase0_design_vertical_identity_and_subtitle_payload_are_preserved(
     component,
 ):
     subtitle_resolver = SubtitleProfileResolver()
     descriptors = subtitle_resolver.discover_profiles_for_family(
-        component, "instagram", "design",
+        component, "vertical", "design",
     )
     assert descriptors
 
@@ -160,7 +163,7 @@ def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
         assert resolved.path.parts[-3:-1] == ("design", "subtitulos")
         assert raw.keys() == {
             "component",
-            "platform",
+            "format",
             "family",
             "profile_id",
             "display_name",
@@ -176,31 +179,26 @@ def test_phase0_design_instagram_identity_and_subtitle_payload_are_preserved(
 
 @pytest.mark.parametrize("component", COMPONENTS)
 def test_phase1_design_selection_keeps_system_operational_projection(
-    monkeypatch,
     component,
 ):
-    system_key = ProfileKey.for_component(
-        component,
-        "instagram",
-    )
+    system_key = _operational_key(component, "vertical")
     subtitle_resolver = SubtitleProfileResolver()
     subtitle_key = subtitle_resolver.discover_profiles_for_family(
-        component, "instagram", "design",
+        component, "vertical", "design",
     )[0].key
-    standard_key = subtitle_resolver.discover_profiles(system_key)[0].key
+    standard_key = subtitle_resolver.discover_profiles_for_family(
+        component, "vertical", "estandar",
+    )[0].key
 
-    with monkeypatch.context() as context:
-        for name, value in _environment(system_key).items():
-            context.setenv(name, value)
-        manager = ConfigManager()
-        before = _operational_projection(
-            manager.get_profile_config(), component,
-        )
-        standard = manager.get_subtitle_profile(standard_key)
-        design = manager.get_subtitle_profile(subtitle_key)
-        after = _operational_projection(
-            manager.get_profile_config(), component,
-        )
+    manager = ConfigManager(operational_profile_key=system_key)
+    before = _operational_projection(
+        manager.get_profile_config(), component,
+    )
+    standard = manager.get_subtitle_profile_by_key(standard_key)
+    design = manager.get_subtitle_profile_by_key(subtitle_key)
+    after = _operational_projection(
+        manager.get_profile_config(), component,
+    )
 
     assert standard.key.family == "estandar"
     assert design.key.family == "design"
@@ -208,72 +206,71 @@ def test_phase1_design_selection_keeps_system_operational_projection(
 
 
 def test_phase3_studio_loads_design_subtitle_identity_without_composition():
-    system_key = ProfileKey.for_component("studio", "instagram")
+    system_key = _operational_key(ProfileComponent.STUDIO, "vertical")
     resolver = SubtitleProfileResolver()
     design_subtitle_key = next(
         descriptor.key
         for descriptor in resolver.discover_profiles_for_family(
-            "studio", "instagram", "design",
+            "studio", "vertical", "design",
         )
-        if descriptor.profile_id == "modo_conciencia_reels"
+        if descriptor.profile_id == "modo_conciencia_palabra_unica"
     )
     design = resolver.load(design_subtitle_key)
 
-    manager = ConfigManager()
-    with pytest.MonkeyPatch.context() as context:
-        for name, value in _environment(system_key).items():
-            context.setenv(name, value)
-        rendered = manager.get_subtitle_profile(design_subtitle_key)
-        original = manager.get_subtitle_profile(design_subtitle_key, original=True)
-        assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
-        assert manager.get_operational_profile_key().platform == "instagram"
+    manager = ConfigManager(operational_profile_key=system_key)
+    rendered = manager.get_subtitle_profile_by_key(design_subtitle_key)
+    assert manager.get_operational_profile_key().component is ProfileComponent.STUDIO
+    assert manager.get_operational_profile_key().format == "vertical"
 
     assert rendered.cue_policy == design.cue_policy
     assert rendered.render_style == design.render_style
-    assert original.cue_policy == design.cue_policy
-    assert original.render_style == design.render_style
 
 
 def test_phase3_studio_loads_selected_design_profile_without_mode_coupling():
-    system_key = ProfileKey.for_component("studio", "instagram")
+    system_key = _operational_key(ProfileComponent.STUDIO, "vertical")
     resolver = SubtitleProfileResolver()
     descriptors = resolver.discover_profiles_for_family(
-        "studio", "instagram", "design",
+        "studio", "vertical", "design",
     )
     assert descriptors
 
-    with pytest.MonkeyPatch.context() as context:
-        for name, value in _environment(system_key).items():
-            context.setenv(name, value)
-        manager = ConfigManager()
-        for descriptor in descriptors:
-            design = resolver.load(descriptor.key)
-            selected = manager.get_subtitle_profile(descriptor.key)
+    manager = ConfigManager(operational_profile_key=system_key)
+    for descriptor in descriptors:
+        design = resolver.load(descriptor.key)
+        selected = manager.get_subtitle_profile_by_key(descriptor.key)
 
-            assert selected.key == descriptor.key
-            assert selected.cue_policy["mode"] == descriptor.mode
-            assert selected.cue_policy == design.cue_policy
-            assert selected.render_style == design.render_style
+        assert selected.key == descriptor.key
+        assert selected.cue_policy["mode"] == descriptor.mode
+        assert selected.cue_policy == design.cue_policy
+        assert selected.render_style == design.render_style
 
 
 def test_phase0_design_subtitle_choice_must_not_replace_system_profile_key():
     """DESIGN is transported as subtitle identity, never as runtime profile."""
     controller = RunController()
     controller._print = Mock()
-    descriptor = SubtitleProfileResolver().discover_profiles_for_family(
-        "guion", "instagram", "design",
-    )[0]
-    controller._select_from_list = Mock(side_effect=("instagram", "design", descriptor))
+    descriptor = next(
+        item
+        for item in SubtitleProfileResolver().discover_profiles_for_family(
+            "guion", "vertical", "design",
+        )
+        if item.display_name == "Modo Conciencia | Palabra única"
+    )
+    controller._select_from_list = Mock(side_effect=("vertical", "design", descriptor))
 
     selected = controller._select_profile_identity(ProfileComponent.GUION)
-    expected = OperationalProfileKey("guion", "instagram", "guion_instagram")
+    expected = OperationalProfileKey("guion", "vertical", "guion_vertical")
     assert selected["profile_key"] == expected
     assert selected["subtitle_profile_key"] == descriptor.key
 
 
 def test_phase0_static_srt_renderer_baseline_uses_force_style(tmp_path):
-    profile_key = ProfileKey.for_component("video", "instagram")
-    subtitle_key = SubtitleProfileKey.for_profile(profile_key, "word_by_word")
+    subtitle_key = SubtitleProfileKey(
+        "video",
+        "vertical",
+        "subtitulo_video_vertical_palabra_por_palabra",
+        "estandar",
+    )
     subtitle_profile = SubtitleProfileResolver().load(subtitle_key)
     style = SubtitleStyleBuilder().build(subtitle_profile.render_style)
     subtitle_path = tmp_path / "source.srt"

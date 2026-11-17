@@ -252,8 +252,6 @@ class BackendVideoPrompt:
     fps: float = 8.0
     generation_width: int = 320
     generation_height: int = 320
-    target_width: int = 320
-    target_height: int = 320
     steps: int = 4
     cfg: float = 5.0
     sampler: str = "uni_pc"
@@ -304,16 +302,6 @@ class BackendVideoPrompt:
         if self.generation_height <= 0:
             raise ValueError(
                 "Generation height must be greater than zero."
-            )
-
-        if self.target_width <= 0:
-            raise ValueError(
-                "Target width must be greater than zero."
-            )
-
-        if self.target_height <= 0:
-            raise ValueError(
-                "Target height must be greater than zero."
             )
 
         if self.steps <= 0:
@@ -469,8 +457,6 @@ class VideoClipGenerationResult:
     fps: float
     generation_width: int
     generation_height: int
-    target_width: int
-    target_height: int
     steps: int
     cfg: float
     sampler: str

@@ -7,10 +7,19 @@ from unittest.mock import patch
 
 from app.modules.images.image_builder import ImageBuilder
 from app.prompt_translation import PromptBudgetPolicy, PromptTranslator
+from app.shared.format_catalog import FormatCatalog
+from app.shared.operational_error import OperationalError
+
+
+NUDENET_MODEL_AVAILABLE = (
+    Path(__file__).resolve().parents[1] / "models" / "visual_safety" / "nudenet-320n.onnx"
+).is_file()
+NUDENET_MODEL_REASON = "Falta el modelo NudeNet en models/visual_safety/."
 
 
 class ImageBuilderRuntimePromptTest(unittest.TestCase):
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_build_uses_single_cinematic_runtime_without_changing_manifest_contract(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -28,19 +37,17 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             with self._patched_environment(
                 manifest_path=manifest_path,
                 profile={
-                    "format": "horizontal",
+                    "format": "test_landscape_format",
                     "video_style": {
                         "width": 640,
                         "height": 360
-                    },
-                    "image_validation": {
-                        "enabled": False
                     }
                 }
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     prompt_translator=self._wide_encoder_prompt_translator(),
+                    format_catalog=self._format_catalog(root),
                 )
 
                 with patch.object(
@@ -93,7 +100,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["prompt"]
             )
             self.assertIn(
-                "wide horizontal 16:9",
+                "test landscape guidance",
                 manifest[0]["prompt"]
             )
             self.assertIn(
@@ -112,6 +119,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["visual_director"]["directives"]
             )
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_vertical_profile_adds_vertical_runtime_guidance(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -129,19 +137,17 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             with self._patched_environment(
                 manifest_path=manifest_path,
                 profile={
-                    "format": "vertical",
+                    "format": "test_portrait_format",
                     "video_style": {
                         "width": 360,
                         "height": 640
-                    },
-                    "image_validation": {
-                        "enabled": False
                     }
                 }
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
                     prompt_translator=self._wide_encoder_prompt_translator(),
+                    format_catalog=self._format_catalog(root),
                 )
 
                 with patch.object(
@@ -161,10 +167,11 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             )
 
             self.assertIn(
-                "vertical 9:16",
+                "test portrait guidance",
                 manifest[0]["prompt"]
             )
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_explicit_profile_bypasses_global_profile_resolution(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -179,13 +186,10 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 root
             )
             profile = {
-                "format": "horizontal",
+                "format": "test_landscape_format",
                 "video_style": {
                     "width": 640,
                     "height": 360
-                },
-                "image_validation": {
-                    "enabled": False
                 }
             }
 
@@ -203,6 +207,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                     workflow_path=workflow_path,
                     profile=profile,
                     prompt_translator=self._wide_encoder_prompt_translator(),
+                    format_catalog=self._format_catalog(root),
                 )
 
                 with patch.object(
@@ -233,17 +238,37 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest[0]["height"]
             )
 
+    def test_format_without_image_guidance_is_a_clear_config_error(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            builder = ImageBuilder(
+                workflow_path=self._write_workflow(root),
+                format_catalog=self._format_catalog(root),
+            )
+
+            with self.assertRaises(OperationalError) as caught:
+                builder._profile_format_guidance(
+                    {"format": "test_undeclared_format"}
+                )
+
+        context = caught.exception.context
+        self.assertEqual("CONFIG", context.family)
+        self.assertIn("image_guidance", context.user_message)
+        self.assertIn("«test_undeclared_format»", context.user_message)
+
     def test_official_profiles_remain_valid_for_image_dimensions(self):
         builder = ImageBuilder()
 
         for profile_path in (
             Path(
-                "config/profiles/imagen/youtube/"
-                "perfil_imagen_youtube.json"
+                "config/profiles/imagen/horizontal/"
+                "perfil_imagen_horizontal.json"
             ),
             Path(
-                "config/profiles/imagen/instagram/"
-                "perfil_imagen_instagram.json"
+                "config/profiles/imagen/vertical/"
+                "perfil_imagen_vertical.json"
             ),
         ):
             with self.subTest(
@@ -352,6 +377,34 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
         )
         return storyboard_path
 
+    def _format_catalog(
+        self,
+        root
+    ):
+        catalog_path = root / "formats.json"
+        catalog_path.write_text(
+            json.dumps(
+                {
+                    "formats": {
+                        "test_portrait_format": {
+                            "display_name": "Formato técnico alto",
+                            "order": 1,
+                            "image_guidance": "test portrait guidance"
+                        },
+                        "test_landscape_format": {
+                            "display_name": "Formato técnico ancho",
+                            "order": 2,
+                            "image_guidance": "test landscape guidance"
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8"
+        )
+        return FormatCatalog(
+            catalog_path
+        )
+
     def _write_workflow(
         self,
         root
@@ -371,7 +424,8 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
         scene_number,
         output_dir,
         width,
-        height
+        height,
+        seed=None
     ):
         output_dir.mkdir(
             parents=True,

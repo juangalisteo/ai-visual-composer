@@ -78,7 +78,7 @@ class VideoComponentBuilderTest(unittest.TestCase):
             result.prompt_plan.prompt
         )
 
-    def test_uses_default_video_source_path(self):
+    def test_prepare_without_source_path_fails_clearly(self):
         class FakeAnalyzer:
             def __init__(self):
                 self.received_path = None
@@ -91,7 +91,7 @@ class VideoComponentBuilderTest(unittest.TestCase):
                     source_path
                 )
                 raise RuntimeError(
-                    "stop after path capture"
+                    "the analyzer must not run without a source"
                 )
 
         analyzer = FakeAnalyzer()
@@ -99,13 +99,13 @@ class VideoComponentBuilderTest(unittest.TestCase):
             source_image_analyzer=analyzer
         )
 
-        with self.assertRaises(
-            RuntimeError
+        with self.assertRaisesRegex(
+            ValueError,
+            "imagen base del clip de vídeo",
         ):
             builder.prepare()
 
-        self.assertEqual(
-            Path("tests/fixtures/video/source.png"),
+        self.assertIsNone(
             analyzer.received_path
         )
 

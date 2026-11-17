@@ -25,7 +25,7 @@ class OverlayConfigLoader:
             )
         )
 
-        legacy_keys = tuple(
+        retired_keys = tuple(
             key
             for key in (
                 "selection",
@@ -33,10 +33,10 @@ class OverlayConfigLoader:
             )
             if key in overlay_data
         )
-        if legacy_keys:
+        if retired_keys:
             raise ValueError(
                 "video_style.overlays no admite las claves "
-                "legacy selection/weights. Use "
+                "antiguas selection/weights. Use "
                 "folder_selection, file_selection, "
                 "folder_weights y file_weights."
             )

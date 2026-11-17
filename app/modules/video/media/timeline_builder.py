@@ -35,7 +35,7 @@ class TimelineBuilder:
 
         if render_subtitles and subtitle_path is None:
             raise ValueError(
-                "La renderizacion con subtitulos requiere subtitle_path."
+                "La renderización con subtítulos requiere subtitle_path."
             )
 
         subtitle_path = (

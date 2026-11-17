@@ -2,9 +2,17 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from app.modules.design import DesignExecutionCoordinator
+
+
+def _patch_clip_batch(i2v_batch):
+    return patch.multiple(
+        "app.modules.video_component.clip_batch",
+        generate_video_clips=i2v_batch,
+        scene_clip_identity=lambda scene: f"scene_{int(scene):03d}",
+    )
 
 
 class _Project:
@@ -351,19 +359,18 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
             profile_key = object()
             input_path = Path(directory) / "video-design.txt"
 
-            result = coordinator.run_video(
-                pipeline_start=20.0,
-                project=project,
-                input_design_path=input_path,
-                preparation_service=preparation,
-                visual_truth_adapter=adapter,
-                image_builder=image_builder,
-                video_builder=video_builder,
-                profile=profile,
-                profile_key=profile_key,
-                generate_i2v_batch=i2v_batch,
-                scene_clip_identity=lambda scene: f"scene_{int(scene):03d}",
-            )
+            with _patch_clip_batch(i2v_batch):
+                result = coordinator.run_video(
+                    pipeline_start=20.0,
+                    project=project,
+                    input_design_path=input_path,
+                    preparation_service=preparation,
+                    visual_truth_adapter=adapter,
+                    image_builder=image_builder,
+                    video_builder=video_builder,
+                    profile=profile,
+                    profile_key=profile_key,
+                )
 
         self.assertEqual(input_path, preparation.input_path)
         self.assertIs(prepared_design, adapter.prepared_design)
@@ -390,16 +397,15 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
             config = _Config(profile, profile_key, {"ai": "explicit"})
             i2v_batch = _I2VBatch()
 
-            self._coordinator(_Telemetry()).run_video(
-                project=_Project(directory),
-                preparation_service=_PreparationService(object()),
-                visual_truth_adapter=_VisualTruthAdapter([{"scene": 1}]),
-                image_builder=_ImageBuilder(),
-                video_builder=object(),
-                config_manager=config,
-                generate_i2v_batch=i2v_batch,
-                scene_clip_identity=lambda scene: f"scene_{int(scene):03d}",
-            )
+            with _patch_clip_batch(i2v_batch):
+                self._coordinator(_Telemetry()).run_video(
+                    project=_Project(directory),
+                    preparation_service=_PreparationService(object()),
+                    visual_truth_adapter=_VisualTruthAdapter([{"scene": 1}]),
+                    image_builder=_ImageBuilder(),
+                    video_builder=object(),
+                    config_manager=config,
+                )
 
         assert i2v_batch.calls[0]["profile_key"] is profile_key
 
@@ -409,7 +415,10 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
             image_builder = _ImageBuilder()
             i2v_batch = _I2VBatch()
 
-            with self.assertRaisesRegex(ValueError, "scene 1"):
+            with _patch_clip_batch(i2v_batch), self.assertRaisesRegex(
+                ValueError,
+                "scene 1",
+            ):
                 self._coordinator(telemetry).run_video(
                     project=_Project(directory),
                     preparation_service=_PreparationService(object()),
@@ -418,8 +427,6 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
                     video_builder=object(),
                     profile={},
                     profile_key=object(),
-                    generate_i2v_batch=i2v_batch,
-                    scene_clip_identity=lambda scene: f"scene_{int(scene):03d}",
                 )
 
         self.assertEqual([], image_builder.calls)
@@ -438,7 +445,10 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             telemetry = _Telemetry()
 
-            with self.assertRaisesRegex(RuntimeError, "i2v failure"):
+            with _patch_clip_batch(FailingI2VBatch()), self.assertRaisesRegex(
+                RuntimeError,
+                "i2v failure",
+            ):
                 self._coordinator(telemetry).run_video(
                     project=_Project(directory),
                     preparation_service=_PreparationService(object()),
@@ -447,8 +457,6 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
                     video_builder=object(),
                     profile={},
                     profile_key=object(),
-                    generate_i2v_batch=FailingI2VBatch(),
-                    scene_clip_identity=lambda scene: f"scene_{int(scene):03d}",
                 )
 
         self.assertEqual(2, len(telemetry.measurements))

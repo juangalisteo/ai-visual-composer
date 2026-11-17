@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from difflib import SequenceMatcher
 
 import re
 import unicodedata
 
-from app.modules.subtitles.policies.timing import SubtitleTiming
+from app.modules.subtitles.policies.timing import (
+    SubtitleTiming,
+    approximate_voiced_word_timings,
+)
 from app.shared.config_contract import require_bool, require_mapping
 
 
@@ -59,10 +63,19 @@ _RECONCILABLE_PUNCTUATION = frozenset(
 
 
 def reconcile_timing_text(content, timing, authoritative=False):
-    """Restore canonical punctuation while preserving timed words."""
+    """Restore canonical punctuation while preserving timed words.
+
+    With ``authoritative``, ``content`` is the script and its words always
+    replace the timed ones (``_script_aligned_timing``). Otherwise only the
+    punctuation of ``content`` is restored, and only when its words are the
+    timed words.
+    """
 
     if not isinstance(timing, SubtitleTiming) or not timing.is_usable():
         return timing
+
+    if authoritative:
+        return _script_aligned_timing(content, timing)
 
     canonical_tokens = _canonical_tokens(content)
     timed_words = timing.words
@@ -74,16 +87,11 @@ def reconcile_timing_text(content, timing, authoritative=False):
 
     for canonical, timed in zip(canonical_tokens, timed_words):
 
-        if (
-            not authoritative
-            and _word_core(canonical) != _word_core(timed.text)
-        ):
+        if _word_core(canonical) != _word_core(timed.text):
             return timing
 
         reconciled_text.append(
-            canonical
-            if authoritative
-            else _with_canonical_punctuation(
+            _with_canonical_punctuation(
                 canonical=canonical,
                 timed=timed.text
             )
@@ -141,6 +149,11 @@ def _canonical_tokens(content):
     if not raw_tokens:
         raw_tokens = str(content).split()
 
+    return _word_tokens(raw_tokens)
+
+
+def _word_tokens(raw_tokens):
+
     tokens = []
     prefix = ""
 
@@ -155,6 +168,135 @@ def _canonical_tokens(content):
             prefix += token
 
     return tuple(tokens)
+
+
+def _script_aligned_timing(script, timing):
+    """Put the script's words on Whisper's word times.
+
+    The script and the timed words are aligned word by word, ignoring case,
+    accents and punctuation. Equal words, and replaced runs with as many
+    words on both sides, keep each timed word's times with the script's text.
+    A replaced run with a different number of words spreads the script words
+    over its own time span in proportion to their letters, outside the voice
+    pauses inside it (``approximate_voiced_word_timings``). Script words that
+    were not heard join the previous run, or the next one when the previous
+    word closes a sentence or a paragraph. Timed words that are not in the
+    script are left out. An empty script leaves the timing unchanged.
+    """
+
+    tokens = _script_tokens(script)
+
+    if not tokens:
+        return timing
+
+    timed_words = timing.words
+    segment_of = tuple(
+        index
+        for index, segment in enumerate(timing.segments)
+        for _ in segment.words
+    )
+    matcher = SequenceMatcher(
+        None,
+        [_alignment_key(text) for text, _ in tokens],
+        [_alignment_key(word.text) for word in timed_words],
+        autojunk=False,
+    )
+    runs = []
+
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal" or i2 - i1 == j2 - j1:
+            runs.extend(
+                ([token], [word])
+                for token, word in zip(range(i1, i2), range(j1, j2))
+            )
+        elif i1 < i2:
+            runs.append(
+                (list(range(i1, i2)), list(range(j1, j2)))
+            )
+
+    segment_words = [[] for _ in timing.segments]
+
+    for token_indexes, word_indexes in _attach_unheard_words(runs, tokens):
+        texts = [tokens[index][0] for index in token_indexes]
+        words = [timed_words[index] for index in word_indexes]
+
+        if len(texts) == len(words):
+            aligned = [
+                replace(word, text=text)
+                for word, text in zip(words, texts)
+            ]
+        else:
+            aligned = approximate_voiced_word_timings(
+                words[0].start,
+                words[-1].end,
+                texts,
+                timing.voice_pauses,
+                [tokens[index][1] for index in token_indexes]
+            )
+
+        segment_words[segment_of[word_indexes[0]]].extend(aligned)
+
+    return replace(
+        timing,
+        segments=tuple(
+            replace(segment, words=tuple(words))
+            for segment, words in zip(timing.segments, segment_words)
+            if words
+        )
+    )
+
+
+def _attach_unheard_words(runs, tokens):
+
+    attached = []
+    pending = []
+
+    for token_indexes, word_indexes in runs:
+        if word_indexes:
+            attached.append((pending + token_indexes, word_indexes))
+            pending = []
+        elif attached and not tokens[attached[-1][0][-1]][1]:
+            attached[-1][0].extend(token_indexes)
+        else:
+            pending.extend(token_indexes)
+
+    if pending and attached:
+        attached[-1][0].extend(pending)
+
+    return attached
+
+
+def _script_tokens(script):
+    """Return the script's words, each with whether it closes a sentence
+    or a paragraph (one or more blank lines)."""
+
+    tokens = []
+
+    for paragraph in re.split(r"\n\s*\n", str(script).strip()):
+        words = _word_tokens(paragraph.split())
+        tokens.extend(
+            (
+                word,
+                index == len(words) - 1
+                or word.rstrip(_CLOSING_MARKS).endswith(_SENTENCE_ENDS)
+            )
+            for index, word in enumerate(words)
+        )
+
+    return tuple(tokens)
+
+
+_SENTENCE_ENDS = (".", "?", "!", "…")
+_CLOSING_MARKS = "\"'»”’)"
+
+
+def _alignment_key(text):
+
+    return "".join(
+        character
+        for character in unicodedata.normalize("NFD", _word_core(text))
+        if not unicodedata.combining(character)
+    )
 
 
 def _with_canonical_punctuation(canonical, timed):

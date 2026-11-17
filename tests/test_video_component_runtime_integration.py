@@ -3,19 +3,24 @@ import json
 import os
 import inspect
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 from app.core import start
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from app.modules.standard import StandardExecutionCoordinator
 from app.modules.video_component import (
     BackendVideoPrompt,
     MinimalVisualContext,
@@ -25,9 +30,37 @@ from app.modules.video_component import (
     VideoClipGenerationResult,
     WanIntermediateOutput,
 )
+from app.modules.video_component import clip_batch
+from app.modules.video_component.direct_i2v import run_direct_i2v
 from app.modules.video_component.profile_parameters import (
     build_video_backend_overrides,
 )
+from app.modules.video.intro_outro import (
+    IntroOutroPlan,
+    IntroOutroSelection,
+)
+
+
+def _video_request(
+    *,
+    pipeline_mode,
+    operational_profile_key,
+    subtitle_profile_key=None,
+    intro_outro_plan=None,
+):
+    return ApplicationExecutionRequest(
+        project_name="video runtime",
+        clear_output=False,
+        operational_profile_key=operational_profile_key,
+        subtitle_profile_key=subtitle_profile_key,
+        route=StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline="video",
+            script_source="generated",
+            voice_config_id="test_voice",
+            intro_outro_plan=intro_outro_plan,
+        ),
+    )
 
 
 class FakeProject:
@@ -89,7 +122,7 @@ class FakeProject:
 def FakeResult(
     output_clip,
     source_image=None,
-    profile_name="Instagram",
+    profile_name="Vertical",
     seed=123,
 ):
     return VideoClipGenerationResult(
@@ -105,8 +138,6 @@ def FakeResult(
         fps=12.0,
         generation_width=384,
         generation_height=672,
-        target_width=1080,
-        target_height=1920,
         steps=12,
         cfg=5.0,
         sampler="uni_pc",
@@ -175,7 +206,7 @@ class FakeVideoComponentBuilder:
             source_image=source_path,
             profile_name=overrides.get(
                 "profile_name",
-                "Instagram"
+                "Vertical"
             ),
             seed=overrides.get(
                 "seed",
@@ -195,7 +226,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "source_path",
                 "video_builder",
             ),
-            tuple(inspect.signature(start.ejecutar_video_i2v).parameters),
+            tuple(inspect.signature(run_direct_i2v).parameters),
+        )
+        self.assertIs(
+            inspect.Parameter.empty,
+            inspect.signature(run_direct_i2v).parameters["source_path"].default,
         )
 
     def test_video_i2v_runtime_dispatches_to_video_component(self):
@@ -219,13 +254,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 "app.modules.video_component.profile_parameters._random_video_seed",
                 return_value=847291635
             ):
-                result = start.ejecutar_video_i2v(
+                result = run_direct_i2v(
                     pipeline_start=0,
                     project=project,
                     profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
+                        "vertical",
+                        "video_vertical",
                     ),
                     source_path=root / "source.png",
                     video_builder=builder,
@@ -263,14 +298,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         self.assertEqual(
             800,
             call["overrides"]["generation_height"]
-        )
-        self.assertEqual(
-            1080,
-            call["overrides"]["target_width"]
-        )
-        self.assertEqual(
-            1920,
-            call["overrides"]["target_height"]
         )
         self.assertEqual(
             49,
@@ -320,16 +347,16 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
             source_path = root / "source.png"
 
             with patch(
-                "app.core.start.DirectI2VGenerationService",
+                "app.modules.video_component.direct_i2v.DirectI2VGenerationService",
                 return_value=service,
             ) as service_type:
-                result = start.ejecutar_video_i2v(
+                result = run_direct_i2v(
                     pipeline_start=0,
                     project=project,
                     profile_key=profile_key,
@@ -354,19 +381,19 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             service.generate.side_effect = RuntimeError("direct service failure")
 
             with patch(
-                "app.core.start.DirectI2VGenerationService",
+                "app.modules.video_component.direct_i2v.DirectI2VGenerationService",
                 return_value=service,
             ):
                 with self.assertRaisesRegex(
                     RuntimeError,
                     "direct service failure",
                 ):
-                    start.ejecutar_video_i2v(
+                    run_direct_i2v(
                         project=FakeProject(root / "output"),
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                         source_path=root / "source.png",
                         video_builder=FakeVideoComponentBuilder(
@@ -374,23 +401,26 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         ),
                     )
 
-    def test_iniciar_has_no_video_i2v_special_dispatch(self):
-        iniciar_tree = ast.parse(inspect.getsource(start.iniciar))
+    def test_run_application_has_no_video_i2v_special_dispatch(self):
+        run_application_tree = ast.parse(
+            inspect.getsource(start.run_application)
+            + textwrap.dedent(inspect.getsource(StandardExecutionCoordinator.run))
+        )
         mode_literals = {
             node.value
-            for node in ast.walk(iniciar_tree)
+            for node in ast.walk(run_application_tree)
             if isinstance(node, ast.Constant)
             and isinstance(node.value, str)
         }
         called_names = {
             node.func.id
-            for node in ast.walk(iniciar_tree)
+            for node in ast.walk(run_application_tree)
             if isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
         }
 
         self.assertNotIn("video_i2v", mode_literals)
-        self.assertNotIn("ejecutar_video_i2v", called_names)
+        self.assertNotIn("run_direct_i2v", called_names)
 
     def test_video_i2v_missing_source_path_fails_cleanly(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -404,7 +434,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             with self.assertRaises(
                 FileNotFoundError
             ):
-                start.ejecutar_video_i2v(
+                run_direct_i2v(
                     project=FakeProject(
                         Path(
                             temp_dir
@@ -413,8 +443,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     ),
                     profile_key=OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
+                        "vertical",
+                        "video_vertical",
                     ),
                     source_path=missing,
                 )
@@ -422,19 +452,15 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
     def test_video_profiles_exist_with_validated_parameters(self):
         cases = (
             (
-                "config/profiles/video/instagram/wan_i2v_instagram.json",
+                "config/profiles/video/vertical/wan_i2v_vertical.json",
                 448,
                 800,
-                1080,
-                1920,
                 20,
             ),
             (
-                "config/profiles/video/youtube/wan_i2v_youtube.json",
+                "config/profiles/video/horizontal/wan_i2v_horizontal.json",
                 800,
                 448,
-                1920,
-                1080,
                 20,
             ),
         )
@@ -443,8 +469,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             profile_path,
             generation_width,
             generation_height,
-            target_width,
-            target_height,
             steps,
         ) in cases:
             with self.subTest(
@@ -472,22 +496,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     generation_height,
                     video_component[
                         "generation"
-                    ][
-                        "height"
-                    ]
-                )
-                self.assertEqual(
-                    target_width,
-                    video_component[
-                        "target"
-                    ][
-                        "width"
-                    ]
-                )
-                self.assertEqual(
-                    target_height,
-                    video_component[
-                        "target"
                     ][
                         "height"
                     ]
@@ -525,12 +533,12 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_active_video_profiles_keep_quality_encoding_settings(self):
         profile_paths = (
-            "config/profiles/guion/instagram/perfil_guion_instagram.json",
-            "config/profiles/guion/youtube/perfil_guion_youtube.json",
-            "config/profiles/imagen/instagram/perfil_imagen_instagram.json",
-            "config/profiles/imagen/youtube/perfil_imagen_youtube.json",
-            "config/profiles/video/instagram/perfil_video_instagram.json",
-            "config/profiles/video/youtube/perfil_video_youtube.json",
+            "config/profiles/guion/vertical/perfil_guion_vertical.json",
+            "config/profiles/guion/horizontal/perfil_guion_horizontal.json",
+            "config/profiles/imagen/vertical/perfil_imagen_vertical.json",
+            "config/profiles/imagen/horizontal/perfil_imagen_horizontal.json",
+            "config/profiles/video/vertical/perfil_video_vertical.json",
+            "config/profiles/video/horizontal/perfil_video_horizontal.json",
         )
 
         for profile_path in profile_paths:
@@ -544,7 +552,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
     def test_random_seed_mode_resolves_single_valid_seed(self):
         profile = _video_profile(
-            "Instagram"
+            "Vertical"
         )
 
         with patch(
@@ -584,7 +592,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         self
     ):
         profile = _video_profile(
-            "Instagram",
+            "Vertical",
             seed_mode="fixed",
             seed=123456789
         )
@@ -633,7 +641,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             ("savevideo_h264", WanIntermediateOutput.SAVEVIDEO_H264),
         ):
             with self.subTest(intermediate_output=intermediate_output):
-                profile = _video_profile("Instagram")
+                profile = _video_profile("Vertical")
                 profile["video_component"]["delivery"] = {
                     "intermediate_output": intermediate_output,
                 }
@@ -652,8 +660,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 self.assertEqual(expected, prompt.intermediate_output)
                 self.assertEqual(384, prompt.generation_width)
                 self.assertEqual(672, prompt.generation_height)
-                self.assertEqual(1080, prompt.target_width)
-                self.assertEqual(1920, prompt.target_height)
                 self.assertEqual(49, prompt.frames)
                 self.assertEqual(12.0, prompt.fps)
                 self.assertEqual(12, prompt.steps)
@@ -662,7 +668,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 self.assertEqual("simple", prompt.scheduler)
 
     def test_i2v_overrides_preserve_legacy_intermediate_output_default(self):
-        profile = _video_profile("Instagram")
+        profile = _video_profile("Vertical")
 
         with patch(
             "app.modules.video_component.profile_parameters._random_video_seed",
@@ -672,7 +678,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
         self.assertEqual("savevideo_h264", overrides["intermediate_output"])
 
-    def test_iniciar_video_product_composes_final_video_from_i2v_clips(
+    def test_run_application_video_product_composes_final_video_from_i2v_clips(
         self
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -695,11 +701,13 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video-runtime.mp4"
             )
             resolved_subtitle_profile = object()
-            intro_outro_selection = object()
+            intro_outro_selection = IntroOutroPlan(
+                intro=IntroOutroSelection(Path("intro.mp4"), "intro")
+            )
             requested_subtitle_keys = []
             subtitle_key = SubtitleProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
+                "vertical",
                 "test_subtitle_profile",
                 "test_family",
             )
@@ -710,26 +718,18 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return {}
 
-                def get_profile_key(
-                    self
-                ):
-                    return ProfileKey.for_component(
-                        ProfileComponent.VIDEO,
-                        "instagram"
-                    )
-
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.VIDEO,
-                        "instagram",
-                        "video_instagram",
+                        "vertical",
+                        "video_vertical",
                     )
 
                 def get_profile_config(
                     self
                 ):
                     return {
-                        "platform": "instagram",
+                        "format": "vertical",
                         "builders": {
                             "script": True,
                             "voice": True,
@@ -743,31 +743,18 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                         },
                     }
 
-                def adapt_legacy_subtitle_selection(self, selection):
-                    if selection != "single_line":
-                        raise AssertionError(selection)
-                    return subtitle_key
-
                 def get_subtitle_profile_by_key(self, selected_key):
                     requested_subtitle_keys.append(selected_key)
                     return resolved_subtitle_profile
 
-            with patch.dict(
-                "os.environ",
-                {
-                    "MC_VISUAL_PIPELINE": "video",
-                    "MC_PIPELINE_MODE": "full",
-                    "MC_MUSIC_CATEGORY": "",
-                },
-                clear=False,
-            ), patch(
+            with patch(
                 "app.core.start.ProjectManager",
                 return_value=project
             ), patch(
                 "app.core.start.ConfigManager",
                 return_value=FakeConfig()
             ), patch(
-                "app.core.start.ejecutar_guion",
+                "app.modules.standard.execution_coordinator.ScriptOperation.execute",
                 return_value=type(
                     "PreparedScript",
                     (),
@@ -776,24 +763,24 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     }
                 )()
             ), patch(
-                "app.core.start.VoiceBuilder"
+                "app.modules.standard.execution_coordinator.VoiceBuilder"
             ) as voice_builder, patch(
-                "app.core.start.AudioMixer"
+                "app.modules.standard.execution_coordinator.AudioMixer"
             ) as audio_mixer, patch(
-                "app.core.start.SubtitleBuilder"
+                "app.modules.standard.execution_coordinator.SubtitleBuilder"
             ) as subtitle_builder, patch(
-                "app.core.start.SrtOptimizer"
+                "app.modules.standard.execution_coordinator.SrtOptimizer"
             ) as srt_optimizer, patch(
-                "app.core.start.StoryboardBuilder"
+                "app.modules.standard.execution_coordinator.StoryboardBuilder"
             ) as storyboard_builder, patch(
-                "app.core.start.ImageBuilder"
+                "app.modules.standard.execution_coordinator.ImageBuilder"
             ) as image_builder, patch(
-                "app.core.start.generar_video_clips_i2v",
+                "app.modules.standard.execution_coordinator.generate_video_clips",
                 return_value=video_clips_manifest
             ) as clips_builder, patch(
-                "app.core.start.VideoBuilder"
+                "app.modules.standard.execution_coordinator.VideoBuilder"
             ) as video_builder, patch(
-                "app.core.start.MediaProbe.get_duration",
+                "app.shared.media_probe.MediaProbe.get_duration",
                 return_value=4.0
             ):
                 voice_builder.return_value.build.return_value = (
@@ -818,10 +805,16 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     final_video
                 )
 
-                result = start.iniciar(
-                    subtitle_style="single_line",
-                    intro_outro_selection=(
-                        intro_outro_selection
+                result = start.run_application(
+                    request=_video_request(
+                        pipeline_mode="full",
+                        operational_profile_key=OperationalProfileKey(
+                            ProfileComponent.VIDEO,
+                            "vertical",
+                            "video_vertical",
+                        ),
+                        subtitle_profile_key=subtitle_key,
+                        intro_outro_plan=intro_outro_selection,
                     ),
                 )
 
@@ -836,7 +829,8 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         clips_builder.assert_called_once()
         srt_optimizer.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
-            render_fps=30
+            render_fps=30,
+            project=project,
         )
         srt_optimizer.return_value.optimize.assert_called_once_with(
             canonical_content="Guion de prueba.",
@@ -844,13 +838,16 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         video_builder.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
             warnings=ANY,
+            overlays_mode=None,
             intro_outro_selection=intro_outro_selection,
+            config_manager=ANY,
+            project=project,
         )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=video_clips_manifest
         )
 
-    def test_iniciar_video_product_without_subtitles_uses_standard_operational_identity(self):
+    def test_run_application_video_product_without_subtitles_uses_standard_operational_identity(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             project = FakeProject(Path(temp_dir) / "output" / "video-product")
             final_video = project.video_path()
@@ -859,27 +856,17 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 / "video_clips"
                 / "video_clips_manifest.json"
             )
-            subtitle_profile = object()
-
             class FakeConfig:
                 profile_resolver = ProfileResolver()
 
                 def get_ai_config(self):
                     return {}
 
-                def get_profile_key(self):
-                    return ProfileKey(
-                        ProfileComponent.GUION,
-                        "instagram",
-                        "guion_instagram",
-                        "estandar",
-                    )
-
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.GUION,
-                        "instagram",
-                        "guion_instagram",
+                        "vertical",
+                        "guion_vertical",
                     )
 
                 def get_profile_config(self):
@@ -893,52 +880,42 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                             "video": True,
                         },
                         "video_style": {"fps": 30},
-                        "subtitle_config": "word_by_word",
-                        "subtitle_profile": {"style": "word_by_word"},
                     }
 
-                def get_subtitle_profile(self, style):
+                def get_subtitle_profile_by_key(self, subtitle_profile_key):
                     raise AssertionError(
                         "Subtitle profile must not be resolved"
                     )
 
             config = FakeConfig()
-            with patch.dict(
-                "os.environ",
-                {
-                    "MC_VISUAL_PIPELINE": "video",
-                    "MC_PIPELINE_MODE": "full_without_subtitles",
-                    "MC_MUSIC_CATEGORY": "",
-                },
-                clear=False,
-            ), patch(
+            with patch(
                 "app.core.start.ProjectManager",
                 return_value=project,
             ), patch(
                 "app.core.start.ConfigManager",
                 return_value=config,
             ), patch(
-                "app.core.start.ejecutar_guion",
+                "app.modules.standard.execution_coordinator.ScriptOperation.execute",
                 return_value=type("Prepared", (), {"text": "Guion."})(),
             ), patch(
-                "app.core.start.VoiceBuilder"
+                "app.modules.standard.execution_coordinator.VoiceBuilder"
             ) as voice_builder, patch(
-                "app.core.start.AudioMixer"
+                "app.modules.standard.execution_coordinator.AudioMixer"
             ) as audio_mixer, patch(
-                "app.core.start.SubtitleBuilder"
+                "app.modules.standard.execution_coordinator.SubtitleBuilder"
             ) as subtitle_builder, patch(
-                "app.core.start.SrtOptimizer"
+                "app.modules.standard.execution_coordinator.SrtOptimizer"
             ) as srt_optimizer, patch(
-                "app.core.start.StoryboardBuilder"
+                "app.modules.standard.execution_coordinator.StoryboardBuilder"
             ) as storyboard_builder, patch(
-                "app.core.start.ImageBuilder"
+                "app.modules.standard.execution_coordinator.ImageBuilder"
             ) as image_builder, patch(
-                "app.core.start.generar_video_clips_i2v",
+                "app.modules.standard.execution_coordinator.generate_video_clips",
                 return_value=clips_manifest,
             ) as clips_builder, patch(
-                "app.core.start.VideoBuilder"
+                "app.modules.standard.execution_coordinator.VideoBuilder"
             ) as video_builder, patch(
-                "app.core.start.MediaProbe.get_duration",
+                "app.shared.media_probe.MediaProbe.get_duration",
                 return_value=4.0,
             ):
                 voice_builder.return_value.build.return_value = project.audio_path()
@@ -947,7 +924,16 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 image_builder.return_value.build.return_value = project.images_manifest_path()
                 video_builder.return_value.build.return_value = final_video
 
-                result = start.iniciar()
+                result = start.run_application(
+                    request=_video_request(
+                        pipeline_mode="full_without_subtitles",
+                        operational_profile_key=OperationalProfileKey(
+                            ProfileComponent.GUION,
+                            "vertical",
+                            "guion_vertical",
+                        ),
+                    ),
+                )
 
         self.assertEqual(final_video, result)
         subtitle_builder.assert_not_called()
@@ -956,15 +942,18 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         self.assertEqual(
             OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             ),
             clips_builder.call_args.kwargs["profile_key"],
         )
         video_builder.assert_called_once_with(
             subtitle_profile=None,
             warnings=ANY,
+            overlays_mode=None,
             render_subtitles=False,
+            config_manager=config,
+            project=project,
         )
         video_builder.return_value.build.assert_called_once_with(
             video_clips_manifest_path=clips_manifest,
@@ -1065,22 +1054,22 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with patch(
-                "app.core.start.os.replace",
+                "app.modules.video_component.clip_batch.os.replace",
                 wraps=os.replace,
             ) as replace_file:
                 with patch(
                     "app.modules.video_component.profile_parameters._random_video_seed",
                     return_value=847291635
                 ):
-                    manifest_path = start.generar_video_clips_i2v(
+                    manifest_path = clip_batch.generate_video_clips(
                         storyboard_path=storyboard_path,
                         images_manifest_path=images_manifest_path,
                         project=project,
                         video_builder=builder,
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                     )
                     manifest = json.loads(
@@ -1240,21 +1229,21 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             builder = FailingSecondSceneBuilder(output_dir / "unused.mp4")
 
             with patch(
-                "app.core.start._publish_video_clips_manifest_atomically",
+                "app.modules.video_component.clip_batch._publish_video_clips_manifest_atomically",
             ) as publish_manifest:
                 with self.assertRaisesRegex(
                     RuntimeError,
                     "middle scene generation failed",
                 ):
-                    start.generar_video_clips_i2v(
+                    clip_batch.generate_video_clips(
                         storyboard_path=storyboard_path,
                         images_manifest_path=images_manifest_path,
                         project=project,
                         video_builder=builder,
                         profile_key=OperationalProfileKey(
                             ProfileComponent.VIDEO,
-                            "instagram",
-                            "video_instagram",
+                            "vertical",
+                            "video_vertical",
                         ),
                     )
 
@@ -1294,7 +1283,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             final_output.parent.mkdir()
             final_output.write_bytes(b"public-final")
 
-            lease = start._I2VArtifactLease.from_manifest(manifest_path)
+            lease = clip_batch.I2VArtifactLease.from_manifest(manifest_path)
             failures = lease.cleanup_after_successful_public_render(final_output)
 
             self.assertEqual((owned_lossless,), lease.owned_lossless_paths)
@@ -1322,7 +1311,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            lease = start._I2VArtifactLease.from_manifest(manifest_path)
+            lease = clip_batch.I2VArtifactLease.from_manifest(manifest_path)
             failures = lease.cleanup_after_successful_public_render(
                 root / "video" / "missing-final.mp4"
             )
@@ -1351,7 +1340,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(RuntimeError, "final render failed"):
-                start._build_i2v_public_video(
+                clip_batch.build_public_video(
                     video_builder=FailingVideoBuilder(),
                     video_clips_manifest_path=manifest_path,
                 )
@@ -1385,7 +1374,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             )
 
             with patch.object(Path, "unlink", side_effect=OSError("locked")):
-                result = start._build_i2v_public_video(
+                result = clip_batch.build_public_video(
                     video_builder=SuccessfulVideoBuilder(output_path),
                     video_clips_manifest_path=manifest_path,
                 )
@@ -1435,15 +1424,15 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            manifest_path = start.generar_video_clips_i2v(
+            manifest_path = clip_batch.generate_video_clips(
                 storyboard_path=storyboard_path,
                 images_manifest_path=images_manifest_path,
                 project=project,
                 video_builder=LosslessBuilder(root / "unused.mkv"),
                 profile_key=OperationalProfileKey(
                     ProfileComponent.VIDEO,
-                    "instagram",
-                    "video_instagram",
+                    "vertical",
+                    "video_vertical",
                 ),
             )
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -1458,19 +1447,14 @@ def _video_profile(
     seed_mode="random",
     seed=None
 ):
-    if name == "YouTube":
+    if name == "Horizontal":
         profile = {
-            "platform": "video",
-            "format": "youtube",
+            "format": "horizontal",
             "video_component": {
-                "profile": "YouTube",
+                "profile": "Horizontal",
                 "generation": {
                     "width": 672,
                     "height": 384,
-                },
-                "target": {
-                    "width": 1920,
-                    "height": 1080,
                 },
                 "frames": 49,
                 "fps": 12,
@@ -1488,17 +1472,12 @@ def _video_profile(
         return profile
 
     profile = {
-        "platform": "video",
-        "format": "instagram",
+        "format": "vertical",
         "video_component": {
-            "profile": "Instagram",
+            "profile": "Vertical",
             "generation": {
                 "width": 384,
                 "height": 672,
-            },
-            "target": {
-                "width": 1080,
-                "height": 1920,
             },
             "frames": 49,
             "fps": 12,

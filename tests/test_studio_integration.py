@@ -7,7 +7,6 @@ import sys
 import tempfile
 import unittest
 from array import array
-from copy import deepcopy
 from pathlib import Path
 
 from app.core import start
@@ -18,21 +17,37 @@ from app.modules.studio import (
     StudioProfileLoader,
     StudioRenderService,
 )
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
 )
 from app.shared.media_probe import MediaProbe
-from app.shared.profile_identity import OperationalProfileKey, ProfileKey
+from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
+STUDIO_PROFILE_IDS = {
+    "vertical": "studio_vertical",
+    "horizontal": "studio_horizontal",
+}
+
+STUDIO_STANDARD_SUBTITLE_PROFILE_IDS = {
+    ("vertical", "single_line"): "subtitulo_studio_vertical_linea_unica",
+    ("vertical", "word_by_word"): (
+        "subtitulo_studio_vertical_palabra_por_palabra"
+    ),
+    ("horizontal", "single_line"): "subtitulo_studio_horizontal_linea_unica",
+    ("horizontal", "word_by_word"): "subtitulo_studio_horizontal_palabra_por_palabra",
+}
+
+
 def _load_studio_profile(profile_key):
     operational_key = OperationalProfileKey(
         profile_key.component,
-        profile_key.platform,
+        profile_key.format,
         profile_key.profile_id,
     )
     return StudioProfileLoader().load(
@@ -44,10 +59,12 @@ def _load_studio_profile(profile_key):
 class StudioFinalContractTest(unittest.TestCase):
 
     def test_design_subtitles_do_not_replace_the_studio_system_profile(self):
-        system_key = ProfileKey.for_component("studio", "instagram")
+        system_key = OperationalProfileKey(
+            "studio", "vertical", "studio_vertical"
+        )
         profile = _load_studio_profile(system_key)
         descriptors = SubtitleProfileResolver().discover_profiles_for_family(
-            "studio", "instagram", "design",
+            "studio", "vertical", "design",
         )
 
         self.assertEqual(1080, profile.width)
@@ -71,12 +88,12 @@ class StudioFinalContractTest(unittest.TestCase):
     def test_profiles_and_dynamic_subtitle_styles_cover_final_matrix(self):
         resolver = SubtitleProfileResolver()
 
-        for platform, dimensions in {
-            "instagram": (1080, 1920),
-            "youtube": (1920, 1080),
-        }.items():
-            with self.subTest(platform=platform):
-                key = ProfileKey.for_component("studio", platform)
+        for profile_format, profile_id, dimensions in (
+            ("vertical", "studio_vertical", (1080, 1920)),
+            ("horizontal", "studio_horizontal", (1920, 1080)),
+        ):
+            with self.subTest(profile_format=profile_format):
+                key = OperationalProfileKey("studio", profile_format, profile_id)
                 profile = _load_studio_profile(key)
                 self.assertEqual(dimensions, (profile.width, profile.height))
                 self.assertEqual(30, profile.fps)
@@ -87,15 +104,10 @@ class StudioFinalContractTest(unittest.TestCase):
                     profile.audio_sample_rate,
                     profile.audio_channels,
                 ))
-                styles = {
-                    style.value if hasattr(style, "value") else str(style)
-                    for style in resolver.discover_styles(key)
-                }
-                descriptors = resolver.discover_profiles(key)
-                self.assertEqual(
-                    {descriptor.mode for descriptor in descriptors},
-                    styles,
+                descriptors = resolver.discover_profiles_for_family(
+                    "studio", profile_format, "estandar",
                 )
+                self.assertTrue(descriptors)
                 for descriptor in descriptors:
                     resolved = resolver.load(
                         descriptor.key
@@ -114,7 +126,9 @@ class StudioFinalContractTest(unittest.TestCase):
                 "1\n00:00:00,000 --> 00:00:01,000\nTexto íntegro.\n",
                 encoding="utf-8",
             )
-            key = ProfileKey.for_component("studio", "instagram")
+            key = OperationalProfileKey(
+                "studio", "vertical", "studio_vertical"
+            )
             profile = _load_studio_profile(key)
             prepared = StudioInputPreparationService(root).prepare(
                 profile,
@@ -125,7 +139,7 @@ class StudioFinalContractTest(unittest.TestCase):
         self.assertEqual(subtitle, prepared.subtitle_path)
 
     def test_output_path_is_project_owned_for_all_feature_combinations(self):
-        key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+        key = OperationalProfileKey("studio", "vertical", "studio_vertical")
         project = type("Project", (), {
             "video_path": lambda self: Path(
                 "output/studio-test/video/studio-test.mp4"
@@ -151,8 +165,11 @@ class StudioFinalContractTest(unittest.TestCase):
         )
 
     def test_runtime_scaffolding_names_are_retired(self):
-        self.assertTrue(hasattr(start, "preparar_studio"))
-        self.assertTrue(hasattr(start, "ejecutar_studio"))
+        self.assertTrue(hasattr(StudioExecutionCoordinator, "run_route"))
+        self.assertTrue(hasattr(StudioExecutionCoordinator, "prepare_standard"))
+        self.assertTrue(hasattr(StudioExecutionCoordinator, "run_standard"))
+        self.assertFalse(hasattr(start, "preparar_studio"))
+        self.assertFalse(hasattr(start, "ejecutar_studio"))
         self.assertFalse(hasattr(start, "ejecutar_studio_fase_1"))
         self.assertFalse(hasattr(start, "ejecutar_studio_fase_2"))
 
@@ -174,11 +191,18 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
     def _run(command):
         subprocess.run(command, capture_output=True, check=True)
 
-    def _context(self, platform, style="single_line"):
-        key = ProfileKey.for_component("studio", platform)
+    def _context(self, profile_format, style="single_line"):
+        key = OperationalProfileKey(
+            "studio", profile_format, STUDIO_PROFILE_IDS[profile_format]
+        )
         profile = _load_studio_profile(key)
         subtitle = SubtitleProfileResolver().load(
-            SubtitleProfileKey.for_profile(key, style)
+            SubtitleProfileKey(
+                "studio",
+                profile_format,
+                STUDIO_STANDARD_SUBTITLE_PROFILE_IDS[(profile_format, style)],
+                "estandar",
+            )
         )
         return key, profile, subtitle
 
@@ -339,7 +363,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
     def _render(
         self,
         root,
-        platform,
+        profile_format,
         duration,
         style="single_line",
         source_audio=True,
@@ -348,7 +372,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
         outro=False,
         special_names=False,
     ):
-        key, profile, subtitle_profile = self._context(platform, style)
+        key, profile, subtitle_profile = self._context(profile_format, style)
         source_name = "Vídeo prueba (01).mp4" if special_names else "source.mp4"
         subtitle_name = (
             "Subtítulos vídeo 01.srt" if special_names else "source.srt"
@@ -441,39 +465,43 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
             self.assertGreater(blue, green + 80)
         return result
 
-    def test_case_a_instagram_minimal(self):
+    def test_case_a_vertical_minimal(self):
         with tempfile.TemporaryDirectory() as directory:
-            self._render(Path(directory), "instagram", 1.4)
+            self._render(Path(directory), "vertical", 1.4)
 
-    def test_case_b_youtube_minimal(self):
+    def test_case_b_horizontal_minimal(self):
         with tempfile.TemporaryDirectory() as directory:
-            self._render(Path(directory), "youtube", 1.4, style="word_by_word")
+            self._render(Path(directory), "horizontal", 1.4, style="word_by_word")
 
-    def test_case_c_instagram_complete(self):
+    def test_case_c_vertical_complete(self):
         with tempfile.TemporaryDirectory() as directory:
             result = self._render(
-                Path(directory), "instagram", 5.4,
+                Path(directory), "vertical", 5.4,
                 music=True, intro=True, outro=True,
             )
-            self.assertGreater(self._frame_mean(result.output_path, 0.7), 10)
+            # Fuente negra de 5,4 s entre intro (0-0,5 s) y outro (5,9-6,4 s):
+            # brillo alto solo dentro de intro y outro; el centro es la fuente.
+            self.assertGreater(self._frame_mean(result.output_path, 0.2), 10)
             self.assertLess(self._frame_mean(result.output_path, 3.0), 10)
-            self.assertGreater(self._frame_mean(result.output_path, 5.7), 10)
+            self.assertGreater(self._frame_mean(result.output_path, 6.2), 10)
 
-    def test_case_d_youtube_complete(self):
+    def test_case_d_horizontal_complete(self):
         with tempfile.TemporaryDirectory() as directory:
             result = self._render(
-                Path(directory), "youtube", 5.4,
+                Path(directory), "horizontal", 5.4,
                 style="word_by_word", music=True,
                 intro=True, outro=True,
             )
-            self.assertGreater(self._frame_mean(result.output_path, 0.7), 10)
+            # Fuente negra de 5,4 s entre intro (0-0,5 s) y outro (5,9-6,4 s):
+            # brillo alto solo dentro de intro y outro; el centro es la fuente.
+            self.assertGreater(self._frame_mean(result.output_path, 0.2), 10)
             self.assertLess(self._frame_mean(result.output_path, 3.0), 10)
-            self.assertGreater(self._frame_mean(result.output_path, 5.7), 10)
+            self.assertGreater(self._frame_mean(result.output_path, 6.2), 10)
 
     def test_case_e_source_without_audio(self):
         with tempfile.TemporaryDirectory() as directory:
             result = self._render(
-                Path(directory), "instagram", 1.4,
+                Path(directory), "vertical", 1.4,
                 source_audio=False, music=True, intro=True, outro=True,
             )
             self.assertTrue(result.silence_added)
@@ -481,7 +509,7 @@ class StudioFinalRealFFmpegTest(unittest.TestCase):
     def test_case_f_realistic_paths(self):
         with tempfile.TemporaryDirectory(prefix="STUDIO prueba (área) ") as directory:
             result = self._render(
-                Path(directory), "youtube", 1.4,
+                Path(directory), "horizontal", 1.4,
                 music=True, intro=True, outro=True,
                 special_names=True,
             )

@@ -71,7 +71,7 @@ class StudioOutputPathResolver:
         project=None,
     ):
         if not isinstance(profile_key, OperationalProfileKey):
-            raise TypeError("STUDIO requiere identidad operacional explicita.")
+            raise TypeError("STUDIO requiere identidad operacional explícita.")
         if profile_key.component is not ProfileComponent.STUDIO:
             raise ValueError("El output STUDIO requiere component=studio.")
 
@@ -86,7 +86,7 @@ class StudioOutputPathResolver:
             if selection.position == "intro":
                 return IntroOutroPlan(intro=selection)
             return IntroOutroPlan(outro=selection)
-        raise TypeError("La seleccion INTRO / OUTRO de STUDIO no es valida.")
+        raise TypeError("La selección INTRO / OUTRO de STUDIO no es válida.")
 
 
 class StudioOutputValidator:
@@ -109,7 +109,7 @@ class StudioOutputValidator:
         }.get(profile.codec, profile.codec)
         mismatches = []
         if (info.width, info.height) != (profile.width, profile.height):
-            mismatches.append("resolucion")
+            mismatches.append("resolución")
         effective_fps = (
             info.nominal_fps
             if info.nominal_fps is not None
@@ -228,7 +228,7 @@ class StudioRenderService:
             )
             if abs(render_style.offset) > 0.000001:
                 raise ValueError(
-                    "STUDIO requiere offset=0 para preservar los timings SRT."
+                    "STUDIO requiere offset=0 para preservar los tiempos del SRT."
                 )
             prepared_subtitle = SubtitleRenderPreparation(
                 style_builder=self.style_builder
@@ -524,7 +524,7 @@ class StudioRenderService:
         if subtitle_path is None:
             if subtitle_profile is not None:
                 raise ValueError(
-                    "STUDIO sin subtitulos no admite un perfil de subtitulos."
+                    "STUDIO sin subtítulos no admite un perfil de subtítulos."
                 )
             return
         if not isinstance(subtitle_profile, ResolvedSubtitleProfile):
@@ -533,13 +533,13 @@ class StudioRenderService:
             )
         if subtitle_profile.key.component is not ProfileComponent.STUDIO:
             raise ValueError(
-                "El perfil de subtitulos debe pertenecer a STUDIO."
+                "El perfil de subtítulos debe pertenecer a STUDIO."
             )
         if (
-            subtitle_profile.key.platform != profile_key.platform
+            subtitle_profile.key.format != profile_key.format
         ):
             raise ValueError(
-                "El perfil principal y el de subtitulos deben compartir plataforma."
+                "El perfil principal y el de subtítulos deben compartir formato."
             )
         if not Path(subtitle_path).is_file():
             raise FileNotFoundError(f"No existe el SRT STUDIO: {subtitle_path}")
@@ -568,7 +568,7 @@ class StudioRenderService:
             return "mono"
         if channels == 2:
             return "stereo"
-        raise ValueError("STUDIO solo admite audio mono o estereo.")
+        raise ValueError("STUDIO solo admite audio mono o estéreo.")
 
     @staticmethod
     def _remove_temporary(path):

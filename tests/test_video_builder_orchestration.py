@@ -78,7 +78,7 @@ class VideoBuilderOrchestrationTest(
         ) as render_service_class, patch(
             "app.modules.video.video_builder"
             ".FFmpegDiagnostics"
-        ) as diagnostics_class:
+        ):
             context_factory = (
                 context_factory_class.return_value
             )
@@ -226,7 +226,7 @@ class VideoBuilderOrchestrationTest(
         ) as render_service_class, patch(
             "app.modules.video.video_builder"
             ".FFmpegDiagnostics"
-        ) as diagnostics_class:
+        ):
             context_factory_class.return_value.build.return_value = (
                 context
             )
@@ -431,7 +431,7 @@ class VideoBuilderOrchestrationTest(
         ) as render_service_class, patch(
             "app.modules.video.video_builder"
             ".FFmpegDiagnostics"
-        ) as diagnostics_class:
+        ):
             context_factory_class.return_value.build.side_effect = (
                 contexts
             )

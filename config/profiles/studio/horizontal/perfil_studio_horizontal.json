@@ -1,0 +1,39 @@
+{
+    "component": "studio",
+    "format": "horizontal",
+    "profile_id": "studio_horizontal",
+    "studio": {
+        "input": {
+            "video_extensions": [".mp4"],
+            "subtitle_extensions": [".srt"]
+        },
+        "output": {
+            "width": 1920,
+            "height": 1080,
+            "fps": 30,
+            "video": {
+                "codec": "libx264",
+                "preset": "slow",
+                "crf": 16,
+                "pixel_format": "yuv420p",
+                "movflags": "+faststart"
+            },
+            "audio": {
+                "codec": "aac",
+                "bitrate": "192k",
+                "sample_rate": 48000,
+                "channels": 2
+            },
+            "validation": {
+                "max_duration_difference": 0.2
+            }
+        },
+        "montage": {
+            "transition_duration": 0.50
+        },
+        "music": {
+            "volume": 0.10,
+            "limiter_limit": 0.95
+        }
+    }
+}

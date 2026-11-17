@@ -14,11 +14,10 @@ from app.domain.adapters import (
 )
 from app.modules.images.backends import ComfyUIBackend
 from app.shared.config_contract import (
-    require_bool,
-    require_mapping,
     require_text,
 )
 from app.shared.config_manager import ConfigManager
+from app.shared.format_catalog import FormatCatalog
 from app.shared.progress_logger import ProgressLogger
 from app.shared.error_context import (
     ErrorContext,
@@ -63,6 +62,7 @@ class ImageBuilder:
         evidence_writer=None,
         profile=None,
         project=None,
+        format_catalog=None,
     ):
         self.comfyui_url = comfyui_url
 
@@ -98,6 +98,7 @@ class ImageBuilder:
         self.evidence_writer = evidence_writer
         self.profile = profile
         self.project = project
+        self.format_catalog = format_catalog
 
     def build(
         self,
@@ -210,7 +211,7 @@ class ImageBuilder:
             ):
                 raise ValueError(
                     f"La escena {scene_number} "
-                    f"no contiene informacion visual."
+                    f"no contiene información visual."
                 )
 
             runtime_metadata = (
@@ -269,92 +270,87 @@ class ImageBuilder:
                 )
             )
 
-            if (
-                self._is_image_validation_enabled(
-                    profile
-                )
-                or self._is_nudity_safety_enabled()
+            retry_paths = {}
+
+            def generate_quality_attempt(
+                attempt_number,
+                seed
             ):
-                retry_paths = {}
-
-                def generate_quality_attempt(
-                    attempt_number,
-                    seed
-                ):
-                    retry_number = attempt_number - 1
-                    attempt_dir = (
-                        output_dir
-                        / "_quality_attempts"
-                        / f"scene_{scene_number:03d}"
-                        / f"attempt_{retry_number:03d}"
-                    )
-                    attempt_dir.mkdir(
-                        parents=True,
-                        exist_ok=True,
-                    )
-                    attempt_path = (
-                        self._generate_validated_image(
-                            prompt=prompt,
-                            scene_number=scene_number,
-                            output_dir=attempt_dir,
-                            width=width,
-                            height=height,
-                            operational_prompt_observation=(
-                                runtime_metadata[
-                                    "_operational_prompt_observation"
-                                ]
-                            ),
-                        )
-                    )
-                    retry_paths[
-                        attempt_number
-                    ] = attempt_path
-                    return attempt_path
-
-                quality_result = (
-                    self._image_quality_flow().evaluate(
-                        image_path=image_path,
+                retry_number = attempt_number - 1
+                attempt_dir = (
+                    output_dir
+                    / "_quality_attempts"
+                    / f"scene_{scene_number:03d}"
+                    / f"attempt_{retry_number:03d}"
+                )
+                attempt_dir.mkdir(
+                    parents=True,
+                    exist_ok=True,
+                )
+                attempt_path = (
+                    self._generate_validated_image(
+                        prompt=prompt,
                         scene_number=scene_number,
+                        output_dir=attempt_dir,
                         width=width,
                         height=height,
-                        generate_attempt=generate_quality_attempt
+                        operational_prompt_observation=(
+                            runtime_metadata[
+                                "_operational_prompt_observation"
+                            ]
+                        ),
+                        seed=seed,
                     )
                 )
-                quality_evidence = None
-                if self._is_visual_quality_result(
-                    quality_result
-                ):
-                    quality_evidence = (
-                        self._evidence_writer().write_visual_quality_result(
-                            output_dir=output_dir,
-                            scene_number=scene_number,
-                            visual_quality_result=quality_result,
-                        )
-                    )
-                if hasattr(quality_result, "history"):
-                    prompt_metadata["visual_quality"] = (
-                        self._visual_quality_trace(quality_result)
+                retry_paths[
+                    attempt_number
+                ] = attempt_path
+                return attempt_path
+
+            quality_result = (
+                self._image_quality_flow().evaluate(
+                    image_path=image_path,
+                    scene_number=scene_number,
+                    width=width,
+                    height=height,
+                    generate_attempt=generate_quality_attempt
                 )
-                if quality_result.status == "manual_review":
-                    raise self._manual_review_required_error(
-                        quality_result=quality_result,
-                        quality_evidence=quality_evidence,
+            )
+            quality_evidence = None
+            if self._is_visual_quality_result(
+                quality_result
+            ):
+                quality_evidence = (
+                    self._evidence_writer().write_visual_quality_result(
+                        output_dir=output_dir,
                         scene_number=scene_number,
+                        visual_quality_result=quality_result,
                     )
-                if quality_result.status != "approved":
-                    raise RuntimeError(
-                        "La validación de imagen requiere "
-                        "intervencion antes de continuar: "
-                        f"{quality_result.status}"
-                    )
-                accepted_retry_path = retry_paths.get(
-                    quality_result.generated_asset.attempt_number,
                 )
-                if accepted_retry_path is not None:
-                    shutil.copy2(
-                        accepted_retry_path,
-                        image_path,
-                    )
+            if hasattr(quality_result, "history"):
+                prompt_metadata["visual_quality"] = (
+                    self._visual_quality_trace(quality_result)
+            )
+            if quality_result.status == "manual_review":
+                raise self._manual_review_required_error(
+                    quality_result=quality_result,
+                    quality_evidence=quality_evidence,
+                    scene_number=scene_number,
+                )
+            if quality_result.status != "approved":
+                raise RuntimeError(
+                    "La validación de imagen requiere "
+                    "intervención antes de continuar: "
+                    f"{quality_result.status}"
+                )
+            accepted_retry_path = retry_paths.get(
+                quality_result.generated_asset.attempt_number,
+            )
+            if accepted_retry_path is not None:
+                shutil.copy2(
+                    accepted_retry_path,
+                    image_path,
+                )
 
             generation_result = (
                 GenerationResultAdapter.from_image_result(
@@ -700,13 +696,8 @@ class ImageBuilder:
             "format",
             "format"
         ).lower()
-        if image_format == "vertical":
-            return "vertical 9:16"
-        if image_format == "horizontal":
-            return "wide horizontal 16:9"
-        raise ValueError(
-            "La configuracion format debe ser vertical "
-            "u horizontal."
+        return self._format_catalog().image_guidance(
+            image_format
         )
 
     def _has_visual_truth_content(
@@ -797,6 +788,16 @@ class ImageBuilder:
             )
 
         return self.backend_adapter
+
+    def _format_catalog(
+        self
+    ):
+        if self.format_catalog is None:
+            self.format_catalog = (
+                FormatCatalog()
+            )
+
+        return self.format_catalog
 
     def _evidence_writer(
         self
@@ -894,12 +895,12 @@ class ImageBuilder:
                 family="VALIDATION",
                 severity=ErrorSeverity.FATAL_OPERATIONAL,
                 user_message=(
-                    "La imagen candidata requiere revision manual "
+                    "La imagen candidata requiere revisión manual "
                     "antes de continuar."
                 ),
                 recommended_action=(
                     "Revise la imagen candidata y la evidencia de "
-                    "validacion; no se ha aprobado como asset final."
+                    "validación; no se ha aprobado como asset final."
                 ),
                 operation=(
                     "Validar calidad visual de "
@@ -924,6 +925,7 @@ class ImageBuilder:
         width,
         height,
         operational_prompt_observation,
+        seed=None,
     ):
         if (
             operational_prompt_observation.operational_prompt.fingerprint
@@ -944,27 +946,8 @@ class ImageBuilder:
             output_dir=output_dir,
             width=width,
             height=height,
+            seed=seed,
         )
-
-    def _is_image_validation_enabled(
-        self,
-        profile
-    ):
-        image_validation = require_mapping(
-            profile,
-            "image_validation",
-            "image_validation"
-        )
-        return require_bool(
-            image_validation,
-            "enabled",
-            "image_validation.enabled"
-        )
-
-    def _is_nudity_safety_enabled(
-        self
-    ):
-        return True
 
     def _visual_quality_trace(
         self,
@@ -1002,12 +985,14 @@ class ImageBuilder:
         scene_number,
         output_dir,
         width,
-        height
+        height,
+        seed=None
     ):
         return self.backend.generate(
             prompt=prompt,
             scene_number=scene_number,
             output_dir=output_dir,
             width=width,
-            height=height
+            height=height,
+            seed=seed
         )

@@ -4,7 +4,6 @@ import pytest
 
 from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.modules.subtitles.policies.text_case import TextCasePolicy
-from app.shared.profile_identity import ProfileKey
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
@@ -53,16 +52,36 @@ def test_text_case_contract_validation():
         TextCasePolicy.from_cue_policy({"text_case": "caps"})
 
 
+@pytest.mark.parametrize("cue_policy", (
+    {"uppercase": True},
+    {"uppercase": False},
+    {"text_case": "uppercase", "uppercase": True},
+))
+def test_retired_uppercase_key_fails_with_clear_message(cue_policy):
+    with pytest.raises(ValueError, match="clave antigua uppercase. Use cue_policy.text_case"):
+        TextCasePolicy.from_cue_policy(cue_policy)
+
+
 def test_design_and_standard_profiles_use_the_common_policy_without_original_path():
     resolver = SubtitleProfileResolver()
-    standard = resolver.load_selection(ProfileKey.for_component("guion", "instagram"), "subtitulo_guion_instagram_linea_unica")
+    standard = resolver.load(SubtitleProfileKey(
+        component="guion",
+        format="vertical",
+        family="estandar",
+        profile_id="subtitulo_guion_vertical_linea_unica",
+    ))
     design = resolver.load(SubtitleProfileKey(
         component="studio",
-        platform="instagram",
+        format="vertical",
         family="design",
-        profile_id="modo_conciencia_reels",
+        profile_id="modo_conciencia_palabra_unica",
     ))
     standard.cue_policy["text_case"] = "lowercase"
     design.cue_policy["text_case"] = "uppercase"
-    assert SPANISH.lower() in SubtitleCueTransformer(standard, 30).transform(SOURCE)
+    standard_output = SubtitleCueTransformer(standard, 30).transform(SOURCE)
+    standard_text = " ".join(
+        line for line in standard_output.splitlines()
+        if "-->" not in line and not line.isdigit()
+    )
+    assert SPANISH.lower() == " ".join(standard_text.split())
     assert SPANISH.upper().split()[0] in SubtitleCueTransformer(design, 30).transform(SOURCE)

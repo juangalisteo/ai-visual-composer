@@ -1,12 +1,9 @@
 """Focused configuration-to-public-audio tests for declarative Piper voices."""
 
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile
-import wave
-from unittest.mock import patch
 
 import pytest
 
@@ -17,9 +14,27 @@ from app.modules.audio.voice_builder import VoiceBuilder
 from app.shared.config_manager import ConfigManager
 
 
+_PIPER_DIR = Path(__file__).resolve().parents[1] / "models" / "audio" / "piper"
+
+
+def _missing_voice_mark(voice_dir, model_name):
+    return pytest.mark.skipif(
+        not (_PIPER_DIR / voice_dir / model_name).is_file(),
+        reason=f"Falta la voz Piper en models/audio/piper/{voice_dir}/.",
+    )
+
+
 VOICE_CASES = (
-    ("piper_davefx", 22_050),
-    ("piper_carlfm", 16_000),
+    pytest.param(
+        "piper_davefx",
+        22_050,
+        marks=_missing_voice_mark("es_ES_davefx", "es_ES-davefx-medium.onnx"),
+    ),
+    pytest.param(
+        "piper_carlfm",
+        16_000,
+        marks=_missing_voice_mark("es_ES_carlfm", "es_ES-carlfm-x_low.onnx"),
+    ),
 )
 
 
@@ -27,12 +42,18 @@ class _PiperVoiceDouble:
     def __init__(self, sample_rate_hz):
         self.config = type("Config", (), {"sample_rate": sample_rate_hz})()
 
-    def synthesize_wav(self, text, wav_file, *, syn_config):
+    def synthesize(self, text, *, syn_config):
         del text, syn_config
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(self.config.sample_rate)
-        wav_file.writeframes(b"\x00\x00" * (self.config.sample_rate // 20))
+        yield type(
+            "Chunk",
+            (),
+            {
+                "sample_rate": self.config.sample_rate,
+                "sample_width": 2,
+                "sample_channels": 1,
+                "audio_int16_bytes": b"\x00\x00" * (self.config.sample_rate // 20),
+            },
+        )()
 
 
 def _piper_backend_factory(project_root, observed_sample_rates, observed_timings):
@@ -80,16 +101,15 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
         root = Path(directory)
         workspace_parent = root / "workspaces"
         output_path = root / "audio" / "voz.mp3"
-        with patch.dict(os.environ, {"MC_VOICE_CONFIG": voice_stem}, clear=False):
-            builder = VoiceBuilder(
-                config_manager=ConfigManager(),
-                backend_registry=TtsBackendRegistry((provider,)),
-                workspace_parent=workspace_parent,
-            )
-            result = builder.build(
-                "La certificación técnica conserva puntuación y arquitectura.",
-                output_path=output_path,
-            )
+        builder = VoiceBuilder(
+            config_manager=ConfigManager(voice_config_id=voice_stem),
+            backend_registry=TtsBackendRegistry((provider,)),
+            workspace_parent=workspace_parent,
+        )
+        result = builder.build(
+            "La certificación técnica conserva puntuación y arquitectura.",
+            output_path=output_path,
+        )
 
         probe = subprocess.run(
             [
@@ -97,7 +117,7 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
                 "-v",
                 "error",
                 "-show_entries",
-                "stream=codec_name,channels",
+                "stream=codec_name,sample_rate,channels",
                 "-of",
                 "json",
                 str(output_path),
@@ -111,7 +131,8 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
         assert result == output_path
         assert output_path.is_file()
         assert output_path.stat().st_size > 0
-        assert stream == {"codec_name": "mp3", "channels": 1}
+        # Published at 44 100 Hz (MPEG-1) whatever the model rate.
+        assert stream == {"codec_name": "mp3", "sample_rate": "44100", "channels": 1}
         assert tuple(workspace_parent.iterdir()) == ()
         assert provider.backend_key == "piper_onnx"
         assert observed_sample_rates == [expected_sample_rate]
@@ -121,10 +142,8 @@ def test_declarative_piper_voice_flows_through_provider_backend_and_voice_builde
 def test_piper_catalog_uses_no_fallback_and_default_voice_is_davefx():
     configuration = ConfigManager()
 
-    with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("MC_VOICE_CONFIG", None)
-        default_voice = configuration.get_tts_voice_configuration().voice
+    default_voice = configuration.get_tts_voice_configuration().voice
 
     assert default_voice.voice_id == "piper_voice_davefx"
     assert default_voice.backend_key == "piper_onnx"
-    assert default_voice.backend_options["synthesis"] == {}
+    assert default_voice.backend_options["synthesis"] == {"length_scale": 1.10}

@@ -340,11 +340,34 @@ class OverlayFolderResolverTest(
     def test_rejects_empty_response(
         self
     ):
-        resolver = OverlayFolderResolver(
-            provider=FakeProvider(
-                response=""
-            )
-        )
+        for response in ("", "   ", " \n "):
+            with self.subTest(response=response):
+                provider = FakeProvider(
+                    response=response
+                )
+                resolver = OverlayFolderResolver(
+                    provider=provider
+                )
+
+                resolution = resolver.resolve_categories(
+                    topic="Nikola Tesla",
+                    folders=(
+                        "Electricity",
+                        "Light Leaks"
+                    )
+                )
+
+                self.assertEqual(
+                    1,
+                    len(provider.prompts)
+                )
+                self.assertIsNone(
+                    resolution.primary
+                )
+                self.assertEqual(
+                    (),
+                    resolution.thematic_folders
+                )
 
     def test_none_response_is_valid_neutral_fallback_signal(
         self

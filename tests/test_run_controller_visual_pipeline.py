@@ -3,13 +3,18 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.controllers.run_controller import RunController
+from app.core.execution_request import (
+    DesignExecutionRequest,
+    StandardExecutionRequest,
+)
 from app.shared.error_context import ExitKind
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
+from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from tests.test_menu_helpers import MenuAnswers
 
 
 class RunControllerVisualPipelineTest(unittest.TestCase):
@@ -17,10 +22,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_selects_image_pipeline(self):
         controller = RunController()
 
+        answers = MenuAnswers("Imagen")
         with patch(
             "builtins.input",
-            return_value="2"
-        ):
+            side_effect=answers.input
+        ), patch("builtins.print", side_effect=answers.print):
             self.assertEqual(
                 "image",
                 controller.select_visual_pipeline()
@@ -29,11 +35,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_selects_script_pipeline_from_main_menu(self):
         controller = RunController()
 
+        answers = MenuAnswers("Guion")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_visual_pipeline()
 
@@ -62,11 +70,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_selects_video_pipeline_from_main_menu(self):
         controller = RunController()
 
+        answers = MenuAnswers("Video")
         with patch(
             "builtins.input",
-            return_value="3"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_visual_pipeline()
 
@@ -91,11 +101,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_script_destination_video_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Video")
         with patch(
             "builtins.input",
-            return_value="2"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_script_destination()
 
@@ -132,11 +144,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_script_destination_design_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Diseño")
         with patch(
             "builtins.input",
-            return_value="3"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_script_destination()
 
@@ -169,11 +183,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_design_target_image_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Imagen")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_design_target()
 
@@ -203,11 +219,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_design_target_video_is_visible_and_selectable(self):
         controller = RunController()
 
+        answers = MenuAnswers("Video")
         with patch(
             "builtins.input",
-            return_value="2"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_design_target()
 
@@ -267,39 +285,40 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
-                "instagram",
-                ("1",),
+                "vertical",
+                ("Vertical 9:16",),
             ),
             (
                 "design_image",
                 ProfileComponent.IMAGEN,
-                "youtube",
-                ("2",),
+                "horizontal",
+                ("Horizontal 16:9",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
-                "instagram",
-                ("1",),
+                "vertical",
+                ("Vertical 9:16",),
             ),
             (
                 "design_video",
                 ProfileComponent.VIDEO,
-                "youtube",
-                ("2",),
+                "horizontal",
+                ("Horizontal 16:9",),
             ),
         )
 
-        for scope, component, platform, selections in cases:
-            with self.subTest(scope=scope, platform=platform):
+        for scope, component, profile_format, selections in cases:
+            answers = MenuAnswers(*selections)
+            with self.subTest(scope=scope, profile_format=profile_format):
                 with patch.object(
                     controller.subtitle_profile_resolver,
                     "discover_families",
                     side_effect=AssertionError(
                         "Diseño no debe descubrir subtítulos."
                     ),
-                ), patch("builtins.input", side_effect=selections), patch(
-                    "builtins.print"
+                ), patch("builtins.input", side_effect=answers.input), patch(
+                    "builtins.print", side_effect=answers.print
                 ) as print_mock:
                     selected = controller.select_profile(
                         scope
@@ -307,8 +326,8 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
                 profile_key = OperationalProfileKey(
                     component,
-                    platform,
-                    f"{component.value}_{platform}",
+                    profile_format,
+                    f"{component.value}_{profile_format}",
                 )
                 printed = "\n".join(
                     str(call.args[0])
@@ -332,9 +351,14 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_normal_script_selection_still_discovers_and_transports_subtitles(self):
         controller = RunController()
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
 
-        with patch("builtins.input", side_effect=("1", "1", "1")), patch(
-            "builtins.print"
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "builtins.print", side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile("script")
 
@@ -351,11 +375,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_image_modes_exclude_legacy_script_mode(self):
         controller = RunController()
 
+        answers = MenuAnswers("Proyecto completo")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_pipeline_mode()
 
@@ -396,11 +422,17 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_video_profile_selection_uses_main_visual_profiles(self):
         controller = RunController()
 
+        answers = MenuAnswers(
+            "Vertical 9:16",
+            "MODO CONCIENCIA",
+            "Modo Conciencia | Palabra única",
+        )
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_profile(
                 "video"
@@ -412,27 +444,27 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             if call.args
         )
         self.assertIn(
-            selected["profile_key"].platform,
-            ("instagram", "youtube"),
+            selected["profile_key"].format,
+            ("horizontal", "vertical"),
         )
         self.assertEqual(
             Path(
-                "config/profiles/video/instagram/"
-                "perfil_video_instagram.json"
+                "config/profiles/video/vertical/"
+                "perfil_video_vertical.json"
             ),
             selected["path"]
         )
         self.assertIn(
-            "PLATAFORMA",
+            "FORMATO",
             printed
         )
 
     def test_existing_modes_keep_internal_identifiers(self):
         cases = (
-            ("1", "full"),
-            ("2", "audio"),
-            ("3", "subtitles"),
-            ("4", "storyboard"),
+            ("Proyecto completo", "full"),
+            ("Solo audio", "audio"),
+            ("Audio + subtítulos", "subtitles"),
+            ("Audio + subtítulos + storyboard", "storyboard"),
         )
 
         for option, expected_mode in cases:
@@ -440,11 +472,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 option=option
             ):
                 controller = RunController()
+                answers = MenuAnswers(option)
 
                 with patch(
                     "builtins.input",
-                    return_value=option
-                ):
+                    side_effect=answers.input
+                ), patch("builtins.print", side_effect=answers.print):
                     self.assertEqual(
                         expected_mode,
                         controller.select_pipeline_mode()
@@ -453,11 +486,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_script_modes_include_secondary_full_without_subtitles(self):
         controller = RunController()
 
+        answers = MenuAnswers("Proyecto completo sin subtítulos")
         with patch(
             "builtins.input",
-            return_value="5",
+            side_effect=answers.input,
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print,
         ) as print_mock:
             selected = controller.select_pipeline_mode(
                 include_full_without_subtitles=True,
@@ -480,11 +515,16 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_script_entry_selects_image_destination_and_reuses_image_flow(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
-            "instagram",
-            "guion_instagram",
-            "estandar",
+            "vertical",
+            "guion_vertical",
+        )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.GUION,
+            "vertical",
+            "dummy_subtitle_profile",
+            "test_family",
         )
 
         with patch.object(
@@ -504,16 +544,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/guion/instagram/estandar/"
-                    "perfil_guion_instagram.json"
+                    "config/profiles/guion/vertical/estandar/"
+                    "perfil_guion_vertical.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
         ) as profile_mock, patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="single_line"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="masculina"
@@ -538,23 +575,23 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
             "image",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "manual",
-            options["script_source"]
+            request.route.script_source
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
         self.assertEqual(
             "script image project",
-            options["project_name"]
+            request.project_name
         )
         mode_mock.assert_called_once_with(
             include_full_without_subtitles=True,
@@ -564,7 +601,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        subtitle_mock.assert_called_once()
+        self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -572,11 +609,16 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
 
     def test_run_includes_visual_pipeline_without_changing_existing_options(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "youtube",
-            "imagen_youtube",
-            "estandar",
+            "horizontal",
+            "imagen_horizontal",
+        )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.IMAGEN,
+            "horizontal",
+            "dummy_subtitle_profile",
+            "test_family",
         )
 
         with patch.object(
@@ -592,15 +634,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/estandar/"
-                    "perfil_imagen_youtube.json"
+                    "config/profiles/imagen/horizontal/estandar/"
+                    "perfil_imagen_horizontal.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
-        ), patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="single_line"
         ), patch.object(
             controller,
             "select_voice_config",
@@ -626,41 +665,44 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
             "image",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "generated",
-            options["script_source"]
+            request.route.script_source
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
         self.assertEqual(
             "project",
-            options["project_name"]
+            request.project_name
         )
         self.assertEqual(
             "smart",
-            options["overlays_mode"]
+            request.route.overlays_mode
         )
-        self.assertEqual(
-            "",
-            options["design_target"]
-        )
+        self.assertIsInstance(request.route, StandardExecutionRequest)
+        self.assertNotIn("design_target", vars(request.route))
         intro_outro_mock.assert_called_once()
 
     def test_script_entry_selects_video_destination_and_reuses_video_flow(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.GUION,
-            "instagram",
-            "guion_instagram",
-            "estandar",
+            "vertical",
+            "guion_vertical",
+        )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.GUION,
+            "vertical",
+            "dummy_subtitle_profile",
+            "test_family",
         )
 
         with patch.object(
@@ -680,16 +722,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/guion/instagram/estandar/"
-                    "perfil_guion_instagram.json"
+                    "config/profiles/guion/vertical/estandar/"
+                    "perfil_guion_vertical.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
         ) as profile_mock, patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="single_line"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="masculina"
@@ -714,27 +753,25 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         self.assertEqual(
             "video",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "manual",
-            options["script_source"]
+            request.route.script_source
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
-        self.assertEqual(
-            "",
-            options["design_target"]
-        )
+        self.assertIsInstance(request.route, StandardExecutionRequest)
+        self.assertNotIn("design_target", vars(request.route))
         self.assertEqual(
             "script video project",
-            options["project_name"]
+            request.project_name
         )
         mode_mock.assert_called_once_with(
             include_full_without_subtitles=True,
@@ -744,7 +781,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         )
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
-        subtitle_mock.assert_called_once()
+        self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
@@ -756,8 +793,14 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
+        )
+        subtitle_key = SubtitleProfileKey(
+            ProfileComponent.VIDEO,
+            "vertical",
+            "dummy_subtitle_profile",
+            "test_family",
         )
 
         with patch.object(
@@ -773,16 +816,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/video/instagram/"
-                    "perfil_video_instagram.json"
+                    "config/profiles/video/vertical/"
+                    "perfil_video_vertical.json"
                 ),
                 "profile_key": profile_key,
+                "subtitle_profile_key": subtitle_key,
             }
         ) as profile_mock, patch.object(
-            controller,
-            "select_subtitle_config",
-            return_value="word_by_word"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="femenina"
@@ -807,48 +847,46 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
         mode_mock.assert_called_once()
         profile_mock.assert_called_once_with(
             "video"
         )
-        subtitle_mock.assert_called_once()
+        self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_called_once()
         intro_outro_mock.assert_called_once()
         self.assertEqual(
             "video",
-            options["visual_pipeline"]
+            request.route.visual_pipeline
         )
         self.assertEqual(
             "full",
-            options["pipeline_mode"]
+            request.route.pipeline_mode
         )
-        self.assertEqual(
-            "word_by_word",
-            options["subtitle_config"]
-        )
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
         self.assertEqual(
             "femenina",
-            options["voice_config"]
+            request.route.voice_config_id
         )
         self.assertEqual(
             "random",
-            options["music_category"]
+            request.route.music_category
         )
         self.assertEqual(
             "smart",
-            options["overlays_mode"]
+            request.route.overlays_mode
         )
 
     def test_script_design_image_only_requests_design_image_inputs(self):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "instagram",
-            "imagen_instagram",
+            "vertical",
+            "imagen_vertical",
         )
 
         with patch.object(
@@ -877,9 +915,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             }
         ) as profile_mock, patch.object(
             controller,
-            "select_subtitle_config"
-        ) as subtitle_mock, patch.object(
-            controller,
             "select_voice_config"
         ) as voice_mock, patch.object(
             controller,
@@ -899,14 +934,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         design_target_mock.assert_called_once()
         mode_mock.assert_not_called()
         profile_mock.assert_called_once_with(
             "design_image"
         )
-        subtitle_mock.assert_not_called()
         voice_mock.assert_not_called()
         music_mock.assert_not_called()
         overlays_mock.assert_not_called()
@@ -914,56 +948,34 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
         self.assertEqual(
-            "image",
-            options["visual_pipeline"]
+            DesignExecutionRequest(mode="design_image"),
+            request.route
+        )
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertIsNone(request.subtitle_profile_key)
+        self.assertEqual(
+            {"mode"},
+            set(vars(request.route))
+        )
+        self.assertIs(
+            ProfileComponent.IMAGEN,
+            request.operational_profile_key.component
         )
         self.assertEqual(
-            "manual_design",
-            options["script_source"]
+            "vertical",
+            request.operational_profile_key.format
         )
         self.assertEqual(
-            "image",
-            options["design_target"]
-        )
-        self.assertEqual(
-            "design_image",
-            options["pipeline_mode"]
-        )
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
-        self.assertIsNone(options["subtitle_profile_key"])
-        self.assertEqual(
-            "",
-            options["voice_config"]
-        )
-        self.assertIsNone(
-            options["music_category"]
-        )
-        self.assertEqual(
-            "off",
-            options["overlays_mode"]
-        )
-        self.assertEqual(
-            "imagen",
-            options["profile_component"]
-        )
-        self.assertEqual(
-            "instagram",
-            options["profile_platform"]
-        )
-        self.assertEqual(
-            "imagen_instagram",
-            options["profile_id"]
+            "imagen_vertical",
+            request.operational_profile_key.profile_id
         )
 
     def test_script_design_video_only_requests_design_video_inputs(self):
         controller = RunController()
         profile_key = OperationalProfileKey(
             ProfileComponent.VIDEO,
-            "instagram",
-            "video_instagram",
+            "vertical",
+            "video_vertical",
         )
 
         with patch.object(
@@ -992,9 +1004,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             }
         ) as profile_mock, patch.object(
             controller,
-            "select_subtitle_config"
-        ) as subtitle_mock, patch.object(
-            controller,
             "select_voice_config"
         ) as voice_mock, patch.object(
             controller,
@@ -1014,14 +1023,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ) as clear_mock:
-            options = controller.run()
+            request = controller.run()
 
         design_target_mock.assert_called_once()
         mode_mock.assert_not_called()
         profile_mock.assert_called_once_with(
             "design_video"
         )
-        subtitle_mock.assert_not_called()
         voice_mock.assert_not_called()
         music_mock.assert_not_called()
         overlays_mock.assert_not_called()
@@ -1029,48 +1037,26 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         project_mock.assert_called_once()
         clear_mock.assert_called_once()
         self.assertEqual(
-            "video",
-            options["visual_pipeline"]
+            DesignExecutionRequest(mode="design_video"),
+            request.route
+        )
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertIsNone(request.subtitle_profile_key)
+        self.assertEqual(
+            {"mode"},
+            set(vars(request.route))
+        )
+        self.assertIs(
+            ProfileComponent.VIDEO,
+            request.operational_profile_key.component
         )
         self.assertEqual(
-            "manual_design",
-            options["script_source"]
+            "vertical",
+            request.operational_profile_key.format
         )
         self.assertEqual(
-            "video",
-            options["design_target"]
-        )
-        self.assertEqual(
-            "design_video",
-            options["pipeline_mode"]
-        )
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
-        self.assertIsNone(options["subtitle_profile_key"])
-        self.assertEqual(
-            "",
-            options["voice_config"]
-        )
-        self.assertIsNone(
-            options["music_category"]
-        )
-        self.assertEqual(
-            "off",
-            options["overlays_mode"]
-        )
-        self.assertEqual(
-            "video",
-            options["profile_component"]
-        )
-        self.assertEqual(
-            "instagram",
-            options["profile_platform"]
-        )
-        self.assertEqual(
-            "video_instagram",
-            options["profile_id"]
+            "video_vertical",
+            request.operational_profile_key.profile_id
         )
 
     def test_audio_mode_skips_subtitles_but_keeps_voice_and_music(self):
@@ -1089,14 +1075,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/estandar/"
-                    "perfil_imagen_youtube.json"
+                    "config/profiles/imagen/horizontal/estandar/"
+                    "perfil_imagen_horizontal.json"
                 )
             }
         ), patch.object(
-            controller,
-            "select_subtitle_config"
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="femenina"
@@ -1119,38 +1102,37 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False
         ):
-            options = controller.run()
+            request = controller.run()
 
-        subtitle_mock.assert_not_called()
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
         overlays_mock.assert_not_called()
         intro_outro_mock.assert_not_called()
-        self.assertEqual(
-            "",
-            options["subtitle_config"]
-        )
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
         self.assertEqual(
             "femenina",
-            options["voice_config"]
+            request.route.voice_config_id
         )
         self.assertEqual(
             "calm",
-            options["music_category"]
+            request.route.music_category
         )
         self.assertEqual(
             "off",
-            options["overlays_mode"]
+            request.route.overlays_mode
         )
 
     def test_music_menu_only_exposes_disabled_or_random_selection(self):
         controller = RunController()
 
+        answers = MenuAnswers("Aleatoria")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_music_category()
 
@@ -1187,10 +1169,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     def test_music_menu_without_music_returns_none(self):
         controller = RunController()
 
+        answers = MenuAnswers("Sin música")
         with patch(
             "builtins.input",
-            return_value="2"
-        ):
+            side_effect=answers.input
+        ), patch("builtins.print", side_effect=answers.print):
             self.assertIsNone(
                 controller.select_music_category()
             )
@@ -1207,11 +1190,16 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 pipeline_mode=pipeline_mode
             ):
                 controller = RunController()
-                profile_key = ProfileKey(
+                profile_key = OperationalProfileKey(
                     ProfileComponent.IMAGEN,
-                    "youtube",
-                    "imagen_youtube",
-                    "estandar",
+                    "horizontal",
+                    "imagen_horizontal",
+                )
+                subtitle_key = SubtitleProfileKey(
+                    ProfileComponent.IMAGEN,
+                    "horizontal",
+                    "dummy_subtitle_profile",
+                    "test_family",
                 )
 
                 with patch.object(
@@ -1227,16 +1215,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/imagen/youtube/estandar/"
-                            "perfil_imagen_youtube.json"
+                            "config/profiles/imagen/horizontal/estandar/"
+                            "perfil_imagen_horizontal.json"
                         ),
                         "profile_key": profile_key,
+                        "subtitle_profile_key": subtitle_key,
                     }
                 ), patch.object(
-                    controller,
-                    "select_subtitle_config",
-                    return_value="single_line"
-                ) as subtitle_mock, patch.object(
                     controller,
                     "select_voice_config",
                     return_value="masculina"
@@ -1261,9 +1246,9 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "ask_clear_output",
                     return_value=False
                 ):
-                    options = controller.run()
+                    request = controller.run()
 
-                subtitle_mock.assert_called_once()
+                self.assertIs(subtitle_key, request.subtitle_profile_key)
                 music_mock.assert_called_once()
                 if pipeline_mode in {
                     "full",
@@ -1272,27 +1257,24 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     intro_outro_mock.assert_called_once()
                     self.assertEqual(
                         "smart",
-                        options["overlays_mode"]
+                        request.route.overlays_mode
                     )
                 else:
                     overlays_mock.assert_not_called()
                     intro_outro_mock.assert_not_called()
                     self.assertEqual(
                         "off",
-                        options["overlays_mode"]
+                        request.route.overlays_mode
                     )
-                self.assertEqual(
-                    "single_line",
-                    options["subtitle_config"]
-                )
+                self.assertNotIn("subtitle_config", vars(request))
+                self.assertNotIn("subtitle_config", vars(request.route))
 
     def test_full_without_subtitles_skips_subtitle_selection(self):
         controller = RunController()
-        profile_key = ProfileKey(
+        profile_key = OperationalProfileKey(
             ProfileComponent.IMAGEN,
-            "youtube",
-            "imagen_youtube",
-            "estandar",
+            "horizontal",
+            "imagen_horizontal",
         )
 
         with patch.object(
@@ -1308,15 +1290,12 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "select_profile",
             return_value={
                 "path": (
-                    "config/profiles/imagen/youtube/estandar/"
-                    "perfil_imagen_youtube.json"
+                    "config/profiles/imagen/horizontal/estandar/"
+                    "perfil_imagen_horizontal.json"
                 ),
                 "profile_key": profile_key,
             },
         ), patch.object(
-            controller,
-            "select_subtitle_config",
-        ) as subtitle_mock, patch.object(
             controller,
             "select_voice_config",
             return_value="masculina",
@@ -1341,21 +1320,23 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "ask_clear_output",
             return_value=False,
         ):
-            options = controller.run()
+            request = controller.run()
 
-        subtitle_mock.assert_not_called()
-        self.assertEqual("", options["subtitle_config"])
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
 
     def test_overlay_menu_returns_on_when_enabled(
         self
     ):
         controller = RunController()
 
+        answers = MenuAnswers("Sí")
         with patch(
             "builtins.input",
-            return_value="1"
+            side_effect=answers.input
         ), patch(
-            "builtins.print"
+            "builtins.print",
+            side_effect=answers.print
         ) as print_mock:
             selected = controller.select_overlays_mode()
 
@@ -1386,10 +1367,11 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
     ):
         controller = RunController()
 
+        answers = MenuAnswers("No")
         with patch(
             "builtins.input",
-            return_value="2"
-        ):
+            side_effect=answers.input
+        ), patch("builtins.print", side_effect=answers.print):
             self.assertEqual(
                 "off",
                 controller.select_overlays_mode()
@@ -1423,14 +1405,10 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "select_profile",
                     return_value={
                         "path": (
-                            "config/profiles/imagen/youtube/estandar/"
-                            "perfil_imagen_youtube.json"
+                            "config/profiles/imagen/horizontal/estandar/"
+                            "perfil_imagen_horizontal.json"
                         )
                     }
-                ), patch.object(
-                    controller,
-                    "select_subtitle_config",
-                    return_value="single_line"
                 ), patch.object(
                     controller,
                     "select_voice_config",
@@ -1454,13 +1432,13 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     "ask_clear_output",
                     return_value=False
                 ):
-                    options = controller.run()
+                    request = controller.run()
 
                 overlays_mock.assert_not_called()
                 intro_outro_mock.assert_not_called()
                 self.assertEqual(
                     "off",
-                    options["overlays_mode"]
+                    request.route.overlays_mode
                 )
 
 

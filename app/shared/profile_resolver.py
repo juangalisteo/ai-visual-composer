@@ -2,17 +2,22 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.shared.format_catalog import (
+    LANDSCAPE,
+    PORTRAIT,
+    FormatCatalog,
+)
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    coerce_profile_platform,
+    coerce_profile_format,
 )
 from app.shared.operational_error import create_operational_error
 
 
 @dataclass(frozen=True)
 class OperationalProfileDescriptor:
-    """An operational document discovered at its component/platform root."""
+    """An operational document discovered at its component/format root."""
 
     key: OperationalProfileKey
     path: Path
@@ -22,21 +27,26 @@ class OperationalProfileDescriptor:
 class ProfileResolver:
     def __init__(
         self,
-        profiles_root=Path("config/profiles")
+        profiles_root=Path("config/profiles"),
+        format_catalog=None,
     ):
         self.profiles_root = Path(
             profiles_root
         )
+        # The format catalog sits next to the profiles root (config/formats.json).
+        self.format_catalog = format_catalog or FormatCatalog(
+            self.profiles_root.parent / "formats.json"
+        )
 
-    def discover_operational_profiles(self, component, platform):
+    def discover_operational_profiles(self, component, profile_format):
         """Discover operational documents by canonical identity.
 
-        Operational documents exist only at component/platform root. Subtitle
+        Operational documents exist only at component/format root. Subtitle
         families are resolved by ``SubtitleProfileResolver`` independently.
         """
         component = ProfileComponent(component)
-        platform = coerce_profile_platform(platform)
-        descriptors = self._operational_candidates(component, platform)
+        profile_format = coerce_profile_format(profile_format)
+        descriptors = self._operational_candidates(component, profile_format)
         self._raise_if_duplicate_operational_ids(descriptors)
         return tuple(sorted(
             descriptors,
@@ -53,7 +63,7 @@ class ProfileResolver:
             descriptor
             for descriptor in self._operational_candidates(
                 profile_key.component,
-                profile_key.platform,
+                profile_key.format,
             )
             if descriptor.key.profile_id == profile_key.profile_id
         ]
@@ -63,9 +73,9 @@ class ProfileResolver:
             )
             raise create_operational_error(
                 family="PROFILE",
-                user_message="No se encontro el perfil operacional solicitado.",
+                user_message="No se encontró el perfil operacional solicitado.",
                 recommended_action=(
-                    "Revise la identidad seleccionada y la configuracion de "
+                    "Revise la identidad seleccionada y la configuración de "
                     "perfiles."
                 ),
                 operation="Resolver perfil operacional",
@@ -77,13 +87,64 @@ class ProfileResolver:
 
     def load_operational(self, profile_key):
         """Load a general operational document by canonical identity."""
-        return self._load_profile_json(self.resolve_operational(profile_key))
+        path = self.resolve_operational(profile_key)
+        profile = self._load_profile_json(path)
+        self._validate_format_orientation(profile, path)
+        return profile
 
-    def _operational_candidates(self, component, platform):
-        return self._discover_root_operational_profiles(component, platform)
+    def _validate_format_orientation(self, profile, path):
+        """Reject a video_style size that contradicts the format orientation.
 
-    def _discover_root_operational_profiles(self, component, platform):
-        directory = self.profiles_root / component.value / platform
+        The orientation comes from the format catalog; a format that does not
+        declare one is not checked.
+        """
+        profile_format = profile.get("format")
+        video_style = profile.get("video_style")
+        if not isinstance(profile_format, str) or not isinstance(
+            video_style,
+            dict,
+        ):
+            return
+        width = video_style.get("width")
+        height = video_style.get("height")
+        if not all(
+            isinstance(value, int) and not isinstance(value, bool)
+            for value in (width, height)
+        ):
+            return
+
+        profile_format = profile_format.strip().lower()
+        orientation = self.format_catalog.orientation(profile_format)
+        if orientation == PORTRAIT and width > height:
+            shape = "más ancho que alto"
+        elif orientation == LANDSCAPE and width < height:
+            shape = "más alto que ancho"
+        else:
+            return
+
+        error = ValueError(
+            f"format={profile_format} contradice video_style "
+            f"{width}x{height}."
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                f"El perfil declara format «{profile_format}», pero "
+                f"video_style mide {width}x{height} ({shape})."
+            ),
+            recommended_action=(
+                "Corrige format o video_style.width/height para que "
+                "cuadren."
+            ),
+            operation="Validar perfil operacional",
+            resource=str(path),
+        ) from error
+
+    def _operational_candidates(self, component, profile_format):
+        return self._discover_root_operational_profiles(component, profile_format)
+
+    def _discover_root_operational_profiles(self, component, profile_format):
+        directory = self.profiles_root / component.value / profile_format
         self._ensure_within_profiles_root(directory)
         if not directory.is_dir():
             return ()
@@ -95,7 +156,7 @@ class ProfileResolver:
                 continue
             key = OperationalProfileKey(
                 component,
-                platform,
+                profile_format,
                 data.get("profile_id", ""),
             )
             self._validate_operational_identity(data, key, path)
@@ -114,14 +175,14 @@ class ProfileResolver:
     def _validate_operational_identity(self, data, key, path):
         expected = {
             "component": key.component.value,
-            "platform": key.platform,
+            "format": key.format,
             "profile_id": key.profile_id,
         }
         if not isinstance(data, dict) or any(
             data.get(field) != value
             for field, value in expected.items()
         ):
-            error = ValueError(f"Identidad operacional invalida: {path}")
+            error = ValueError(f"Identidad operacional inválida: {path}")
             raise create_operational_error(
                 family="PROFILE",
                 user_message=(
@@ -129,7 +190,7 @@ class ProfileResolver:
                     "con su ruta."
                 ),
                 recommended_action=(
-                    "Revise component, platform y profile_id del perfil."
+                    "Revise component, format y profile_id del perfil."
                 ),
                 operation="Validar perfil operacional",
                 resource=str(path),
@@ -173,23 +234,23 @@ class ProfileResolver:
             },
         ) from error
 
-    def discover_platforms(self, component):
+    def discover_formats(self, component):
         component = ProfileComponent(component)
         directory = self.profiles_root / component.value
         self._ensure_within_profiles_root(directory)
         if not directory.is_dir():
             return ()
-        platforms = []
+        profile_formats = []
         for path in directory.iterdir():
             if not path.is_dir():
                 continue
             try:
-                platform = coerce_profile_platform(path.name)
+                profile_format = coerce_profile_format(path.name)
             except ValueError:
                 continue
             self._ensure_within_profiles_root(path)
-            platforms.append(platform)
-        return tuple(sorted(platforms))
+            profile_formats.append(profile_format)
+        return tuple(sorted(profile_formats))
 
     def _load_profile_json(self, path):
         path = Path(path)
@@ -263,7 +324,7 @@ class ProfileResolver:
         directory = (
             self.profiles_root
             / ProfileComponent.VIDEO.value
-            / profile_key.platform
+            / profile_key.format
         )
         self._ensure_within_profiles_root(directory)
         if not directory.is_dir():
@@ -313,19 +374,18 @@ class ProfileResolver:
         try:
             if data.get("kind") != "video_component":
                 raise ValueError("kind must be video_component.")
-            declared_platform = data["platform"]
-            if declared_platform != requested_key.platform:
+            declared_format = data["format"]
+            if declared_format != requested_key.format:
                 raise ValueError(
-                    "platform must match the requested directory exactly."
+                    "format must match the requested directory exactly."
                 )
             operational_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                declared_platform,
+                declared_format,
                 data["operational_profile_id"],
             )
             component = data["video_component"]
             generation = component["generation"]
-            target = component["target"]
             try:
                 delivery = component["delivery"]
             except KeyError as error:
@@ -344,7 +404,7 @@ class ProfileResolver:
             return WanVideoComponentDocument(
                 kind=data["kind"],
                 operational_profile=operational_key,
-                platform=declared_platform,
+                format=declared_format,
                 generation=WanGenerationParameters(
                     width=generation["width"],
                     height=generation["height"],
@@ -354,8 +414,6 @@ class ProfileResolver:
                     seed=component.get("seed"),
                 ),
                 delivery=WanDeliveryParameters(
-                    width=target["width"],
-                    height=target["height"],
                     intermediate_output=intermediate_output,
                 ),
                 sampling=WanSamplingParameters(
@@ -381,10 +439,10 @@ class ProfileResolver:
         return create_operational_error(
             family="CONFIG",
             user_message=(
-                "El documento declarativo de componente Wan no es valido."
+                "El documento declarativo de componente Wan no es válido."
             ),
             recommended_action=(
-                "Revise kind, operational_profile_id, platform y video_component."
+                "Revise kind, operational_profile_id, format y video_component."
             ),
             operation="Validar componente Wan declarativo",
             resource=str(path),
@@ -425,7 +483,7 @@ class ProfileResolver:
         directory = (
             self.profiles_root
             / ProfileComponent.VIDEO.value
-            / profile_key.platform
+            / profile_key.format
         )
         error = FileNotFoundError(
             "No existe un documento Wan declarativo para la identidad solicitada."
@@ -436,14 +494,14 @@ class ProfileResolver:
                 "No existe un componente Wan declarativo para el perfil solicitado."
             ),
             recommended_action=(
-                "Cree exactamente un documento video_component valido en el "
-                "directorio de la plataforma solicitada."
+                "Cree exactamente un documento video_component válido en el "
+                "directorio del formato solicitado."
             ),
             operation="Resolver componente Wan declarativo",
             resource=str(directory),
             technical_metadata={
                 "component": ProfileComponent.VIDEO.value,
-                "platform": profile_key.platform,
+                "format": profile_key.format,
                 "profile_id": profile_key.profile_id,
                 "requested_profile": self._operational_resource(profile_key),
                 "discovery_root": str(directory),
@@ -512,7 +570,7 @@ class ProfileResolver:
         if isinstance(profile_key, OperationalProfileKey):
             return profile_key
         raise TypeError(
-            "La resolucion operacional canonica requiere una "
+            "La resolución operacional canónica requiere una "
             "OperationalProfileKey."
         )
 
@@ -521,7 +579,7 @@ class ProfileResolver:
         return "/".join(
             (
                 profile_key.component.value,
-                profile_key.platform,
+                profile_key.format,
                 profile_key.profile_id,
             )
         )

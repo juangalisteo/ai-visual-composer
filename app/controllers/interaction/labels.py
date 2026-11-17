@@ -1,28 +1,22 @@
 """Transformaciones de presentación para valores técnicos."""
 
+from app.shared.format_catalog import fallback_label
+
 
 def label(value):
-    return value.replace("_", " ").title()
+    return fallback_label(value)
 
 
 def voice_label(value):
     return label(value)
 
 
-def subtitle_label(value):
-    labels = {
-        "single_line": "Línea única",
-        "word_by_word": "Palabra por palabra",
-    }
-    return labels.get(value, label(value))
-
-
 def family_label(family):
     return {
         "design": "MODO CONCIENCIA",
-        "estandar": "FORMATO ESTÁNDAR",
+        "estandar": "ESTILO ESTÁNDAR",
         "minimalista": "MODO MINIMALISTA",
-        "karaoke": "FORMATO KARAOKE",
+        "karaoke": "ESTILO KARAOKE",
         "primado_negativo": "PRIMADO NEGATIVO",
     }.get(family, family.replace("_", " ").upper())
 

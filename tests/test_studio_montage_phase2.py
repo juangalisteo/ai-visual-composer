@@ -7,9 +7,13 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-import main
-from app.core.start import ejecutar_studio_montaje
+from app.cli import studio_summary
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
 from app.modules.studio import (
+    StudioInputMode,
     StudioInputPreparationService,
     StudioMontageError,
     StudioMontagePlanningService,
@@ -24,7 +28,7 @@ from app.shared.operational_error import OperationalError
 class StudioMontagePhase2Test(unittest.TestCase):
 
     def setUp(self):
-        self.profile_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+        self.profile_key = OperationalProfileKey("studio", "vertical", "studio_vertical")
         self.input_profile = SimpleNamespace(video_extensions=(".mp4",))
         self.output_profile = SimpleNamespace(
             width=320,
@@ -170,7 +174,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
 
     def test_each_required_technical_difference_requires_normalization(self):
         cases = (
-            ("width", 640, "resolucion"),
+            ("width", 640, "resolución"),
             ("nominal_fps", 30.0, "FPS nominal"),
             ("video_codec", "hevc", "codec de video"),
             ("pixel_format", "yuv444p", "pixel format"),
@@ -310,7 +314,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 StudioMontageError,
-                "Comprobacion: .*SAR",
+                "Comprobación: .*SAR",
             ):
                 service.compose(plan, root / "out.mp4", self.output_profile)
 
@@ -329,19 +333,27 @@ class StudioMontagePhase2Test(unittest.TestCase):
                 normalization_duration=0.2,
                 normalized_clip_count=1,
             )
-            options = {
-                "project_name": "montaje",
-                "profile_id": "studio_instagram",
-                "profile_platform": "instagram",
-                "studio_montage_plan": plan,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="montaje",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio",
+                    "vertical",
+                    "studio_vertical",
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS,
+                    plan=plan,
+                ),
+            )
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
-                main._print_studio_montage_summary(options, result, 1.25)
+                studio_summary.print_studio_summary(request, result, 1.25)
 
         rendered = logger.call_args.args[0]
-        self.assertIn("MONTAJE DE VIDEOS", rendered)
-        self.assertIn("Preparacion clips", rendered)
-        self.assertIn("Normalizacion clips", rendered)
+        self.assertIn("MONTAJE VÍDEOS", rendered)
+        self.assertIn("Preparación clips", rendered)
+        self.assertIn("Normalización clips", rendered)
         self.assertIn("Normalizados", rendered)
         self.assertIn("Montaje de videos", rendered)
         self.assertIn("1.25 s", rendered)
@@ -359,18 +371,26 @@ class StudioMontagePhase2Test(unittest.TestCase):
                 preparation_duration=0.4,
                 montage_duration=0.6,
             )
-            options = {
-                "project_name": "montaje",
-                "profile_id": "studio_instagram",
-                "profile_platform": "instagram",
-                "studio_montage_plan": plan,
-            }
+            request = ApplicationExecutionRequest(
+                project_name="montaje",
+                clear_output=False,
+                operational_profile_key=OperationalProfileKey(
+                    "studio",
+                    "vertical",
+                    "studio_vertical",
+                ),
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS,
+                    plan=plan,
+                ),
+            )
             with patch("app.managers.pipeline_summary.ProgressLogger.info") as logger:
-                main._print_studio_montage_summary(options, result, 9.0)
+                studio_summary.print_studio_summary(request, result, 9.0)
 
         rendered = logger.call_args.args[0]
-        self.assertIn("Preparacion clips", rendered)
-        self.assertNotIn("Normalizacion clips", rendered)
+        self.assertIn("Preparación clips", rendered)
+        self.assertNotIn("Normalización clips", rendered)
         self.assertIn("Montaje de videos", rendered)
         self.assertIn("9.00 s", rendered)
 
@@ -421,7 +441,7 @@ class StudioMontagePhase2RealFFmpegTest(unittest.TestCase):
         )
         candidates = planner.discover(profile)
         return planner.create_plan(
-            OperationalProfileKey("studio", "instagram", "studio_instagram"),
+            OperationalProfileKey("studio", "vertical", "studio_vertical"),
             False,
             planner.parse_order(order, candidates),
         )

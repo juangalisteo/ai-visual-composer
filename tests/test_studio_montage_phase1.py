@@ -3,21 +3,31 @@ from pathlib import Path
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import main
 from app.controllers.run_controller import RunController
-from app.core.start import iniciar, preparar_studio_montaje
+from app.core.execution_request import (
+    ApplicationExecutionRequest,
+    StudioExecutionRequest,
+)
+from app.core.start import run_application
+from app.modules.studio.execution_coordinator import (
+    StudioExecutionCoordinator,
+)
 from app.modules.studio import (
     StudioInputMode,
     StudioInputPreparationService,
     StudioMontageInputError,
     StudioMontagePlanningService,
 )
+from app.shared.error_context import ExitKind
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
 )
+from tests.test_menu_helpers import MenuAnswers, Typed
 
 
 class StudioMontagePhase1Test(unittest.TestCase):
@@ -26,8 +36,8 @@ class StudioMontagePhase1Test(unittest.TestCase):
         self.profile = SimpleNamespace(video_extensions=(".mp4",))
         self.profile_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "instagram",
-            "studio_instagram",
+            "vertical",
+            "studio_vertical",
         )
 
     def _service(self, root):
@@ -44,8 +54,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
     def test_fourth_studio_input_mode_is_montage_videos(self):
         controller = RunController()
-        with patch("builtins.input", return_value="4"), patch(
-            "app.controllers.interaction.terminal.ProgressLogger.info"
+        answers = MenuAnswers("MONTAJE VÍDEOS")
+        with patch("builtins.input", side_effect=answers.input), patch(
+            "app.controllers.interaction.terminal.ProgressLogger.info",
+            side_effect=answers.print,
         ) as logger:
             selected = controller.select_studio_input_mode()
 
@@ -86,7 +98,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             (root / "montaje_videos").mkdir()
             with self.assertRaisesRegex(
                 StudioMontageInputError,
-                "No se encontro ningun archivo MP4",
+                "No se encontró ningún archivo MP4",
             ):
                 self._service(root).discover(self.profile)
 
@@ -108,28 +120,28 @@ class StudioMontagePhase1Test(unittest.TestCase):
             tuple(clip.original_name for clip in plan.clips),
         )
         self.assertEqual((1, 3, 2), tuple(clip.temporary_id for clip in plan.clips))
-        self.assertEqual("instagram", plan.platform)
-        self.assertEqual("studio_instagram", plan.profile_id)
+        self.assertEqual("vertical", plan.format)
+        self.assertEqual("studio_vertical", plan.profile_id)
         self.assertTrue(plan.transitions_enabled)
 
-    def test_plan_preserves_youtube_studio_identity(self):
-        youtube_key = OperationalProfileKey(
+    def test_plan_preserves_horizontal_studio_identity(self):
+        horizontal_key = OperationalProfileKey(
             ProfileComponent.STUDIO,
-            "youtube",
-            "studio_youtube",
+            "horizontal",
+            "studio_horizontal",
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             plan = service.create_plan(
-                youtube_key,
+                horizontal_key,
                 False,
                 service.parse_order("1 2", service.discover(self.profile)),
             )
 
-        self.assertEqual("youtube", plan.platform)
-        self.assertEqual("studio_youtube", plan.profile_id)
+        self.assertEqual("horizontal", plan.format)
+        self.assertEqual("studio_horizontal", plan.profile_id)
 
     def test_parser_requires_multiple_clips_and_accepts_large_selection(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -176,7 +188,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
     def test_parser_rejects_clip_that_disappears_after_discovery(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            clips_directory = self._write_clips(root, ("A.mp4",))
+            clips_directory = self._write_clips(root, ("A.mp4", "B.mp4"))
             service = self._service(root)
             candidates = service.discover(self.profile)
             (clips_directory / "A.mp4").unlink()
@@ -184,7 +196,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 StudioMontageInputError,
                 "ya no existe",
             ):
-                service.parse_order("1", candidates)
+                service.parse_order("1 2", candidates)
 
     def test_cli_shows_discovery_order_and_transitions_without_mode(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -193,11 +205,13 @@ class StudioMontagePhase1Test(unittest.TestCase):
             controller = RunController(
                 studio_input_preparation_service=StudioInputPreparationService(root)
             )
+            answers = MenuAnswers(Typed("1 3 2"), "Sí")
             with patch(
                 "builtins.input",
-                side_effect=("1 3 2", "1"),
+                side_effect=answers.input,
             ), patch(
-                "app.controllers.interaction.terminal.ProgressLogger.info"
+                "app.controllers.interaction.terminal.ProgressLogger.info",
+                side_effect=answers.print,
             ) as logger:
                 plan = controller.select_studio_montage_plan(
                     self.profile_key,
@@ -220,6 +234,29 @@ class StudioMontagePhase1Test(unittest.TestCase):
             clip.original_name for clip in plan.clips
         ))
 
+    def test_cli_order_zero_cancels_like_the_other_menus(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._write_clips(root, ("A.mp4", "B.mp4"))
+            controller = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(root)
+            )
+            answers = MenuAnswers(Typed(" 0 "))
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ), self.assertRaises(OperationalError) as raised:
+                controller.select_studio_montage_plan(
+                    self.profile_key,
+                    self.profile,
+                )
+
+        context = raised.exception.context
+        self.assertIs(ExitKind.CANCELLATION, context.exit_kind)
+        self.assertEqual(
+            "La operación fue cancelada por el usuario.",
+            context.user_message,
+        )
+
     def test_cli_records_transitions_no_without_a_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -227,7 +264,10 @@ class StudioMontagePhase1Test(unittest.TestCase):
             controller = RunController(
                 studio_input_preparation_service=StudioInputPreparationService(root)
             )
-            with patch("builtins.input", side_effect=("1 2", "2")):
+            answers = MenuAnswers(Typed("1 2"), "No")
+            with patch("builtins.input", side_effect=answers.input), patch(
+                "builtins.print", side_effect=answers.print
+            ):
                 plan = controller.select_studio_montage_plan(
                     self.profile_key,
                     self.profile,
@@ -269,10 +309,6 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 side_effect=AssertionError("legacy input must not run"),
             ), patch.object(
                 controller,
-                "select_studio_subtitle_config",
-                side_effect=AssertionError("subtitle must not run"),
-            ), patch.object(
-                controller,
                 "select_studio_music",
                 return_value=None,
             ), patch.object(
@@ -288,12 +324,13 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 "ask_clear_output",
                 return_value=False,
             ):
-                options = controller._run_studio()
+                request = controller._run_studio()
 
-        self.assertIs(plan, options["studio_montage_plan"])
-        self.assertEqual("montaje_videos", options["studio_input_mode"])
-        self.assertIsNone(options["subtitle_config"])
-        self.assertIsNone(options["studio_music_path"])
+        self.assertIs(plan, request.route.plan)
+        self.assertIs(StudioInputMode.MONTAJE_VIDEOS, request.route.input_mode)
+        self.assertNotIn("subtitle_config", vars(request))
+        self.assertNotIn("subtitle_config", vars(request.route))
+        self.assertIsNone(request.route.music_path)
 
     def test_start_transports_montage_plan_to_phase_two_orchestrator(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -305,19 +342,29 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 False,
                 service.parse_order("1 2", service.discover(self.profile)),
             )
-            with patch.dict(
-                os.environ,
-                {"MC_PIPELINE_MODE": "studio"},
-                clear=True,
-            ), patch(
-                "app.core.start.ejecutar_studio_montaje",
+            request = ApplicationExecutionRequest(
+                project_name="demo",
+                clear_output=False,
+                operational_profile_key=self.profile_key,
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode=StudioInputMode.MONTAJE_VIDEOS,
+                    plan=plan,
+                ),
+            )
+            with patch(
+                "app.core.start.ProjectManager"
+            ) as projects, patch.object(
+                StudioExecutionCoordinator,
+                "run_montage",
                 return_value="montage-result",
             ) as montage:
-                result = iniciar(studio_montage_plan=plan)
+                result = run_application(request=request)
 
         self.assertEqual("montage-result", result)
-        montage.assert_called_once_with(plan)
-        self.assertIs(plan, preparar_studio_montaje(plan))
+        montage.assert_called_once_with(plan, project=projects.return_value)
+        projects.assert_called_once_with(project_name="demo")
+        self.assertIs(plan, StudioExecutionCoordinator.prepare_montage(plan))
 
     def test_main_transports_montage_with_reset_and_montage_summary(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -329,32 +376,28 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 False,
                 service.parse_order("1 2", service.discover(self.profile)),
             )
-            options = {
-                "profile_component": "studio",
-                "profile_platform": "instagram",
-                "profile_id": "studio_instagram",
-                "subtitle_config": "",
-                "voice_config": "",
-                "music_category": None,
-                "project_name": "montaje",
-                "visual_pipeline": "studio",
-                "script_source": "external",
-                "design_target": "",
-                "pipeline_mode": "studio",
-                "studio_input_mode": "montaje_videos",
-                "studio_montage_plan": plan,
-                "studio_music_path": None,
-                "intro_outro_selection": None,
-                "clear_output": True,
-            }
+            controller_request = ApplicationExecutionRequest(
+                project_name="montaje",
+                clear_output=True,
+                operational_profile_key=self.profile_key,
+                subtitle_profile_key=None,
+                route=StudioExecutionRequest(
+                    input_mode="montaje_videos",
+                    plan=plan,
+                    music_path=None,
+                    intro_outro_plan=None,
+                ),
+            )
             with patch.dict(os.environ, {}, clear=True), patch(
                 "main.RunController"
-            ) as controller, patch("main.iniciar", return_value=object()) as start, patch(
+            ) as controller, patch("main.run_application", return_value=object()) as start, patch(
                 "main.OutputManager.reset"
-            ) as reset, patch("main._print_studio_summary") as summary, patch(
-                "main._print_studio_montage_summary"
+            ) as reset, patch(
+                "app.cli.studio_summary._print_render_summary"
+            ) as summary, patch(
+                "app.cli.studio_summary._print_montage_summary"
             ) as montage_summary:
-                controller.return_value.run.return_value = options
+                controller.return_value.run.return_value = controller_request
                 result = main.main()
 
         self.assertEqual(0, result)
@@ -364,17 +407,64 @@ class StudioMontagePhase1Test(unittest.TestCase):
         montage_summary.assert_called_once()
 
     def test_main_shows_expected_montage_input_error_without_traceback(self):
-        with patch("main.RunController") as controller, patch(
-            "builtins.print"
-        ) as printer:
-            controller.return_value.run.side_effect = StudioMontageInputError(
-                "No se encontro ningun archivo MP4."
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "montaje_videos"
+            input_dir.mkdir()
+            selector = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(
+                    directory
+                )
             )
-            result = main.main()
+            with patch("main.RunController") as controller, patch(
+                "builtins.print"
+            ) as printer:
+                controller.return_value.run.side_effect = (
+                    lambda: selector.select_studio_montage_plan(
+                        self.profile_key,
+                        self.profile,
+                    )
+                )
+                result = main.main()
 
         self.assertEqual(1, result)
         printer.assert_called_once_with(
-            "ERROR: No se encontro ningun archivo MP4."
+            "ERROR\n"
+            f"No se encontró ningún archivo MP4 en {input_dir}.\n"
+            "Operación: STUDIO/montaje_videos\n"
+            "Acción recomendada: Pon en esa carpeta dos o más vídeos .mp4 y "
+            "vuelve a intentarlo."
+        )
+
+    def test_main_rejects_a_single_video_without_asking_for_the_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "montaje_videos"
+            input_dir.mkdir()
+            (input_dir / "A.mp4").write_bytes(b"video")
+            selector = RunController(
+                studio_input_preparation_service=StudioInputPreparationService(
+                    directory
+                )
+            )
+            with patch("main.RunController") as controller, patch(
+                "builtins.input",
+                side_effect=EOFError,
+            ) as terminal_input, patch("builtins.print") as printer:
+                controller.return_value.run.side_effect = (
+                    lambda: selector.select_studio_montage_plan(
+                        self.profile_key,
+                        self.profile,
+                    )
+                )
+                result = main.main()
+
+        self.assertEqual(1, result)
+        terminal_input.assert_not_called()
+        printer.assert_called_once_with(
+            "ERROR\n"
+            f"Solo se encontró un archivo MP4 en {input_dir}.\n"
+            "Operación: STUDIO/montaje_videos\n"
+            "Acción recomendada: Pon en esa carpeta dos o más vídeos .mp4 y "
+            "vuelve a intentarlo."
         )
 
 

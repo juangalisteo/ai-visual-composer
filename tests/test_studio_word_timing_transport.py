@@ -54,9 +54,9 @@ def _subtitle_profile(effect, family="minimalista"):
     return SubtitleProfileResolver().load(
         SubtitleProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="instagram",
+            format="vertical",
             family=family,
-            profile_id=f"subtitulo_studio_instagram_{effect}",
+            profile_id=f"subtitulo_studio_vertical_{effect}",
         )
     )
 
@@ -98,8 +98,8 @@ def _render_ass(tmp_path, effect, family="minimalista"):
         subtitle_path=subtitles,
         profile_key=OperationalProfileKey(
             component=ProfileComponent.STUDIO,
-            platform="instagram",
-            profile_id="studio_instagram",
+            format="vertical",
+            profile_id="studio_vertical",
         ),
         profile=_profile(),
         subtitle_profile=_subtitle_profile(effect, family),
@@ -156,5 +156,5 @@ def test_minimalista_keeps_its_technical_family_and_uses_the_visible_label():
 
 
 def test_karaoke_keeps_its_technical_family_and_uses_the_visible_label():
-    assert RunController._family_label("karaoke") == "FORMATO KARAOKE"
+    assert RunController._family_label("karaoke") == "ESTILO KARAOKE"
     assert _subtitle_profile("continuous_karaoke", family="karaoke").key.family == "karaoke"

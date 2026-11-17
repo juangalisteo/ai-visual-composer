@@ -5,6 +5,7 @@ import shutil
 import time
 
 from app.modules.studio.input_preparation import (
+    StudioInputMode,
     StudioInputPreparationService,
 )
 from app.modules.subtitles.io.external_media_subtitles import (
@@ -13,6 +14,9 @@ from app.modules.subtitles.io.external_media_subtitles import (
 from app.modules.subtitles.modes.registry import CueModelRegistry
 from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransformer
 from app.shared.progress_logger import ProgressLogger
+
+
+_MODE_LABEL = StudioInputMode.EXPORTAR_SRT.label
 
 
 class StudioSubtitleExportMode(str, Enum):
@@ -31,7 +35,7 @@ def coerce_studio_subtitle_export_mode(value):
         return StudioSubtitleExportMode(str(value).strip().lower())
     except ValueError as error:
         raise ValueError(
-            "Modo EXPORTAR SRT no soportado: "
+            f"Modo {_MODE_LABEL} no soportado: "
             f"{value}."
         ) from error
 
@@ -107,12 +111,12 @@ class StudioSubtitleExportInputService:
         )
         if not directory.exists():
             raise StudioSubtitleExportInputError(
-                "No existe la carpeta de entrada EXPORTAR SRT: "
+                f"No existe la carpeta de entrada {_MODE_LABEL}: "
                 f"{directory}"
             )
         if not directory.is_dir():
             raise StudioSubtitleExportInputError(
-                "La entrada EXPORTAR SRT debe ser una carpeta: "
+                f"La entrada {_MODE_LABEL} debe ser una carpeta: "
                 f"{directory}"
             )
         return directory
@@ -142,9 +146,7 @@ class StudioSubtitleExportInputService:
             else "SRT"
         )
         raise StudioSubtitleExportInputError(
-            f"No se encontro ningun archivo {label} en:\n"
-            f"{directory}\n\n"
-            "Anade un archivo valido e intentalo de nuevo."
+            f"No se encontró ningún archivo {label} en {directory}."
         )
 
     @staticmethod
@@ -153,14 +155,14 @@ class StudioSubtitleExportInputService:
             selected_path = Path(selected_path)
             if selected_path not in candidates:
                 raise StudioSubtitleExportInputError(
-                    "La seleccion EXPORTAR SRT no es valida: "
+                    f"La selección {_MODE_LABEL} no es válida: "
                     f"{selected_path}."
                 )
             return selected_path
         if len(candidates) > 1:
             names = ", ".join(path.name for path in candidates)
             raise StudioSubtitleExportInputError(
-                "Entrada EXPORTAR SRT ambigua para "
+                f"Entrada {_MODE_LABEL} ambigua para "
                 f"{export_mode.value}: {names}."
             )
         return candidates[0]
@@ -183,7 +185,7 @@ class StudioSubtitleExportService:
     ):
         if not isinstance(plan, StudioSubtitleExportPlan):
             raise TypeError(
-                "EXPORTAR SRT requiere un plan STUDIO estructurado."
+                f"{_MODE_LABEL} requiere un plan STUDIO estructurado."
             )
         if plan.mode is StudioSubtitleExportMode.TRANSCRIBIR:
             return self._transcribe(plan, project)
@@ -216,7 +218,7 @@ class StudioSubtitleExportService:
     def _convert(self, plan, project, profile, subtitle_profile):
         if profile is None or subtitle_profile is None:
             raise ValueError(
-                "CONVERTIR requiere perfil STUDIO y perfil de subtitulos."
+                "CONVERTIR requiere perfil STUDIO y perfil de subtítulos."
             )
         mode = CueModelRegistry.mode_from(subtitle_profile.cue_policy)
         output_path = project.subtitles_dir() / (
@@ -230,7 +232,7 @@ class StudioSubtitleExportService:
             render_fps=profile.fps,
         ).transform(source_content)
         if not transformed.strip():
-            raise ValueError("La conversion no produjo cues utilizables.")
+            raise ValueError("La conversión no produjo cues utilizables.")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path = output_path.with_suffix(".srt.tmp")
         temporary_path.write_text(transformed, encoding="utf-8")

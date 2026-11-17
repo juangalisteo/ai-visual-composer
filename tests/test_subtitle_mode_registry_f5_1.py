@@ -46,13 +46,13 @@ def test_registry_extension_requires_one_factory_registration():
 
 def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
     source = (
-        Path("config/profiles/studio/instagram/estandar/subtitulos/")
-        / "subtitulo_studio_instagram_linea_unica.json"
+        Path("config/profiles/studio/vertical/estandar/subtitulos/")
+        / "subtitulo_studio_vertical_linea_unica.json"
     )
     template = json.loads(source.read_text(encoding="utf-8"))
     template.update(
         component="studio",
-        platform="test_platform",
+        format="test_format",
         family="test_family",
     )
     template["cue_policy"] = dict(template["cue_policy"])
@@ -67,7 +67,7 @@ def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
         data.update(profile_id=profile_id, display_name=display_name)
         target = (
             tmp_path
-            / "studio/test_platform/test_family/subtitulos"
+            / "studio/test_format/test_family/subtitulos"
             / f"{profile_id}.json"
         )
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -75,7 +75,7 @@ def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
 
     resolver = SubtitleProfileResolver(tmp_path)
     descriptors = resolver.discover_profiles_for_family(
-        "studio", "test_platform", "test_family",
+        "studio", "test_format", "test_family",
     )
 
     assert {descriptor.key.profile_id for descriptor in descriptors} == {
@@ -92,19 +92,19 @@ def test_two_profiles_can_share_one_mode_without_sharing_identity(tmp_path):
 
 def test_new_profile_with_existing_mode_is_discovered_without_style_field(tmp_path):
     source = (
-        Path("config/profiles/studio/instagram/estandar/subtitulos/")
-        / "subtitulo_studio_instagram_linea_unica.json"
+        Path("config/profiles/studio/vertical/estandar/subtitulos/")
+        / "subtitulo_studio_vertical_linea_unica.json"
     )
     data = json.loads(source.read_text(encoding="utf-8"))
     data.update(
         component="studio",
-        platform="test_platform",
+        format="test_format",
         family="test_family",
         profile_id="test_profile",
         display_name="Technical profile",
     )
     target = (
-        tmp_path / "studio/test_platform/test_family/subtitulos/test_profile.json"
+        tmp_path / "studio/test_format/test_family/subtitulos/test_profile.json"
     )
     target.parent.mkdir(parents=True)
     target.write_text(json.dumps(data), encoding="utf-8")
@@ -119,7 +119,7 @@ def test_new_profile_with_existing_mode_is_discovered_without_style_field(tmp_pa
 
     resolver = SubtitleProfileResolver(tmp_path)
     descriptors = resolver.discover_profiles_for_family(
-        "studio", "test_platform", "test_family",
+        "studio", "test_format", "test_family",
     )
     descriptor = next(
         item for item in descriptors if item.key.profile_id == "test_profile"

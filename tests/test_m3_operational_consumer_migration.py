@@ -1,13 +1,10 @@
-from unittest.mock import patch
-
 from app.controllers.run_controller import RunController
-from app.core.start import _resolve_single_video_operational_key
+from app.modules.standard.execution_coordinator import _resolve_single_video_operational_key
 from app.modules.studio.profile import StudioProfileLoader
 from app.shared.config_manager import ConfigManager
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import (
     OperationalProfileDescriptor,
@@ -19,13 +16,13 @@ class _OperationalResolver:
     def __init__(self, key):
         self.key = key
 
-    def discover_platforms(self, component):
+    def discover_formats(self, component):
         assert component is self.key.component
-        return (self.key.platform,)
+        return (self.key.format,)
 
-    def discover_operational_profiles(self, component, platform):
+    def discover_operational_profiles(self, component, profile_format):
         assert component is self.key.component
-        assert platform == self.key.platform
+        assert profile_format == self.key.format
         return (
             OperationalProfileDescriptor(
                 key=self.key,
@@ -39,38 +36,17 @@ class _OperationalResolver:
         return "test_operational_profile.json"
 
 
-def test_m3_config_manager_loads_operational_profile_without_subtitle_family():
-    resolver = ProfileResolver()
-    manager = ConfigManager(profile_resolver=resolver)
-    key = OperationalProfileKey("guion", "instagram", "guion_instagram")
-
-    with patch.dict(
-        "os.environ",
-        {
-            "MC_PROFILE_COMPONENT": "guion",
-            "MC_PROFILE_PLATFORM": "instagram",
-            "MC_PROFILE_ID": "guion_instagram",
-            # A legacy subtitle-family value cannot alter operational loading.
-            "MC_PROFILE_FAMILY": "design",
-        },
-        clear=False,
-    ):
-        assert manager.get_operational_profile_key() == key
-        assert manager.get_profile_config() == resolver.load_operational(key)
+def test_config_manager_without_operational_key_returns_none():
+    assert ConfigManager().get_operational_profile_key() is None
 
 
-def test_explicit_operational_key_wins_over_conflicting_legacy_environment(
-    monkeypatch,
-):
+def test_explicit_operational_key_is_returned_as_the_same_object():
     resolver = ProfileResolver()
     explicit_key = OperationalProfileKey(
         "guion",
-        "instagram",
-        "guion_instagram",
+        "vertical",
+        "guion_vertical",
     )
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", "video")
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", "youtube")
-    monkeypatch.setenv("MC_PROFILE_ID", "video_youtube")
 
     manager = ConfigManager(
         profile_resolver=resolver,
@@ -81,47 +57,8 @@ def test_explicit_operational_key_wins_over_conflicting_legacy_environment(
     assert manager.get_profile_config() == resolver.load_operational(explicit_key)
 
 
-def test_config_manager_without_explicit_key_keeps_legacy_environment_fallback(
-    monkeypatch,
-):
-    legacy_key = OperationalProfileKey(
-        "video",
-        "youtube",
-        "video_youtube",
-    )
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", legacy_key.component.value)
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", legacy_key.platform)
-    monkeypatch.setenv("MC_PROFILE_ID", legacy_key.profile_id)
-
-    assert ConfigManager().get_operational_profile_key() == legacy_key
-
-
-def test_explicit_key_adapts_legacy_subtitle_parent_without_identity_environment(
-    monkeypatch,
-):
-    explicit_key = OperationalProfileKey(
-        "guion",
-        "instagram",
-        "guion_instagram",
-    )
-    monkeypatch.setenv("MC_PROFILE_COMPONENT", "video")
-    monkeypatch.setenv("MC_PROFILE_PLATFORM", "youtube")
-    monkeypatch.setenv("MC_PROFILE_ID", "video_youtube")
-
-    parent = ConfigManager(
-        operational_profile_key=explicit_key,
-    )._get_legacy_subtitle_parent_key()
-
-    assert parent == ProfileKey(
-        component=explicit_key.component,
-        platform=explicit_key.platform,
-        profile_id=explicit_key.profile_id,
-        family="estandar",
-    )
-
-
 def test_m3_run_controller_selects_operational_key_without_family():
-    key = OperationalProfileKey("imagen", "test_platform", "test_profile")
+    key = OperationalProfileKey("imagen", "test_format", "test_profile")
     controller = RunController(profile_resolver=_OperationalResolver(key))
     controller._select_from_list = lambda values: tuple(values)[0]
     controller._print = lambda _message: None
@@ -140,28 +77,28 @@ def test_m3_run_controller_selects_operational_key_without_family():
 
 def test_m3_studio_loader_and_guion_video_bridge_transport_operational_keys():
     resolver = ProfileResolver()
-    studio_key = OperationalProfileKey("studio", "instagram", "studio_instagram")
+    studio_key = OperationalProfileKey("studio", "vertical", "studio_vertical")
     studio = StudioProfileLoader().load(
         resolver.load_operational(studio_key),
         studio_key,
     )
-    video_key = _resolve_single_video_operational_key(resolver, "instagram")
+    video_key = _resolve_single_video_operational_key(resolver, "vertical")
 
     assert studio.profile_id == studio_key.profile_id
     assert video_key == OperationalProfileKey(
         "video",
-        "instagram",
-        "video_instagram",
+        "vertical",
+        "video_vertical",
     )
 
 
 def test_m3_wan_loader_remains_dedicated_but_accepts_operational_identity():
-    key = OperationalProfileKey("video", "instagram", "video_instagram")
+    key = OperationalProfileKey("video", "vertical", "video_vertical")
     document = ProfileResolver().load_video_component(
         key,
     )
 
     assert document["kind"] == "video_component"
     assert document["operational_profile_id"] == key.profile_id
-    assert document["platform"] == key.platform
+    assert document["format"] == key.format
     assert "video_component" in document

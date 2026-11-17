@@ -128,7 +128,7 @@ class ComfyUIVideoAdapter:
 
     def _resolve_workflow_nodes(self, workflow):
         if not isinstance(workflow, dict):
-            self._invalid_workflow("El documento raiz debe ser un objeto.")
+            self._invalid_workflow("El documento raíz debe ser un objeto.")
 
         nodes = {}
         for role in self._WORKFLOW_BINDING.node_roles:
@@ -219,7 +219,7 @@ class ComfyUIVideoAdapter:
     @staticmethod
     def _invalid_workflow(detail):
         raise ComfyUIVideoAdapterError(
-            "Workflow ComfyUI I2V invalido: " + detail
+            "Workflow ComfyUI I2V inválido: " + detail
         )
 
     @staticmethod

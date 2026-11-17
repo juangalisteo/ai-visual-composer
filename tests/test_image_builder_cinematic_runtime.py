@@ -20,21 +20,10 @@ from app.prompt_translation import (
 from app.visual_quality import (
     ImageQualityFlowCoordinator,
     ImageValidator,
+    SeedPolicy,
     ValidationCheck,
     create_validation_failure,
 )
-
-
-class FailingImageQualityFlow:
-
-    def evaluate(
-        self,
-        *args,
-        **kwargs
-    ):
-        raise AssertionError(
-            "image validation should be disabled"
-        )
 
 
 class RecordingImageQualityFlow:
@@ -174,6 +163,12 @@ class RecordingBackendAdapter:
         )
 
 
+NUDENET_MODEL_AVAILABLE = (
+    Path(__file__).resolve().parents[1] / "models" / "visual_safety" / "nudenet-320n.onnx"
+).is_file()
+NUDENET_MODEL_REASON = "Falta el modelo NudeNet en models/visual_safety/."
+
+
 class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
     def test_build_invokes_single_cinematic_runtime_by_default(self):
@@ -252,43 +247,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             self.assertEqual(
                 1,
                 len(backend_adapter.backend_prompts)
-            )
-
-    def test_nudity_safety_invokes_quality_flow_when_quality_validation_is_disabled(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(
-                temp_dir
-            )
-            storyboard_path = self._write_storyboard(
-                root
-            )
-            manifest_path = root / "images_manifest.json"
-            output_dir = root / "images"
-            workflow_path = self._write_workflow(
-                root
-            )
-
-            with self._patched_environment(
-                manifest_path=manifest_path
-            ):
-                builder = ImageBuilder(
-                    workflow_path=workflow_path,
-                    prompt_translator=self._wide_encoder_prompt_translator(),
-                    image_quality_flow=RecordingImageQualityFlow()
-                )
-
-                with patch.object(
-                    ImageBuilder,
-                    "_generate_image",
-                    side_effect=self._fake_generate_image
-                ):
-                    builder.build(
-                        storyboard_path=storyboard_path,
-                        output_dir=output_dir
-                    )
-
-            self.assertTrue(
-                manifest_path.exists()
             )
 
     def test_build_persists_visual_intelligence_evidence_without_manifest_changes(self):
@@ -419,7 +377,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 )
             )
 
-    def test_image_validation_enabled_invokes_quality_flow(self):
+    def test_quality_flow_always_runs(self):
         quality_flow = RecordingImageQualityFlow()
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -435,8 +393,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
 
             with self._patched_environment(
-                manifest_path=manifest_path,
-                image_validation_enabled=True
+                manifest_path=manifest_path
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
@@ -469,7 +426,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             quality_flow.calls[0]["width"]
         )
 
-    def test_image_validation_blocks_non_approved_flow_result(self):
+    def test_quality_flow_blocks_non_approved_flow_result(self):
         quality_flow = RecordingImageQualityFlow(
             status="manual_review"
         )
@@ -487,8 +444,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
 
             with self._patched_environment(
-                manifest_path=manifest_path,
-                image_validation_enabled=True
+                manifest_path=manifest_path
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
@@ -515,7 +471,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             caught.exception.context.technical_metadata["validation_status"],
         )
         self.assertIn(
-            "revision manual",
+            "revisión manual",
             caught.exception.context.user_message,
         )
 
@@ -529,7 +485,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
             with self._patched_environment(
                 manifest_path=manifest_path,
-                image_validation_enabled=True,
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
@@ -567,7 +522,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             self.assertIsNotNone(evidence["manual_review_marker"])
             self.assertFalse(manifest_path.exists())
 
-    def test_image_validation_retry_preserves_attempt_and_promotes_final_image(self):
+    def test_quality_retry_preserves_attempt_and_promotes_final_image(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
                 temp_dir
@@ -582,8 +537,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
 
             with self._patched_environment(
-                manifest_path=manifest_path,
-                image_validation_enabled=True
+                manifest_path=manifest_path
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
@@ -638,7 +592,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
             with self._patched_environment(
                 manifest_path=manifest_path,
-                image_validation_enabled=True,
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
@@ -681,6 +634,67 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         self.assertEqual(b"attempt_002", final_image_bytes)
         self.assertEqual(str(final_image), manifest[0]["image"])
 
+    def test_retries_receive_distinct_seeds_and_first_attempt_keeps_workflow_seed(self):
+        seeds = []
+
+        def record_seed(
+            prompt,
+            scene_number,
+            output_dir,
+            width,
+            height,
+            seed=None,
+        ):
+            seeds.append(seed)
+            return self._write_image_without_creating_directory(
+                prompt,
+                scene_number,
+                output_dir,
+                width,
+                height,
+            )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            storyboard_path = self._write_storyboard(root)
+            manifest_path = root / "images_manifest.json"
+            output_dir = root / "images"
+            workflow_path = self._write_workflow(root)
+
+            with self._patched_environment(
+                manifest_path=manifest_path,
+            ):
+                builder = ImageBuilder(
+                    workflow_path=workflow_path,
+                    prompt_translator=self._wide_encoder_prompt_translator(),
+                    image_quality_flow=ImageQualityFlowCoordinator(
+                        validator=ImageValidator(
+                            checks=(FailUntilAttemptCheck(accepted_attempt=3),)
+                        )
+                    ),
+                )
+
+                with patch.object(
+                    ImageBuilder,
+                    "_generate_image",
+                    side_effect=record_seed,
+                ):
+                    builder.build(
+                        storyboard_path=storyboard_path,
+                        output_dir=output_dir,
+                    )
+
+        expected_retry_seeds = [
+            SeedPolicy().next_seed(
+                scene_id="scene_001",
+                generation_attempt_id=f"scene_001:attempt-{attempt - 1}",
+                attempt_number=attempt,
+            )
+            for attempt in (2, 3)
+        ]
+        self.assertEqual([None, *expected_retry_seeds], seeds)
+        self.assertNotEqual(*expected_retry_seeds)
+
     def test_safe_image_does_not_create_quality_attempt_directories(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -691,7 +705,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
             with self._patched_environment(
                 manifest_path=manifest_path,
-                image_validation_enabled=True,
             ):
                 builder = ImageBuilder(
                     workflow_path=workflow_path,
@@ -713,6 +726,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
             self.assertFalse((output_dir / "_quality_attempts").exists())
 
+    @unittest.skipUnless(NUDENET_MODEL_AVAILABLE, NUDENET_MODEL_REASON)
     def test_runtime_invokes_orchestrator_and_prompt_translator(self):
         orchestrator = RecordingCinematicOrchestrator()
         translator = RecordingPromptTranslator()
@@ -1051,8 +1065,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
 
     def _patched_environment(
         self,
-        manifest_path,
-        image_validation_enabled=False
+        manifest_path
     ):
         project = SimpleNamespace(
             images_manifest_path=lambda: manifest_path
@@ -1066,9 +1079,6 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
                 },
                 "visual_director": {
                     "enabled": False
-                },
-                "image_validation": {
-                    "enabled": image_validation_enabled
                 }
             }
         )
@@ -1085,7 +1095,8 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         scene_number,
         output_dir,
         width,
-        height
+        height,
+        seed=None
     ):
         output_dir.mkdir(
             parents=True,
@@ -1104,6 +1115,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         output_dir,
         width,
         height,
+        seed=None,
     ):
         image_path = output_dir / f"scene_{scene_number:03d}.png"
         image_path.write_bytes(f"attempt_{output_dir.name[-3:]}".encode("ascii"))

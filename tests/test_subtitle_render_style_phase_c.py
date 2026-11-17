@@ -10,7 +10,6 @@ from app.modules.video.config.loaders.subtitle_loader import (
 from app.modules.video.subtitles.subtitle_style_builder import (
     SubtitleStyleBuilder,
 )
-from app.shared.profile_identity import ProfileKey
 from app.shared.operational_error import OperationalError
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
@@ -133,7 +132,7 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     def test_offset_is_finite_timing_data(self):
         self.assertEqual(-0.06, self._load(offset=-0.06).offset)
         self.assertEqual(0.0, self._load(offset=0.0).offset)
-        self._assert_invalid("offset", float("nan"), "offset debe ser un numero finito")
+        self._assert_invalid("offset", float("nan"), "offset debe ser un número finito")
         self._assert_invalid("offset", True, "render_style.offset")
 
     def test_standard_and_design_profiles_are_validated_at_resolution(self):
@@ -143,31 +142,34 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     def test_dynamic_profile_is_validated_during_discovery(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            main_key = ProfileKey.for_component("guion", "instagram")
             source = self._source_standard()
             data = json.loads(source.read_text(encoding="utf-8"))
-            data["profile_id"] = "subtitulo_guion_instagram_prueba_c"
+            data["profile_id"] = "subtitulo_guion_vertical_prueba_c"
             data["display_name"] = "Prueba C"
             data["render_style"]["shadow"] = -1
             path = (
                 root
-                / "guion/instagram/estandar/subtitulos"
-                / "subtitulo_guion_instagram_prueba_c.json"
+                / "guion/vertical/estandar/subtitulos"
+                / "subtitulo_guion_vertical_prueba_c.json"
             )
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps(data), encoding="utf-8")
 
             with self.assertRaises(OperationalError) as captured:
-                SubtitleProfileResolver(root).discover_profiles(main_key)
+                SubtitleProfileResolver(root).discover_profiles_for_family(
+                    "guion", "vertical", "estandar",
+                )
             self.assertEqual("VALIDATION", captured.exception.context.family)
             self.assertIsInstance(captured.exception.__cause__, ValueError)
 
     def _assert_invalid_standard_profile(self, field, value):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
-            key = SubtitleProfileKey.for_profile(
-                ProfileKey.for_component("guion", "instagram"),
-                "single_line",
+            key = SubtitleProfileKey(
+                "guion",
+                "vertical",
+                "subtitulo_guion_vertical_linea_unica",
+                "estandar",
             )
             path = root / key.relative_path
             path.parent.mkdir(parents=True)
@@ -184,14 +186,14 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "profiles"
             key = SubtitleProfileKey(
-                "video", "instagram", "modo_conciencia_reels", "design",
+                "video", "vertical", "modo_conciencia_palabra_unica", "design",
             )
-            path = root / "video/instagram/design/subtitulos/modo_conciencia_reels.json"
+            path = root / "video/vertical/design/subtitulos/modo_conciencia_palabra_unica.json"
             path.parent.mkdir(parents=True)
             data = json.loads(
                 Path(
-                    "config/profiles/video/instagram/design/"
-                    "subtitulos/modo_conciencia_reels.json"
+                    "config/profiles/video/vertical/design/"
+                    "subtitulos/modo_conciencia_palabra_unica.json"
                 ).read_text(encoding="utf-8")
             )
             data["render_style"][field] = value
@@ -217,8 +219,8 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
     @staticmethod
     def _source_standard():
         return Path(
-            "config/profiles/guion/instagram/estandar/subtitulos/"
-            "subtitulo_guion_instagram_linea_unica.json"
+            "config/profiles/guion/vertical/estandar/subtitulos/"
+            "subtitulo_guion_vertical_linea_unica.json"
         )
 
 

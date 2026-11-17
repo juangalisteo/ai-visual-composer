@@ -3,13 +3,18 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from app.core.execution_request import (
+    STANDARD_PIPELINE_MODES,
     ApplicationExecutionRequest,
     DesignExecutionRequest,
     StandardExecutionRequest,
     StudioExecutionRequest,
 )
 from app.core import start
+from app.modules.audio.tts_contracts import TtsPause
+from app.modules.design import DesignExecutionCoordinator
+from app.modules.standard import execution_coordinator as standard
 from app.modules.studio import StudioInputMode, StudioVideoAudioSrtPlan
+from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
 
@@ -17,18 +22,17 @@ from app.shared.subtitle_profile_identity import SubtitleProfileKey
 def _profile_key(component):
     return OperationalProfileKey(
         component=component,
-        platform="instagram",
-        profile_id=f"{component.value}_instagram",
+        format="vertical",
+        profile_id=f"{component.value}_vertical",
     )
 
 
 def _subtitle_key():
     return SubtitleProfileKey(
         component=ProfileComponent.STUDIO,
-        platform="instagram",
-        profile_id="subtitulo_studio_instagram_linea_unica",
+        format="vertical",
+        profile_id="subtitulo_studio_vertical_linea_unica",
         family="estandar",
-        parent_profile_id="studio_instagram",
     )
 
 
@@ -59,7 +63,7 @@ def _telemetry():
     return telemetry
 
 
-def _standard_request(*, pipeline_mode="script", visual_pipeline="image", **kwargs):
+def _standard_request(*, pipeline_mode="audio", visual_pipeline="image", **kwargs):
     component = (
         ProfileComponent.VIDEO
         if visual_pipeline == "video"
@@ -83,7 +87,7 @@ def _standard_request(*, pipeline_mode="script", visual_pipeline="image", **kwar
     )
 
 
-def test_typed_standard_script_uses_request_source_not_environment(monkeypatch):
+def test_typed_standard_script_uses_request_source():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -91,23 +95,22 @@ def test_typed_standard_script_uses_request_source_not_environment(monkeypatch):
     prepared_script = SimpleNamespace(text="Texto manual")
     telemetry = _telemetry()
     request = _standard_request(script_source="manual")
-    monkeypatch.setenv("MC_PIPELINE_MODE", "audio")
-    monkeypatch.setenv("MC_VISUAL_PIPELINE", "video")
-    monkeypatch.setenv("MC_SCRIPT_SOURCE", "generated")
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
         start, "ConfigManager", return_value=config
     ) as config_manager_class, patch.object(
-        start, "_required_builders", return_value={}
+        standard, "_required_builders", return_value={}
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=prepared_script
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=prepared_script
     ) as execute:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == project.script_path.return_value
-    assert execute.call_args.kwargs["script_source"] == "manual"
+    assert execute.call_args.kwargs["source_mode"] == "manual"
     projects.assert_called_once_with(project_name=request.project_name)
     assert config_manager_class.call_args.kwargs["operational_profile_key"] is (
         request.operational_profile_key
@@ -115,10 +118,10 @@ def test_typed_standard_script_uses_request_source_not_environment(monkeypatch):
     assert config_manager_class.call_args.kwargs["voice_config_id"] == (
         request.route.voice_config_id
     )
-    project.setup.assert_not_called()
+    project.setup.assert_called_once_with()
 
 
-def test_typed_standard_music_category_uses_request_value_not_environment(monkeypatch):
+def test_typed_standard_music_category_uses_request_value():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -128,22 +131,23 @@ def test_typed_standard_music_category_uses_request_value_not_environment(monkey
         pipeline_mode="full",
         music_category="calm",
     )
-    monkeypatch.setenv("MC_MUSIC_CATEGORY", "random")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
-    ), patch.object(start, "_required_builders", return_value={"voice": True}), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder, patch.object(
-        start, "MusicSelector"
-    ) as music_selector, patch.object(start, "AudioMixer") as audio_mixer:
+    ), patch.object(standard, "_required_builders", return_value={"voice": True}), patch.object(
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "MusicSelector"
+    ) as music_selector, patch.object(standard, "AudioMixer") as audio_mixer:
         voice_builder.return_value.build.return_value = Path("voz.mp3")
         music_selector.return_value.select.return_value = Path("calm.mp3")
         audio_mixer.return_value.build.return_value = Path("final.mp3")
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("final.mp3")
     music_selector.return_value.select.assert_called_once_with("calm")
@@ -160,9 +164,7 @@ def test_typed_standard_music_category_uses_request_value_not_environment(monkey
     )
 
 
-def test_typed_standard_injects_its_explicit_config_into_profile_consumers(
-    monkeypatch,
-):
+def test_typed_standard_injects_its_explicit_config_into_profile_consumers():
     project = _project()
     profile = object()
     config = Mock()
@@ -170,26 +172,27 @@ def test_typed_standard_injects_its_explicit_config_into_profile_consumers(
     config.get_profile_config.return_value = profile
     telemetry = _telemetry()
     request = _standard_request(pipeline_mode="full")
-    monkeypatch.setenv("MC_OVERLAYS_MODE", "smart")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ), patch.object(
-        start,
+        standard,
         "_required_builders",
         return_value={"storyboard": True, "images": True, "video": True},
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "StoryboardBuilder") as storyboard_builder, patch.object(
-        start, "ImageBuilder"
-    ) as image_builder, patch.object(start, "VideoBuilder") as video_builder:
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "StoryboardBuilder") as storyboard_builder, patch.object(
+        standard, "ImageBuilder"
+    ) as image_builder, patch.object(standard, "VideoBuilder") as video_builder:
         storyboard_builder.return_value.build.return_value = Path("storyboard.json")
         image_builder.return_value.build.return_value = Path("images.json")
         video_builder.return_value.build.return_value = Path("final.mp4")
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("final.mp4")
     storyboard_builder.assert_called_once_with(
@@ -226,36 +229,41 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ), patch.object(
-        start, "_required_builders", return_value={"voice": True, "subtitles": True}
+        standard, "_required_builders", return_value={"voice": True, "subtitles": True}
     ), patch.object(
-        start, "_required_render_fps", return_value=30
+        standard, "_required_render_fps", return_value=30
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder, patch.object(
-        start, "AudioMixer"
-    ) as audio_mixer, patch.object(start, "SubtitleBuilder") as subtitle_builder, patch.object(
-        start, "SrtOptimizer"
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "AudioMixer"
+    ) as audio_mixer, patch.object(standard, "SubtitleBuilder") as subtitle_builder, patch.object(
+        standard, "SrtOptimizer"
     ) as optimizer:
         voice_builder.return_value.build.return_value = project.audio_path.return_value
+        voice_builder.return_value.last_pauses = (
+            TtsPause(1.0, 1.5),
+            TtsPause(3.25, 3.75),
+        )
         audio_mixer.return_value.build.return_value = project.final_audio_path.return_value
         subtitle_builder.return_value.build.return_value = project.subtitle_path.return_value
         optimizer.return_value.optimize.return_value = project.subtitle_path.return_value
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == project.subtitle_path.return_value
     subtitle_builder.return_value.build.assert_called_once_with(
         audio_path=project.audio_path.return_value,
         output_path=project.subtitle_path.return_value,
+        voice_pauses=((1.0, 1.5), (3.25, 3.75)),
     )
     assert optimizer.call_args.kwargs["project"] is project
 
 
-def test_typed_standard_voice_config_is_injected_without_environment_fallback(
-    monkeypatch,
-):
+def test_typed_standard_voice_config_id_is_injected_into_config_manager():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -265,23 +273,24 @@ def test_typed_standard_voice_config_is_injected_without_environment_fallback(
         pipeline_mode="audio",
         voice_config_id="test_voice_selected",
     )
-    monkeypatch.setenv("MC_VOICE_CONFIG", "test_voice_conflict")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ) as config_manager_class, patch.object(
-        start, "_required_builders", return_value={"voice": True}
+        standard, "_required_builders", return_value={"voice": True}
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder, patch.object(
-        start, "AudioMixer"
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "AudioMixer"
     ) as audio_mixer:
         voice_builder.return_value.build.return_value = project.audio_path.return_value
         audio_mixer.return_value.build.return_value = project.final_audio_path.return_value
 
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == project.final_audio_path.return_value
     config_manager_class.assert_called_once_with(
@@ -295,9 +304,50 @@ def test_typed_standard_voice_config_is_injected_without_environment_fallback(
     )
 
 
-def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent(
-    monkeypatch,
-):
+def test_typed_standard_summary_shows_storyboard_metrics_only_with_storyboard():
+    cases = (
+        ("audio", {"voice": False, "storyboard": True}, False, False),
+        ("audio", {"voice": True, "storyboard": True}, False, True),
+        ("subtitles", {"voice": True, "storyboard": True}, False, True),
+        ("storyboard", {"voice": True, "storyboard": False}, False, True),
+        ("storyboard", {"voice": True, "storyboard": True}, True, True),
+    )
+    for pipeline_mode, builders, expected, expected_duration in cases:
+        project = _project()
+        config = Mock()
+        config.get_ai_config.return_value = object()
+        config.get_profile_config.return_value = object()
+        telemetry = _telemetry()
+
+        with patch.object(start, "ProjectManager", return_value=project), patch.object(
+            start, "ConfigManager", return_value=config
+        ), patch.object(
+            standard, "_required_builders", return_value=builders
+        ), patch.object(
+            standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+        ), patch.object(
+            start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+        ), patch.object(
+            standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+        ), patch.object(standard, "VoiceBuilder"), patch.object(
+            standard, "AudioMixer"
+        ), patch.object(standard, "StoryboardBuilder"):
+            start.run_application(
+                request=_standard_request(pipeline_mode=pipeline_mode)
+            )
+
+        summary = telemetry.complete.call_args.kwargs["summary"]
+        assert summary.include_visual_metrics is expected, pipeline_mode
+        assert summary.include_media_duration is expected_duration, pipeline_mode
+
+
+def test_standard_stage_table_ends_every_standard_mode():
+    assert set(standard._LAST_STAGE_BY_PIPELINE_MODE) == set(
+        STANDARD_PIPELINE_MODES
+    )
+
+
+def test_typed_standard_voice_requires_voice_config_id():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -314,28 +364,29 @@ def test_typed_standard_voice_never_falls_back_to_environment_when_id_is_absent(
             script_source="manual",
         ),
     )
-    monkeypatch.setenv("MC_VOICE_CONFIG", "piper_davefx")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
-    ), patch.object(start, "_required_builders", return_value={"voice": True}), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
-    ), patch.object(start, "VoiceBuilder") as voice_builder:
+    ), patch.object(standard, "_required_builders", return_value={"voice": True}), patch.object(
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder:
         try:
-            start.iniciar(request=request)
+            start.run_application(request=request)
         except ValueError as error:
             assert str(error) == (
-                "La ruta moderna requiere voice_config_id para generar voz."
+                "Generar la voz requiere voice_config_id."
             )
         else:
-            raise AssertionError("La ruta moderna acepto un fallback ambiental.")
+            raise AssertionError("La ruta estándar aceptó una voz sin voice_config_id.")
 
     voice_builder.assert_not_called()
 
 
-def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatch):
+def test_typed_video_uses_request_visual_pipeline_and_operational_key():
     project = _project()
     config = Mock()
     config.get_ai_config.return_value = object()
@@ -347,24 +398,23 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatc
     )
     manifest = Path("output/typed/video_clips_manifest.json")
     final_video = Path("output/typed/video/final.mp4")
-    monkeypatch.setenv("MC_VISUAL_PIPELINE", "image")
-    monkeypatch.setenv("MC_PIPELINE_MODE", "audio")
-    monkeypatch.setenv("MC_OVERLAYS_MODE", "smart")
 
     with patch.object(start, "ProjectManager", return_value=project), patch.object(
         start, "ConfigManager", return_value=config
     ) as config_manager_class, patch.object(
-        start, "_required_builders", return_value={}
+        standard, "_required_builders", return_value={}
     ), patch.object(
-        start, "_pipeline_telemetry_artifacts", return_value=Mock()
-    ), patch.object(start, "_PIPELINE_TELEMETRY", telemetry), patch.object(
-        start, "ejecutar_guion", return_value=SimpleNamespace(text="Texto")
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
     ), patch.object(
-        start, "generar_video_clips_i2v", return_value=manifest
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(
+        standard, "generate_video_clips", return_value=manifest
     ) as generate_i2v, patch.object(
-        start, "_build_i2v_public_video", return_value=final_video
-    ), patch.object(start, "VideoBuilder") as video_builder:
-        result = start.iniciar(request=request)
+        standard, "build_public_video", return_value=final_video
+    ), patch.object(standard, "VideoBuilder") as video_builder:
+        result = start.run_application(request=request)
 
     assert result == final_video
     assert generate_i2v.call_args.kwargs["profile_key"] is request.operational_profile_key
@@ -375,7 +425,7 @@ def test_typed_video_uses_request_visual_pipeline_and_operational_key(monkeypatc
     assert video_builder.call_args.kwargs["overlays_mode"] == "off"
 
 
-def test_typed_design_image_dispatch_ignores_environment_pipeline(monkeypatch):
+def test_typed_design_image_dispatches_only_to_design_image():
     project = _project()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
@@ -384,12 +434,11 @@ def test_typed_design_image_dispatch_ignores_environment_pipeline(monkeypatch):
         subtitle_profile_key=None,
         route=DesignExecutionRequest(mode="design_image"),
     )
-    monkeypatch.setenv("MC_PIPELINE_MODE", "design_video")
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_diseno_imagen", return_value=Path("images.json")
-    ) as run_image, patch.object(start, "ejecutar_diseno_video") as run_video:
-        result = start.iniciar(request=request)
+        DesignExecutionCoordinator, "run_image", return_value=Path("images.json")
+    ) as run_image, patch.object(DesignExecutionCoordinator, "run_video") as run_video:
+        result = start.run_application(request=request)
 
     assert result == Path("images.json")
     assert run_image.call_args.kwargs["project"] is project
@@ -410,9 +459,9 @@ def test_typed_design_video_transports_the_existing_operational_key():
     )
 
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_diseno_video", return_value=Path("scene_001.mkv")
+        DesignExecutionCoordinator, "run_video", return_value=Path("scene_001.mkv")
     ) as run_video:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == Path("scene_001.mkv")
     assert run_video.call_args.kwargs["profile_key"] is operational_profile_key
@@ -425,7 +474,7 @@ def test_typed_design_video_transports_the_existing_operational_key():
     project.setup.assert_not_called()
 
 
-def test_typed_studio_standard_preserves_paths_and_subtitle_key(monkeypatch):
+def test_typed_studio_standard_preserves_paths_and_subtitle_key():
     subtitle_profile_key = _subtitle_key()
     request = ApplicationExecutionRequest(
         project_name="typed studio",
@@ -438,13 +487,12 @@ def test_typed_studio_standard_preserves_paths_and_subtitle_key(monkeypatch):
             subtitle_path=Path("input/source.srt"),
         ),
     )
-    monkeypatch.setenv("MC_PIPELINE_MODE", "full")
 
     project = _project()
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_studio", return_value="studio-result"
+        StudioExecutionCoordinator, "run_standard", return_value="studio-result"
     ) as execute:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == "studio-result"
     assert execute.call_args.kwargs["music_path"] is None
@@ -481,9 +529,9 @@ def test_typed_studio_plan_is_delegated_without_reconstruction():
 
     project = _project()
     with patch.object(start, "ProjectManager", return_value=project) as projects, patch.object(
-        start, "ejecutar_studio_video_audio_srt", return_value="video-audio"
+        StudioExecutionCoordinator, "run_video_audio_srt", return_value="video-audio"
     ) as execute:
-        result = start.iniciar(request=request)
+        result = start.run_application(request=request)
 
     assert result == "video-audio"
     assert execute.call_args.args == (plan,)

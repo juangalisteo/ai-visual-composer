@@ -184,7 +184,7 @@ def test_diagnostics_writer_writes_deterministic_versioned_json_without_text_or_
     assert result == output_path
     assert first == second
     assert payload == {
-        "schema_version": 1,
+        "schema_version": 2,
         "backend": "openai-whisper",
         "backend_version": "20250625",
         "transcription_config": {
@@ -225,6 +225,7 @@ def test_diagnostics_writer_writes_deterministic_versioned_json_without_text_or_
                 "temperature": 0.0,
             },
         ],
+        "discarded_segments": [],
     }
     assert b"La Tierra" not in first
     assert b"tokens" not in first

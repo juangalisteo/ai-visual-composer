@@ -6,12 +6,16 @@
   "language": "es-ES",
   "prosody": {
     "speaking_rate": 1.0,
-    "volume_gain_db": 0.0
+    "volume_gain_db": 0.0,
+    "sentence_pause_seconds": 0.5,
+    "paragraph_pause_seconds": 0.35
   },
   "backend_options": {
     "model": {
       "onnx_path": "models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx"
     },
-    "synthesis": {}
+    "synthesis": {
+      "length_scale": 1.10
+    }
   }
 }

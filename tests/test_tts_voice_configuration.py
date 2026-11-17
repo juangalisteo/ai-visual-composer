@@ -1,9 +1,7 @@
 import copy
 import inspect
 import json
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -14,6 +12,7 @@ from app.modules.audio.voice_configuration import (
 from app.modules.audio.tts_backend_runtime import (
     build_default_tts_backend_registry,
 )
+from app.modules.audio.tts_contracts import TtsVoiceConfigurationError
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError
 
@@ -96,7 +95,7 @@ def test_piper_voice_documents_are_unique_native_baselines_and_resolve_by_backen
         and configuration.voice.language == "es-ES"
         and configuration.voice.prosody.speaking_rate == 1.0
         and configuration.voice.prosody.volume_gain_db == 0.0
-        and configuration.voice.backend_options["synthesis"] == {}
+        and configuration.voice.backend_options["synthesis"] == {"length_scale": 1.10}
         for configuration in configurations.values()
     )
     assert {
@@ -214,6 +213,77 @@ def test_voice_configuration_validates_required_neutral_fields(
         load_tts_voice_configuration(document)
 
 
+def test_current_voice_documents_declare_sentence_and_paragraph_pauses():
+    for stem in ("piper_davefx", "piper_carlfm"):
+        prosody = load_tts_voice_configuration(_document(stem)).voice.prosody
+
+        assert prosody.sentence_pause_seconds == 0.5
+        assert prosody.paragraph_pause_seconds == 0.35
+
+
+def test_current_voice_documents_share_the_same_slower_length_scale():
+    length_scales = {
+        stem: load_tts_voice_configuration(_document(stem)).voice.backend_options[
+            "synthesis"
+        ]["length_scale"]
+        for stem in ("piper_davefx", "piper_carlfm")
+    }
+
+    assert length_scales == {"piper_davefx": 1.10, "piper_carlfm": 1.10}
+
+
+def test_missing_pauses_mean_no_extra_silence():
+    document = _document()
+    del document["prosody"]["sentence_pause_seconds"]
+    del document["prosody"]["paragraph_pause_seconds"]
+
+    prosody = load_tts_voice_configuration(document).voice.prosody
+
+    assert prosody.sentence_pause_seconds == 0.0
+    assert prosody.paragraph_pause_seconds == 0.0
+
+
+@pytest.mark.parametrize("value", (0, 0.0, 2, 0.25))
+@pytest.mark.parametrize("field", ("sentence_pause_seconds", "paragraph_pause_seconds"))
+def test_pause_accepts_zero_and_positive_seconds(field, value):
+    document = _document()
+    document["prosody"][field] = value
+
+    assert getattr(load_tts_voice_configuration(document).voice.prosody, field) == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    (-0.5, "0.5", True, None, float("nan"), float("inf"), [0.5]),
+)
+@pytest.mark.parametrize("field", ("sentence_pause_seconds", "paragraph_pause_seconds"))
+def test_pause_rejects_invalid_values_with_spanish_message(field, value):
+    document = _document()
+    document["prosody"][field] = value
+
+    with pytest.raises(TtsVoiceConfigurationError) as error:
+        load_tts_voice_configuration(document)
+
+    assert str(error.value).startswith(
+        f"prosody.{field} debe ser un número de segundos mayor o igual que 0 "
+        "(0 = sin pausa extra); se recibió "
+    )
+
+
+def test_prosody_rejects_unknown_fields_such_as_misspelled_pauses():
+    document = _document()
+    document["prosody"]["sentence_pause"] = 0.5
+
+    with pytest.raises(TtsVoiceConfigurationError) as error:
+        load_tts_voice_configuration(document)
+
+    assert str(error.value) == (
+        "prosody no admite las claves: sentence_pause. Claves válidas: "
+        "speaking_rate, volume_gain_db, sentence_pause_seconds, "
+        "paragraph_pause_seconds."
+    )
+
+
 @pytest.mark.parametrize(
     ("selected_stem", "expected_voice_id", "expected_backend_key"),
     (
@@ -226,17 +296,15 @@ def test_current_terminal_selection_loads_the_same_neutral_voice_document(
     expected_voice_id,
     expected_backend_key,
 ):
-    with patch.dict(os.environ, {"MC_VOICE_CONFIG": selected_stem}, clear=False):
-        configuration = ConfigManager().get_tts_voice_configuration()
+    configuration = ConfigManager(
+        voice_config_id=selected_stem
+    ).get_tts_voice_configuration()
 
     assert configuration.voice.voice_id == expected_voice_id
     assert configuration.voice.backend_key == expected_backend_key
 
 
-def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
-    monkeypatch,
-    tmp_path,
-):
+def test_explicit_voice_config_id_selects_its_own_voice_document(tmp_path):
     voice_configs = tmp_path / "voice_configs"
     voice_configs.mkdir()
     selected_document = _document()
@@ -251,8 +319,6 @@ def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
         json.dumps(conflicting_document),
         encoding="utf-8",
     )
-    monkeypatch.setenv("MC_VOICE_CONFIG", "test_voice_conflict")
-
     manager = ConfigManager(voice_config_id="test_voice_selected")
     manager.config_path = tmp_path
     configuration = manager.get_tts_voice_configuration()
@@ -262,23 +328,18 @@ def test_explicit_voice_config_id_wins_over_a_conflicting_legacy_environment(
 
 
 def test_default_voice_configuration_is_the_approved_piper_davefx_baseline():
-    with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("MC_VOICE_CONFIG", None)
-        configuration = ConfigManager().get_tts_voice_configuration()
+    configuration = ConfigManager().get_tts_voice_configuration()
 
     assert configuration.voice.voice_id == "piper_voice_davefx"
     assert configuration.voice.backend_key == "piper_onnx"
-    assert configuration.voice.backend_options["synthesis"] == {}
+    assert configuration.voice.backend_options["synthesis"] == {"length_scale": 1.10}
 
 
 def test_invalid_explicit_voice_override_preserves_the_configuration_error():
-    with patch.dict(
-        os.environ,
-        {"MC_VOICE_CONFIG": "missing_voice_fixture"},
-        clear=False,
-    ):
-        with pytest.raises(OperationalError) as error:
-            ConfigManager().get_tts_voice_configuration()
+    with pytest.raises(OperationalError) as error:
+        ConfigManager(
+            voice_config_id="missing_voice_fixture"
+        ).get_tts_voice_configuration()
 
     assert error.value.context.family == "CONFIG"
     assert isinstance(error.value.__cause__, FileNotFoundError)
@@ -286,9 +347,8 @@ def test_invalid_explicit_voice_override_preserves_the_configuration_error():
 
 @pytest.mark.parametrize("legacy_stem", ("femenina", "masculina", "masculina_santa"))
 def test_removed_kokoro_voice_override_preserves_the_configuration_error(legacy_stem):
-    with patch.dict(os.environ, {"MC_VOICE_CONFIG": legacy_stem}, clear=False):
-        with pytest.raises(OperationalError) as error:
-            ConfigManager().get_tts_voice_configuration()
+    with pytest.raises(OperationalError) as error:
+        ConfigManager(voice_config_id=legacy_stem).get_tts_voice_configuration()
 
     assert error.value.context.family == "CONFIG"
     assert isinstance(error.value.__cause__, FileNotFoundError)

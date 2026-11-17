@@ -8,16 +8,14 @@ from app.modules.subtitles.policies.text_case import TextCasePolicy
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.shared.profile_identity import (
     ProfileComponent,
-    ProfileKey,
     coerce_profile_family,
-    coerce_profile_platform,
+    coerce_profile_format,
 )
 from app.shared.operational_error import create_operational_error
 from app.shared.subtitle_profile_identity import (
     ResolvedSubtitleProfile,
     SubtitleProfileDescriptor,
     SubtitleProfileKey,
-    coerce_subtitle_style,
 )
 
 
@@ -31,14 +29,14 @@ class SubtitleProfileResolver:
         profile_key = self._require_operational_key(profile_key)
         matches = []
         for path, data in self._profile_documents(
-            profile_key.component, profile_key.platform, profile_key.family
+            profile_key.component, profile_key.format, profile_key.family
         ):
             if data.get("profile_id") == profile_key.profile_id:
                 self._validate_identity(data, profile_key, path)
                 matches.append(path)
         if not matches:
             error = FileNotFoundError(
-                "No existe el perfil de subtitulos: "
+                "No existe el perfil de subtítulos: "
                 f"{profile_key.profile_id}"
             )
             raise create_operational_error(
@@ -53,7 +51,7 @@ class SubtitleProfileResolver:
             ) from error
         if len(matches) > 1:
             error = ValueError(
-                "profile_id de subtitulos duplicado: "
+                "profile_id de subtítulos duplicado: "
                 f"{profile_key.profile_id}"
             )
             raise create_operational_error(
@@ -87,28 +85,28 @@ class SubtitleProfileResolver:
             render_style=deepcopy(data["render_style"]),
         )
 
-    def discover_platforms(self, component):
+    def discover_formats(self, component):
         component = ProfileComponent(component)
         root = self.profiles_root / component.value
         self._ensure_within_profiles_root(root)
         if not root.is_dir():
             return ()
-        platforms = []
+        profile_formats = []
         for directory in root.iterdir():
             if not directory.is_dir():
                 continue
             try:
-                platform = coerce_profile_platform(directory.name)
+                profile_format = coerce_profile_format(directory.name)
             except ValueError:
                 continue
-            if self.discover_families(component, platform):
-                platforms.append(platform)
-        return tuple(sorted(platforms))
+            if self.discover_families(component, profile_format):
+                profile_formats.append(profile_format)
+        return tuple(sorted(profile_formats))
 
-    def discover_families(self, component, platform):
+    def discover_families(self, component, profile_format):
         component = ProfileComponent(component)
-        platform = coerce_profile_platform(platform)
-        root = self.profiles_root / component.value / platform
+        profile_format = coerce_profile_format(profile_format)
+        root = self.profiles_root / component.value / profile_format
         self._ensure_within_profiles_root(root)
         if not root.is_dir():
             return ()
@@ -120,20 +118,20 @@ class SubtitleProfileResolver:
                 family = coerce_profile_family(directory.name)
             except (TypeError, ValueError):
                 continue
-            if self.discover_profiles_for_family(component, platform, family):
+            if self.discover_profiles_for_family(component, profile_format, family):
                 families.append(family)
         return tuple(families)
 
-    def discover_profiles_for_family(self, component, platform, family):
+    def discover_profiles_for_family(self, component, profile_format, family):
         component = ProfileComponent(component)
-        platform = coerce_profile_platform(platform)
+        profile_format = coerce_profile_format(profile_format)
         family = coerce_profile_family(family)
         discovered = []
         profile_ids = set()
-        for path, data in self._profile_documents(component, platform, family):
+        for path, data in self._profile_documents(component, profile_format, family):
             key = SubtitleProfileKey(
                 component=component,
-                platform=platform,
+                format=profile_format,
                 family=family,
                 profile_id=data.get("profile_id", ""),
             )
@@ -141,7 +139,7 @@ class SubtitleProfileResolver:
             self._validate_profile_contract(data, path)
             if path != self.resolve(key):
                 error = ValueError(
-                    "La ruta del perfil de subtitulos no coincide "
+                    "La ruta del perfil de subtítulos no coincide "
                     f"con su identidad: {path}."
                 )
                 raise create_operational_error(
@@ -159,7 +157,7 @@ class SubtitleProfileResolver:
                 ) from error
             if key.profile_id in profile_ids:
                 error = ValueError(
-                    "profile_id de subtitulos duplicado: "
+                    "profile_id de subtítulos duplicado: "
                     f"{key.profile_id}"
                 )
                 raise create_operational_error(
@@ -191,88 +189,9 @@ class SubtitleProfileResolver:
             ),
         ))
 
-    def discover_profiles(self, profile_key):
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError("La identidad principal debe ser un ProfileKey.")
-        descriptors = self.discover_profiles_for_family(
-            profile_key.component, profile_key.platform, profile_key.family,
-        )
-        if not descriptors:
-            error = FileNotFoundError(
-                "No existen perfiles de subtitulos para: "
-                f"{profile_key.family}."
-            )
-            raise create_operational_error(
-                family="PROFILE",
-                user_message="No existen perfiles de subtítulos para la familia seleccionada.",
-                recommended_action=(
-                    "Revise la estructura y configuración de perfiles de "
-                    "subtítulos."
-                ),
-                operation="Descubrir perfiles de subtítulos",
-                resource=(
-                    f"{profile_key.component.value}/{profile_key.platform}/"
-                    f"{profile_key.family}"
-                ),
-            ) from error
-        return descriptors
-
-    def adapt_legacy_selection(self, profile_key, selection):
-        """Adapt a legacy subtitle selection to one explicit technical key."""
-        if not isinstance(profile_key, ProfileKey):
-            raise TypeError("La identidad principal debe ser un ProfileKey.")
-        if isinstance(selection, SubtitleProfileKey):
-            if (
-                selection.component is not profile_key.component
-                or selection.platform != profile_key.platform
-            ):
-                raise ValueError(
-                    "La seleccion de subtitulos no coincide con el perfil."
-                )
-            return selection
-
-        selected = selection.value if hasattr(selection, "value") else selection
-        if not isinstance(selected, str):
-            raise TypeError(
-                "La seleccion heredada de subtitulos debe ser texto."
-            )
-        selected = selected.strip().lower()
-        if not selected:
-            raise ValueError("La seleccion de subtitulos esta vacia.")
-        descriptors = self.discover_profiles(profile_key)
-        for descriptor in descriptors:
-            if descriptor.profile_id == selected:
-                return descriptor.key
-        matches = [
-            descriptor for descriptor in descriptors
-            if descriptor.mode == selected
-        ]
-        if len(matches) == 1:
-            return matches[0].key
-        if len(matches) > 1:
-            raise ValueError(
-                "La seleccion heredada por style/mode es ambigua; "
-                "use profile_id."
-            )
-        raise ValueError(
-            "No existe el perfil de subtitulos seleccionado: "
-            f"{selection}"
-        )
-
-    def load_selection(self, profile_key, selection):
-        """Legacy compatibility adapter; modern callers use ``load(key)``."""
-        return self.load(self.adapt_legacy_selection(profile_key, selection))
-
-    def discover_styles(self, profile_key):
-        """Legacy style facade derived from modern cue_policy.mode values."""
-        return tuple(
-            coerce_subtitle_style(descriptor.mode)
-            for descriptor in self.discover_profiles(profile_key)
-        )
-
-    def _profile_documents(self, component, platform, family):
+    def _profile_documents(self, component, profile_format, family):
         directory = (
-            self.profiles_root / component.value / platform / family / "subtitulos"
+            self.profiles_root / component.value / profile_format / family / "subtitulos"
         )
         self._ensure_within_profiles_root(directory)
         if not directory.is_dir():
@@ -315,7 +234,7 @@ class SubtitleProfileResolver:
             ) from error
         if not isinstance(data, dict):
             error = TypeError(
-                f"El perfil de subtitulos debe ser JSON object: {path}."
+                f"El perfil de subtítulos debe ser JSON object: {path}."
             )
             raise create_operational_error(
                 family="CONFIG",
@@ -329,13 +248,13 @@ class SubtitleProfileResolver:
     def _validate_identity(self, data, profile_key, path):
         expected = {
             "component": profile_key.component.value,
-            "platform": profile_key.platform,
+            "format": profile_key.format,
             "family": profile_key.family,
             "profile_id": profile_key.profile_id,
         }
         if any(data.get(field) != value for field, value in expected.items()):
             error = ValueError(
-                "La identidad interna del perfil de subtitulos "
+                "La identidad interna del perfil de subtítulos "
                 f"no coincide con su ruta: {path}."
             )
             raise create_operational_error(
@@ -345,7 +264,7 @@ class SubtitleProfileResolver:
                     "con su ruta."
                 ),
                 recommended_action=(
-                    "Revise component, platform, family y profile_id del "
+                    "Revise component, format, family y profile_id del "
                     "perfil."
                 ),
                 operation="Validar perfil de subtítulos",
@@ -360,7 +279,7 @@ class SubtitleProfileResolver:
         if isinstance(display_name, str) and display_name.strip():
             return display_name.strip()
         error = ValueError(
-            "El perfil de subtitulos requiere display_name: "
+            "El perfil de subtítulos requiere display_name: "
             f"{path}."
         )
         raise create_operational_error(
@@ -395,7 +314,7 @@ class SubtitleProfileResolver:
         candidate = Path(path).resolve()
         if candidate != root and root not in candidate.parents:
             raise ValueError(
-                "La ruta de subtitulos queda fuera de config/profiles."
+                "La ruta de subtítulos queda fuera de config/profiles."
             )
         return candidate
 
@@ -404,9 +323,9 @@ class SubtitleProfileResolver:
             cue_policy = data.get("cue_policy")
             render_style = data.get("render_style")
             if not isinstance(cue_policy, dict):
-                raise TypeError(f"cue_policy invalida en {path}.")
+                raise TypeError(f"cue_policy inválida en {path}.")
             if not isinstance(render_style, dict):
-                raise TypeError(f"render_style invalido en {path}.")
+                raise TypeError(f"render_style inválido en {path}.")
             CueModelRegistry().resolve(CueModelRegistry.mode_from(cue_policy))
             TextCasePolicy.from_cue_policy(cue_policy)
             subtitle_style = SubtitleConfigLoader().load_render_style(
@@ -434,7 +353,7 @@ class SubtitleProfileResolver:
         return "/".join(
             (
                 profile_key.component.value,
-                profile_key.platform,
+                profile_key.format,
                 profile_key.family,
                 profile_key.profile_id,
             )

@@ -8,12 +8,15 @@ from app.controllers.interaction.intro_outro_selection import IntroOutroSelector
 from app.controllers.interaction.resource_selection import ResourceSelection
 from app.controllers.interaction.terminal import Terminal
 from app.controllers.run_controller import RunController
+from app.shared.error_context import ErrorSeverity
+from app.shared.operational_error import OperationalError
+from tests.test_menu_helpers import MenuAnswers, Typed
 
 
-def _selector(catalog, answers, messages, on_cancel=None):
+def _selector(catalog, answers, on_cancel=None):
     terminal = Terminal(
-        reader=lambda prompt: next(answers),
-        writer=messages.append,
+        reader=answers.read,
+        writer=answers.write,
     )
     return IntroOutroSelector(
         terminal,
@@ -24,24 +27,23 @@ def _selector(catalog, answers, messages, on_cancel=None):
 
 
 def test_intro_outro_keeps_menu_order_assets_and_original_paths():
-    intro_first = Path("assets/instagram/intro/a.mp4")
-    intro_second = Path("assets/instagram/intro/b.mp4")
-    outro = Path("assets/instagram/outro/c.mp4")
+    intro_first = Path("assets/vertical/intro/a.mp4")
+    intro_second = Path("assets/vertical/intro/b.mp4")
+    outro = Path("assets/vertical/outro/c.mp4")
     catalog = Mock()
-    catalog.discover.side_effect = lambda platform, position: {
+    catalog.discover.side_effect = lambda profile_format, position: {
         "intro": (intro_first, intro_second),
         "outro": (outro,),
     }[position]
-    messages = []
+    answers = MenuAnswers("INTRO + OUTRO", "b.mp4", "c.mp4")
 
-    plan = _selector(catalog, iter(("4", "2", "1")), messages) \
-        .select_intro_outro("instagram")
+    plan = _selector(catalog, answers).select_intro_outro("vertical")
 
     assert plan.intro.asset_path == intro_second
     assert plan.intro.position == "intro"
     assert plan.outro.asset_path == outro
     assert plan.outro.position == "outro"
-    assert messages == [
+    assert answers.messages == [
         "\nINTRO / OUTRO\n",
         "1. NINGUNO",
         "2. SOLO INTRO",
@@ -54,20 +56,20 @@ def test_intro_outro_keeps_menu_order_assets_and_original_paths():
         "1. c.mp4",
     ]
     assert catalog.discover.call_args_list == [
-        (("instagram", "intro"),),
-        (("instagram", "outro"),),
+        (("vertical", "intro"),),
+        (("vertical", "outro"),),
     ]
 
 
 def test_intro_outro_none_skips_discovery_and_returns_none():
     catalog = Mock()
-    messages = []
+    answers = MenuAnswers("NINGUNO")
 
-    assert _selector(catalog, iter(("1",)), messages).select_intro_outro(
-        "instagram"
+    assert _selector(catalog, answers).select_intro_outro(
+        "vertical"
     ) is None
     catalog.discover.assert_not_called()
-    assert messages == [
+    assert answers.messages == [
         "\nINTRO / OUTRO\n",
         "1. NINGUNO",
         "2. SOLO INTRO",
@@ -76,28 +78,38 @@ def test_intro_outro_none_skips_discovery_and_returns_none():
     ]
 
 
-def test_intro_outro_keeps_the_existing_missing_assets_error():
+def test_intro_outro_without_assets_is_an_input_error():
     catalog = Mock()
     catalog.discover.return_value = ()
 
-    with pytest.raises(
-        FileNotFoundError,
-        match="No hay archivos MP4 disponibles para INTRO.*instagram/intro/",
-    ):
-        _selector(catalog, iter(("2",)), []).select_intro_outro("instagram")
+    with pytest.raises(OperationalError) as raised:
+        _selector(catalog, MenuAnswers("SOLO INTRO")).select_intro_outro(
+            "vertical"
+        )
+
+    context = raised.value.context
+    assert context.severity is ErrorSeverity.FATAL_OPERATIONAL
+    assert context.user_message == (
+        "No hay archivos MP4 disponibles para INTRO en "
+        "assets/videos/intro_outro/vertical/intro/."
+    )
+    assert context.recommended_action == (
+        "Pon al menos un vídeo .mp4 en esa carpeta y vuelve a intentarlo."
+    )
 
 
-def test_studio_adapter_derives_the_platform_from_profile_key():
-    intro = Path("assets/youtube/intro/a.mp4")
+def test_studio_adapter_derives_the_format_from_profile_key():
+    intro = Path("assets/horizontal/intro/a.mp4")
     catalog = Mock()
     catalog.discover.return_value = (intro,)
 
-    plan = _selector(catalog, iter(("2", "1")), []).select_studio_intro_outro(
-        SimpleNamespace(platform="youtube")
-    )
+    plan = _selector(
+        catalog,
+        MenuAnswers("SOLO INTRO", "a.mp4"),
+    ).select_studio_intro_outro(SimpleNamespace(format="horizontal"))
 
     assert plan.intro.asset_path == intro
-    catalog.discover.assert_called_once_with("youtube", "intro")
+    catalog.discover.assert_called_once_with("horizontal", "intro")
 
 
 def test_intro_outro_keeps_the_terminal_cancellation_callback():
@@ -108,8 +120,8 @@ def test_intro_outro_keeps_the_terminal_cancellation_callback():
         raise RuntimeError("cancelled")
 
     with pytest.raises(RuntimeError, match="cancelled"):
-        _selector(Mock(), iter(("0",)), [], cancel).select_intro_outro(
-            "instagram"
+        _selector(Mock(), MenuAnswers(Typed("0")), cancel).select_intro_outro(
+            "vertical"
         )
     assert calls == ["cancel"]
 
@@ -117,7 +129,7 @@ def test_intro_outro_keeps_the_terminal_cancellation_callback():
 def test_run_controller_delegates_all_phase_four_responsibilities():
     interaction = Mock()
     plan = Mock()
-    asset = Path("assets/instagram/intro/a.mp4")
+    asset = Path("assets/vertical/intro/a.mp4")
     interaction.select_intro_outro.return_value = plan
     interaction.select_studio_intro_outro.return_value = plan
     interaction.require_assets.return_value = (asset,)
@@ -127,20 +139,20 @@ def test_run_controller_delegates_all_phase_four_responsibilities():
     selector = Mock()
     controller._print = writer
     controller._select_from_list = selector
-    profile_key = SimpleNamespace(platform="instagram")
+    profile_key = SimpleNamespace(format="vertical")
 
-    assert controller.select_intro_outro("instagram") is plan
+    assert controller.select_intro_outro("vertical") is plan
     assert controller.select_studio_intro_outro(profile_key) is plan
-    assert controller._require_intro_outro_assets("instagram", "intro") == (asset,)
+    assert controller._require_intro_outro_assets("vertical", "intro") == (asset,)
     assert controller._select_intro_outro_asset((asset,), "INTRO") is asset
 
     common = {"writer": writer, "selector": selector}
-    interaction.select_intro_outro.assert_called_once_with("instagram", **common)
+    interaction.select_intro_outro.assert_called_once_with("vertical", **common)
     interaction.select_studio_intro_outro.assert_called_once_with(
         profile_key,
         **common,
     )
-    interaction.require_assets.assert_called_once_with("instagram", "intro")
+    interaction.require_assets.assert_called_once_with("vertical", "intro")
     interaction.select_asset.assert_called_once_with(
         (asset,),
         "INTRO",

@@ -7,12 +7,14 @@ import tempfile
 import time
 
 from app.managers.project_manager import ProjectManager
+from app.modules.audio import PUBLISHED_MP3_SAMPLE_RATE_HZ
 from app.modules.audio.tts_contracts import (
     TtsAudioArtifact,
     TtsBackendError,
     TtsSynthesisRequest,
     TtsSynthesisResult,
     TtsSynthesisWorkspace,
+    TtsVoiceConfigurationError,
 )
 from app.modules.audio.tts_backend_runtime import build_default_tts_backend_registry
 from app.modules.audio.voice_timing_adapter import VoiceTimingAdapter
@@ -45,6 +47,9 @@ class VoiceBuilder:
         self._workspace_parent = (
             Path(workspace_parent) if workspace_parent is not None else None
         )
+        # Silences the backend wrote into the last published voice
+        # (``TtsPause``, seconds of the published audio); empty otherwise.
+        self.last_pauses = ()
 
     def build(
         self,
@@ -54,6 +59,7 @@ class VoiceBuilder:
         """Generate and publish one voice artifact at the established path."""
         ProgressLogger.start("GENERANDO VOCES")
         start = time.perf_counter()
+        self.last_pauses = ()
 
         if not str(text).strip():
             raise ValueError(
@@ -87,6 +93,7 @@ class VoiceBuilder:
             # metadata. Subtitle timing now resolves from Whisper or None.
             self._timing_adapter.adapt(result.word_timings)
             self._publish_audio(result.staged_audio, output_path)
+            self.last_pauses = result.pauses
         except OperationalError:
             raise
         except Exception as error:
@@ -146,10 +153,12 @@ class VoiceBuilder:
     ) -> None:
         """Publish a neutral staging artifact at the current public path.
 
-        The established public contract is ``voz.mp3``. Native MP3 artifacts
-        retain the historical byte-for-byte publication. Lossless WAV staging
-        is encoded only at this public boundary, where current consumers need
-        an MP3 artifact; it is never down-converted inside a backend workspace.
+        The established public contract is ``voz.mp3`` at
+        ``PUBLISHED_MP3_SAMPLE_RATE_HZ``. Native MP3 artifacts at that rate
+        retain the historical byte-for-byte publication. Any other staging
+        (lossless WAV or MP3 at another rate) is encoded only at this public
+        boundary, where current consumers need an MP3 artifact; it is never
+        down-converted inside a backend workspace.
         """
         staged_audio_path = staged_audio.path
         if cls._can_copy_to_public_path(staged_audio, output_path):
@@ -177,6 +186,7 @@ class VoiceBuilder:
             output_path.suffix.casefold() == ".mp3"
             and staged_audio.container.casefold() == "mp3"
             and staged_audio.codec.casefold() == "mp3"
+            and staged_audio.sample_rate_hz == PUBLISHED_MP3_SAMPLE_RATE_HZ
         )
 
     @staticmethod
@@ -193,6 +203,8 @@ class VoiceBuilder:
             "libmp3lame",
             "-q:a",
             "0",
+            "-ar",
+            str(PUBLISHED_MP3_SAMPLE_RATE_HZ),
             str(output_path),
         ]
         subprocess.run(command, capture_output=True, text=True, check=True)
@@ -213,6 +225,17 @@ class VoiceBuilder:
             technical_metadata["backend_key"] = voice.backend_key
         if isinstance(error, TtsBackendError):
             technical_metadata["backend_error_kind"] = error.diagnostic.kind.value
+        if isinstance(error, TtsVoiceConfigurationError):
+            return create_operational_error(
+                family="CONFIG",
+                user_message=f"La configuración de la voz no es válida: {error}",
+                recommended_action=(
+                    "Corrige el documento de la voz en config/voice_configs/."
+                ),
+                operation="Generar voz",
+                resource=str(output_path),
+                technical_metadata=technical_metadata,
+            )
 
         return create_operational_error(
             family="AUDIO",

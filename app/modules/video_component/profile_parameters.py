@@ -13,13 +13,13 @@ def load_video_component_parameters(profile_key, resolver=None):
     """Load one declarative WAN document for an explicit VIDEO identity."""
     if not isinstance(profile_key, OperationalProfileKey):
         raise TypeError(
-            "La configuracion Wan requiere una identidad operacional "
-            "VIDEO explicito."
+            "La configuración Wan requiere una identidad operacional "
+            "VIDEO explícita."
         )
 
     if profile_key.component is not ProfileComponent.VIDEO:
         raise ValueError(
-            "La configuracion Wan requiere identidad del "
+            "La configuración Wan requiere identidad del "
             "componente video."
         )
 
@@ -42,10 +42,6 @@ def build_video_backend_overrides(profile):
         "generation",
         {}
     )
-    target = video_component.get(
-        "target",
-        {}
-    )
     sampling = video_component.get(
         "sampling",
         {}
@@ -60,7 +56,7 @@ def build_video_backend_overrides(profile):
             video_component.get(
                 "profile",
                 profile.get(
-                    "platform",
+                    "format",
                     ""
                 )
             )
@@ -74,16 +70,6 @@ def build_video_backend_overrides(profile):
             generation,
             "height",
             "generation.height"
-        ),
-        "target_width": _required_int(
-            target,
-            "width",
-            "target.width"
-        ),
-        "target_height": _required_int(
-            target,
-            "height",
-            "target.height"
         ),
         "frames": _required_int(
             video_component,

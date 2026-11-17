@@ -8,10 +8,23 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping
 
-from app.modules.audio.tts_contracts import ResolvedTtsVoice, TtsProsody
+from app.modules.audio.tts_contracts import (
+    ResolvedTtsVoice,
+    TtsProsody,
+    TtsVoiceConfigurationError,
+)
 
 
 _VOICE_CONFIGURATION_KIND = "tts_voice"
+_PROSODY_FIELDS = (
+    "speaking_rate",
+    "volume_gain_db",
+    "sentence_pause_seconds",
+    "paragraph_pause_seconds",
+)
+_OPTIONAL_PROSODY_FIELDS = frozenset(
+    {"sentence_pause_seconds", "paragraph_pause_seconds"}
+)
 _VOICE_CONFIGURATION_FIELDS = frozenset(
     {
         "kind",
@@ -51,6 +64,7 @@ def load_tts_voice_configuration(document: Mapping[str, object]) -> TtsVoiceConf
     _reject_unknown_fields(document)
 
     prosody_document = _required_mapping(document, "prosody")
+    _reject_unknown_prosody_fields(prosody_document)
     backend_options = document.get("backend_options")
     if not isinstance(backend_options, Mapping):
         raise TypeError("backend_options must be a mapping.")
@@ -63,6 +77,11 @@ def load_tts_voice_configuration(document: Mapping[str, object]) -> TtsVoiceConf
         prosody=TtsProsody(
             speaking_rate=_required_value(prosody_document, "speaking_rate"),
             volume_gain_db=_required_value(prosody_document, "volume_gain_db"),
+            **{
+                name: prosody_document[name]
+                for name in _OPTIONAL_PROSODY_FIELDS
+                if name in prosody_document
+            },
         ),
         backend_options=backend_options,
     )
@@ -105,6 +124,22 @@ def _optional_text(document: Mapping[str, object], name: str) -> str | None:
     if not value.strip():
         raise ValueError(f"{name} must not be empty when present.")
     return value.strip()
+
+
+def _reject_unknown_prosody_fields(prosody: Mapping[str, object]) -> None:
+    unknown_fields = sorted(
+        str(field_name)
+        for field_name in prosody
+        if field_name not in _PROSODY_FIELDS
+    )
+    if unknown_fields:
+        raise TtsVoiceConfigurationError(
+            "prosody no admite las claves: "
+            + ", ".join(unknown_fields)
+            + ". Claves válidas: "
+            + ", ".join(_PROSODY_FIELDS)
+            + "."
+        )
 
 
 def _reject_unknown_fields(document: Mapping[str, object]) -> None:

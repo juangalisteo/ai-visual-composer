@@ -5,18 +5,18 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.core import start
+from app.modules.design import DesignExecutionCoordinator
 from app.modules.video_component import (
     VideoClipGenerationResult,
     VideoDesignPreparationService,
     VideoDesignVisualTruthAdapter,
 )
+from app.modules.video_component import clip_batch
 from app.modules.visual_design import VisualDesignInterpreter
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
-    ProfileKey,
 )
 from app.shared.profile_resolver import ProfileResolver
 
@@ -149,14 +149,6 @@ class FakeVideoComponentBuilder:
                 "generation_height",
                 320
             ),
-            target_width=overrides.get(
-                "target_width",
-                1080
-            ),
-            target_height=overrides.get(
-                "target_height",
-                1920
-            ),
             steps=overrides.get(
                 "steps",
                 4
@@ -175,7 +167,7 @@ class FakeVideoComponentBuilder:
             ),
             profile_name=overrides.get(
                 "profile_name",
-                "instagram"
+                "vertical"
             ),
             duration_seconds=2.0,
             fingerprint="fake-fingerprint"
@@ -273,7 +265,10 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = start._ensure_single_video_design_clip(manifest_path)
+            result = DesignExecutionCoordinator.ensure_single_video_design_clip(
+                manifest_path,
+                scene_clip_identity=clip_batch.scene_clip_identity,
+            )
 
         self.assertEqual(clip, result)
 
@@ -291,7 +286,10 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "scene_001"):
-                start._ensure_single_video_design_clip(manifest_path)
+                DesignExecutionCoordinator.ensure_single_video_design_clip(
+                    manifest_path,
+                    scene_clip_identity=clip_batch.scene_clip_identity,
+                )
 
     def test_video_design_preparation_reads_only_guion_video(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -382,13 +380,48 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 / "guion_video.txt"
             )
 
-            with self.assertRaisesRegex(
-                FileNotFoundError,
-                "guion_video.txt"
-            ):
+            with self.assertRaises(
+                OperationalError
+            ) as raised:
                 VideoDesignPreparationService().prepare(
                     input_path=missing_path
                 )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "No existe el diseño visual de vídeo: "
+                f"{missing_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Crea {missing_path.as_posix()} con el diseño del clip "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
+
+    def test_video_design_rejects_empty_guion_video_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            design_path = Path(temp_dir) / "guion_video.txt"
+            design_path.write_text(" \n", encoding="utf-8")
+
+            with self.assertRaises(
+                OperationalError
+            ) as raised:
+                VideoDesignPreparationService().prepare(
+                    input_path=design_path
+                )
+
+            context = raised.exception.context
+            self.assertEqual(
+                "El diseño visual de vídeo está vacío: "
+                f"{design_path.as_posix()}.",
+                context.user_message
+            )
+            self.assertEqual(
+                f"Escribe el diseño del clip en {design_path.as_posix()} "
+                "y vuelve a intentarlo.",
+                context.recommended_action
+            )
 
     def test_video_design_adapter_generates_single_visual_truth_scene(self):
         prepared = VideoDesignPreparationService(
@@ -516,7 +549,6 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             },
             profile={
                 "tone": "modo_conciencia",
-                "platform": "instagram",
                 "format": "vertical",
             },
             ai_builder_factory=DegenerateAIBuilder
@@ -548,8 +580,8 @@ class VideoDesignRuntimeTest(unittest.TestCase):
             )
             profile_key = OperationalProfileKey(
                 ProfileComponent.VIDEO,
-                "instagram",
-                "video_instagram",
+                "vertical",
+                "video_vertical",
             )
             profile = profile_resolver.load_operational(
                 profile_key
@@ -591,52 +623,52 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                 )
 
                 with patch(
-                    "app.core.start.ScriptOperation",
+                    "app.modules.script.operation.ScriptOperation.execute",
                     side_effect=AssertionError(
                         "ScriptOperation must not run"
                     )
                 ), patch(
-                    "app.core.start.ScriptPreparationService",
+                    "app.modules.script.operation.ScriptPreparationService",
                     side_effect=AssertionError(
                         "ScriptPreparationService must not run"
                     )
                 ), patch(
-                    "app.core.start.VoiceBuilder",
+                    "app.modules.audio.voice_builder.VoiceBuilder.build",
                     side_effect=AssertionError(
                         "VoiceBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.MusicSelector",
+                    "app.modules.audio.music_selector.MusicSelector.select",
                     side_effect=AssertionError(
                         "MusicSelector must not run"
                     )
                 ), patch(
-                    "app.core.start.AudioMixer",
+                    "app.modules.audio.audio_mixer.AudioMixer.build",
                     side_effect=AssertionError(
                         "AudioMixer must not run"
                     )
                 ), patch(
-                    "app.core.start.SubtitleBuilder",
+                    "app.modules.subtitles.io.subtitle_builder.SubtitleBuilder.build",
                     side_effect=AssertionError(
                         "SubtitleBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.SrtOptimizer",
+                    "app.modules.subtitles.pipeline.srt_optimizer.SrtOptimizer.optimize",
                     side_effect=AssertionError(
                         "SrtOptimizer must not run"
                     )
                 ), patch(
-                    "app.core.start.StoryboardBuilder",
+                    "app.modules.storyboard.storyboard_builder.StoryboardBuilder.build",
                     side_effect=AssertionError(
                         "StoryboardBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.VideoBuilder",
+                    "app.modules.video.video_builder.VideoBuilder.build",
                     side_effect=AssertionError(
                         "VideoBuilder must not run"
                     )
                 ), patch(
-                    "app.core.start.MediaProbe.get_duration",
+                    "app.shared.media_probe.MediaProbe.get_duration",
                     return_value=None
                 ), patch(
                     "app.modules.design.execution_coordinator.ConfigManager"
@@ -650,7 +682,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                     config_manager_mock.return_value.get_operational_profile_key.return_value = (
                         profile_key
                     )
-                    result = start.ejecutar_diseno_video(
+                    result = DesignExecutionCoordinator().run_video(
                         preparation_service=VideoDesignPreparationService(
                             visual_interpreter=(
                                 FakeVideoDesignInterpreter()

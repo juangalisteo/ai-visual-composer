@@ -7,6 +7,8 @@ from app.modules.script import (
     ScriptOperation,
     ScriptPreparationService,
 )
+from app.shared.error_context import ErrorSeverity
+from app.shared.operational_error import OperationalError
 
 
 class FakePromptEngine:
@@ -286,9 +288,10 @@ class ScriptPreparationServiceTest(
             prompt_engine = FakePromptEngine()
             FakeScriptBuilder.prompts = []
 
+            input_script = root / "input" / "guion.txt"
             with self.assertRaises(
-                FileNotFoundError
-            ):
+                OperationalError
+            ) as raised:
                 ScriptPreparationService(
                     prompt_engine=prompt_engine,
                     script_builder_factory=FakeScriptBuilder
@@ -302,12 +305,18 @@ class ScriptPreparationServiceTest(
                     profile={
                         "duration": 10
                     },
-                    input_script_path=root / "input" / "guion.txt",
+                    input_script_path=input_script,
                     input_topic_path=input_topic,
                     output_script_path=output_script,
                     source_mode="manual"
                 )
 
+            self.assert_input_error(
+                raised.exception,
+                f"No existe {input_script.as_posix()}.",
+                f"Crea {input_script.as_posix()} con el guion "
+                "y vuelve a intentarlo."
+            )
             self.assertEqual(
                 [],
                 prompt_engine.calls
@@ -333,8 +342,8 @@ class ScriptPreparationServiceTest(
             )
 
             with self.assertRaises(
-                ValueError
-            ):
+                OperationalError
+            ) as raised:
                 ScriptPreparationService().prepare(
                     builders={
                         "script": True
@@ -351,6 +360,80 @@ class ScriptPreparationServiceTest(
                     ),
                     source_mode="manual"
                 )
+
+            self.assert_input_error(
+                raised.exception,
+                f"El archivo {input_script.as_posix()} está vacío.",
+                f"Escribe el guion en {input_script.as_posix()} "
+                "y vuelve a intentarlo."
+            )
+
+    def test_generated_source_rejects_empty_topic(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            input_topic = root / "input" / "tema.txt"
+            input_topic.parent.mkdir()
+            input_topic.write_text(
+                " \n",
+                encoding="utf-8"
+            )
+
+            with self.assertRaises(
+                OperationalError
+            ) as raised:
+                self.prepare_generated(root, input_topic)
+
+            self.assert_input_error(
+                raised.exception,
+                f"El archivo {input_topic.as_posix()} está vacío.",
+                "Escribe el tema del vídeo en "
+                f"{input_topic.as_posix()} y vuelve a intentarlo."
+            )
+
+    def test_generated_source_rejects_missing_topic(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(
+                temp_dir
+            )
+            input_topic = root / "input" / "tema.txt"
+
+            with self.assertRaises(
+                OperationalError
+            ) as raised:
+                self.prepare_generated(root, input_topic)
+
+            self.assert_input_error(
+                raised.exception,
+                f"No existe {input_topic.as_posix()}.",
+                f"Crea {input_topic.as_posix()} con el tema del vídeo "
+                "y vuelve a intentarlo."
+            )
+
+    def prepare_generated(self, root, input_topic):
+        FakeScriptBuilder.prompts = []
+        return ScriptPreparationService(
+            prompt_engine=FakePromptEngine(),
+            script_builder_factory=FakeScriptBuilder
+        ).prepare(
+            builders={
+                "script": True
+            },
+            ai_config={},
+            profile={},
+            input_script_path=root / "input" / "guion.txt",
+            input_topic_path=input_topic,
+            output_script_path=root / "output" / "scripts" / "guion.txt",
+            source_mode="generated"
+        )
+
+    def assert_input_error(self, error, user_message, recommended_action):
+        context = error.context
+        self.assertIs(ErrorSeverity.FATAL_OPERATIONAL, context.severity)
+        self.assertEqual(user_message, context.user_message)
+        self.assertEqual(recommended_action, context.recommended_action)
+        self.assertEqual("Preparar el guion", context.operation)
 
     def test_existing_script_keeps_current_disabled_builder_behavior(self):
         with tempfile.TemporaryDirectory() as temp_dir:
