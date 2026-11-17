@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.managers.font_manager import FontManager
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.subtitles.ass_visual_scale import (
     AssVisualScaleNormalizer,
@@ -104,7 +105,8 @@ def test_dynamic_preparation_writes_normalized_ass_and_static_stays_literal(tmp_
         content = Path(dynamic.path).read_text(encoding="utf-8")
         assert "PlayResX: 1080" in content
         assert "PlayResY: 1920" in content
-        assert "Style: Default,UniSansHeavyCAPS,67," in content
+        font = FontManager().resolve_name(STYLE["font"])
+        assert f"Style: Default,{font},67," in content
         assert ",141,141,367,1" in content
     finally:
         dynamic.cleanup()
