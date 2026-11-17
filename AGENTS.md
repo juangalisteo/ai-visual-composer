@@ -115,3 +115,14 @@ mejora sin preguntar antes al propietario.
   SOLO VIDEO transcribe mal una palabra, el propietario corrige el SRT y usa
   SRT + VIDEO. No es una opción que haya que ofrecer ni "mejorar" (decisión P1 de
   `AGENT_AI/TRABAJO/TERMINADO/FASE_K/LIMPIEZA.md` §3.1).
+
+## 9. Flujo de trabajo con Git
+
+- Cada lote va en su propia rama, `g<n>-<tema>` (minúsculas y guiones; p. ej. `g2-licencia`),
+  creada desde `main` al día (`git switch main`, `git pull --ff-only`, `git switch -c <rama>`).
+- El ejecutor hace los cambios, las comprobaciones y los commits, sube la rama
+  (`git push -u origin <rama>`) y da en su resumen el enlace
+  `https://github.com/juangalisteo/ai-visual-composer/compare/main...<rama>?expand=1`.
+- El propietario abre el Pull Request, espera las pruebas en verde y el visto bueno del asesor,
+  y une con «Create a merge commit».
+- Nunca push directo a `main` ni push forzado.

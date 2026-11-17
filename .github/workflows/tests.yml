@@ -5,7 +5,7 @@ name: Pruebas
 
 on:
   push:
-    branches: [main, limpieza]
+    branches: [main]
   pull_request:
 
 permissions:
