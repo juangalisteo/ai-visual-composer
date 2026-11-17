@@ -66,7 +66,8 @@ class FontManager:
     Each font declares its file in assets/fonts/, its aliases and,
     optionally, a fallback: another font of the catalog used when its
     file is missing (one level only). The catalog is read and checked
-    once per instance; main.py checks it before the first menu.
+    once per instance; main.py checks it before the first menu. Without
+    the file the catalog is empty and every name passes through.
     """
 
     FONTS_DIR = Path(
@@ -289,17 +290,10 @@ class FontManager:
     def _read_catalog(
         self
     ):
+        # Without the file the catalog is empty, as with config/formats.json:
+        # every font name passes through unchanged.
         if not self.catalog_path.is_file():
-            raise create_operational_error(
-                family="CONFIG",
-                user_message="No se encuentra el catálogo de fuentes.",
-                recommended_action=(
-                    "Recupere el archivo del repositorio "
-                    f"({self.CATALOG_PATH.as_posix()})."
-                ),
-                operation="Leer catálogo de fuentes",
-                resource=str(self.catalog_path),
-            )
+            return {}, {}
 
         try:
             with self.catalog_path.open("r", encoding="utf-8") as file:

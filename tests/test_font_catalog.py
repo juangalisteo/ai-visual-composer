@@ -171,16 +171,15 @@ def test_broken_catalog_fails_on_first_use_too(tmp_path, content, detail):
     assert detail in caught.value.context.user_message
 
 
-def test_missing_catalog_is_a_config_error(tmp_path):
-    path = tmp_path / "fonts.json"
+def test_without_catalog_every_name_passes_through(tmp_path):
+    """Like config/formats.json: no file, no declared font."""
+    manager = FontManager(tmp_path / "fonts.json")
 
-    with pytest.raises(OperationalError) as caught:
-        FontManager(path).validate()
-
-    context = caught.value.context
-    assert context.family == "CONFIG"
-    assert context.user_message == "No se encuentra el catálogo de fuentes."
-    assert context.resource == str(path)
+    manager.validate()
+    assert manager.list_fonts() == ()
+    assert manager.resolve_name("Test Font") == "Test Font"
+    with pytest.raises(ValueError, match="No existe una ruta registrada"):
+        manager.resolve_path("Test Font")
 
 
 def test_repository_catalog_is_valid():
