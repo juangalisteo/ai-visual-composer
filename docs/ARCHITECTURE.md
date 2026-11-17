@@ -82,7 +82,7 @@ tienen relación:
 ```text
 python main.py
    ↓
-main.py                      valida config/formats.json antes del primer menú
+main.py                      valida config/formats.json y config/fonts.json antes del primer menú
    ↓
 RunController.run()          menús → ApplicationExecutionRequest
    ↓
@@ -527,7 +527,8 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   (filtro `subtitles` de FFmpeg con un estilo fijo) o dinámica (un ASS temporal
   con efectos, filtro `ass`):
   [SUBTITLES.md](SUBTITLES.md#6-pintado-estático-y-dinámico). Las fuentes salen
-  de `assets/fonts/`.
+  de `assets/fonts/` y se declaran en `config/fonts.json` (nombre, alias,
+  archivo y reserva).
 - **STUDIO** trata los subtítulos a su manera (SRT + VIDEO y VIDEO + AUDIO | SRT
   pintan el SRT tal cual): [apartado 8](#8-studio).
 - Un modo de cue nuevo es una capacidad nueva: una clase en
@@ -682,6 +683,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | Ruta | Contenido |
 |---|---|
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
+| `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Proveedor y modelo de Ollama |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |

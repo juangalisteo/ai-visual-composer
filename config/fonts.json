@@ -1,0 +1,43 @@
+{
+  "fonts": {
+    "Gotham Narrow Bold": {
+      "file": "Gotham Narrow Bold.otf",
+      "aliases": [
+        "gotham",
+        "gotham narrow",
+        "gotham narrow bold",
+        "gotham narrow bold.otf"
+      ],
+      "fallback": "Anton"
+    },
+    "UniSansHeavyCAPS": {
+      "file": "Uni Sans Heavy.otf",
+      "aliases": [
+        "unisans",
+        "uni sans",
+        "uni sans heavy",
+        "uni sans heavy.otf",
+        "unisansheavycaps"
+      ],
+      "fallback": "Anton"
+    },
+    "Oswald": {
+      "file": "Oswald-VariableFont_wght.ttf",
+      "aliases": [
+        "oswald",
+        "oswald variable",
+        "oswald-variablefont_wght",
+        "oswald-variablefont_wght.ttf"
+      ]
+    },
+    "Anton": {
+      "file": "Anton-Regular.ttf",
+      "aliases": [
+        "anton",
+        "anton regular",
+        "anton-regular",
+        "anton-regular.ttf"
+      ]
+    }
+  }
+}

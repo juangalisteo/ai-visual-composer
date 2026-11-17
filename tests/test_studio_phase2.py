@@ -16,6 +16,7 @@ from app.core.start import (
     run_application,
 )
 from app.modules.studio.execution_coordinator import StudioExecutionCoordinator
+from app.managers.font_manager import FontManager
 from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
     StudioInputMode,
@@ -309,7 +310,10 @@ class StudioPhase2Test(unittest.TestCase):
             ),
         )
         graph = command[command.index("-filter_complex") + 1]
-        self.assertIn("FontName=UniSansHeavyCAPS", graph)
+        font = FontManager().resolve_name(
+            self.subtitle_profile.render_style["font"]
+        )
+        self.assertIn(f"FontName={font}", graph)
         self.assertIn("FontSize=10", graph)
         self.assertIn("Alignment=2", graph)
         self.assertIn("MarginV=55", graph)

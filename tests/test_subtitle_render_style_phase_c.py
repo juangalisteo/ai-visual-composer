@@ -4,6 +4,7 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
+from app.managers.font_manager import FontManager
 from app.modules.video.config.loaders.subtitle_loader import (
     SubtitleConfigLoader,
 )
@@ -43,7 +44,8 @@ class SubtitleRenderStylePhaseCTest(unittest.TestCase):
         self.assertEqual(14, loaded.font_size)
         self.assertFalse(loaded.bold)
         self.assertEqual(-0.06, loaded.offset)
-        self.assertIn("FontName=UniSansHeavyCAPS", style)
+        font = FontManager().resolve_name(self.VALID_STYLE["font"])
+        self.assertIn(f"FontName={font}", style)
         self.assertIn("FontSize=14", style)
         self.assertIn("Bold=0", style)
         self.assertIn("PrimaryColour=&H00FFFFFF", style)

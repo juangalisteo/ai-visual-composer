@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from app.managers.font_manager import FontManager
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.ffmpeg.graphs.graph_context import GraphContext
 from app.modules.video.ffmpeg.graphs.subtitle_graph_builder import SubtitleGraphBuilder
@@ -117,7 +118,8 @@ def test_true_dynamic_builds_temporary_ass_with_semantically_identical_events(tm
         content = prepared.path.read_text(encoding="utf-8")
         assert "PlayResX: 1080" in content
         assert "PlayResY: 1920" in content
-        assert "Style: Default,UniSansHeavyCAPS,93," in content
+        font = FontManager().resolve_name(STYLE["font"])
+        assert f"Style: Default,{font},93," in content
         assert _events(prepared.path) == [
             r"0,0:00:00.00,0:00:01.23,Default,,0,0,0,,Primera \{linea\}\\texto",
             r"0,0:00:01.23,0:00:02.00,Default,,0,0,0,,Segunda\Nlinea",

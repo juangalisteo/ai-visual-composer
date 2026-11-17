@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.controllers.run_controller import RunController
+from app.managers.font_manager import FontManager
 from app.modules.video.config.loaders.subtitle_loader import SubtitleConfigLoader
 from app.modules.video.ffmpeg.graphs.graph_context import GraphContext
 from app.modules.video.ffmpeg.graphs.subtitle_graph_builder import (
@@ -298,7 +299,8 @@ def test_phase0_static_srt_renderer_baseline_uses_force_style(tmp_path):
     assert "subtitles='" in filter_part
     assert "fontsdir='" in filter_part
     assert "force_style='" in filter_part
-    assert "FontName=UniSansHeavyCAPS" in filter_part
+    font = FontManager().resolve_name(subtitle_profile.render_style["font"])
+    assert f"FontName={font}" in filter_part
     assert "FontSize=14" in filter_part
     assert "Alignment=2" in filter_part
     assert "offset" not in filter_part.lower()
