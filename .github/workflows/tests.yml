@@ -78,5 +78,16 @@ jobs:
       - name: Revisar el código con ruff
         run: ruff check --no-fix
 
+      # F-8: FFmpeg con ffprobe (Chocolatey ya viene en el runner). No se activa RUN_STUDIO_FINAL_FFMPEG.
+      - name: Instalar FFmpeg y ffprobe
+        run: |
+          choco install ffmpeg -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "choco install ffmpeg falló ($LASTEXITCODE)" }
+          $chocoBin = Join-Path $env:ChocolateyInstall "bin"
+          $chocoBin | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          $env:PATH = "$chocoBin;$env:PATH"
+          (ffmpeg -version | Select-Object -First 1)
+          (ffprobe -version | Select-Object -First 1)
+
       - name: Ejecutar los tests
         run: python -m pytest tests -q
