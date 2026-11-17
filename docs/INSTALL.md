@@ -145,6 +145,9 @@ ffprobe -version
 
 Los dos comandos deben estar disponibles desde la terminal.
 
+Se necesita FFmpeg 7.0 o posterior: el montaje de STUDIO usa la opción
+`-/filter_complex <archivo>`, que no existe en versiones anteriores.
+
 Si no se reconocen, instala FFmpeg y añade su carpeta de ejecutables al `PATH`
 del sistema.
 

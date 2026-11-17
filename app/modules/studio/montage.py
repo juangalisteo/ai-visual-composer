@@ -660,7 +660,7 @@ class StudioMontageService:
         for source in sources:
             command.extend(["-i", str(Path(source))])
         command.extend([
-            "-filter_complex_script",
+            "-/filter_complex",
             str(Path(filter_path)),
             "-map",
             "[vout]",

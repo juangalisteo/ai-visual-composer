@@ -198,7 +198,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
         self.assertNotIn("acrossfade=", script)
         self.assertNotIn("atrim=", script)
         self.assertIn("concat=n=230:v=0:a=1[aout]", script)
-        self.assertIn("-filter_complex_script", command)
+        self.assertIn("-/filter_complex", command)
         self.assertNotIn("-filter_complex", command)
 
     def test_one_clip_is_rejected_before_transition_execution(self):
@@ -275,7 +275,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
             result = service.compose(plan, root / "output.mp4", self.profile)
 
         command = runner.run.call_args_list[0].args[0]
-        self.assertIn("-filter_complex_script", command)
+        self.assertIn("-/filter_complex", command)
         self.assertNotIn("copy", command)
         self.assertEqual(1, result.transition_count)
         self.assertEqual(4.0, result.expected_duration)
@@ -289,7 +289,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
         )
         self.assertIn("-c", command)
         self.assertEqual("copy", command[command.index("-c") + 1])
-        self.assertNotIn("-filter_complex_script", command)
+        self.assertNotIn("-/filter_complex", command)
 
 
 @unittest.skipUnless(
