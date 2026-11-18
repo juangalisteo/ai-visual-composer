@@ -26,6 +26,7 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   guarda la fecha, la operación, el tipo, el mensaje y el detalle técnico
   (traceback), y la terminal dice en qué archivo está.
 - README en cada carpeta de entrada de STUDIO (`input/studio/*/`).
+- Identidad visual propia: logo AIVC, icono, banner y paleta azul.
 
 ### Cambiado
 
