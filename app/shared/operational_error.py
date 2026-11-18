@@ -56,3 +56,23 @@ def create_operational_error(
             exit_kind=ExitKind.OPERATIONAL_ERROR,
         )
     )
+
+
+def create_missing_asset_error(
+    error: OSError,
+    *,
+    operation: str,
+) -> OperationalError:
+    """Turn a missing user asset (music, overlays, effects) into a clear error.
+
+    These assets are not distributed with the project; each user adds their own.
+    """
+    return create_operational_error(
+        family="FILESYSTEM",
+        user_message=str(error),
+        recommended_action=(
+            "Pon tus archivos en esa carpeta (qué va en cada una: "
+            "assets/README.md) o elige no usarlos y vuelve a intentarlo."
+        ),
+        operation=operation,
+    )

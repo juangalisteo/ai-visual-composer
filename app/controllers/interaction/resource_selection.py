@@ -1,5 +1,7 @@
 """Selección compartida de recursos para rutas STUDIO."""
 
+from app.shared.operational_error import create_missing_asset_error
+
 
 class ResourceSelection:
     """Selecciona recursos sin apropiarse de servicios de dominio."""
@@ -39,4 +41,9 @@ class ResourceSelection:
         self._write("2. No", writer)
         if not self._select((True, False), selector):
             return None
-        return self._studio_music_selector.select("random")
+        try:
+            return self._studio_music_selector.select("random")
+        except (FileNotFoundError, NotADirectoryError) as error:
+            raise create_missing_asset_error(
+                error, operation="Seleccionar música"
+            ) from error

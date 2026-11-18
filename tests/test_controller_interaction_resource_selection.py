@@ -5,6 +5,7 @@ import pytest
 
 from app.controllers.interaction.resource_selection import ResourceSelection
 from app.controllers.interaction.terminal import Terminal
+from app.shared.operational_error import OperationalError
 from tests.test_menu_helpers import MenuAnswers
 
 
@@ -82,6 +83,25 @@ def test_studio_music_delegates_random_selection_only_when_enabled():
         music_selector,
     ).select_studio_music() is track
     music_selector.select.assert_called_once_with("random")
+
+
+def test_studio_music_missing_folder_becomes_a_clear_filesystem_error():
+    music_selector = Mock()
+    music_selector.select.side_effect = FileNotFoundError(
+        "No existe la carpeta de música: assets/music"
+    )
+
+    with pytest.raises(OperationalError) as caught:
+        ResourceSelection(
+            SelectingTerminal("Sí"),
+            lambda: pytest.fail("No debe cancelar"),
+            music_selector,
+        ).select_studio_music()
+
+    context = caught.value.context
+    assert context.family == "FILESYSTEM"
+    assert context.user_message == "No existe la carpeta de música: assets/music"
+    assert "assets/README.md" in context.recommended_action
 
 
 def test_resource_selection_keeps_terminal_cancellation_callback():

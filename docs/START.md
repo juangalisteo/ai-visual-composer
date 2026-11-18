@@ -188,6 +188,8 @@ Hasta qué etapa llega cada modo: [ARCHITECTURE.md, apartado 6](ARCHITECTURE.md#
   de la voz) o «2. Sin música».
 - **OVERLAYS:** «1. Sí» superpone vídeos de `assets/videos/overlays/` sobre el
   vídeo final; «2. No», sin ellos.
+- La música y los overlays no vienen con el proyecto: pon los tuyos
+  ([assets/README.md](../assets/README.md)).
 - **INTRO / OUTRO:** «1. NINGUNO», «2. SOLO INTRO», «3. SOLO OUTRO» o
   «4. INTRO + OUTRO». Después, SELECCIONAR INTRO y SELECCIONAR OUTRO listan los
   `.mp4` de `assets/videos/intro_outro/<formato>/intro/` y
@@ -380,6 +382,7 @@ La tabla recoge los mensajes más frecuentes:
 | «El archivo input/guion.txt está vacío.» o «No existe input/guion.txt.» (lo mismo con `input/tema.txt`) | Escribe el guion en `input/guion.txt` (Guion) o el tema en `input/tema.txt` (Imagen y Video) y vuelve a lanzar |
 | «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-ruta-diseño)) y vuelve a lanzar |
 | «No hay archivos MP4 disponibles para INTRO en assets/videos/intro_outro/vertical/intro/.» (o para OUTRO, o en `horizontal/`) | Pon al menos un `.mp4` en esa carpeta o elige otra opción en INTRO / OUTRO |
+| «No existe la carpeta de música: assets\music», «No se encontraron pistas musicales válidas en: assets\music» o «No existe la carpeta de overlays: assets\videos\overlays» | La música y los overlays no vienen con el proyecto: pon los tuyos ([assets/README.md](../assets/README.md)) o elige «Sin música» u OVERLAYS «No» |
 | «No existe la carpeta de entrada STUDIO: input\studio\montaje_videos» (o «… para INTRO / OUTRO: input\studio\intro_outro.», «… VIDEO + AUDIO \| SRT: input\studio\video_audio_srt.», «… EXPORTAR SRT ➜  VIDEO: input\studio\exportar_srt\transcribir») | Crea esa carpeta y pon en ella los archivos del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «No se encontró ningún archivo … en input\studio\…» | Pon el archivo con la extensión correcta en la carpeta del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «El archivo SRT de STUDIO debe estar codificado en UTF-8», «… está vacío» o «… no contiene cues utilizables» | Guarda el `.srt` en UTF-8 y revisa el formato de sus bloques |

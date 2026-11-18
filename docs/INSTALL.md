@@ -440,28 +440,18 @@ AI Visual Composer usa los assets locales del proyecto bajo:
 assets/
 ```
 
-Los assets oficiales versionados del producto son:
-
-```text
-assets/fonts/
-assets/music/
-assets/videos/overlays/
-assets/videos/visual_effects/
-```
-
-Su procedencia y condiciones de uso están en
-[assets/README.md](../assets/README.md).
+Con el proyecto solo vienen las fuentes Anton y Oswald (SIL OFL). La
+música, los overlays, los efectos visuales y las fuentes Gotham Narrow Bold
+y Uni Sans Heavy no se reparten: cada persona pone los suyos. Qué va en cada
+carpeta, de dónde sacarlo y su licencia: [assets/README.md](../assets/README.md).
 
 Si falta `Gotham Narrow Bold.otf` o `Uni Sans Heavy.otf`, los subtítulos
 usan su fuente de reserva, Anton (declarada en `config/fonts.json`), y la
 terminal avisa una vez por fuente; para usar la original, pon su archivo en
 `assets/fonts/`.
 
-Los assets generados en local quedan fuera de Git donde corresponde (por
-ejemplo, `assets/videos/intro_outro/`, que es contenido local propio).
-
-No borres los assets oficiales del proyecto salvo que la funcionalidad
-correspondiente se haya modificado a propósito.
+Los assets locales quedan fuera de Git: la música, los overlays, los
+efectos visuales, las dos fuentes de arriba y `assets/videos/intro_outro/`.
 
 ---
 
@@ -738,7 +728,7 @@ Antes de considerar lista la instalación local:
 [ ] Recursos de voz de Piper provistos en models/audio/piper/
 [ ] Modelo de NudeNet provisto en models/visual_safety/
 [ ] Whisper disponible
-[ ] Assets oficiales del proyecto presentes
+[ ] Assets propios en su sitio, si los usas (música, overlays; ver assets/README.md)
 [ ] Configuración del proyecto revisada
 [ ] La compilación de Python pasa
 [ ] Los tests automáticos pasan

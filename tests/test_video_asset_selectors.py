@@ -4,7 +4,11 @@ from unittest.mock import patch
 import tempfile
 import unittest
 
+from app.modules.video.assets.temporal_asset_builder import (
+    TemporalAssetBuilder
+)
 from app.modules.video.overlays.overlay_selector import OverlaySelector
+from app.shared.operational_error import OperationalError
 from app.modules.video.visual_effects.visual_effect_selector import (
     VisualEffectSelector
 )
@@ -328,6 +332,38 @@ class VideoAssetSelectorTest(
                 scene_index=0,
                 scene_count=1
             )
+
+    def test_missing_asset_directory_becomes_a_clear_filesystem_error(
+        self
+    ):
+        missing = Path("missing_visual_effects_directory")
+        config = SimpleNamespace(
+            enabled=True,
+            probability=1.0,
+            **vars(selector_config(directory=missing))
+        )
+        builder = TemporalAssetBuilder(
+            config=config,
+            selector=VisualEffectSelector(config)
+        )
+
+        with self.assertRaises(OperationalError) as caught:
+            builder.build(
+                scene_index=0,
+                scene_count=1
+            )
+
+        context = caught.exception.context
+        self.assertEqual("FILESYSTEM", context.family)
+        self.assertIn(
+            "No existe la carpeta de efectos visuales",
+            context.user_message
+        )
+        self.assertIn("assets/README.md", context.recommended_action)
+        self.assertIsInstance(
+            caught.exception.__cause__,
+            FileNotFoundError
+        )
 
     def test_visual_effect_selector_has_no_overlay_category_cooldown(
         self
