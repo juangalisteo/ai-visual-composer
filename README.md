@@ -69,7 +69,7 @@ Qué pregunta cada menú, qué archivo va en cada carpeta de `input/` y dónde s
 ```
 AI_VISUAL_COMPOSER
 ├── app/              Código de la aplicación: menús, coordinadores, builders y servicios
-├── assets/           Fuentes, música y overlays oficiales del producto
+├── assets/           Fuentes Anton y Oswald; la música y los overlays los pone cada persona
 ├── certification/    Comprobaciones de certificación real de imagen y vídeo
 ├── config/           Formatos, perfiles operacionales y de subtítulos, workflows de ComfyUI
 ├── data/             Intenciones y lecturas narrativas (YAML); hoy solo las usan los tests

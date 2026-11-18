@@ -758,18 +758,19 @@ cortaban generaciones válidas ([AGENTS.md](../AGENTS.md) §8).
   la generación de imágenes) y `tools/`.
 - La configuración: `config/`, `prompts/` y `data/`.
 - `tests/`.
-- `assets/`: fuentes, música, overlays y efectos visuales.
+- `assets/`: las fuentes Anton y Oswald y `assets/README.md`.
 - Los `.txt` de `input/` (vacíos) y las carpetas de `input/studio/` (con su
   `.gitkeep`).
 - La documentación (`docs/`, README, CHANGELOG, LICENSE), `requirements.txt`,
-  `.env.example` y las reglas para agentes de IA (`AGENTS.md`, `CLAUDE.md` y
-  `PROMPTS.md`).
+  `.env.example` y las reglas para agentes de IA (`AGENTS.md`).
 
 **Fuera de Git (solo en el equipo):**
 
 - `output/` (proyectos generados) y `logs/`.
 - `models/` y `ComfyUI/`: programas y modelos de IA.
 - El contenido de `input/studio/` y de `assets/videos/intro_outro/`.
+- La música, los overlays, los efectos visuales y las fuentes Gotham Narrow
+  Bold y Uni Sans Heavy ([assets/README.md](../assets/README.md)).
 - Secretos (`.env`), entornos virtuales, cachés y archivos temporales.
 - Los espacios privados de trabajo de los agentes ([AGENTS.md](../AGENTS.md)).
 

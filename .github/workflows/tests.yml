@@ -24,28 +24,18 @@ jobs:
       run:
         shell: pwsh
     steps:
-      # Sin la música ni los overlays (~1,1 GB): los tests no los usan.
-      # blob:none + sparse-checkout solo descarga el contenido de lo que se deja en disco.
-      - name: Descargar el código (sin música ni overlays)
+      # La música, los overlays y los efectos ya no están en Git (G4): basta la descarga normal.
+      - name: Descargar el código
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          filter: blob:none
-          sparse-checkout-cone-mode: false
-          sparse-checkout: |
-            /*
-            !/assets/music/
-            !/assets/videos/overlays/
 
-      - name: Comprobar la descarga (tamaño de .git y carpetas excluidas)
+      - name: Comprobar la descarga (tamaño de .git)
         run: |
           if (-not (Test-Path .git)) { throw "Falta la carpeta .git (la necesita un test de git check-ignore)" }
           git count-objects -vH
           $bytes = (Get-ChildItem .git -Recurse -Force -File | Measure-Object Length -Sum).Sum
           "Tamaño de .git: {0:N1} MB" -f ($bytes / 1MB)
-          foreach ($excluded in "assets/music", "assets/videos/overlays") {
-            "{0} en disco: {1}" -f $excluded, (Test-Path $excluded)
-          }
 
       - name: Instalar Python 3.13
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0

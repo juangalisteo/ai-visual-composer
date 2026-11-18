@@ -1,77 +1,80 @@
-# Assets oficiales
+# Assets
 
-Esta carpeta contiene los assets oficiales del producto AI Visual Composer.
+Qué viene con el proyecto en `assets/` y qué tiene que poner cada persona.
+Lo que no viene se queda fuera de Git (`.gitignore`): quien lo tenga en su
+equipo lo conserva, y nunca se sube.
 
-Estos assets se versionan a propósito cuando forman parte del comportamiento
-actual del producto. No son dependencias locales de ejecución, resultado
-generado, archivos de modelo, checkpoints ni recursos privados de
-desarrollo.
+## Qué viene con el proyecto
 
-## Gobierno de los assets
+| Ruta | Qué es | Licencia |
+| --- | --- | --- |
+| `assets/fonts/Anton-Regular.ttf` | Fuente de subtítulos y fuente de reserva | SIL Open Font License 1.1 (en los metadatos del archivo). Del proyecto Anton de Google Fonts (`fonts.google.com/specimen/Anton`). Se puede repartir. |
+| `assets/fonts/Oswald-VariableFont_wght.ttf` | Fuente de subtítulos | SIL Open Font License 1.1 (en los metadatos del archivo). Del proyecto Oswald de Google Fonts (`fonts.google.com/specimen/Oswald`). Se puede repartir. |
 
-- Un asset oficial del producto puede subirse al repositorio cuando lo
-  necesita el producto.
-- El tamaño de un asset, por sí solo, no es motivo para quitarlo mientras el
-  tamaño del repositorio siga siendo razonable para el proyecto.
-- Los assets solo de desarrollo, los experimentos locales, el contenido
-  generado, los modelos de IA, los checkpoints, las LoRA, los archivos VAE,
-  los embeddings, los recursos de ControlNet, los runtimes externos, los
-  logs y los resultados locales se quedan fuera del repositorio público.
-- Todo asset nuevo debe tener confirmada su procedencia y sus condiciones de
-  uso antes de subirse.
-- Cada asset oficial nuevo que se añada al proyecto debe documentar su
-  procedencia, su licencia o sus condiciones de uso en el momento en que se
-  sube al repositorio.
+El catálogo de fuentes (nombre, alias, archivo y reserva) está en
+`config/fonts.json`.
+
+## Qué no viene y pone cada persona
+
+### Fuentes Gotham Narrow Bold y Uni Sans Heavy (opcionales)
+
+Muchos perfiles de subtítulos las piden, pero su licencia no permite
+repartir los archivos:
+
+| Archivo | Licencia | Dónde conseguirla |
+| --- | --- | --- |
+| `Gotham Narrow Bold.otf` | Comercial: acuerdo de licencia de usuario final de Hoefler & Co. (`typography.com/support/eula.html`). | Se compra en `typography.com`. |
+| `Uni Sans Heavy.otf` | Fontfabric Free Font EULA 2.1: descarga gratuita y uso comercial permitido, pero no se puede repartir sin permiso escrito de Fontfabric. | Se descarga en `fontfabric.com`. |
+
+Son opcionales: si falta una, los subtítulos usan su fuente de reserva,
+Anton (declarada en `config/fonts.json`), y la terminal avisa una vez por
+fuente. Para usar la original, pon el archivo en `assets/fonts/` con el
+nombre exacto de la tabla.
+
+### Música: `assets/music/<categoría>/`
+
+No se reparte: es la música del autor (creada con Suno para su canal).
+Cada persona pone la suya en subcarpetas de categoría, por ejemplo
+`assets/music/calm/`. Formatos: `.mp3`, `.wav`, `.m4a`, `.aac` y `.flac`.
+Los archivos sueltos en `assets/music/`, fuera de una subcarpeta, no se usan.
+El nombre de la categoría es libre.
+
+MÚSICA «Aleatoria» (o «Sí» en STUDIO) elige una pista al azar entre todas
+las categorías. Sin pistas, elige «Sin música» (o «No»); si eliges música
+y no hay ninguna, la terminal lo dice y remite a este archivo.
+
+### Overlays: `assets/videos/overlays/<categoría>/`
+
+No se reparten: los del autor salen de packs gratuitos de terceros cuya
+licencia no se puede comprobar. Cada persona pone los suyos (`.mp4` o
+`.mov`) en subcarpetas de categoría; el nombre de la categoría es libre y
+OVERLAYS «Sí» elige entre todas.
+
+Sin overlays, elige «No» en OVERLAYS; si eliges «Sí» y falta la carpeta, la
+terminal lo dice y remite a este archivo.
+
+### Efectos visuales: `assets/videos/visual_effects/LightLeak/`
+
+No se reparten, por el mismo motivo que los overlays. Están desactivados
+en todos los perfiles (`video_style.visual_effects.enabled: false`); solo
+hacen falta si los activas. Formato: `.mov`.
+
+### Intro y outro: `assets/videos/intro_outro/<formato>/intro/` y `…/outro/`
+
+Siempre han estado fuera de Git: son los vídeos de cada canal. `<formato>`
+es `vertical` u `horizontal`. Cómo se eligen: `docs/START.md`.
+
+## Reglas para añadir un asset al repositorio
+
+- Solo entra lo que se pueda repartir: con su procedencia y su licencia
+  comprobadas y apuntadas en la tabla «Qué viene con el proyecto».
+- Nunca entran: contenido generado, modelos de IA, checkpoints, LoRA, VAE,
+  embeddings, recursos de ControlNet, runtimes externos, logs ni resultados
+  locales.
 
 ## Propiedad intelectual
 
-La música, los overlays y los efectos visuales de esta carpeta son
-propiedad de Juan Bautista Galisteo Marqués.
-
-Copiar, redistribuir, reutilizar, modificar o usar estos assets sin su
-autorización expresa está prohibido. Que estén incluidos en el repositorio
-no transfiere ningún derecho de propiedad intelectual sobre ellos.
-
-Las 4 fuentes de `assets/fonts/` (ver inventario) son una excepción: no son
-propiedad del propietario del proyecto. Cada una se rige por su propia
-licencia de origen, documentada en el inventario de abajo. Anton y Oswald se
-pueden repartir con el proyecto porque su licencia (SIL Open Font License) lo
-permite; Gotham Narrow Bold y Uni Sans Heavy están incluidas hoy en el
-repositorio, pero su licencia no permite repartir el archivo.
-
-Todo asset oficial nuevo que se incorpore al proyecto (música, overlays,
-efectos visuales u otro recurso propio) pasa a formar parte de la propiedad
-intelectual de Juan Bautista Galisteo Marqués y debe documentar su
-procedencia, su licencia o sus condiciones de uso en el momento en que se
-incorpora al repositorio. Esto no aplica a una fuente u otro recurso de
-terceros, que se rige siempre por su propia licencia.
-
-## Inventario
-
-`assets/fonts/` contiene 4 archivos: 2 OTF (`Gotham Narrow Bold.otf`,
-`Uni Sans Heavy.otf`) y 2 TTF (`Anton-Regular.ttf`,
-`Oswald-VariableFont_wght.ttf`).
-
-| Ruta | Tipo | Función en el producto | Estado en Git | Asset oficial | Procedencia o documentación de licencia |
-| --- | --- | --- | --- | --- | --- |
-| `assets/fonts/Anton-Regular.ttf` | Fuente TTF | Renderizado de fuente de subtítulos | Versionado | Sí | SIL Open Font License, versión 1.1 (verificada en los metadatos del propio archivo). De los autores del proyecto Anton en Google Fonts; se descarga desde la página oficial de Google Fonts (`fonts.google.com/specimen/Anton`). Esta licencia permite repartir el archivo. |
-| `assets/fonts/Oswald-VariableFont_wght.ttf` | Fuente TTF variable | Renderizado de fuente de subtítulos | Versionado | Sí | SIL Open Font License, versión 1.1 (verificada en los metadatos del propio archivo). De los autores del proyecto Oswald en Google Fonts; se descarga desde la página oficial de Google Fonts (`fonts.google.com/specimen/Oswald`). Esta licencia permite repartir el archivo. |
-| `assets/fonts/Gotham Narrow Bold.otf` | Fuente OTF | Renderizado de fuente de subtítulos | Versionado | Sí, con licencia propia | Acuerdo de licencia de usuario final de Hoefler & Co (verificado en los metadatos del propio archivo, que remiten a `typography.com/support/eula.html`). Comprada por el propietario del proyecto. Se descarga/compra desde la página oficial de Hoefler & Co (`typography.com`). Esta licencia no permite repartir el archivo. |
-| `assets/fonts/Uni Sans Heavy.otf` | Fuente OTF | Renderizado de fuente de subtítulos | Versionado | Sí, con licencia propia | Uni Sans Thin y Heavy se rigen por la **Fontfabric Free Font EULA (versión 2.1)**: permite el uso comercial, pero no permite repartir los archivos sin permiso escrito de Fontfabric. Se descarga desde la página oficial de Fontfabric (`fontfabric.com`), su fabricante. |
-| `assets/music/action/` | Música MP3 | Categoría de música de acción | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/ambient/` | Música MP3 | Categoría de música ambiental | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/calm/` | Música MP3 | Categoría de música tranquila | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/cinematic/` | Música MP3 | Categoría de música cinematográfica | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/documentary/` | Música MP3 | Categoría de música documental | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/electronic/` | Música MP3 | Categoría de música electrónica | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/emotional/` | Música MP3 | Categoría de música emotiva | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/epic/` | Música MP3 | Categoría de música épica | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/meditation/` | Música MP3 | Categoría de música de meditación | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/music/mystery/` | Música MP3 | Categoría de música de misterio | Versionado | Sí | Música original del propietario, creada con Suno (plan Pro) para MODO CONCIENCIA STUDIO. Es suya. |
-| `assets/videos/overlays/Electricity/` | Overlays MP4 | Categoría temática de overlay inteligente | Versionado | Sí | Propiedad de Juan Bautista Galisteo Marqués; su uso requiere autorización expresa. |
-| `assets/videos/overlays/Light Leaks/` | Overlays MP4 | Overlay inteligente neutro de reserva y separador | Versionado | Sí | Propiedad de Juan Bautista Galisteo Marqués; su uso requiere autorización expresa. |
-| `assets/videos/visual_effects/LightLeak/` | Efectos visuales MOV | Efectos visuales LightLeak | Versionado | Sí | Propiedad de Juan Bautista Galisteo Marqués; su uso requiere autorización expresa. |
-
-Esta tabla no da el número de pistas de música ni el tamaño en disco de cada
-carpeta porque son cifras que cambian con el tiempo; el recuento y el
-tamaño reales están en el propio directorio.
+La música del autor es de Juan Bautista Galisteo Marqués y no se reparte con
+el proyecto. Los overlays y efectos del autor son de terceros y tampoco se
+reparten. Cada fuente se rige por su propia licencia (tablas de arriba), no
+por la del proyecto (`LICENSE`).

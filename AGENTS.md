@@ -105,7 +105,7 @@ AGENT_AI/
 - Estado actual y siguiente paso: `AGENT_AI/ESTADO.md` (léelo al empezar).
 - Líneas de trabajo: `AGENT_AI/TRABAJO/<linea>.md`.
 - Historia: `AGENT_AI/<AGENTE>/BITACORA.md` (buscar, no leer entera).
-- Cómo redactar prompts: `PROMPTS.md`.
+- Cómo redactar prompts: `PROMPTS.md` (en el disco del propietario, fuera de Git).
 
 ## 8. Comportamientos intencionados (no cambiar sin preguntar)
 
