@@ -1,6 +1,8 @@
 import random
 from pathlib import Path
 
+from app.shared.operational_error import create_missing_asset_error
+
 
 class TemporalAssetBuilder:
 
@@ -41,11 +43,16 @@ class TemporalAssetBuilder:
         ):
             return None
 
-        asset_path = self.selector.select(
-            scene_index=scene_index,
-            scene_count=scene_count,
-            scene_metadata=scene_metadata
-        )
+        try:
+            asset_path = self.selector.select(
+                scene_index=scene_index,
+                scene_count=scene_count,
+                scene_metadata=scene_metadata
+            )
+        except (FileNotFoundError, NotADirectoryError) as error:
+            raise create_missing_asset_error(
+                error, operation="Preparar overlays y efectos visuales"
+            ) from error
 
         if asset_path is None:
             return None

@@ -28,6 +28,7 @@ from app.shared.config_contract import (
     require_int,
     require_mapping,
 )
+from app.shared.operational_error import create_missing_asset_error
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -215,11 +216,14 @@ class StandardExecutionCoordinator:
             audio_start = time.perf_counter()
 
             if music_category:
-                music_path = (
-                    MusicSelector().select(
+                try:
+                    music_path = MusicSelector().select(
                         music_category
                     )
-                )
+                except (FileNotFoundError, NotADirectoryError) as error:
+                    raise create_missing_asset_error(
+                        error, operation="Seleccionar música"
+                    ) from error
             else:
                 music_path = None
 
