@@ -1,12 +1,14 @@
-# AI Visual Composer
-
-**Sistema de producción audiovisual asistido por inteligencia artificial, con arquitectura guiada por datos (código/configuración).**
+<p align="center"><img src="docs/banner.es.svg" alt="AI Visual Composer · Del guion al vídeo, con inteligencia artificial" width="100%"></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versi%C3%B3n-2.0.0-FF5A1F?style=flat-square&labelColor=121214" alt="Versión 2.0.0">
-  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-FF5A1F?style=flat-square&labelColor=121214" alt="Windows 10 y 11">
-  <img src="https://img.shields.io/badge/Python-3.13-FF5A1F?style=flat-square&labelColor=121214" alt="Python 3.13">
-  <img src="https://img.shields.io/badge/licencia-GPL--3.0-FF5A1F?style=flat-square&labelColor=121214" alt="Licencia GPL-3.0">
+  <img src="https://img.shields.io/badge/versi%C3%B3n-2.0.0-2563EB?style=flat-square&labelColor=131C2E" alt="Versión 2.0.0">
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-2563EB?style=flat-square&labelColor=131C2E" alt="Windows 10 y 11">
+  <img src="https://img.shields.io/badge/Python-3.13-2563EB?style=flat-square&labelColor=131C2E" alt="Python 3.13">
+  <img src="https://img.shields.io/badge/licencia-GPL--3.0-2563EB?style=flat-square&labelColor=131C2E" alt="Licencia GPL-3.0">
+</p>
+
+<p align="center">
+  <b>Sistema de producción audiovisual asistido por inteligencia artificial, con arquitectura guiada por datos (código/configuración).</b>
 </p>
 
 ---
@@ -20,6 +22,7 @@
 - [Más documentación](#más-documentación)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Tecnologías](#tecnologías)
+- [Diseño](#diseño)
 - [Próximamente](#próximamente)
 - [Uso responsable](#uso-responsable)
 - [Autor](#autor)
@@ -94,6 +97,30 @@ Las reglas para los agentes de IA que colaboran en el desarrollo están en [AGEN
 | **ComfyUI** (Flux + Wan) | Generación de imágenes y de clips imagen a vídeo (I2V) |
 | **Piper** | Síntesis de voz local |
 | **OpenAI Whisper** | Transcripción y ajuste temporal de subtítulos |
+
+## Diseño
+
+Fondo azul noche y un solo color de acento, el azul.
+
+| Color | Código | Uso |
+|---|---|---|
+| ![#0B1220](https://img.shields.io/badge/%20-0B1220-0B1220?style=flat-square) Fondo | `#0B1220` | Fondo del banner y del logo |
+| ![#131C2E](https://img.shields.io/badge/%20-131C2E-131C2E?style=flat-square) Tarjetas | `#131C2E` | Recuadros e icono |
+| ![#E6EDF7](https://img.shields.io/badge/%20-E6EDF7-E6EDF7?style=flat-square) Texto | `#E6EDF7` | Letras «AI» y textos |
+| ![#94A3B8](https://img.shields.io/badge/%20-94A3B8-94A3B8?style=flat-square) Secundario | `#94A3B8` | Textos de apoyo |
+| ![#3B82F6](https://img.shields.io/badge/%20-3B82F6-3B82F6?style=flat-square) Acento | `#3B82F6` | Letras «VC» |
+| ![#2563EB](https://img.shields.io/badge/%20-2563EB-2563EB?style=flat-square) Insignias | `#2563EB` | Insignias y barra de subtítulo |
+
+<p align="center">
+  <img src="docs/aivc-logo.svg" alt="Logo AIVC" width="320">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/aivc-icon.svg" alt="Icono AIVC" width="96">
+</p>
+
+- **Logo** ([docs/aivc-logo.svg](docs/aivc-logo.svg)): las letras «AIVC» con el nombre «AI Visual Composer» debajo.
+- **Icono** ([docs/aivc-icon.svg](docs/aivc-icon.svg)): «AI» sobre «VC» en un recuadro, para tamaños pequeños.
+
+Letras del logo: Inter (Rasmus Andersson), licencia SIL OFL.
 
 ## Próximamente
 
