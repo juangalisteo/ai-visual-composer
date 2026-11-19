@@ -23,6 +23,7 @@ class ScriptOperation:
         output_script_path,
         source_mode="generated",
         voice_pacing=None,
+        adjustment=None,
     ):
         return self.preparation_service.prepare(
             builders=builders,
@@ -33,4 +34,5 @@ class ScriptOperation:
             output_script_path=output_script_path,
             source_mode=source_mode,
             voice_pacing=voice_pacing,
+            adjustment=adjustment,
         )

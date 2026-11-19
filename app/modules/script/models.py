@@ -34,6 +34,14 @@ class PreparedScript:
 
 
 @dataclass(frozen=True)
+class ScriptAdjustment:
+    """Request to rewrite a topic script whose voice missed the requested duration."""
+
+    previous_script: str
+    measured_seconds: float
+
+
+@dataclass(frozen=True)
 class ScriptValidationIssue:
     reason: str
     field: str

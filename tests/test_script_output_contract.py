@@ -6,6 +6,7 @@ from app.core.prompt_engine import PromptEngine
 from app.core.script_length import ScriptLengthBudget, SpeechPacing
 from app.modules.script import (
     InvalidScriptOutputError,
+    ScriptAdjustment,
     ScriptBuilder,
     ScriptGenerationMetadata,
     ScriptGenerationResult,
@@ -626,6 +627,118 @@ class ScriptOutputContractTest(unittest.TestCase):
                 ),
                 long_script,
             )
+
+    def test_adjust_asks_once_with_the_measured_duration_and_the_previous_script(self):
+        request = _real_request()
+        provider = FakeProvider(
+            (
+                f"  {_words(26)}  ",
+                _words(26),
+            )
+        )
+
+        script = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).adjust(
+            request.prompt,
+            length=request.length,
+            previous_script=_words(80),
+            measured_seconds=30.8,
+        )
+
+        self.assertEqual(script, _words(26))
+        self.assertEqual(len(provider.prompts), 1)
+        adjustment = provider.prompts[0]
+        self.assertTrue(adjustment.startswith(request.prompt))
+        self.assertIn(
+            "La voz leyó tu guion anterior (80 palabras) en 30,8 segundos "
+            "y debe durar 10,0.",
+            adjustment,
+        )
+        self.assertIn("Reescríbela más corta: entre 23 y 29 palabras", adjustment)
+        self.assertTrue(adjustment.endswith(_words(80)))
+
+    def test_adjust_rescales_the_words_with_the_measured_duration(self):
+        request = _real_request()
+        provider = FakeProvider((_words(30),))
+
+        ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+        ).adjust(
+            request.prompt,
+            length=request.length,
+            previous_script=_words(26),
+            measured_seconds=13.0,
+        )
+
+        self.assertIn(
+            "Reescríbela más corta: entre 18 y 22 palabras, con objetivo de "
+            "20 palabras.",
+            provider.prompts[0],
+        )
+
+    def test_malformed_adjustment_raises_after_a_single_request(self):
+        provider = FakeProvider(
+            (
+                "**Answer:**\nLa conciencia despierta.",
+                _words(26),
+            )
+        )
+
+        with self.assertRaises(InvalidScriptOutputError):
+            ScriptBuilder(
+                {"model": "test-model"},
+                provider=provider,
+                max_attempts=2,
+            ).adjust(
+                _real_request().prompt,
+                length=_real_request().length,
+                previous_script=_words(80),
+                measured_seconds=30.8,
+            )
+
+        self.assertEqual(len(provider.prompts), 1)
+
+    def test_service_adjustment_rewrites_the_topic_script_at_the_given_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_topic = root / "tema.txt"
+            input_topic.write_text("conciencia", encoding="utf-8")
+            candidate = root / "guion_ajuste.txt"
+            provider = FakeProvider((_words(26),))
+
+            prepared = ScriptPreparationService(
+                script_builder_factory=lambda ai_config: ScriptBuilder(
+                    ai_config,
+                    provider=provider,
+                ),
+            ).prepare(
+                builders={"script": True},
+                ai_config={"model": "test-model"},
+                profile={
+                    "tone": "modo_conciencia",
+                    "format": "horizontal",
+                    "duration": 10,
+                },
+                input_script_path=root / "missing_manual.txt",
+                input_topic_path=input_topic,
+                output_script_path=candidate,
+                voice_pacing=TEST_PACING,
+                adjustment=ScriptAdjustment(
+                    previous_script=_words(80),
+                    measured_seconds=30.8,
+                ),
+            )
+
+            self.assertEqual(prepared.text, _words(26))
+            self.assertEqual(prepared.source, "generated")
+            self.assertEqual(candidate.read_text(encoding="utf-8"), _words(26))
+            self.assertEqual(len(provider.prompts), 1)
+            self.assertIn("CORRECCIÓN DE EXTENSIÓN", provider.prompts[0])
+            self.assertIn("TEMA:\nconciencia", provider.prompts[0])
 
     def test_invalid_llm_output_is_not_written_for_storyboard(self):
         with tempfile.TemporaryDirectory() as temp_dir:

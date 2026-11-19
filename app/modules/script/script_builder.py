@@ -156,13 +156,83 @@ class ScriptBuilder:
         if closest is not None:
             return closest
 
+        raise self._invalid_output(
+            report=last_report,
+            response=last_response,
+            parser_id=validator.parser_id,
+            prompt_id=prompt_id,
+        )
+
+    def adjust(
+        self,
+        prompt,
+        *,
+        length,
+        previous_script,
+        measured_seconds,
+    ):
+        """Ask once for ``previous_script`` rewritten to fit ``length``.
+
+        ``measured_seconds`` is how long the voice really took to read it.
+        There is exactly one request: a malformed answer raises
+        ``InvalidScriptOutputError`` and the caller keeps the first script.
+        """
+        ProgressLogger.start(
+            "AJUSTANDO GUION"
+        )
+        start = time.perf_counter()
+        prompt = str(
+            prompt
+            or ""
+        ).strip()
+        if not prompt:
+            raise ValueError(
+                "El prompt del guion está vacío."
+            )
+        validator = ScriptOutputValidator()
+        response = str(
+            self.provider.generate(
+                _length_correction_prompt(
+                    prompt,
+                    length=length,
+                    previous_script=str(previous_script).strip(),
+                    measured_seconds=measured_seconds,
+                )
+            )
+            or ""
+        )
+        candidate = response.strip()
+        report = validator.validate(
+            candidate
+        )
+        if not report.valid:
+            raise self._invalid_output(
+                report=report,
+                response=response,
+                parser_id=validator.parser_id,
+                prompt_id=_prompt_id(prompt),
+            )
+        ProgressLogger.finish(
+            "Finalizado",
+            time.perf_counter() - start
+        )
+        return candidate
+
+    def _invalid_output(
+        self,
+        *,
+        report,
+        response,
+        parser_id,
+        prompt_id,
+    ) -> InvalidScriptOutputError:
         first_issue = (
-            last_report.issues[0]
-            if last_report
-            and last_report.issues
+            report.issues[0]
+            if report
+            and report.issues
             else None
         )
-        raise InvalidScriptOutputError(
+        return InvalidScriptOutputError(
             reason=(
                 first_issue.reason
                 if first_issue
@@ -173,8 +243,8 @@ class ScriptBuilder:
                 if first_issue
                 else "script"
             ),
-            original_response=last_response,
-            parser_id=validator.parser_id,
+            original_response=response,
+            parser_id=parser_id,
             model=self.model,
             prompt_id=prompt_id,
         )
@@ -272,33 +342,45 @@ def _length_correction_prompt(
     *,
     length,
     previous_script: str,
+    measured_seconds=None,
 ) -> str:
     """Original prompt plus the previous script and the range to rewrite it to.
 
-    The range is rescaled by what that very script is estimated to last, so
-    long or short words are already accounted for.
+    The range is rescaled by what that very script lasted: measured by the
+    voice when ``measured_seconds`` is given, estimated in letters otherwise.
     """
     words = count_script_words(
         previous_script
     )
-    estimated_seconds = length.estimate_seconds(
-        previous_script
-    )
+    if measured_seconds is None:
+        observed_seconds = length.estimate_seconds(
+            previous_script
+        )
+        observation = (
+            f"- Tu respuesta anterior tenía {words} palabras: leída en voz "
+            f"alta duraría unos {_seconds(observed_seconds)} segundos y debe "
+            f"durar {_seconds(length.duration_seconds)}.\n"
+        )
+    else:
+        observed_seconds = float(measured_seconds)
+        observation = (
+            f"- La voz leyó tu guion anterior ({words} palabras) en "
+            f"{_seconds(observed_seconds)} segundos y debe durar "
+            f"{_seconds(length.duration_seconds)}.\n"
+        )
     rewrite = length.rescaled(
         words=words,
-        observed_seconds=estimated_seconds,
+        observed_seconds=observed_seconds,
     )
     direction = (
         "más corta"
-        if estimated_seconds > length.duration_seconds
+        if observed_seconds > length.duration_seconds
         else "más larga"
     )
     return (
         f"{prompt}\n\n"
         "CORRECCIÓN DE EXTENSIÓN:\n"
-        f"- Tu respuesta anterior tenía {words} palabras: leída en voz alta "
-        f"duraría unos {_seconds(estimated_seconds)} segundos y debe durar "
-        f"{_seconds(length.duration_seconds)}.\n"
+        f"{observation}"
         f"- Reescríbela {direction}: entre {rewrite.min_words} y "
         f"{rewrite.max_words} palabras, con objetivo de "
         f"{rewrite.target_words} palabras. Esta extensión sustituye a la "

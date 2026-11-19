@@ -14,8 +14,10 @@ from app.modules.audio.tts_contracts import TtsVoiceConfigurationError
 from app.modules.audio.voice_builder import VoiceBuilder
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.script import (
+    ScriptAdjustment,
     ScriptOperation,
 )
+from app.modules.standard.script_duration_fit import ScriptDurationFit
 from app.modules.storyboard.storyboard_builder import StoryboardBuilder
 from app.modules.subtitles.io.subtitle_builder import SubtitleBuilder
 from app.modules.subtitles.pipeline.srt_optimizer import SrtOptimizer
@@ -29,6 +31,7 @@ from app.shared.config_contract import (
     require_int,
     require_mapping,
 )
+from app.shared.media_probe import MediaProbe
 from app.shared.operational_error import (
     create_missing_asset_error,
     create_operational_error,
@@ -189,6 +192,7 @@ class StandardExecutionCoordinator:
         stage_times["Script"] = (
             script_elapsed
         )
+        script_text = prepared_script.text
 
         final_result = (
             output_script_path
@@ -209,17 +213,34 @@ class StandardExecutionCoordinator:
             voice_builder = VoiceBuilder(config_manager=config_manager)
             voice_path, voice_elapsed = self._pipeline_telemetry.measure_stage(
                 voice_builder.build,
-                prepared_script.text,
+                script_text,
                 output_path=project.audio_path(),
             )
 
             stage_times["Voces"] = (
                 voice_elapsed
             )
-            voice_pauses = tuple(
-                (pause.start_seconds, pause.end_seconds)
-                for pause in getattr(voice_builder, "last_pauses", ())
+            voice_pauses = _voice_pauses(
+                voice_builder
             )
+
+            if voice_pacing is not None:
+                fit = self._fit_script_duration(
+                    voice_builder=voice_builder,
+                    script_options=script_options,
+                    script_text=script_text,
+                    target_seconds=require_int(
+                        profile,
+                        "duration",
+                        "duration"
+                    ),
+                    voice_path=voice_path,
+                    voice_pauses=voice_pauses,
+                    stage_times=stage_times,
+                    warnings=summary.warnings,
+                )
+                script_text = fit.script_text
+                voice_pauses = fit.voice_pauses
 
             final_result = voice_path
 
@@ -276,7 +297,7 @@ class StandardExecutionCoordinator:
             }
             optimized_subtitle_path = (
                 SrtOptimizer(**optimizer_options).optimize(
-                    canonical_content=prepared_script.text,
+                    canonical_content=script_text,
                 )
             )
 
@@ -439,6 +460,65 @@ class StandardExecutionCoordinator:
         )
 
         return final_result
+
+    def _fit_script_duration(
+        self,
+        *,
+        voice_builder,
+        script_options,
+        script_text,
+        target_seconds,
+        voice_path,
+        voice_pauses,
+        stage_times,
+        warnings,
+    ):
+        """Measure a topic script's voice and ask once for an adjusted script."""
+
+        def adjust_script(*, previous_script, measured_seconds, output_path):
+            adjusted, elapsed = self._pipeline_telemetry.measure_stage(
+                ScriptOperation().execute,
+                **{
+                    **script_options,
+                    "output_script_path": output_path,
+                    "adjustment": ScriptAdjustment(
+                        previous_script=previous_script,
+                        measured_seconds=measured_seconds,
+                    ),
+                },
+            )
+            stage_times["Script"] += elapsed
+            return adjusted.text
+
+        def synthesize_voice(text, output_path):
+            path, elapsed = self._pipeline_telemetry.measure_stage(
+                voice_builder.build,
+                text,
+                output_path=output_path,
+            )
+            stage_times["Voces"] += elapsed
+            return path, _voice_pauses(voice_builder)
+
+        return ScriptDurationFit(
+            measure_seconds=MediaProbe.get_duration,
+            adjust_script=adjust_script,
+            synthesize_voice=synthesize_voice,
+            warnings=warnings,
+        ).fit(
+            script_text=script_text,
+            target_seconds=target_seconds,
+            script_path=script_options["output_script_path"],
+            voice_path=voice_path,
+            voice_pauses=voice_pauses,
+        )
+
+
+def _voice_pauses(voice_builder):
+    """Silences the backend wrote into the last voice, as (start, end) seconds."""
+    return tuple(
+        (pause.start_seconds, pause.end_seconds)
+        for pause in getattr(voice_builder, "last_pauses", ())
+    )
 
 
 def _stages_for(pipeline_mode):

@@ -743,6 +743,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return {
                         "format": "vertical",
+                        "duration": 4,
                         "builders": {
                             "script": True,
                             "voice": True,
@@ -887,6 +888,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
                 def get_profile_config(self):
                     return {
+                        "duration": 4,
                         "builders": {
                             "script": True,
                             "voice": True,

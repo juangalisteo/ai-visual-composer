@@ -13,6 +13,14 @@ import math
 DURATION_TOLERANCE = 0.10
 
 
+def duration_fits(seconds, target_seconds) -> bool:
+    """True when ``seconds`` is within the accepted deviation of ``target_seconds``."""
+    target_seconds = float(target_seconds)
+    return abs(float(seconds) - target_seconds) <= (
+        target_seconds * DURATION_TOLERANCE + 1e-9
+    )
+
+
 def count_letters(text) -> int:
     """Letters that will be read aloud; spaces, digits and punctuation do not count."""
     return sum(1 for character in str(text) if character.isalpha())
@@ -102,7 +110,7 @@ class ScriptLengthBudget:
         return (float(seconds) - self.duration_seconds) / self.duration_seconds
 
     def fits(self, seconds) -> bool:
-        return abs(self.deviation(seconds)) <= DURATION_TOLERANCE + 1e-9
+        return duration_fits(seconds, self.duration_seconds)
 
     def rescaled(self, *, words, observed_seconds):
         """Same duration; word range scaled by what ``words`` really took."""
