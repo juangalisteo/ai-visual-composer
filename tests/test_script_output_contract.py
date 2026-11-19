@@ -478,12 +478,17 @@ class ScriptOutputContractTest(unittest.TestCase):
         retry = provider.prompts[1]
         self.assertTrue(retry.startswith(request.prompt))
         self.assertIn("IDENTIDAD Y TONO", retry)
-        self.assertIn("Tu respuesta anterior tenía 80 palabras", retry)
+        self.assertIn(f"GUION ANTERIOR:\n{_words(80)}\n\n", retry)
+        self.assertIn("el guion anterior (80 palabras) duraría unos 30,8", retry)
         self.assertIn(
-            f"entre {request.length.min_words} y {request.length.max_words} palabras",
+            f"Reescríbelo con {request.length.target_words} palabras como máximo",
             retry,
         )
-        self.assertTrue(retry.endswith(_words(80)))
+        self.assertLess(
+            retry.index("GUION ANTERIOR:"),
+            retry.index("CORRECCIÓN DE EXTENSIÓN:"),
+        )
+        self.assertTrue(retry.endswith("Devuelve únicamente el guion reescrito."))
 
     def test_duration_is_checked_by_letters_not_by_word_count(self):
         length = ScriptLengthBudget.for_duration(
@@ -507,7 +512,7 @@ class ScriptOutputContractTest(unittest.TestCase):
         self.assertEqual(len(provider.prompts), 2)
         self.assertEqual(result.script, short_words)
         self.assertIn("duraría unos 22,0 segundos", provider.prompts[1])
-        self.assertIn("entre 11 y 13 palabras", provider.prompts[1])
+        self.assertIn("con 12 palabras como máximo", provider.prompts[1])
 
     def test_prompt_engine_sizes_the_script_with_the_voice_pacing(self):
         profile = {
@@ -653,12 +658,13 @@ class ScriptOutputContractTest(unittest.TestCase):
         adjustment = provider.prompts[0]
         self.assertTrue(adjustment.startswith(request.prompt))
         self.assertIn(
-            "La voz leyó tu guion anterior (80 palabras) en 30,8 segundos "
+            "La voz leyó el guion anterior (80 palabras) en 30,8 segundos "
             "y debe durar 10,0.",
             adjustment,
         )
-        self.assertIn("Reescríbela más corta: entre 23 y 29 palabras", adjustment)
-        self.assertTrue(adjustment.endswith(_words(80)))
+        self.assertIn("Reescríbelo con 26 palabras como máximo", adjustment)
+        self.assertIn(f"GUION ANTERIOR:\n{_words(80)}\n\n", adjustment)
+        self.assertTrue(adjustment.endswith("Devuelve únicamente el guion reescrito."))
 
     def test_adjust_rescales_the_words_with_the_measured_duration(self):
         request = _real_request()
@@ -675,8 +681,26 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "Reescríbela más corta: entre 18 y 22 palabras, con objetivo de "
-            "20 palabras.",
+            "Reescríbelo con 20 palabras como máximo; es un límite estricto",
+            provider.prompts[0],
+        )
+
+    def test_adjust_of_a_short_voice_asks_for_a_minimum(self):
+        request = _real_request()
+        provider = FakeProvider((_words(26),))
+
+        ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+        ).adjust(
+            request.prompt,
+            length=request.length,
+            previous_script=_words(13),
+            measured_seconds=5.0,
+        )
+
+        self.assertIn(
+            "Reescríbelo con 26 palabras como mínimo",
             provider.prompts[0],
         )
 

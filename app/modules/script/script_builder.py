@@ -344,10 +344,13 @@ def _length_correction_prompt(
     previous_script: str,
     measured_seconds=None,
 ) -> str:
-    """Original prompt plus the previous script and the range to rewrite it to.
+    """Original prompt, the previous script and then a strict word limit.
 
-    The range is rescaled by what that very script lasted: measured by the
+    The limit is rescaled by what that very script lasted: measured by the
     voice when ``measured_seconds`` is given, estimated in letters otherwise.
+    Measured with qwen3:14b (I1): with the script last, Ollama copied it back;
+    with a range it removed about half of what was asked. The script first and
+    a strict maximum (or minimum) at the end is what it follows best.
     """
     words = count_script_words(
         previous_script
@@ -357,14 +360,14 @@ def _length_correction_prompt(
             previous_script
         )
         observation = (
-            f"- Tu respuesta anterior tenía {words} palabras: leída en voz "
-            f"alta duraría unos {_seconds(observed_seconds)} segundos y debe "
+            f"- Leído en voz alta, el guion anterior ({words} palabras) "
+            f"duraría unos {_seconds(observed_seconds)} segundos y debe "
             f"durar {_seconds(length.duration_seconds)}.\n"
         )
     else:
         observed_seconds = float(measured_seconds)
         observation = (
-            f"- La voz leyó tu guion anterior ({words} palabras) en "
+            f"- La voz leyó el guion anterior ({words} palabras) en "
             f"{_seconds(observed_seconds)} segundos y debe durar "
             f"{_seconds(length.duration_seconds)}.\n"
         )
@@ -372,23 +375,22 @@ def _length_correction_prompt(
         words=words,
         observed_seconds=observed_seconds,
     )
-    direction = (
-        "más corta"
+    limit = (
+        "como máximo"
         if observed_seconds > length.duration_seconds
-        else "más larga"
+        else "como mínimo"
     )
     return (
         f"{prompt}\n\n"
+        "GUION ANTERIOR:\n"
+        f"{previous_script}\n\n"
         "CORRECCIÓN DE EXTENSIÓN:\n"
         f"{observation}"
-        f"- Reescríbela {direction}: entre {rewrite.min_words} y "
-        f"{rewrite.max_words} palabras, con objetivo de "
-        f"{rewrite.target_words} palabras. Esta extensión sustituye a la "
-        "indicada en DURACIÓN.\n"
+        f"- Reescríbelo con {rewrite.target_words} palabras {limit}; es un "
+        "límite estricto que sustituye a la extensión indicada en "
+        "DURACIÓN.\n"
         "- Conserva el tono, la idea principal y el cierre. Devuelve "
-        "únicamente el guion reescrito.\n\n"
-        "RESPUESTA ANTERIOR:\n"
-        f"{previous_script}"
+        "únicamente el guion reescrito."
     )
 
 
