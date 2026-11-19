@@ -33,7 +33,7 @@ def build_prompts(profile_format):
     }
     engine = PromptEngine()
     return {
-        "script": engine.build_script_prompt("conciencia", profile),
+        "script": engine.build_script_request("conciencia", profile).prompt,
         "storyboard": engine.build_storyboard_prompt(
             scenes=[{"scene": 1, "text": "Una puerta se abre."}],
             profile=profile,
@@ -63,7 +63,7 @@ class PromptEngineFormatSectionTest(unittest.TestCase):
         engine = PromptEngine()
 
         with self.assertRaises(KeyError):
-            engine.build_script_prompt("conciencia", profile)
+            engine.build_script_request("conciencia", profile)
         with self.assertRaises(KeyError):
             engine.build_storyboard_prompt(
                 scenes=[{"scene": 1, "text": "Una puerta se abre."}],

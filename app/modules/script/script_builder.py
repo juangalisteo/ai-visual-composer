@@ -42,7 +42,9 @@ class ScriptBuilder:
 
     def build(
         self,
-        prompt
+        prompt,
+        *,
+        length=None,
     ):
         ProgressLogger.start(
             "GENERANDO GUION"
@@ -51,7 +53,8 @@ class ScriptBuilder:
         start = time.perf_counter()
 
         result = self.generate_result(
-            prompt
+            prompt,
+            length=length,
         )
 
         elapsed = (
@@ -68,8 +71,17 @@ class ScriptBuilder:
 
     def generate_result(
         self,
-        prompt
+        prompt,
+        *,
+        length=None,
     ) -> ScriptGenerationResult:
+        """Generate one script.
+
+        ``length`` is the ``ScriptLengthBudget`` the prompt was written with,
+        passed as data; ``None`` means free text without a length check.
+        When every attempt is well formed but out of range, the closest one
+        is returned instead of failing.
+        """
         prompt = str(
             prompt
             or ""
@@ -83,12 +95,11 @@ class ScriptBuilder:
         prompt_id = _prompt_id(
             prompt
         )
-        length_reference = _length_reference_from_prompt(
-            prompt
-        )
         validator = ScriptOutputValidator()
         last_response = ""
         last_report = None
+        previous_script = ""
+        closest = None
 
         for attempt in range(
             1,
@@ -99,7 +110,8 @@ class ScriptBuilder:
                     prompt,
                     attempt,
                     last_report,
-                    length_reference,
+                    length,
+                    previous_script,
                 )
             )
             last_response = str(
@@ -110,53 +122,39 @@ class ScriptBuilder:
             report = validator.validate(
                 candidate
             )
-            report = _validate_length(
-                report=report,
-                script=candidate,
-                minimum=length_reference["recommended_min_words"],
-                maximum=length_reference["recommended_max_words"],
-            )
+            if report.valid:
+                result = self._result(
+                    script=candidate,
+                    attempt=attempt,
+                    raw_response=last_response,
+                    prompt_id=prompt_id,
+                    parser_id=validator.parser_id,
+                    length=length,
+                )
+                report = _validate_length(
+                    report=report,
+                    words=result.word_count,
+                    length=length,
+                )
+                if report.valid:
+                    return result
+                if (
+                    closest is None
+                    or length.word_distance(result.word_count)
+                    < length.word_distance(closest.word_count)
+                ):
+                    closest = result
+                previous_script = candidate
+                if attempt < self.max_attempts:
+                    ProgressLogger.info(
+                        f"El guion tiene {result.word_count} palabras y se "
+                        f"piden entre {length.min_words} y "
+                        f"{length.max_words}. Se pide a Ollama que lo ajuste."
+                    )
             last_report = report
 
-            if report.valid:
-                actual_words = count_script_words(
-                    candidate
-                )
-                return ScriptGenerationResult(
-                    script=candidate,
-                    word_count=actual_words,
-                    metadata=ScriptGenerationMetadata(
-                        model=self.model,
-                        prompt_id=prompt_id,
-                        parser_id=validator.parser_id,
-                        attempt=attempt,
-                        raw_response=last_response,
-                        target_words=(
-                            length_reference[
-                                "target_words"
-                            ]
-                        ),
-                        recommended_min_words=(
-                            length_reference[
-                                "recommended_min_words"
-                            ]
-                        ),
-                        recommended_max_words=(
-                            length_reference[
-                                "recommended_max_words"
-                            ]
-                        ),
-                        actual_words=actual_words,
-                        deviation_percentage=(
-                            _deviation_percentage(
-                                actual_words=actual_words,
-                                target_words=length_reference[
-                                    "target_words"
-                                ],
-                            )
-                        ),
-                    ),
-                )
+        if closest is not None:
+            return closest
 
         first_issue = (
             last_report.issues[0]
@@ -181,37 +179,121 @@ class ScriptBuilder:
             prompt_id=prompt_id,
         )
 
+    def _result(
+        self,
+        *,
+        script,
+        attempt,
+        raw_response,
+        prompt_id,
+        parser_id,
+        length,
+    ) -> ScriptGenerationResult:
+        actual_words = count_script_words(
+            script
+        )
+        target_words = length.target_words if length else 0
+        return ScriptGenerationResult(
+            script=script,
+            word_count=actual_words,
+            metadata=ScriptGenerationMetadata(
+                model=self.model,
+                prompt_id=prompt_id,
+                parser_id=parser_id,
+                attempt=attempt,
+                raw_response=raw_response,
+                target_words=target_words,
+                recommended_min_words=(
+                    length.min_words if length else 0
+                ),
+                recommended_max_words=(
+                    length.max_words if length else 0
+                ),
+                actual_words=actual_words,
+                deviation_percentage=_deviation_percentage(
+                    actual_words=actual_words,
+                    target_words=target_words,
+                ),
+            ),
+        )
+
+
+_LENGTH_REASONS = frozenset(
+    {
+        "script_too_short_for_duration",
+        "script_too_long_for_duration",
+    }
+)
+
 
 def _attempt_prompt(
     prompt: str,
     attempt: int,
     previous_report=None,
-    length_reference=None,
+    length=None,
+    previous_script: str = "",
 ) -> str:
+    """Prompt of one attempt: the original prompt plus, on retries, a correction."""
     if attempt <= 1:
         return prompt
     previous_reason = _previous_reason(
         previous_report
     )
-    topic = _topic_from_prompt(
-        prompt
-    )
-    length_reference = length_reference or {}
-    minimum = int(length_reference.get("recommended_min_words", 0) or 0)
-    maximum = int(length_reference.get("recommended_max_words", 0) or 0)
+    if (
+        previous_reason in _LENGTH_REASONS
+        and length is not None
+        and previous_script
+    ):
+        return _length_correction_prompt(
+            prompt,
+            length=length,
+            previous_script=previous_script,
+        )
     length_instruction = ""
-    if minimum > 0 and maximum >= minimum:
+    if length is not None:
         length_instruction = (
-            f" Debe contener entre {minimum} y {maximum} palabras "
-            "para respetar la duración solicitada."
+            f"\n- Debe contener entre {length.min_words} y "
+            f"{length.max_words} palabras para respetar la duración "
+            "solicitada."
         )
     return (
-        "La respuesta anterior incumple el formato requerido. "
-        f"Motivo: {previous_reason}. "
-        f"Tema: {topic}. "
-        "Devuelve únicamente el guion final válido, sin encabezados, "
+        f"{prompt}\n\n"
+        "CORRECCIÓN:\n"
+        "- La respuesta anterior incumple el formato requerido. "
+        f"Motivo: {previous_reason}.\n"
+        "- Devuelve únicamente el guion final válido, sin encabezados, "
         "sin comentarios, sin markdown, sin JSON y sin metadatos."
         + length_instruction
+    )
+
+
+def _length_correction_prompt(
+    prompt: str,
+    *,
+    length,
+    previous_script: str,
+) -> str:
+    """Original prompt plus the previous script and the range to rewrite it to."""
+    words = count_script_words(
+        previous_script
+    )
+    direction = (
+        "más corta"
+        if words > length.target_words
+        else "más larga"
+    )
+    return (
+        f"{prompt}\n\n"
+        "CORRECCIÓN DE EXTENSIÓN:\n"
+        f"- Tu respuesta anterior tenía {words} palabras y se sale de la "
+        "extensión requerida.\n"
+        f"- Reescríbela {direction}: entre {length.min_words} y "
+        f"{length.max_words} palabras, con objetivo de "
+        f"{length.target_words} palabras.\n"
+        "- Conserva el tono, la idea principal y el cierre. Devuelve "
+        "únicamente el guion reescrito.\n\n"
+        "RESPUESTA ANTERIOR:\n"
+        f"{previous_script}"
     )
 
 
@@ -226,18 +308,17 @@ def _previous_reason(
     return previous_report.issues[0].reason
 
 
-def _validate_length(*, report, script, minimum, maximum):
-    """Enforce the duration-derived word range without truncating content."""
-    if not report.valid or minimum <= 0 or maximum <= 0:
+def _validate_length(*, report, words, length):
+    """Enforce the budget's word range without truncating content."""
+    if not report.valid or length is None:
         return report
 
-    word_count = count_script_words(script)
-    if minimum <= word_count <= maximum:
+    if length.accepts_words(words):
         return report
 
     reason = (
         "script_too_short_for_duration"
-        if word_count < minimum
+        if words < length.min_words
         else "script_too_long_for_duration"
     )
     return ScriptValidationReport(
@@ -246,27 +327,10 @@ def _validate_length(*, report, script, minimum, maximum):
             ScriptValidationIssue(
                 reason=reason,
                 field="script",
-                value=str(word_count),
+                value=str(words),
             ),
         ),
     )
-
-
-def _topic_from_prompt(
-    prompt: str
-) -> str:
-    lines = prompt.splitlines()
-    for index, line in enumerate(
-        lines
-    ):
-        if line.strip().lower().rstrip(":") == "tema":
-            for candidate in lines[
-                index + 1:
-            ]:
-                candidate = candidate.strip()
-                if candidate:
-                    return candidate
-    return "tema solicitado"
 
 
 def _prompt_id(
@@ -277,105 +341,6 @@ def _prompt_id(
             "utf-8"
         )
     ).hexdigest()
-
-
-def _length_reference_from_prompt(
-    prompt: str
-) -> dict:
-    recommended_min_words = _extract_number_after(
-        prompt,
-        "aproximadamente entre"
-    )
-    recommended_max_words = _extract_range_upper_bound(
-        prompt
-    )
-    target_words = _extract_number_after(
-        prompt,
-        "objetivo aproximado de"
-    )
-
-    if (
-        target_words <= 0
-        and recommended_min_words > 0
-        and recommended_max_words > 0
-    ):
-        target_words = int(
-            round(
-                (
-                    recommended_min_words
-                    + recommended_max_words
-                )
-                / 2
-            )
-        )
-
-    return {
-        "target_words": target_words,
-        "recommended_min_words": recommended_min_words,
-        "recommended_max_words": recommended_max_words,
-    }
-
-
-def _extract_number_after(
-    text: str,
-    marker: str
-) -> int:
-    lower_text = text.lower()
-    marker_index = lower_text.find(
-        marker
-    )
-    if marker_index < 0:
-        return 0
-
-    suffix = lower_text[
-        marker_index + len(marker):
-    ]
-    return _leading_number(
-        suffix
-    )
-
-
-def _extract_range_upper_bound(
-    text: str
-) -> int:
-    lower_text = text.lower()
-    marker = "aproximadamente entre"
-    marker_index = lower_text.find(
-        marker
-    )
-    if marker_index < 0:
-        return 0
-
-    suffix = lower_text[
-        marker_index + len(marker):
-    ]
-    if " y " not in suffix:
-        return 0
-
-    return _leading_number(
-        suffix.split(
-            " y ",
-            1
-        )[1]
-    )
-
-
-def _leading_number(
-    text: str
-) -> int:
-    digits = ""
-
-    for character in text:
-        if character.isdigit():
-            digits += character
-            continue
-        if digits:
-            break
-
-    return int(
-        digits
-        or 0
-    )
 
 
 def _deviation_percentage(

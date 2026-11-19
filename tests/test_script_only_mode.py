@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import ANY, patch
 
 import main as app_main
@@ -140,14 +141,17 @@ def _standard_request(
 
 class FakePromptEngine:
 
-    def build_script_prompt(
+    def build_script_request(
         self,
         topic,
         profile
     ):
-        return (
-            "PROMPT PRODUCTIVO: "
-            f"{topic} / {profile['duration']}"
+        return SimpleNamespace(
+            prompt=(
+                "PROMPT PRODUCTIVO: "
+                f"{topic} / {profile['duration']}"
+            ),
+            length=None,
         )
 
 
@@ -162,7 +166,9 @@ class FakeScriptBuilder:
 
     def build(
         self,
-        prompt
+        prompt,
+        *,
+        length=None,
     ):
         self.prompts.append(
             prompt

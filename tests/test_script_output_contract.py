@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
+from app.core.script_length import ScriptLengthBudget
 from app.modules.script import (
     InvalidScriptOutputError,
     ScriptBuilder,
@@ -176,7 +177,8 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider=provider,
             max_attempts=2,
         ).generate_result(
-            _prompt_with_reference()
+            _real_request().prompt,
+            length=_real_request().length,
         )
 
         self.assertEqual(
@@ -207,7 +209,8 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider=provider,
             max_attempts=2,
         ).generate_result(
-            _prompt_with_reference()
+            _real_request().prompt,
+            length=_real_request().length,
         )
 
         self.assertEqual(
@@ -234,7 +237,8 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider=provider,
             max_attempts=2,
         ).generate_result(
-            _prompt_with_reference()
+            _real_request().prompt,
+            length=_real_request().length,
         )
 
         self.assertEqual(
@@ -257,6 +261,9 @@ class ScriptOutputContractTest(unittest.TestCase):
             "Objetivo exacto",
             provider.prompts[1],
         )
+        self.assertTrue(
+            provider.prompts[1].startswith(_real_request().prompt)
+        )
 
     def test_builder_raises_structured_error_after_structural_failures(self):
         provider = FakeProvider(
@@ -276,7 +283,8 @@ class ScriptOutputContractTest(unittest.TestCase):
                 provider=provider,
                 max_attempts=2,
             ).build(
-                _prompt_with_reference()
+                _real_request().prompt,
+                length=_real_request().length,
             )
 
         self.assertEqual(
@@ -322,11 +330,13 @@ class ScriptOutputContractTest(unittest.TestCase):
             },
             provider=provider,
         ).generate_result(
-            _prompt_with_reference(
-                minimum=9,
-                maximum=11,
-                target=10,
-            )
+            "TEMA:\nconciencia",
+            length=ScriptLengthBudget(
+                duration_seconds=4,
+                target_words=10,
+                min_words=9,
+                max_words=11,
+            ),
         )
 
         self.assertEqual(
@@ -355,13 +365,20 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
 
     def test_prompt_engine_makes_duration_budget_explicit(self):
-        prompt = PromptEngine().build_script_prompt(
-            "conciencia",
-            {
-                "tone": "modo_conciencia",
-                "format": "horizontal",
-                "duration": 10,
-            },
+        request = _real_request()
+        prompt = request.prompt
+
+        self.assertEqual(
+            (
+                request.length.min_words,
+                request.length.max_words,
+                request.length.target_words,
+            ),
+            (23, 29, 26),
+        )
+        self.assertIn(
+            "entre 23 y 29 palabras",
+            prompt,
         )
 
         self.assertIn(
@@ -385,7 +402,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             prompt.lower(),
         )
 
-    def test_out_of_range_script_is_rejected_without_truncation(self):
+    def test_out_of_range_script_is_kept_whole_when_no_attempt_fits(self):
         long_script = " ".join(
             f"palabra{i}"
             for i in range(
@@ -399,12 +416,103 @@ class ScriptOutputContractTest(unittest.TestCase):
             )
         )
 
-        with self.assertRaises(InvalidScriptOutputError):
-            ScriptBuilder(
-                {"model": "test-model"},
-                provider=provider,
-                max_attempts=1,
-            ).generate_result(_prompt_with_reference())
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=1,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request().length,
+        )
+
+        self.assertEqual(result.script, long_script)
+        self.assertEqual(result.word_count, 120)
+
+    def test_closest_script_is_kept_when_every_attempt_is_out_of_range(self):
+        provider = FakeProvider(
+            (
+                _words(80),
+                _words(40),
+            )
+        )
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request().length,
+        )
+
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertEqual(result.script, _words(40))
+        self.assertEqual(result.metadata.attempt, 2)
+
+    def test_length_retry_keeps_the_real_prompt_and_shows_the_previous_script(self):
+        request = _real_request()
+        provider = FakeProvider(
+            (
+                _words(80),
+                _words(26),
+            )
+        )
+
+        ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            request.prompt,
+            length=request.length,
+        )
+
+        retry = provider.prompts[1]
+        self.assertTrue(retry.startswith(request.prompt))
+        self.assertIn("IDENTIDAD Y TONO", retry)
+        self.assertIn("Tu respuesta anterior tenía 80 palabras", retry)
+        self.assertIn(
+            f"entre {request.length.min_words} y {request.length.max_words} palabras",
+            retry,
+        )
+        self.assertTrue(retry.endswith(_words(80)))
+
+    def test_length_range_comes_from_data_and_is_never_read_from_the_prompt_text(self):
+        old_wording = (
+            "TEMA:\nconciencia\n\nDURACIÓN:\n"
+            "- Extensión orientativa: aproximadamente entre 23 y 28 palabras, "
+            "con un objetivo aproximado de 26 palabras.\n"
+            "- Extensión requerida: entre 23 y 28 palabras, con objetivo de "
+            "26 palabras."
+        )
+        free_provider = FakeProvider((_words(80), _words(26)))
+
+        free_result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=free_provider,
+            max_attempts=2,
+        ).generate_result(old_wording)
+
+        self.assertEqual(len(free_provider.prompts), 1)
+        self.assertEqual(free_result.word_count, 80)
+
+        data_provider = FakeProvider((_words(80), _words(10)))
+        data_result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=data_provider,
+            max_attempts=2,
+        ).generate_result(
+            "TEMA:\nconciencia",
+            length=ScriptLengthBudget(
+                duration_seconds=4,
+                target_words=10,
+                min_words=9,
+                max_words=11,
+            ),
+        )
+
+        self.assertEqual(len(data_provider.prompts), 2)
+        self.assertEqual(data_result.word_count, 10)
 
     def test_duration_compliant_script_is_written_to_script_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -536,21 +644,17 @@ def _words(
     )
 
 
-def _prompt_with_reference(
-    *,
-    minimum=23,
-    maximum=28,
-    target=26,
+def _real_request(
+    duration=10,
 ):
-    return (
-        "TEMA:\n"
-        "conciencia\n\n"
-        "DURACIÓN:\n"
-        f"- Extensión orientativa: aproximadamente entre {minimum} "
-        f"y {maximum} palabras, con un objetivo aproximado de "
-        f"{target} palabras.\n\n"
-        "SALIDA OBLIGATORIA:\n"
-        "- Devuelve únicamente el guion final."
+    """Prompt and budget exactly as PromptEngine builds them for a topic script."""
+    return PromptEngine().build_script_request(
+        "conciencia",
+        {
+            "tone": "modo_conciencia",
+            "format": "horizontal",
+            "duration": duration,
+        },
     )
 
 

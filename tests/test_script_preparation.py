@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from app.core.script_length import ScriptLengthBudget, ScriptRequest
 from app.modules.script import (
     PreparedScript,
     ScriptOperation,
@@ -18,7 +19,7 @@ class FakePromptEngine:
     ):
         self.calls = []
 
-    def build_script_prompt(
+    def build_script_request(
         self,
         topic,
         profile
@@ -29,11 +30,23 @@ class FakePromptEngine:
                 profile
             )
         )
-        return f"PROMPT: {topic}"
+        return ScriptRequest(
+            prompt=f"PROMPT: {topic}",
+            length=TEST_LENGTH,
+        )
+
+
+TEST_LENGTH = ScriptLengthBudget(
+    duration_seconds=10,
+    target_words=25,
+    min_words=22,
+    max_words=28,
+)
 
 
 class FakeScriptBuilder:
     prompts = []
+    lengths = []
 
     def __init__(
         self,
@@ -43,10 +56,15 @@ class FakeScriptBuilder:
 
     def build(
         self,
-        prompt
+        prompt,
+        *,
+        length=None,
     ):
         self.prompts.append(
             prompt
+        )
+        self.lengths.append(
+            length
         )
         return (
             "Guion generado estable para el pipeline actual."
@@ -150,6 +168,7 @@ class ScriptPreparationServiceTest(
             output_script = root / "output" / "scripts" / "guion.txt"
             prompt_engine = FakePromptEngine()
             FakeScriptBuilder.prompts = []
+            FakeScriptBuilder.lengths = []
 
             prepared_script = ScriptPreparationService(
                 prompt_engine=prompt_engine,
@@ -182,6 +201,10 @@ class ScriptPreparationServiceTest(
                     "PROMPT: conciencia"
                 ],
                 FakeScriptBuilder.prompts
+            )
+            self.assertEqual(
+                [TEST_LENGTH],
+                FakeScriptBuilder.lengths,
             )
             self.assertEqual(
                 [

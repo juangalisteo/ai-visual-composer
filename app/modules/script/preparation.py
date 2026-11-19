@@ -203,9 +203,9 @@ class ScriptPreparationService:
                 )
             )
 
-        prompt = (
+        request = (
             self._prompt_engine()
-            .build_script_prompt(
+            .build_script_request(
                 topic,
                 profile
             )
@@ -216,7 +216,8 @@ class ScriptPreparationService:
                 ai_config
             )
             .build(
-                prompt
+                request.prompt,
+                length=request.length,
             )
             .strip()
         )
