@@ -3,6 +3,7 @@ from pathlib import Path
 
 import requests
 
+from app.providers.ollama_settings import ollama_call_settings
 from app.shared.config_manager import ConfigManager
 from app.shared.operation_warnings import OperationWarning, OperationWarnings
 
@@ -157,13 +158,14 @@ class OverlayFolderResolver:
         if self.provider is not None:
             return self.provider
 
-        ai_config = (
+        settings = ollama_call_settings(
             ConfigManager()
             .get_ai_config()
         )
 
         return _OverlayOllamaProvider(
-            model=ai_config["model"]
+            model=settings.model,
+            keep_alive=settings.keep_alive,
         )
 
     def _build_prompt(
@@ -391,22 +393,27 @@ class _OverlayOllamaProvider:
 
     def __init__(
         self,
-        model
+        model,
+        keep_alive=None
     ):
         self.url = "http://localhost:11434/api/generate"
         self.model = model
+        self.keep_alive = keep_alive
 
     def generate(
         self,
         prompt
     ):
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False
+        }
+        if self.keep_alive is not None:
+            payload["keep_alive"] = self.keep_alive
         response = requests.post(
             self.url,
-            json={
-                "model": self.model,
-                "prompt": prompt,
-                "stream": False
-            }
+            json=payload
         )
 
         response.raise_for_status()

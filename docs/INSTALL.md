@@ -184,7 +184,12 @@ ollama pull qwen3:14b
 ```
 
 El modelo configurado en AI Visual Composer y el modelo instalado en Ollama
-tienen que coincidir.
+tienen que coincidir. El guion puede usar otro modelo (`script.model`): también
+tiene que estar instalado. Qué significa cada clave de `config/ai.json`:
+[ARCHITECTURE.md §19](ARCHITECTURE.md#19-perfiles-y-configuración).
+
+Con `keep_alive` a `0` (el valor del proyecto), Ollama descarga el modelo de la
+GPU en cuanto responde, para que Whisper y ComfyUI la tengan entera.
 
 Para el uso normal basta con abrir la aplicación de Ollama para Windows ya
 instalada.

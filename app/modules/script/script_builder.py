@@ -12,8 +12,16 @@ from app.modules.script.validator import (
     ScriptOutputValidator,
     count_script_words,
 )
-from app.providers.ollama_provider import OllamaProvider
+from app.providers.ollama_provider import (
+    OllamaProvider,
+    OllamaRequestPolicy,
+)
+from app.providers.ollama_settings import ollama_call_settings
 from app.shared.progress_logger import ProgressLogger
+
+
+# Section of config/ai.json with the script's model, think and options.
+SCRIPT_AI_TASK = "script"
 
 
 class ScriptBuilder:
@@ -24,14 +32,28 @@ class ScriptBuilder:
         provider=None,
         max_attempts=2,
     ):
-        self.model = ai_config[
-            "model"
-        ]
+        settings = ollama_call_settings(
+            ai_config,
+            SCRIPT_AI_TASK,
+        )
+        self.model = settings.model
         self.provider = (
             provider
-            or OllamaProvider(
-                self.model
+            or OllamaProvider.from_settings(
+                settings
             )
+        )
+        # Only what config/ai.json declares travels with each call; with
+        # nothing declared the request stays the historical free-text one.
+        self._call_options = (
+            {}
+            if settings.think is None and settings.options is None
+            else {
+                "policy": OllamaRequestPolicy(
+                    think=settings.think,
+                    options=settings.options,
+                )
+            }
         )
         self.max_attempts = max(
             1,
@@ -112,7 +134,8 @@ class ScriptBuilder:
                     last_report,
                     length,
                     previous_script,
-                )
+                ),
+                **self._call_options,
             )
             last_response = str(
                 response
@@ -197,7 +220,8 @@ class ScriptBuilder:
                     length=length,
                     previous_script=str(previous_script).strip(),
                     measured_seconds=measured_seconds,
-                )
+                ),
+                **self._call_options,
             )
             or ""
         )

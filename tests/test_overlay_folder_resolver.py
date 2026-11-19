@@ -92,6 +92,29 @@ class OverlayFolderResolverTest(
 
         self.assertEqual("Electricity", response)
         self.assertNotIn("timeout", post_mock.call_args.kwargs)
+        self.assertNotIn("keep_alive", post_mock.call_args.kwargs["json"])
+
+    def test_default_overlay_provider_uses_declared_keep_alive(self):
+        with patch(
+            "app.modules.video.overlays.overlay_folder_resolver."
+            "ConfigManager.get_ai_config",
+            return_value={"model": "test-model", "keep_alive": 0},
+        ), patch(
+            "app.modules.video.overlays.overlay_folder_resolver.requests.post",
+            return_value=FakeOllamaResponse(),
+        ) as post_mock:
+            provider = OverlayFolderResolver()._provider()
+            provider.generate("prompt")
+
+        self.assertEqual(
+            {
+                "model": "test-model",
+                "prompt": "prompt",
+                "stream": False,
+                "keep_alive": 0,
+            },
+            post_mock.call_args.kwargs["json"],
+        )
 
     def test_discovers_only_real_overlay_folders_with_valid_assets(
         self

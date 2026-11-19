@@ -684,7 +684,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 |---|---|
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
-| `config/ai.json` | Proveedor y modelo de Ollama |
+| `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
@@ -709,6 +709,17 @@ siempre ([apartado 16](#16-imágenes)).
 
 En STUDIO, el perfil operacional solo tiene la identidad y el bloque `studio`
 (`input`, `output`, `montage` y `music`; [apartado 8](#8-studio)).
+
+**Ollama** (`config/ai.json`, lo lee `app/providers/ollama_settings.py`). Solo
+`model` es obligatorio; lo que no se declara no se envía y Ollama usa su valor
+por defecto:
+
+| Clave | Para qué sirve |
+|---|---|
+| `model` | Modelo de Ollama del storyboard, de DISEÑO y del guion si `script` no declara otro. Tiene que estar instalado (`ollama list`) |
+| `keep_alive` | Cuánto tiempo deja Ollama el modelo cargado después de responder: segundos o una duración como `"5m"`. Con `0` lo descarga en cuanto responde y deja la GPU libre para Whisper y ComfyUI; a cambio, cada llamada lo vuelve a cargar (unos 10 s con `qwen3:14b`) |
+| `script` | Guion por tema: `model` y `think` (`true`, `false` o `null`; con `null` no se envía y decide el modelo: `qwen3` razona antes de escribir) |
+| `storyboard` | Storyboard e interpretación de DISEÑO: `model`, `think` (sin declarar, `false`) y `options`, las opciones de Ollama tal cual. `num_ctx` es el contexto en tokens: con 8192 caben unas 25 escenas |
 
 **Cómo se cargan:**
 
@@ -737,7 +748,7 @@ Todos se ejecutan en el propio equipo. Su instalación y sus modelos están en
 
 | Programa | Para qué | Cómo se usa |
 |---|---|---|
-| **Ollama** | Guion (IMAGEN y VIDEO), descripción visual del storyboard e interpretación de DISEÑO | HTTP local (`OllamaProvider`, `app/providers/`); el modelo está en `config/ai.json`. Sin tiempo límite |
+| **Ollama** | Guion (IMAGEN y VIDEO), descripción visual del storyboard e interpretación de DISEÑO | HTTP local (`OllamaProvider`, `app/providers/`); el modelo y sus ajustes están en `config/ai.json` ([apartado 19](#19-perfiles-y-configuración)). Sin tiempo límite |
 | **ComfyUI + Flux** | Imágenes | HTTP local (`http://127.0.0.1:8188`) con el workflow de Flux |
 | **ComfyUI + Wan** | Clips I2V | El mismo servidor, con el workflow de Wan. Sin tiempo límite |
 | **Piper** | Voz | Librería de Python, en el mismo proceso, con el modelo ONNX de cada voz |

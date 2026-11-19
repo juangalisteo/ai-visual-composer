@@ -12,6 +12,7 @@ from app.providers.ollama_provider import (
     OllamaRequestError,
     OllamaRequestPolicy,
 )
+from app.providers.ollama_settings import ollama_call_settings
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.operational_error import OperationalError
 
@@ -265,6 +266,108 @@ class OllamaProviderTest(unittest.TestCase):
             PrecontextualizedProvider("fake-model").generate("prompt")
 
         self.assertIs(expected, context.exception)
+
+
+class OllamaConfiguredCallsTest(unittest.TestCase):
+    """keep_alive, model, think and options declared in config/ai.json (I2)."""
+
+    def setUp(self):
+        previous_cwd = os.getcwd()
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.addCleanup(os.chdir, previous_cwd)
+        os.chdir(temp_dir.name)
+
+    def _post(self, response=None):
+        return patch(
+            "app.providers.ollama_provider.requests.post",
+            return_value=FakeResponse(response),
+        )
+
+    def test_keep_alive_zero_is_sent_to_free_the_gpu(self):
+        with self._post() as post_mock:
+            OllamaProvider("fake-model", keep_alive=0).generate("prompt")
+
+        self.assertEqual(0, post_mock.call_args.kwargs["json"]["keep_alive"])
+
+    def test_undeclared_keep_alive_is_not_sent(self):
+        with self._post() as post_mock:
+            OllamaProvider("fake-model").generate("prompt")
+
+        self.assertNotIn("keep_alive", post_mock.call_args.kwargs["json"])
+
+    def test_provider_from_settings_uses_model_and_keep_alive(self):
+        provider = OllamaProvider.from_settings(
+            ollama_call_settings(
+                {"model": "m", "keep_alive": "5m", "test_task": {"model": "t"}},
+                "test_task",
+            )
+        )
+
+        self.assertEqual("t", provider.model)
+        self.assertEqual("5m", provider.keep_alive)
+
+    def test_script_builder_sends_the_script_section(self):
+        ai_config = {
+            "model": "global-model",
+            "keep_alive": 0,
+            "script": {
+                "model": "script-model",
+                "think": False,
+                "options": {"num_ctx": 8192},
+            },
+        }
+        with self._post({"response": "Guion libre válido."}) as post_mock:
+            builder = ScriptBuilder(ai_config, max_attempts=1)
+            builder.build("Prompt libre")
+            builder.adjust(
+                "Prompt libre",
+                length=_length_budget(),
+                previous_script="Guion anterior más largo de lo pedido.",
+                measured_seconds=40.0,
+            )
+
+        self.assertEqual("script-model", builder.model)
+        for call in post_mock.call_args_list:
+            payload = call.kwargs["json"]
+            self.assertEqual("script-model", payload["model"])
+            self.assertEqual(0, payload["keep_alive"])
+            self.assertIs(False, payload["think"])
+            self.assertEqual({"num_ctx": 8192}, payload["options"])
+            self.assertNotIn("format", payload)
+        self.assertEqual(2, len(post_mock.call_args_list))
+
+    def test_script_think_true_is_sent_and_null_is_not(self):
+        for think, expected in ((True, True), (None, "absent")):
+            with self.subTest(think=think):
+                with self._post({"response": "Guion libre válido."}) as post_mock:
+                    ScriptBuilder(
+                        {"model": "m", "script": {"think": think}},
+                        max_attempts=1,
+                    ).build("Prompt libre")
+                payload = post_mock.call_args.kwargs["json"]
+                if expected == "absent":
+                    self.assertNotIn("think", payload)
+                else:
+                    self.assertIs(True, payload["think"])
+
+    def test_script_section_does_not_reach_other_tasks(self):
+        settings = ollama_call_settings(
+            {"model": "m", "script": {"think": True, "options": {"num_ctx": 1}}},
+            "storyboard",
+        )
+
+        self.assertIsNone(settings.think)
+        self.assertIsNone(settings.options)
+
+
+def _length_budget():
+    from app.core.script_length import ScriptLengthBudget, SpeechPacing
+
+    return ScriptLengthBudget.for_duration(
+        30,
+        SpeechPacing(letters_per_second=13.0, words_per_second=2.5),
+    )
 
 
 class _HttpErrorResponse(FakeResponse):

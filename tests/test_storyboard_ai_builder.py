@@ -78,6 +78,37 @@ class StoryboardAIBuilderTest(unittest.TestCase):
         self.assertEqual(storyboard_response_schema(), provider.calls[0][1].format)
         self.assertFalse(provider.calls[0][1].think)
 
+    def test_storyboard_section_adds_its_context_to_the_structured_call(self):
+        provider = FakeProvider("[]")
+        builder = StoryboardAIBuilder(
+            {
+                "model": "fake-model",
+                "storyboard": {"options": {"num_ctx": 8192}},
+                "script": {"think": True, "options": {"num_ctx": 1}},
+            },
+            provider=provider,
+        )
+
+        builder.build("prompt")
+
+        policy = provider.calls[0][1]
+        self.assertEqual({"num_ctx": 8192}, dict(policy.options))
+        self.assertIs(False, policy.think)
+        self.assertEqual(storyboard_response_schema(), policy.format)
+
+    def test_default_provider_uses_storyboard_model_and_keep_alive(self):
+        builder = StoryboardAIBuilder(
+            {
+                "model": "global-model",
+                "keep_alive": 0,
+                "storyboard": {"model": "storyboard-model", "think": True},
+            }
+        )
+
+        self.assertEqual("storyboard-model", builder.provider.model)
+        self.assertEqual(0, builder.provider.keep_alive)
+        self.assertIs(True, builder.request_policy.ollama_policy.think)
+
     def test_empty_content_remains_a_storyboard_error(self):
         builder = StoryboardAIBuilder(
             {"model": "fake-model"},
