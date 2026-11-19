@@ -75,6 +75,8 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   validación y la información privada de los asistentes siguen en el disco).
 - TRADUCTOR deja de anunciarse en el README como componente del producto
   (sus archivos nunca llegaron a versionarse).
+- La clave `provider` de `config/ai.json`: nadie la leía (el único proveedor es
+  Ollama).
 
 ---
 

@@ -145,6 +145,9 @@ class ProjectAiConfigurationTest(unittest.TestCase):
         settings = ollama_call_settings(self.ai_config, "storyboard")
         self.assertGreaterEqual(settings.options["num_ctx"], 5421)
 
+    def test_provider_key_nobody_reads_is_gone(self):
+        self.assertNotIn("provider", self.ai_config)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,4 @@
 {
-    "provider": "ollama",
     "model": "qwen3:14b",
     "keep_alive": 0,
     "script": {
