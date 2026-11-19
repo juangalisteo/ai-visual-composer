@@ -17,6 +17,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             "frames": 49,
             "fps": 12,
             "seed_mode": "random",
+            "progress_interval_seconds": 30,
             "sampling": {
                 "steps": 20,
                 "cfg": 5.0,
@@ -30,6 +31,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
             "frames": 49,
             "fps": 12,
             "seed_mode": "random",
+            "progress_interval_seconds": 30,
             "sampling": {
                 "steps": 20,
                 "cfg": 5.0,

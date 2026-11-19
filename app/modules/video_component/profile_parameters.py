@@ -111,6 +111,27 @@ def build_video_backend_overrides(profile):
     }
 
 
+def video_progress_interval_seconds(profile):
+    """Seconds between WAN progress lines; ``None`` when not declared."""
+    value = profile.get(
+        "video_component",
+        {}
+    ).get(
+        "progress_interval_seconds"
+    )
+    if value is None:
+        return None
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or value <= 0
+    ):
+        raise ValueError(
+            "Parámetro de vídeo inválido: progress_interval_seconds."
+        )
+    return float(value)
+
+
 def _resolve_video_seed(video_component):
     seed_mode = str(
         video_component.get(

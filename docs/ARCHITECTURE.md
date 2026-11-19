@@ -627,8 +627,11 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
 - **Parámetros.** Salen del documento Wan del formato
   (`config/profiles/video/<formato>/wan_i2v_<formato>.json`,
   `"kind": "video_component"`): tamaño de generación, número de fotogramas, FPS,
-  semilla y muestreo. Si en un formato hay más de uno o ninguno, la ejecución se
-  para con un error.
+  semilla, muestreo y `progress_interval_seconds`. Si en un formato hay más de
+  uno o ninguno, la ejecución se para con un error.
+- **Progreso.** Mientras Wan genera un clip, la terminal escribe
+  «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
+  «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.
 - **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
   los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
   clips son intermedios: se borran cuando el vídeo final se ha publicado bien.

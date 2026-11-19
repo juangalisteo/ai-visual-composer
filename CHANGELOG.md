@@ -28,6 +28,8 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   (traceback), y la terminal dice en qué archivo está.
 - README en cada carpeta de entrada de STUDIO (`input/studio/*/`).
 - Identidad visual propia: logo AIVC, icono, banner y paleta azul.
+- Progreso de los clips de vídeo (Wan) en la terminal: «Clip 2/3 · 1 min 30 s»
+  cada 30 s y «Clip 2/3 listo» al acabar cada uno.
 - Ajustes de Ollama en `config/ai.json`: `keep_alive`, modelo y razonamiento
   (`think`) del guion y opciones del storyboard, como el contexto (`num_ctx`).
   Ver [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
