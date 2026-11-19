@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from app.core.script_length import SpeechPacing
 from app.modules.audio.voice_configuration import (
     TtsVoiceConfiguration,
     load_tts_voice_configuration,
@@ -219,6 +220,68 @@ def test_current_voice_documents_declare_sentence_and_paragraph_pauses():
 
         assert prosody.sentence_pause_seconds == 0.5
         assert prosody.paragraph_pause_seconds == 0.35
+
+
+def test_current_voice_documents_declare_their_measured_pacing():
+    for stem in ("piper_davefx", "piper_carlfm"):
+        pacing = load_tts_voice_configuration(_document(stem)).pacing
+
+        assert isinstance(pacing, SpeechPacing)
+        assert pacing.letters_per_second > pacing.words_per_second > 0
+
+
+def test_voice_document_without_pacing_has_no_pacing():
+    document = _document()
+    del document["pacing"]
+
+    assert load_tts_voice_configuration(document).pacing is None
+
+
+def test_pacing_is_parsed_as_declared_data():
+    document = _document()
+    document["pacing"] = {"letters_per_second": 12.5, "words_per_second": 2.25}
+
+    assert load_tts_voice_configuration(document).pacing == SpeechPacing(
+        letters_per_second=12.5,
+        words_per_second=2.25,
+    )
+
+
+@pytest.mark.parametrize(
+    ("pacing", "message"),
+    (
+        ("rápido", "pacing debe ser un objeto con letters_per_second y words_per_second"),
+        ({"letters_per_second": 13.0}, "pacing debe declarar words_per_second"),
+        (
+            {"letters_per_second": 13.0, "words_per_second": 2.5, "speed": 1},
+            "pacing no admite las claves: speed",
+        ),
+        (
+            {"letters_per_second": 0, "words_per_second": 2.5},
+            "pacing.letters_per_second debe ser un número mayor que cero",
+        ),
+        (
+            {"letters_per_second": 13.0, "words_per_second": -1},
+            "pacing.words_per_second debe ser un número mayor que cero",
+        ),
+        (
+            {"letters_per_second": "13", "words_per_second": 2.5},
+            "pacing.letters_per_second debe ser un número",
+        ),
+        (
+            {"letters_per_second": True, "words_per_second": 2.5},
+            "pacing.letters_per_second debe ser un número",
+        ),
+    ),
+)
+def test_invalid_pacing_is_rejected_with_spanish_message(pacing, message):
+    document = _document()
+    document["pacing"] = pacing
+
+    with pytest.raises(TtsVoiceConfigurationError) as error:
+        load_tts_voice_configuration(document)
+
+    assert message in str(error.value)
 
 
 def test_current_voice_documents_share_the_same_slower_length_scale():

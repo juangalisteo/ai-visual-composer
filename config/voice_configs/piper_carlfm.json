@@ -10,6 +10,10 @@
     "sentence_pause_seconds": 0.5,
     "paragraph_pause_seconds": 0.35
   },
+  "pacing": {
+    "letters_per_second": 13.69,
+    "words_per_second": 2.64
+  },
   "backend_options": {
     "model": {
       "onnx_path": "models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx"

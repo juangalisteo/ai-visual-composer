@@ -2,6 +2,10 @@ import re
 import unittest
 
 from app.core.prompt_engine import PromptEngine
+from app.core.script_length import SpeechPacing
+
+
+TEST_PACING = SpeechPacing(letters_per_second=13.0, words_per_second=2.5)
 
 
 FORMAT_SENTENCES = {
@@ -33,7 +37,7 @@ def build_prompts(profile_format):
     }
     engine = PromptEngine()
     return {
-        "script": engine.build_script_request("conciencia", profile).prompt,
+        "script": engine.build_script_request("conciencia", profile, TEST_PACING).prompt,
         "storyboard": engine.build_storyboard_prompt(
             scenes=[{"scene": 1, "text": "Una puerta se abre."}],
             profile=profile,
@@ -63,7 +67,7 @@ class PromptEngineFormatSectionTest(unittest.TestCase):
         engine = PromptEngine()
 
         with self.assertRaises(KeyError):
-            engine.build_script_request("conciencia", profile)
+            engine.build_script_request("conciencia", profile, TEST_PACING)
         with self.assertRaises(KeyError):
             engine.build_storyboard_prompt(
                 scenes=[{"scene": 1, "text": "Una puerta se abre."}],

@@ -8,6 +8,7 @@ from unittest.mock import ANY, patch
 import main as app_main
 
 from app.core import start
+from app.core.script_length import SpeechPacing
 from app.core.execution_request import (
     ApplicationExecutionRequest,
     StandardExecutionRequest,
@@ -58,6 +59,18 @@ class FakeConfigManager:
         return (
             self._operational_profile_key
             or self.script_operational_key
+        )
+
+    voice_pacing = SpeechPacing(
+        letters_per_second=13.0,
+        words_per_second=2.5,
+    )
+
+    def get_tts_voice_configuration(self):
+        return SimpleNamespace(
+            display_name="Voz de prueba",
+            pacing=self.voice_pacing,
+            voice=SimpleNamespace(voice_id="test_voice"),
         )
 
     def get_ai_config(
@@ -963,6 +976,10 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     "generated",
                     FakeScriptOperation.instances[0].calls[0]["source_mode"]
                 )
+                self.assertIs(
+                    FakeConfigManager.voice_pacing,
+                    FakeScriptOperation.instances[0].calls[0]["voice_pacing"],
+                )
                 self.assertEqual(
                     [
                         "Este es el guion generado por la fuente generada."
@@ -973,6 +990,43 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 os.chdir(
                     previous_cwd
                 )
+
+    def test_generated_source_without_voice_pacing_stops_before_the_script(self):
+        class VoiceWithoutPacingConfigManager(FakeConfigManager):
+            voice_pacing = None
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            previous_cwd = Path.cwd()
+            try:
+                os.chdir(temp_dir)
+                Path("input").mkdir()
+                Path("input/tema.txt").write_text("conciencia", encoding="utf-8")
+                FakeScriptOperation.instances = []
+
+                with patch(
+                    "app.core.start.ConfigManager",
+                    VoiceWithoutPacingConfigManager,
+                ), patch(
+                    "app.modules.standard.execution_coordinator.ScriptOperation",
+                    FakeScriptOperation,
+                ):
+                    with self.assertRaises(OperationalError) as error:
+                        start.run_application(
+                            request=_standard_request(
+                                project_name="voice without pacing",
+                                pipeline_mode="audio",
+                                script_source="generated",
+                            ),
+                        )
+
+                self.assertEqual("CONFIG", error.exception.context.family)
+                self.assertIn(
+                    "La voz «Voz de prueba» no declara su ritmo",
+                    error.exception.context.user_message,
+                )
+                self.assertEqual([], FakeScriptOperation.instances)
+            finally:
+                os.chdir(previous_cwd)
 
 
 if __name__ == "__main__":

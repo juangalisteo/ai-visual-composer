@@ -3,6 +3,7 @@ from pathlib import Path
 from app.core.script_length import (
     ScriptLengthBudget,
     ScriptRequest,
+    SpeechPacing,
 )
 
 
@@ -43,9 +44,13 @@ class PromptEngine:
     def build_script_request(
         self,
         topic: str,
-        profile: dict
+        profile: dict,
+        pacing: SpeechPacing,
     ) -> ScriptRequest:
-        """Prompt of a topic script and its length budget, as data."""
+        """Prompt of a topic script and its length budget, as data.
+
+        ``pacing`` is the reading rate declared by the selected voice.
+        """
         topic = str(topic).strip()
 
         if not topic:
@@ -59,7 +64,7 @@ class PromptEngine:
 
         length = ScriptLengthBudget.for_duration(
             duration,
-            words_per_second=2.6,
+            pacing,
         )
 
         tone_text = self.read_prompt_file(

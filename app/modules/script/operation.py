@@ -21,7 +21,8 @@ class ScriptOperation:
         input_script_path,
         input_topic_path,
         output_script_path,
-        source_mode="generated"
+        source_mode="generated",
+        voice_pacing=None,
     ):
         return self.preparation_service.prepare(
             builders=builders,
@@ -30,5 +31,6 @@ class ScriptOperation:
             input_script_path=input_script_path,
             input_topic_path=input_topic_path,
             output_script_path=output_script_path,
-            source_mode=source_mode
+            source_mode=source_mode,
+            voice_pacing=voice_pacing,
         )

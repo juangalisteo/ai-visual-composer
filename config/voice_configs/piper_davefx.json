@@ -10,6 +10,10 @@
     "sentence_pause_seconds": 0.5,
     "paragraph_pause_seconds": 0.35
   },
+  "pacing": {
+    "letters_per_second": 13.14,
+    "words_per_second": 2.53
+  },
   "backend_options": {
     "model": {
       "onnx_path": "models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx"

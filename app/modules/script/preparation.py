@@ -44,8 +44,10 @@ class ScriptPreparationService:
         input_script_path,
         input_topic_path,
         output_script_path,
-        source_mode="generated"
+        source_mode="generated",
+        voice_pacing=None,
     ) -> PreparedScript:
+        """Prepare the script; ``voice_pacing`` sizes a script generated from a topic."""
         input_script_path = Path(
             input_script_path
         )
@@ -71,7 +73,8 @@ class ScriptPreparationService:
                 input_script_path=input_script_path,
                 input_topic_path=input_topic_path,
                 output_script_path=output_script_path,
-                source_mode=source_mode
+                source_mode=source_mode,
+                voice_pacing=voice_pacing,
             )
         else:
             prepared_script = self._prepare_existing(
@@ -93,7 +96,8 @@ class ScriptPreparationService:
         input_script_path,
         input_topic_path,
         output_script_path,
-        source_mode
+        source_mode,
+        voice_pacing
     ) -> PreparedScript:
         if source_mode == "manual":
             return self._prepare_manual(
@@ -106,7 +110,8 @@ class ScriptPreparationService:
                 ai_config=ai_config,
                 profile=profile,
                 input_topic_path=input_topic_path,
-                output_script_path=output_script_path
+                output_script_path=output_script_path,
+                voice_pacing=voice_pacing,
             )
 
         raise ValueError(
@@ -171,7 +176,8 @@ class ScriptPreparationService:
         ai_config,
         profile,
         input_topic_path,
-        output_script_path
+        output_script_path,
+        voice_pacing
     ) -> PreparedScript:
         if not input_topic_path.exists():
             raise _script_input_error(
@@ -207,7 +213,8 @@ class ScriptPreparationService:
             self._prompt_engine()
             .build_script_request(
                 topic,
-                profile
+                profile,
+                voice_pacing,
             )
         )
 

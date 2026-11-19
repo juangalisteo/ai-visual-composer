@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
-from app.core.script_length import ScriptLengthBudget
+from app.core.script_length import ScriptLengthBudget, SpeechPacing
 from app.modules.script import (
     InvalidScriptOutputError,
     ScriptBuilder,
@@ -13,6 +13,12 @@ from app.modules.script import (
     ScriptPreparationService,
 )
 from app.modules.script.validator import count_script_words
+
+
+# Every fake word is "palabraN": 7 letters. These pacings make letters and
+# words agree, so a test can reason in words: 26 words last 10 s.
+TEST_PACING = SpeechPacing(letters_per_second=18.2, words_per_second=2.6)
+SHORT_WORD_PACING = SpeechPacing(letters_per_second=17.5, words_per_second=2.5)
 
 
 class FakeProvider:
@@ -336,6 +342,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 target_words=10,
                 min_words=9,
                 max_words=11,
+                pacing=SHORT_WORD_PACING,
             ),
         )
 
@@ -477,6 +484,60 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
         self.assertTrue(retry.endswith(_words(80)))
 
+    def test_duration_is_checked_by_letters_not_by_word_count(self):
+        length = ScriptLengthBudget.for_duration(
+            10,
+            SpeechPacing(letters_per_second=13.0, words_per_second=2.6),
+        )
+        short_words = " ".join(["calma"] * 26)
+        long_words = " ".join(["consciencia"] * 26)
+        provider = FakeProvider((long_words, short_words))
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            "TEMA:\nconciencia",
+            length=length,
+        )
+
+        self.assertTrue(length.min_words <= 26 <= length.max_words)
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertEqual(result.script, short_words)
+        self.assertIn("duraría unos 22,0 segundos", provider.prompts[1])
+        self.assertIn("entre 11 y 13 palabras", provider.prompts[1])
+
+    def test_prompt_engine_sizes_the_script_with_the_voice_pacing(self):
+        profile = {
+            "tone": "modo_conciencia",
+            "format": "vertical",
+            "duration": 30,
+        }
+        slower = PromptEngine().build_script_request(
+            "conciencia",
+            profile,
+            SpeechPacing(letters_per_second=13.14, words_per_second=2.53),
+        )
+        faster = PromptEngine().build_script_request(
+            "conciencia",
+            profile,
+            SpeechPacing(letters_per_second=13.69, words_per_second=2.64),
+        )
+
+        self.assertEqual(slower.length.target_words, 76)
+        self.assertEqual(faster.length.target_words, 79)
+        self.assertIn("con objetivo de 76 palabras", slower.prompt)
+        self.assertIn("con objetivo de 79 palabras", faster.prompt)
+
+    def test_prompt_engine_requires_the_voice_pacing(self):
+        with self.assertRaises(TypeError):
+            PromptEngine().build_script_request(
+                "conciencia",
+                {"tone": "modo_conciencia", "format": "vertical", "duration": 30},
+                None,
+            )
+
     def test_length_range_comes_from_data_and_is_never_read_from_the_prompt_text(self):
         old_wording = (
             "TEMA:\nconciencia\n\nDURACIÓN:\n"
@@ -508,6 +569,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 target_words=10,
                 min_words=9,
                 max_words=11,
+                pacing=SHORT_WORD_PACING,
             ),
         )
 
@@ -551,6 +613,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 input_script_path=root / "missing_manual.txt",
                 input_topic_path=input_topic,
                 output_script_path=output_script,
+                voice_pacing=TEST_PACING,
             ).text
 
             self.assertEqual(
@@ -604,6 +667,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                     input_script_path=root / "missing_manual.txt",
                     input_topic_path=input_topic,
                     output_script_path=output_script,
+                    voice_pacing=TEST_PACING,
                 )
 
             self.assertFalse(
@@ -655,6 +719,7 @@ def _real_request(
             "format": "horizontal",
             "duration": duration,
         },
+        TEST_PACING,
     )
 
 

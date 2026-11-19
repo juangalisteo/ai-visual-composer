@@ -2,7 +2,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.core.script_length import ScriptLengthBudget, ScriptRequest
+from app.core.script_length import (
+    ScriptLengthBudget,
+    ScriptRequest,
+    SpeechPacing,
+)
 from app.modules.script import (
     PreparedScript,
     ScriptOperation,
@@ -18,11 +22,13 @@ class FakePromptEngine:
         self
     ):
         self.calls = []
+        self.pacings = []
 
     def build_script_request(
         self,
         topic,
-        profile
+        profile,
+        pacing,
     ):
         self.calls.append(
             (
@@ -30,17 +36,25 @@ class FakePromptEngine:
                 profile
             )
         )
+        self.pacings.append(
+            pacing
+        )
         return ScriptRequest(
             prompt=f"PROMPT: {topic}",
             length=TEST_LENGTH,
         )
 
 
+TEST_PACING = SpeechPacing(
+    letters_per_second=13.0,
+    words_per_second=2.5,
+)
 TEST_LENGTH = ScriptLengthBudget(
     duration_seconds=10,
     target_words=25,
     min_words=22,
     max_words=28,
+    pacing=TEST_PACING,
 )
 
 
@@ -185,12 +199,17 @@ class ScriptPreparationServiceTest(
                 },
                 input_script_path=root / "input" / "missing.txt",
                 input_topic_path=input_topic,
-                output_script_path=output_script
+                output_script_path=output_script,
+                voice_pacing=TEST_PACING,
             )
 
             self.assertEqual(
                 "generated",
                 prepared_script.source
+            )
+            self.assertEqual(
+                [TEST_PACING],
+                prompt_engine.pacings,
             )
             self.assertEqual(
                 "Guion generado estable para el pipeline actual.",

@@ -133,23 +133,23 @@ class ScriptBuilder:
                 )
                 report = _validate_length(
                     report=report,
-                    words=result.word_count,
+                    script=candidate,
                     length=length,
                 )
                 if report.valid:
                     return result
-                if (
-                    closest is None
-                    or length.word_distance(result.word_count)
-                    < length.word_distance(closest.word_count)
-                ):
+                if closest is None or _distance(
+                    length, candidate
+                ) < _distance(length, closest.script):
                     closest = result
                 previous_script = candidate
                 if attempt < self.max_attempts:
                     ProgressLogger.info(
-                        f"El guion tiene {result.word_count} palabras y se "
-                        f"piden entre {length.min_words} y "
-                        f"{length.max_words}. Se pide a Ollama que lo ajuste."
+                        f"El guion tiene {result.word_count} palabras: "
+                        "leído duraría unos "
+                        f"{_seconds(length.estimate_seconds(candidate))} s "
+                        f"y se piden {_seconds(length.duration_seconds)} s. "
+                        "Se pide a Ollama que lo ajuste."
                     )
             last_report = report
 
@@ -273,23 +273,36 @@ def _length_correction_prompt(
     length,
     previous_script: str,
 ) -> str:
-    """Original prompt plus the previous script and the range to rewrite it to."""
+    """Original prompt plus the previous script and the range to rewrite it to.
+
+    The range is rescaled by what that very script is estimated to last, so
+    long or short words are already accounted for.
+    """
     words = count_script_words(
         previous_script
     )
+    estimated_seconds = length.estimate_seconds(
+        previous_script
+    )
+    rewrite = length.rescaled(
+        words=words,
+        observed_seconds=estimated_seconds,
+    )
     direction = (
         "más corta"
-        if words > length.target_words
+        if estimated_seconds > length.duration_seconds
         else "más larga"
     )
     return (
         f"{prompt}\n\n"
         "CORRECCIÓN DE EXTENSIÓN:\n"
-        f"- Tu respuesta anterior tenía {words} palabras y se sale de la "
-        "extensión requerida.\n"
-        f"- Reescríbela {direction}: entre {length.min_words} y "
-        f"{length.max_words} palabras, con objetivo de "
-        f"{length.target_words} palabras.\n"
+        f"- Tu respuesta anterior tenía {words} palabras: leída en voz alta "
+        f"duraría unos {_seconds(estimated_seconds)} segundos y debe durar "
+        f"{_seconds(length.duration_seconds)}.\n"
+        f"- Reescríbela {direction}: entre {rewrite.min_words} y "
+        f"{rewrite.max_words} palabras, con objetivo de "
+        f"{rewrite.target_words} palabras. Esta extensión sustituye a la "
+        "indicada en DURACIÓN.\n"
         "- Conserva el tono, la idea principal y el cierre. Devuelve "
         "únicamente el guion reescrito.\n\n"
         "RESPUESTA ANTERIOR:\n"
@@ -308,17 +321,20 @@ def _previous_reason(
     return previous_report.issues[0].reason
 
 
-def _validate_length(*, report, words, length):
-    """Enforce the budget's word range without truncating content."""
+def _validate_length(*, report, script, length):
+    """Enforce the budget's duration, estimated in letters, without truncating."""
     if not report.valid or length is None:
         return report
 
-    if length.accepts_words(words):
+    estimated_seconds = length.estimate_seconds(
+        script
+    )
+    if length.fits(estimated_seconds):
         return report
 
     reason = (
         "script_too_short_for_duration"
-        if words < length.min_words
+        if estimated_seconds < length.duration_seconds
         else "script_too_long_for_duration"
     )
     return ScriptValidationReport(
@@ -327,10 +343,26 @@ def _validate_length(*, report, words, length):
             ScriptValidationIssue(
                 reason=reason,
                 field="script",
-                value=str(words),
+                value=_seconds(estimated_seconds),
             ),
         ),
     )
+
+
+def _distance(length, script) -> float:
+    """How far ``script`` is estimated to be from the requested duration."""
+    return abs(
+        length.deviation(
+            length.estimate_seconds(
+                script
+            )
+        )
+    )
+
+
+def _seconds(value) -> str:
+    """Seconds for the terminal and prompts, with a decimal comma."""
+    return f"{float(value):.1f}".replace(".", ",")
 
 
 def _prompt_id(

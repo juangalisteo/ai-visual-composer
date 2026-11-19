@@ -10,6 +10,7 @@ from app.core.pipeline_telemetry import (
 from app.managers.pipeline_summary import PipelineSummary
 from app.modules.audio.audio_mixer import AudioMixer
 from app.modules.audio.music_selector import MusicSelector
+from app.modules.audio.tts_contracts import TtsVoiceConfigurationError
 from app.modules.audio.voice_builder import VoiceBuilder
 from app.modules.images.image_builder import ImageBuilder
 from app.modules.script import (
@@ -28,7 +29,10 @@ from app.shared.config_contract import (
     require_int,
     require_mapping,
 )
-from app.shared.operational_error import create_missing_asset_error
+from app.shared.operational_error import (
+    create_missing_asset_error,
+    create_operational_error,
+)
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -162,6 +166,11 @@ class StandardExecutionCoordinator:
 
         stage_times = {}
 
+        voice_pacing = (
+            _generated_script_pacing(config_manager)
+            if script_source == "generated" and builders["script"]
+            else None
+        )
         script_options = {
             "builders": builders,
             "ai_config": ai_config,
@@ -170,6 +179,7 @@ class StandardExecutionCoordinator:
             "input_topic_path": input_topic_path,
             "output_script_path": output_script_path,
             "source_mode": script_source,
+            "voice_pacing": voice_pacing,
         }
         prepared_script, script_elapsed = self._pipeline_telemetry.measure_stage(
             ScriptOperation().execute,
@@ -458,6 +468,40 @@ def _resolve_single_video_operational_key(profile_resolver, profile_format):
             f"{profile_format}."
         )
     return candidates[0]
+
+
+def _generated_script_pacing(config_manager):
+    """Reading rate of the selected voice, required to size a topic script."""
+    try:
+        configuration = config_manager.get_tts_voice_configuration()
+    except TtsVoiceConfigurationError as error:
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=f"La configuración de la voz no es válida: {error}",
+            recommended_action=(
+                "Corrige el documento de la voz en config/voice_configs/."
+            ),
+            operation="Preparar el guion",
+        ) from error
+    if configuration.pacing is None:
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                f"La voz «{configuration.display_name}» no declara su ritmo "
+                "(«pacing»), que hace falta para calcular la extensión de un "
+                "guion generado por tema."
+            ),
+            recommended_action=(
+                "Añade a su documento en config/voice_configs/ el bloque "
+                "«pacing» con «letters_per_second» y «words_per_second» "
+                "medidos con esa voz."
+            ),
+            operation="Preparar el guion",
+            technical_metadata={
+                "voice_id": configuration.voice.voice_id,
+            },
+        )
+    return configuration.pacing
 
 
 def _required_builders(profile):
