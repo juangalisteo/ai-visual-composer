@@ -107,8 +107,9 @@ class StoryboardAIBuilder:
             ai_config,
             STORYBOARD_AI_TASK,
         )
-        self.provider = provider or OllamaProvider.from_settings(
-            settings
+        self.provider = provider or OllamaProvider(
+            settings.model,
+            keep_alive=settings.keep_alive,
         )
         self.request_policy = (
             request_policy

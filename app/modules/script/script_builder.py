@@ -39,8 +39,9 @@ class ScriptBuilder:
         self.model = settings.model
         self.provider = (
             provider
-            or OllamaProvider.from_settings(
-                settings
+            or OllamaProvider(
+                settings.model,
+                keep_alive=settings.keep_alive,
             )
         )
         # Only what config/ai.json declares travels with each call; with

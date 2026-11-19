@@ -79,14 +79,6 @@ class OllamaProvider:
         # Declared in config/ai.json; None sends nothing (Ollama's default).
         self.keep_alive = keep_alive
 
-    @classmethod
-    def from_settings(cls, settings):
-        """Provider for the calls described by one ``OllamaCallSettings``."""
-        return cls(
-            settings.model,
-            keep_alive=settings.keep_alive,
-        )
-
     def generate(
         self,
         prompt,

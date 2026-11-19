@@ -296,13 +296,10 @@ class OllamaConfiguredCallsTest(unittest.TestCase):
 
         self.assertNotIn("keep_alive", post_mock.call_args.kwargs["json"])
 
-    def test_provider_from_settings_uses_model_and_keep_alive(self):
-        provider = OllamaProvider.from_settings(
-            ollama_call_settings(
-                {"model": "m", "keep_alive": "5m", "test_task": {"model": "t"}},
-                "test_task",
-            )
-        )
+    def test_default_script_provider_uses_model_and_keep_alive(self):
+        provider = ScriptBuilder(
+            {"model": "m", "keep_alive": "5m", "script": {"model": "t"}},
+        ).provider
 
         self.assertEqual("t", provider.model)
         self.assertEqual("5m", provider.keep_alive)
