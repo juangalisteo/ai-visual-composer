@@ -44,8 +44,15 @@ class ScriptPreparationService:
         input_script_path,
         input_topic_path,
         output_script_path,
-        source_mode="generated"
+        source_mode="generated",
+        voice_pacing=None,
+        adjustment=None,
     ) -> PreparedScript:
+        """Prepare the script.
+
+        ``voice_pacing`` sizes a script generated from a topic; ``adjustment``
+        asks once for that script rewritten to the requested duration.
+        """
         input_script_path = Path(
             input_script_path
         )
@@ -71,7 +78,9 @@ class ScriptPreparationService:
                 input_script_path=input_script_path,
                 input_topic_path=input_topic_path,
                 output_script_path=output_script_path,
-                source_mode=source_mode
+                source_mode=source_mode,
+                voice_pacing=voice_pacing,
+                adjustment=adjustment,
             )
         else:
             prepared_script = self._prepare_existing(
@@ -93,7 +102,9 @@ class ScriptPreparationService:
         input_script_path,
         input_topic_path,
         output_script_path,
-        source_mode
+        source_mode,
+        voice_pacing,
+        adjustment
     ) -> PreparedScript:
         if source_mode == "manual":
             return self._prepare_manual(
@@ -106,7 +117,9 @@ class ScriptPreparationService:
                 ai_config=ai_config,
                 profile=profile,
                 input_topic_path=input_topic_path,
-                output_script_path=output_script_path
+                output_script_path=output_script_path,
+                voice_pacing=voice_pacing,
+                adjustment=adjustment,
             )
 
         raise ValueError(
@@ -171,7 +184,9 @@ class ScriptPreparationService:
         ai_config,
         profile,
         input_topic_path,
-        output_script_path
+        output_script_path,
+        voice_pacing,
+        adjustment
     ) -> PreparedScript:
         if not input_topic_path.exists():
             raise _script_input_error(
@@ -203,23 +218,31 @@ class ScriptPreparationService:
                 )
             )
 
-        prompt = (
+        request = (
             self._prompt_engine()
-            .build_script_prompt(
+            .build_script_request(
                 topic,
-                profile
+                profile,
+                voice_pacing,
             )
         )
 
-        script = (
-            self.script_builder_factory(
-                ai_config
-            )
-            .build(
-                prompt
-            )
-            .strip()
+        script_builder = self.script_builder_factory(
+            ai_config
         )
+        if adjustment is None:
+            script = script_builder.build(
+                request.prompt,
+                length=request.length,
+            )
+        else:
+            script = script_builder.adjust(
+                request.prompt,
+                length=request.length,
+                previous_script=adjustment.previous_script,
+                measured_seconds=adjustment.measured_seconds,
+            )
+        script = script.strip()
 
         return self._build_prepared_script(
             text=script,

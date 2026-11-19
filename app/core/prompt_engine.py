@@ -1,5 +1,11 @@
 from pathlib import Path
 
+from app.core.script_length import (
+    ScriptLengthBudget,
+    ScriptRequest,
+    SpeechPacing,
+)
+
 
 class PromptEngine:
 
@@ -35,11 +41,16 @@ class PromptEngine:
 
         return content
 
-    def build_script_prompt(
+    def build_script_request(
         self,
         topic: str,
-        profile: dict
-    ) -> str:
+        profile: dict,
+        pacing: SpeechPacing,
+    ) -> ScriptRequest:
+        """Prompt of a topic script and its length budget, as data.
+
+        ``pacing`` is the reading rate declared by the selected voice.
+        """
         topic = str(topic).strip()
 
         if not topic:
@@ -51,14 +62,9 @@ class PromptEngine:
         format_type = profile["format"]
         duration = int(profile["duration"])
 
-        target_words = self.calculate_target_words(
-            duration
-        )
-
-        min_words, max_words = (
-            self.calculate_word_range(
-                duration
-            )
+        length = ScriptLengthBudget.for_duration(
+            duration,
+            pacing,
         )
 
         tone_text = self.read_prompt_file(
@@ -92,7 +98,7 @@ TEMA:
 
 DURACIÓN:
 - Duración objetivo: {duration} segundos.
-- Extensión requerida: entre {min_words} y {max_words} palabras, con objetivo de {target_words} palabras.
+- Extensión requerida: entre {length.min_words} y {length.max_words} palabras, con objetivo de {length.target_words} palabras.
 - Respeta ese rango: es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
 - Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
 
@@ -125,7 +131,10 @@ SALIDA OBLIGATORIA:
 - No uses XML.
 """.strip()
 
-        return prompt
+        return ScriptRequest(
+            prompt=prompt,
+            length=length,
+        )
 
     def build_storyboard_prompt(
         self,
@@ -379,44 +388,4 @@ FORMATO EXACTO:
             '        "visual_truth_status": "structured"\n'
             "    }\n"
             "]"
-        )
-
-    def calculate_word_range(
-        self,
-        duration: int
-    ) -> tuple[int, int]:
-        if duration <= 0:
-            raise ValueError(
-                "La duración debe ser "
-                "superior a cero."
-            )
-
-        target_words = self.calculate_target_words(
-            duration
-        )
-
-        min_words = max(
-            1,
-            int(target_words * 0.9)
-        )
-
-        max_words = max(
-            min_words,
-            int(target_words * 1.1)
-        )
-
-        return min_words, max_words
-
-    def calculate_target_words(
-        self,
-        duration: int
-    ) -> int:
-        if duration <= 0:
-            raise ValueError(
-                "La duración debe ser "
-                "superior a cero."
-            )
-
-        return int(
-            duration * 2.6
         )

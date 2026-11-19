@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 from app.core import start
+from app.core.script_length import SpeechPacing
 from app.core.execution_request import (
     ApplicationExecutionRequest,
     StandardExecutionRequest,
@@ -62,6 +63,15 @@ def _video_request(
         ),
     )
 
+
+
+def _test_voice_configuration():
+    """Selected voice of a topic-script route: only its pacing is read."""
+    return SimpleNamespace(
+        display_name="Voz de prueba",
+        pacing=SpeechPacing(letters_per_second=13.0, words_per_second=2.5),
+        voice=SimpleNamespace(voice_id="test_voice"),
+    )
 
 class FakeProject:
     def __init__(
@@ -718,6 +728,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return {}
 
+                def get_tts_voice_configuration(self):
+                    return _test_voice_configuration()
+
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.VIDEO,
@@ -730,6 +743,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 ):
                     return {
                         "format": "vertical",
+                        "duration": 4,
                         "builders": {
                             "script": True,
                             "voice": True,
@@ -862,6 +876,9 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_ai_config(self):
                     return {}
 
+                def get_tts_voice_configuration(self):
+                    return _test_voice_configuration()
+
                 def get_operational_profile_key(self):
                     return OperationalProfileKey(
                         ProfileComponent.GUION,
@@ -871,6 +888,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
 
                 def get_profile_config(self):
                     return {
+                        "duration": 4,
                         "builders": {
                             "script": True,
                             "voice": True,

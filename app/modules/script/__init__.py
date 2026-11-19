@@ -1,6 +1,7 @@
 from app.modules.script.models import (
     InvalidScriptOutputError,
     PreparedScript,
+    ScriptAdjustment,
     ScriptGenerationMetadata,
     ScriptGenerationResult,
     ScriptValidationIssue,
@@ -15,6 +16,7 @@ from app.modules.script.validator import ScriptOutputValidator
 __all__ = (
     "InvalidScriptOutputError",
     "PreparedScript",
+    "ScriptAdjustment",
     "ScriptBuilder",
     "ScriptOperation",
     "ScriptPreparationService",

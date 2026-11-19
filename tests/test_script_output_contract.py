@@ -3,8 +3,10 @@ import unittest
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
+from app.core.script_length import ScriptLengthBudget, SpeechPacing
 from app.modules.script import (
     InvalidScriptOutputError,
+    ScriptAdjustment,
     ScriptBuilder,
     ScriptGenerationMetadata,
     ScriptGenerationResult,
@@ -12,6 +14,12 @@ from app.modules.script import (
     ScriptPreparationService,
 )
 from app.modules.script.validator import count_script_words
+
+
+# Every fake word is "palabraN": 7 letters. These pacings make letters and
+# words agree, so a test can reason in words: 26 words last 10 s.
+TEST_PACING = SpeechPacing(letters_per_second=18.2, words_per_second=2.6)
+SHORT_WORD_PACING = SpeechPacing(letters_per_second=17.5, words_per_second=2.5)
 
 
 class FakeProvider:
@@ -176,7 +184,8 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider=provider,
             max_attempts=2,
         ).generate_result(
-            _prompt_with_reference()
+            _real_request().prompt,
+            length=_real_request().length,
         )
 
         self.assertEqual(
@@ -207,7 +216,8 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider=provider,
             max_attempts=2,
         ).generate_result(
-            _prompt_with_reference()
+            _real_request().prompt,
+            length=_real_request().length,
         )
 
         self.assertEqual(
@@ -234,7 +244,8 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider=provider,
             max_attempts=2,
         ).generate_result(
-            _prompt_with_reference()
+            _real_request().prompt,
+            length=_real_request().length,
         )
 
         self.assertEqual(
@@ -257,6 +268,9 @@ class ScriptOutputContractTest(unittest.TestCase):
             "Objetivo exacto",
             provider.prompts[1],
         )
+        self.assertTrue(
+            provider.prompts[1].startswith(_real_request().prompt)
+        )
 
     def test_builder_raises_structured_error_after_structural_failures(self):
         provider = FakeProvider(
@@ -276,7 +290,8 @@ class ScriptOutputContractTest(unittest.TestCase):
                 provider=provider,
                 max_attempts=2,
             ).build(
-                _prompt_with_reference()
+                _real_request().prompt,
+                length=_real_request().length,
             )
 
         self.assertEqual(
@@ -322,11 +337,14 @@ class ScriptOutputContractTest(unittest.TestCase):
             },
             provider=provider,
         ).generate_result(
-            _prompt_with_reference(
-                minimum=9,
-                maximum=11,
-                target=10,
-            )
+            "TEMA:\nconciencia",
+            length=ScriptLengthBudget(
+                duration_seconds=4,
+                target_words=10,
+                min_words=9,
+                max_words=11,
+                pacing=SHORT_WORD_PACING,
+            ),
         )
 
         self.assertEqual(
@@ -355,13 +373,20 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
 
     def test_prompt_engine_makes_duration_budget_explicit(self):
-        prompt = PromptEngine().build_script_prompt(
-            "conciencia",
-            {
-                "tone": "modo_conciencia",
-                "format": "horizontal",
-                "duration": 10,
-            },
+        request = _real_request()
+        prompt = request.prompt
+
+        self.assertEqual(
+            (
+                request.length.min_words,
+                request.length.max_words,
+                request.length.target_words,
+            ),
+            (23, 29, 26),
+        )
+        self.assertIn(
+            "entre 23 y 29 palabras",
+            prompt,
         )
 
         self.assertIn(
@@ -385,7 +410,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             prompt.lower(),
         )
 
-    def test_out_of_range_script_is_rejected_without_truncation(self):
+    def test_out_of_range_script_is_kept_whole_when_no_attempt_fits(self):
         long_script = " ".join(
             f"palabra{i}"
             for i in range(
@@ -399,12 +424,163 @@ class ScriptOutputContractTest(unittest.TestCase):
             )
         )
 
-        with self.assertRaises(InvalidScriptOutputError):
-            ScriptBuilder(
-                {"model": "test-model"},
-                provider=provider,
-                max_attempts=1,
-            ).generate_result(_prompt_with_reference())
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=1,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request().length,
+        )
+
+        self.assertEqual(result.script, long_script)
+        self.assertEqual(result.word_count, 120)
+
+    def test_closest_script_is_kept_when_every_attempt_is_out_of_range(self):
+        provider = FakeProvider(
+            (
+                _words(80),
+                _words(40),
+            )
+        )
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request().length,
+        )
+
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertEqual(result.script, _words(40))
+        self.assertEqual(result.metadata.attempt, 2)
+
+    def test_length_retry_keeps_the_real_prompt_and_shows_the_previous_script(self):
+        request = _real_request()
+        provider = FakeProvider(
+            (
+                _words(80),
+                _words(26),
+            )
+        )
+
+        ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            request.prompt,
+            length=request.length,
+        )
+
+        retry = provider.prompts[1]
+        self.assertTrue(retry.startswith(request.prompt))
+        self.assertIn("IDENTIDAD Y TONO", retry)
+        self.assertIn(f"GUION ANTERIOR:\n{_words(80)}\n\n", retry)
+        self.assertIn("el guion anterior (80 palabras) duraría unos 30,8", retry)
+        self.assertIn(
+            f"Reescríbelo con {request.length.target_words} palabras como máximo",
+            retry,
+        )
+        self.assertLess(
+            retry.index("GUION ANTERIOR:"),
+            retry.index("CORRECCIÓN DE EXTENSIÓN:"),
+        )
+        self.assertTrue(retry.endswith("Devuelve únicamente el guion reescrito."))
+
+    def test_duration_is_checked_by_letters_not_by_word_count(self):
+        length = ScriptLengthBudget.for_duration(
+            10,
+            SpeechPacing(letters_per_second=13.0, words_per_second=2.6),
+        )
+        short_words = " ".join(["calma"] * 26)
+        long_words = " ".join(["consciencia"] * 26)
+        provider = FakeProvider((long_words, short_words))
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            "TEMA:\nconciencia",
+            length=length,
+        )
+
+        self.assertTrue(length.min_words <= 26 <= length.max_words)
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertEqual(result.script, short_words)
+        self.assertIn("duraría unos 22,0 segundos", provider.prompts[1])
+        self.assertIn("con 12 palabras como máximo", provider.prompts[1])
+
+    def test_prompt_engine_sizes_the_script_with_the_voice_pacing(self):
+        profile = {
+            "tone": "modo_conciencia",
+            "format": "vertical",
+            "duration": 30,
+        }
+        slower = PromptEngine().build_script_request(
+            "conciencia",
+            profile,
+            SpeechPacing(letters_per_second=13.14, words_per_second=2.53),
+        )
+        faster = PromptEngine().build_script_request(
+            "conciencia",
+            profile,
+            SpeechPacing(letters_per_second=13.69, words_per_second=2.64),
+        )
+
+        self.assertEqual(slower.length.target_words, 76)
+        self.assertEqual(faster.length.target_words, 79)
+        self.assertIn("con objetivo de 76 palabras", slower.prompt)
+        self.assertIn("con objetivo de 79 palabras", faster.prompt)
+
+    def test_prompt_engine_requires_the_voice_pacing(self):
+        with self.assertRaises(TypeError):
+            PromptEngine().build_script_request(
+                "conciencia",
+                {"tone": "modo_conciencia", "format": "vertical", "duration": 30},
+                None,
+            )
+
+    def test_length_range_comes_from_data_and_is_never_read_from_the_prompt_text(self):
+        old_wording = (
+            "TEMA:\nconciencia\n\nDURACIÓN:\n"
+            "- Extensión orientativa: aproximadamente entre 23 y 28 palabras, "
+            "con un objetivo aproximado de 26 palabras.\n"
+            "- Extensión requerida: entre 23 y 28 palabras, con objetivo de "
+            "26 palabras."
+        )
+        free_provider = FakeProvider((_words(80), _words(26)))
+
+        free_result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=free_provider,
+            max_attempts=2,
+        ).generate_result(old_wording)
+
+        self.assertEqual(len(free_provider.prompts), 1)
+        self.assertEqual(free_result.word_count, 80)
+
+        data_provider = FakeProvider((_words(80), _words(10)))
+        data_result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=data_provider,
+            max_attempts=2,
+        ).generate_result(
+            "TEMA:\nconciencia",
+            length=ScriptLengthBudget(
+                duration_seconds=4,
+                target_words=10,
+                min_words=9,
+                max_words=11,
+                pacing=SHORT_WORD_PACING,
+            ),
+        )
+
+        self.assertEqual(len(data_provider.prompts), 2)
+        self.assertEqual(data_result.word_count, 10)
 
     def test_duration_compliant_script_is_written_to_script_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -443,6 +619,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 input_script_path=root / "missing_manual.txt",
                 input_topic_path=input_topic,
                 output_script_path=output_script,
+                voice_pacing=TEST_PACING,
             ).text
 
             self.assertEqual(
@@ -455,6 +632,137 @@ class ScriptOutputContractTest(unittest.TestCase):
                 ),
                 long_script,
             )
+
+    def test_adjust_asks_once_with_the_measured_duration_and_the_previous_script(self):
+        request = _real_request()
+        provider = FakeProvider(
+            (
+                f"  {_words(26)}  ",
+                _words(26),
+            )
+        )
+
+        script = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).adjust(
+            request.prompt,
+            length=request.length,
+            previous_script=_words(80),
+            measured_seconds=30.8,
+        )
+
+        self.assertEqual(script, _words(26))
+        self.assertEqual(len(provider.prompts), 1)
+        adjustment = provider.prompts[0]
+        self.assertTrue(adjustment.startswith(request.prompt))
+        self.assertIn(
+            "La voz leyó el guion anterior (80 palabras) en 30,8 segundos "
+            "y debe durar 10,0.",
+            adjustment,
+        )
+        self.assertIn("Reescríbelo con 26 palabras como máximo", adjustment)
+        self.assertIn(f"GUION ANTERIOR:\n{_words(80)}\n\n", adjustment)
+        self.assertTrue(adjustment.endswith("Devuelve únicamente el guion reescrito."))
+
+    def test_adjust_rescales_the_words_with_the_measured_duration(self):
+        request = _real_request()
+        provider = FakeProvider((_words(30),))
+
+        ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+        ).adjust(
+            request.prompt,
+            length=request.length,
+            previous_script=_words(26),
+            measured_seconds=13.0,
+        )
+
+        self.assertIn(
+            "Reescríbelo con 20 palabras como máximo; es un límite estricto",
+            provider.prompts[0],
+        )
+
+    def test_adjust_of_a_short_voice_asks_for_a_minimum(self):
+        request = _real_request()
+        provider = FakeProvider((_words(26),))
+
+        ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+        ).adjust(
+            request.prompt,
+            length=request.length,
+            previous_script=_words(13),
+            measured_seconds=5.0,
+        )
+
+        self.assertIn(
+            "Reescríbelo con 26 palabras como mínimo",
+            provider.prompts[0],
+        )
+
+    def test_malformed_adjustment_raises_after_a_single_request(self):
+        provider = FakeProvider(
+            (
+                "**Answer:**\nLa conciencia despierta.",
+                _words(26),
+            )
+        )
+
+        with self.assertRaises(InvalidScriptOutputError):
+            ScriptBuilder(
+                {"model": "test-model"},
+                provider=provider,
+                max_attempts=2,
+            ).adjust(
+                _real_request().prompt,
+                length=_real_request().length,
+                previous_script=_words(80),
+                measured_seconds=30.8,
+            )
+
+        self.assertEqual(len(provider.prompts), 1)
+
+    def test_service_adjustment_rewrites_the_topic_script_at_the_given_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_topic = root / "tema.txt"
+            input_topic.write_text("conciencia", encoding="utf-8")
+            candidate = root / "guion_ajuste.txt"
+            provider = FakeProvider((_words(26),))
+
+            prepared = ScriptPreparationService(
+                script_builder_factory=lambda ai_config: ScriptBuilder(
+                    ai_config,
+                    provider=provider,
+                ),
+            ).prepare(
+                builders={"script": True},
+                ai_config={"model": "test-model"},
+                profile={
+                    "tone": "modo_conciencia",
+                    "format": "horizontal",
+                    "duration": 10,
+                },
+                input_script_path=root / "missing_manual.txt",
+                input_topic_path=input_topic,
+                output_script_path=candidate,
+                voice_pacing=TEST_PACING,
+                adjustment=ScriptAdjustment(
+                    previous_script=_words(80),
+                    measured_seconds=30.8,
+                ),
+            )
+
+            self.assertEqual(prepared.text, _words(26))
+            self.assertEqual(prepared.source, "generated")
+            self.assertEqual(candidate.read_text(encoding="utf-8"), _words(26))
+            self.assertEqual(len(provider.prompts), 1)
+            self.assertIn("CORRECCIÓN DE EXTENSIÓN", provider.prompts[0])
+            self.assertIn("TEMA:\nconciencia", provider.prompts[0])
 
     def test_invalid_llm_output_is_not_written_for_storyboard(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -496,6 +804,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                     input_script_path=root / "missing_manual.txt",
                     input_topic_path=input_topic,
                     output_script_path=output_script,
+                    voice_pacing=TEST_PACING,
                 )
 
             self.assertFalse(
@@ -536,21 +845,18 @@ def _words(
     )
 
 
-def _prompt_with_reference(
-    *,
-    minimum=23,
-    maximum=28,
-    target=26,
+def _real_request(
+    duration=10,
 ):
-    return (
-        "TEMA:\n"
-        "conciencia\n\n"
-        "DURACIÓN:\n"
-        f"- Extensión orientativa: aproximadamente entre {minimum} "
-        f"y {maximum} palabras, con un objetivo aproximado de "
-        f"{target} palabras.\n\n"
-        "SALIDA OBLIGATORIA:\n"
-        "- Devuelve únicamente el guion final."
+    """Prompt and budget exactly as PromptEngine builds them for a topic script."""
+    return PromptEngine().build_script_request(
+        "conciencia",
+        {
+            "tone": "modo_conciencia",
+            "format": "horizontal",
+            "duration": duration,
+        },
+        TEST_PACING,
     )
 
 
