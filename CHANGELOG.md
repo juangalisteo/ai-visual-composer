@@ -8,6 +8,7 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 
 ### Añadido
 
+- Insignia con el estado de las pruebas automáticas.
 - STUDIO como cuarto componente del producto, con sus modos actuales: SOLO
   VIDEO, SRT + VIDEO, INTRO / OUTRO, MONTAJE VÍDEOS, VIDEO + AUDIO | SRT y
   EXPORTAR SRT ➜  VIDEO.

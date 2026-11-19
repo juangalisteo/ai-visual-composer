@@ -5,6 +5,7 @@
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-2563EB?style=flat-square&labelColor=131C2E" alt="Windows 10 y 11">
   <img src="https://img.shields.io/badge/Python-3.13-2563EB?style=flat-square&labelColor=131C2E" alt="Python 3.13">
   <img src="https://img.shields.io/badge/licencia-GPL--3.0-2563EB?style=flat-square&labelColor=131C2E" alt="Licencia GPL-3.0">
+  <a href="https://github.com/juangalisteo/ai-visual-composer/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/juangalisteo/ai-visual-composer/tests.yml?branch=main&label=pruebas&style=flat-square&labelColor=131C2E" alt="Estado de las pruebas"></a>
 </p>
 
 <p align="center">
