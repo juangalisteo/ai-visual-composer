@@ -129,3 +129,5 @@ mejora sin preguntar antes al propietario.
 - El propietario abre el Pull Request, espera las pruebas en verde y el visto bueno del asesor,
   y une con «Create a merge commit».
 - Nunca push directo a `main` ni push forzado.
+- `main` está protegida en GitHub: solo se cambia por Pull Request con las pruebas en verde;
+  GitHub rechaza el push directo y el forzado.
