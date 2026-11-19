@@ -78,7 +78,7 @@ config/profiles/<componente>/<formato>/<familia>/subtitulos/<archivo>.json
 | `primado_negativo` | PRIMADO NEGATIVO | vertical, solo STUDIO |
 
 La familia `design` (MODO CONCIENCIA) es solo una familia de subtítulos: no
-tiene nada que ver con la ruta DISEÑO
+tiene nada que ver con DISEÑO
 ([ARCHITECTURE.md, apartado 2](ARCHITECTURE.md#2-componentes-y-rutas)).
 
 ---

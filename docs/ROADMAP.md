@@ -9,7 +9,7 @@ grabado. El menú principal ofrece cuatro componentes:
 - **GUION, IMAGEN y VIDEO** comparten la ruta estándar: a partir de un texto o
   de un tema, generan voz, subtítulos, storyboard, imágenes o clips de vídeo
   (imagen a vídeo) y componen el vídeo final.
-- Dentro de GUION, el destino «Diseño» abre la **ruta DISEÑO**: genera una sola
+- Dentro de GUION, el destino «Diseño» abre **DISEÑO**: genera una sola
   imagen o un solo clip a partir de una descripción visual directa, sin voz,
   música ni subtítulos.
 - **STUDIO** termina material que el usuario ya tiene grabado (vídeo, audio o

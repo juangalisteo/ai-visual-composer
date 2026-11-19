@@ -32,7 +32,7 @@ Otros documentos:
   usuario elige viaja en una petición tipada (`ApplicationExecutionRequest`),
   no en variables de entorno ni en diccionarios sueltos.
 - **Un coordinador por ruta.** La ruta estándar (GUION, IMAGEN, VIDEO), STUDIO y
-  la ruta DISEÑO tienen cada una su coordinador; el despachador solo elige cuál.
+  DISEÑO tienen cada uno su coordinador; el despachador solo elige cuál.
 - **Una sola frontera de errores.** Los errores se presentan en `main.py`, que
   decide el texto que ve el usuario y el código de salida.
 - **Ejecución local.** Ollama, ComfyUI (Flux y Wan), Piper, Whisper y FFmpeg se
@@ -57,14 +57,14 @@ AI VISUAL COMPOSER
 
 | Componente | De qué parte | Qué produce |
 |---|---|---|
-| **GUION** | Un texto completo escrito por el usuario (`input/guion.txt`) | Un proyecto de Imagen o de Video con ese texto tal cual, o la ruta DISEÑO |
+| **GUION** | Un texto completo escrito por el usuario (`input/guion.txt`) | Un proyecto de Imagen o de Video con ese texto tal cual, o DISEÑO |
 | **IMAGEN** | Un tema o una idea (`input/tema.txt`); la IA escribe el guion | Un vídeo hecho con imágenes generadas |
 | **VIDEO** | Un tema o una idea (`input/tema.txt`); la IA escribe el guion | Un vídeo hecho con clips generados a partir de esas imágenes (imagen a vídeo, I2V) |
 | **STUDIO** | Material propio ya grabado (vídeo, audio, SRT) en `input/studio/` | El vídeo terminado (subtítulos, audio nuevo, montaje, intro/outro) o un SRT |
 
 GUION, IMAGEN y VIDEO comparten la **ruta estándar** ([apartado 5](#5-ruta-estándar-guion-imagen-y-video)).
-Dentro de GUION, el destino «Diseño» abre la **ruta DISEÑO**
-([apartado 7](#7-ruta-diseño)), que no es un quinto componente. STUDIO tiene su
+Dentro de GUION, el destino «Diseño» abre **DISEÑO**
+([apartado 7](#7-diseño)), que no es un quinto componente. STUDIO tiene su
 propia ruta ([apartado 8](#8-studio)) y no usa la IA generativa.
 
 **DISEÑO no es la familia `design`.** La palabra aparece en dos sitios que no
@@ -72,7 +72,7 @@ tienen relación:
 
 | Nombre | Qué es |
 |---|---|
-| **Ruta DISEÑO** | GUION → Diseño → Imagen o Video: genera una sola imagen o un solo clip a partir de una descripción visual directa |
+| **DISEÑO** | GUION → Diseño → Imagen o Video: genera una sola imagen o un solo clip a partir de una descripción visual directa |
 | **Familia de subtítulos `design` (MODO CONCIENCIA)** | Una de las familias de perfiles de subtítulos; en el menú se llama «MODO CONCIENCIA» ([SUBTITLES.md](SUBTITLES.md#2-familias)) |
 
 ---
@@ -127,7 +127,7 @@ y el `ProjectManager` del proyecto, y entrega la ruta a su coordinador:
 **Los resúmenes.** Al terminar, la terminal muestra un resumen con los tiempos
 de cada etapa:
 
-- En la ruta estándar y en la ruta DISEÑO lo imprime `PipelineTelemetry.complete()`
+- En la ruta estándar y en DISEÑO lo imprime `PipelineTelemetry.complete()`
   (`app/core/pipeline_telemetry.py`). El resumen estándar (`PipelineSummary`) se
   crea al **empezar** la ejecución, porque recoge avisos mientras se ejecuta: el
   coordinador pasa `summary.warnings` a `VideoBuilder`. Por eso no está en
@@ -232,9 +232,9 @@ El menú MODO de la ruta estándar ofrece:
 
 ---
 
-## 7. Ruta DISEÑO
+## 7. DISEÑO
 
-La ruta DISEÑO parte de una descripción visual directa escrita por el usuario,
+DISEÑO parte de una descripción visual directa escrita por el usuario,
 no de un guion narrado. Se entra por GUION → DESTINO → Diseño → Imagen o Video.
 
 | Destino | Entrada | Etapas | Resultado |
@@ -244,7 +244,7 @@ no de un guion narrado. Se entra por GUION → DESTINO → Diseño → Imagen o 
 
 - `DesignExecutionCoordinator` comprueba que la descripción produzca
   **exactamente una escena**, y después una sola imagen o un solo clip.
-- La ruta DISEÑO **no** genera voz, música ni subtítulos, y **no** compone un
+- DISEÑO **no** genera voz, música ni subtítulos, y **no** compone un
   vídeo final: por eso solo pregunta el FORMATO, el PROYECTO y ELIMINAR OUTPUT.
 - Reutiliza la generación de imágenes y de clips de la ruta estándar; no tiene
   una arquitectura de generación propia.
@@ -333,8 +333,8 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 |---|---|---|
 | `input/guion.txt` | GUION | El texto completo que se va a narrar |
 | `input/tema.txt` | IMAGEN y VIDEO | Un tema o una idea; la IA escribe el guion |
-| `input/guion_imagen.txt` | Ruta DISEÑO → Imagen | La descripción visual de una imagen |
-| `input/guion_video.txt` | Ruta DISEÑO → Video | La descripción visual de un clip |
+| `input/guion_imagen.txt` | DISEÑO → Imagen | La descripción visual de una imagen |
+| `input/guion_video.txt` | DISEÑO → Video | La descripción visual de un clip |
 | `input/studio/<modo>/` | STUDIO | Vídeos, audios y SRT de cada modo ([START.md, apartado 7](START.md#7-studio)) |
 
 - Los cuatro `.txt` están en el repositorio vacíos: el usuario escribe en ellos.
@@ -632,8 +632,8 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
 - **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
   los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
   clips son intermedios: se borran cuando el vídeo final se ha publicado bien.
-- La ruta DISEÑO → Video usa el mismo `VideoComponentBuilder` para su único
-  clip ([apartado 7](#7-ruta-diseño)).
+- DISEÑO → Video usa el mismo `VideoComponentBuilder` para su único
+  clip ([apartado 7](#7-diseño)).
 - La llamada a Wan no tiene tiempo límite, a propósito
   ([AGENTS.md](../AGENTS.md) §8).
 
@@ -737,7 +737,7 @@ Todos se ejecutan en el propio equipo. Su instalación y sus modelos están en
 
 | Programa | Para qué | Cómo se usa |
 |---|---|---|
-| **Ollama** | Guion (IMAGEN y VIDEO), descripción visual del storyboard e interpretación de la ruta DISEÑO | HTTP local (`OllamaProvider`, `app/providers/`); el modelo está en `config/ai.json`. Sin tiempo límite |
+| **Ollama** | Guion (IMAGEN y VIDEO), descripción visual del storyboard e interpretación de DISEÑO | HTTP local (`OllamaProvider`, `app/providers/`); el modelo está en `config/ai.json`. Sin tiempo límite |
 | **ComfyUI + Flux** | Imágenes | HTTP local (`http://127.0.0.1:8188`) con el workflow de Flux |
 | **ComfyUI + Wan** | Clips I2V | El mismo servidor, con el workflow de Wan. Sin tiempo límite |
 | **Piper** | Voz | Librería de Python, en el mismo proceso, con el modelo ONNX de cada voz |
@@ -814,7 +814,7 @@ AI VISUAL COMPOSER
 │
 ├── GUION / IMAGEN / VIDEO      ruta estándar (StandardExecutionCoordinator)
 │     guion → voz y audio → subtítulos → storyboard → imágenes → vídeo
-│     └── GUION → Diseño        ruta DISEÑO (DesignExecutionCoordinator)
+│     └── GUION → Diseño        DISEÑO (DesignExecutionCoordinator)
 │           una descripción visual → una imagen o un clip
 │
 └── STUDIO                      material propio (StudioExecutionCoordinator)

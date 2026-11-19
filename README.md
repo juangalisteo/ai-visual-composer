@@ -40,7 +40,7 @@ A partir de un guion, un tema o una descripción visual, AI Visual Composer gene
 | **GUION** | Parte de un texto completo escrito por el usuario y lo convierte en un proyecto de Imagen o de Video. |
 | **IMAGEN** | A partir de un tema o una idea, escribe el guion con IA y genera el vídeo con imágenes generadas. |
 | **VIDEO** | Igual que IMAGEN, pero convierte cada imagen en un clip (imagen a vídeo) antes de componer el vídeo final. |
-| **Ruta DISEÑO** | Dentro de GUION, genera una sola imagen o un solo clip a partir de una descripción visual directa, sin voz ni subtítulos. |
+| **DISEÑO** | Dentro de GUION, genera una sola imagen o un solo clip a partir de una descripción visual directa, sin voz ni subtítulos. |
 | **STUDIO** | Termina material propio ya grabado (vídeo, audio o SRT): transcribe, pinta subtítulos, cambia el audio, añade intro/outro, monta varios vídeos o exporta un SRT. |
 
 ## Formatos
