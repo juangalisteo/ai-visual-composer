@@ -66,10 +66,14 @@ class ProgressHeartbeatTest(unittest.TestCase):
     def test_no_line_after_the_step_ends(self):
         lines = []
         heartbeat = ProgressHeartbeat("Clip 1/1", 30, emit=lines.append)
+        calls = []
 
         def wait(interval):
+            # The step ends while waiting: the stop flag is set but the wait
+            # still reports a timeout once; later waits report the stop.
+            calls.append(interval)
             heartbeat._stop.set()
-            return False
+            return len(calls) > 1
 
         heartbeat._wait = wait
         heartbeat._start = 0.0
