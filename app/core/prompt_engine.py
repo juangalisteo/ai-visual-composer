@@ -98,8 +98,8 @@ TEMA:
 
 DURACIÓN:
 - Duración objetivo: {duration} segundos.
-- Extensión requerida: entre {length.min_words} y {length.max_words} palabras, con objetivo de {length.target_words} palabras.
-- Respeta ese rango: es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
+- Extensión: {length.target_words} palabras como máximo; es un límite estricto.
+- Ese límite es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
 - Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
 
 IDENTIDAD Y TONO:
