@@ -30,7 +30,7 @@ tienen que estar en marcha antes de lanzar las rutas que los usan:
 | GUION: «Proyecto completo» o «Proyecto completo sin subtítulos» | Sí | Sí |
 | IMAGEN o VIDEO: «Solo audio», «Audio + subtítulos» o «Audio + subtítulos + storyboard» | Sí (escribe el guion) | No |
 | IMAGEN o VIDEO: «Proyecto completo» | Sí | Sí |
-| Ruta DISEÑO | Sí | Sí |
+| DISEÑO | Sí | Sí |
 | STUDIO | No | No |
 
 ---
@@ -106,7 +106,7 @@ AI VISUAL COMPOSER
 
 | Opción | Para qué sirve | Apartado |
 |---|---|---|
-| Guion | Narrar un texto escrito por ti y hacer con él un proyecto de Imagen o de Video; también abre la ruta DISEÑO | [5](#5-guion-imagen-y-video) y [6](#6-ruta-diseño) |
+| Guion | Narrar un texto escrito por ti y hacer con él un proyecto de Imagen o de Video; también abre DISEÑO | [5](#5-guion-imagen-y-video) y [6](#6-diseño) |
 | Imagen | Escribir un tema; la IA escribe el guion y el vídeo se hace con imágenes generadas | [5](#5-guion-imagen-y-video) |
 | Video | Como Imagen, pero cada imagen se convierte en un clip de vídeo | [5](#5-guion-imagen-y-video) |
 | Studio | Terminar vídeos, audios y SRT que ya tienes | [7](#7-studio) |
@@ -158,7 +158,7 @@ DESTINO
 3. Diseño
 ```
 
-«Diseño» abre la ruta DISEÑO ([apartado 6](#6-ruta-diseño)). Con «Imagen» o
+«Diseño» abre DISEÑO ([apartado 6](#6-diseño)). Con «Imagen» o
 «Video», y directamente en Imagen y en Video, siguen estos menús (los que no
 corresponden al modo elegido no salen):
 
@@ -199,7 +199,7 @@ Hasta qué etapa llega cada modo: [ARCHITECTURE.md, apartado 6](ARCHITECTURE.md#
 
 ---
 
-## 6. Ruta DISEÑO
+## 6. DISEÑO
 
 Genera **una sola** imagen o **un solo** clip a partir de una descripción
 visual escrita por ti. No hace voz, música, subtítulos ni vídeo final.
@@ -214,7 +214,7 @@ Guion → DESTINO: Diseño → DISEÑO: Imagen o Video → FORMATO → PROYECTO 
 | Diseño → Video | `input/guion_video.txt` | Un clip en `output/<proyecto>/video_clips/` |
 
 La descripción tiene que dar una sola escena; si no, la ejecución se para con
-un error. Cómo funciona: [ARCHITECTURE.md, apartado 7](ARCHITECTURE.md#7-ruta-diseño).
+un error. Cómo funciona: [ARCHITECTURE.md, apartado 7](ARCHITECTURE.md#7-diseño).
 
 ---
 
@@ -351,7 +351,7 @@ Todo se escribe en `output/<proyecto>/`. Lo principal de cada ruta:
 | «Solo audio» | `audio/voz.mp3` (locución) y `audio/audio_final.mp3` (con música) |
 | «Audio + subtítulos» | Lo anterior y `subtitles/subtitulos.srt` |
 | «Audio + subtítulos + storyboard» | Lo anterior y `storyboard/storyboard.json` |
-| Ruta DISEÑO | Una imagen en `images/` o un clip en `video_clips/` |
+| DISEÑO | Una imagen en `images/` o un clip en `video_clips/` |
 | STUDIO | `video/<proyecto>.mp4` y, si hay subtítulos, los SRT de `subtitles/` ([apartado 7](#dónde-sale-el-resultado)) |
 
 Lista completa de carpetas y archivos:
@@ -380,7 +380,7 @@ La tabla recoge los mensajes más frecuentes:
 | «ComfyUI no pudo generar la imagen solicitada.» o «… el clip de video solicitado.» | Comprueba que ComfyUI esté abierto en `http://127.0.0.1:8188` |
 | «No se puede eliminar OUTPUT porque uno de sus archivos está siendo utilizado por otro programa.» | Cierra el programa que tiene abierto ese archivo (reproductor, editor de vídeo…) y vuelve a lanzar |
 | «El archivo input/guion.txt está vacío.» o «No existe input/guion.txt.» (lo mismo con `input/tema.txt`) | Escribe el guion en `input/guion.txt` (Guion) o el tema en `input/tema.txt` (Imagen y Video) y vuelve a lanzar |
-| «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-ruta-diseño)) y vuelve a lanzar |
+| «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-diseño)) y vuelve a lanzar |
 | «No hay archivos MP4 disponibles para INTRO en assets/videos/intro_outro/vertical/intro/.» (o para OUTRO, o en `horizontal/`) | Pon al menos un `.mp4` en esa carpeta o elige otra opción en INTRO / OUTRO |
 | «No existe la carpeta de música: assets\music», «No se encontraron pistas musicales válidas en: assets\music» o «No existe la carpeta de overlays: assets\videos\overlays» | La música y los overlays no vienen con el proyecto: pon los tuyos ([assets/README.md](../assets/README.md)) o elige «Sin música» u OVERLAYS «No» |
 | «No existe la carpeta de entrada STUDIO: input\studio\montaje_videos» (o «… para INTRO / OUTRO: input\studio\intro_outro.», «… VIDEO + AUDIO \| SRT: input\studio\video_audio_srt.», «… EXPORTAR SRT ➜  VIDEO: input\studio\exportar_srt\transcribir») | Crea esa carpeta y pon en ella los archivos del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
