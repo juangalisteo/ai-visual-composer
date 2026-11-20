@@ -55,6 +55,9 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   Whisper y ComfyUI ya no comparten la tarjeta con él.
 - El storyboard pide a Ollama un contexto de 8192 tokens, suficiente para unas
   25 escenas (antes, 4096: al límite con 3).
+- El guion por tema se pide a Ollama sin razonamiento previo (`think: false`
+  en `config/ai.json`): sale unas 4 veces más rápido y más cerca de la
+  duración pedida.
 
 ### Corregido
 
