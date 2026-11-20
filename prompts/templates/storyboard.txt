@@ -1,0 +1,51 @@
+OBJETIVO:
+Crear el storyboard visual completo de un único vídeo.
+
+NÚMERO EXACTO DE ESCENAS:
+{numero_escenas}
+
+TEXTOS DE LAS ESCENAS:
+{escenas}
+
+IDENTIDAD Y TONO:
+{tono}
+
+TAREA VISUAL:
+{tarea}
+
+FORMATO:
+{formato}
+
+CRITERIOS DE DISEÑO:
+
+{criterios}
+
+SALIDA OBLIGATORIA:
+
+- Devuelve exclusivamente un JSON válido.
+- La respuesta debe comenzar con [ y terminar con ].
+- No uses bloques de código Markdown.
+- No escribas texto antes ni después del JSON.
+- La respuesta completa debe ser una única lista JSON.
+- Devuelve exactamente {numero_escenas} objetos.
+- Numera los objetos consecutivamente con "scene" desde 1 hasta {numero_escenas}.
+- No omitas escenas.
+- No añadas escenas nuevas.
+- Cada objeto debe contener exactamente:
+  "scene",
+  "visible_subject",
+  "visible_action",
+  "visible_environment",
+  "time_context",
+  "key_objects",
+  "spatial_relationships",
+  "continuity_links",
+  "abstract_source",
+  "filmable_interpretation",
+  "visual_constraints",
+  y
+  "visual_truth_status".
+
+FORMATO EXACTO:
+
+{ejemplo_json}

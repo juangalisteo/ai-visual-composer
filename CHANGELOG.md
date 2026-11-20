@@ -64,6 +64,14 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   final da a cada imagen la duración de su escena. Sustituye a
   `seconds_per_image` de los perfiles (una imagen cada 20 o 30 s, que cambiaba
   a mitad de frase). Ver [ARCHITECTURE.md §15](docs/ARCHITECTURE.md#15-storyboard).
+- Todos los textos que se envían a Ollama, Flux y Wan están en `prompts/`:
+  las plantillas de cada petición (`templates/`, con `{marcadores}` para los
+  datos), los criterios del storyboard (`criteria/`), la identidad visual y
+  las reglas de la imagen (`image/`) y el prompt y negativo de Wan (`video/`).
+  Los que dependen del tono tienen un archivo por tono y uno común. Si falta
+  un archivo o un marcador, error de configuración con la ruta. Lo que llega a
+  cada modelo no cambia. Ver
+  [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
 - Los clips de vídeo (Wan) duran 81 fotogramas a 12 fps (6,75 s) en vez de 49
   (4,08 s), en `frames` de `wan_i2v_<formato>.json`: casi no se repiten en las
   escenas de 6–8 s, a cambio de ~45 s más por clip.

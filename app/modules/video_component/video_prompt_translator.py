@@ -2,9 +2,18 @@ from app.modules.video_component.models import (
     MotionIntent,
     VideoPromptPlan,
 )
+from app.shared.prompt_library import PromptLibrary
+
+
+# Templates of prompts/ with the WAN prompt and its negative prompt.
+WAN_PROMPT_TEMPLATE = "video/wan.txt"
+WAN_NEGATIVE_TEMPLATE = "video/wan_negative.txt"
 
 
 class VideoPromptTranslator:
+
+    def __init__(self, prompts=None):
+        self.prompts = prompts or PromptLibrary()
 
     def translate(
         self,
@@ -17,28 +26,18 @@ class VideoPromptTranslator:
             motion_intent.avoidance_constraints
         )
 
-        prompt = (
-            "Create a short image-to-video clip with "
-            f"{motion_intent.camera_motion}. "
-            f"Motion intensity: {motion_intent.motion_intensity}. "
-            f"Temporal rhythm: {motion_intent.temporal_rhythm}. "
-            f"Stability: {motion_intent.stability}. "
-            "Preserve the source image faithfully. "
-            "Keep the source image composition locked across all frames. "
-            "Preserve the same subject identity, face, clothing, anatomy, "
-            "key objects and background layout. Animate only the declared "
-            "motion. Use one stable camera move consistent with it; no "
-            "additional reframing, zoom, orbit, or camera shake. "
-            f"Preservation constraints: {preservation}."
+        prompt = self.prompts.render(
+            WAN_PROMPT_TEMPLATE,
+            movimiento_camara=motion_intent.camera_motion,
+            intensidad=motion_intent.motion_intensity,
+            ritmo=motion_intent.temporal_rhythm,
+            estabilidad=motion_intent.stability,
+            conservar=preservation,
         )
 
-        negative_prompt = (
-            "Avoid abrupt motion, invented actions, new subjects, "
-            "identity changes, geometry deformation, subject morphing, "
-            "unstable composition, temporal flicker, face or body distortion, "
-            "duplicate limbs, object mutation, warped geometry, sudden scene "
-            "changes, camera shake, and unintended reframing. Avoidance "
-            f"constraints: {avoidance}."
+        negative_prompt = self.prompts.render(
+            WAN_NEGATIVE_TEMPLATE,
+            evitar=avoidance,
         )
 
         return VideoPromptPlan(

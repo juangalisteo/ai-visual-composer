@@ -1,0 +1,110 @@
+TEMA:
+La memoria del agua
+
+DURACIÓN:
+- Duración objetivo: 60 segundos.
+- Extensión: 156 palabras como máximo; es un límite estricto.
+- Ese límite es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
+- Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
+
+IDENTIDAD Y TONO:
+Tono de prueba: sereno, directo y sin adornos.
+
+Cada frase aporta una sola idea.
+
+TAREA:
+NO escribas un artículo.
+
+NO escribas una entrada de blog.
+
+NO escribas un ensayo.
+
+NO escribas una guía.
+
+NO escribas listas.
+
+NO escribas apartados.
+
+NO escribas títulos.
+
+NO escribas subtítulos.
+
+NO escribas numeraciones.
+
+NO escribas conclusiones tipo académico.
+
+Escribe únicamente un texto continuo preparado para ser narrado.
+
+FORMATO:
+Genera un contenido adaptado para vídeo vertical.
+
+Cada bloque debe captar la atención rápidamente.
+
+Las frases deben ser más directas.
+
+Mantén un ritmo constante.
+
+Cada frase debe aportar valor.
+
+El ritmo debe ser más dinámico.
+
+El mensaje debe concentrarse en una única idea principal.
+
+La comprensión debe ser inmediata.
+
+El contenido debe comenzar de forma directa, desarrollar la idea con claridad y terminar con una afirmación contundente.
+
+No finalices con preguntas.
+
+No utilices preguntas retóricas como cierre.
+
+No preguntes al espectador qué piensa.
+
+No invites a comentar, responder o participar.
+
+No termines con una reflexión abierta.
+
+El cierre debe ser una afirmación clara, firme, coherente y memorable.
+
+IDIOMA:
+Utiliza español de España.
+
+Ortografía impecable.
+
+Gramática impecable.
+
+No utilices emojis.
+
+No utilices anglicismos innecesarios.
+
+Escribe de forma natural y profesional.
+
+RESTRICCIONES:
+No inventes información.
+
+No repitas ideas innecesariamente.
+
+No utilices frases vacías.
+
+No añadas relleno.
+
+No exageres.
+
+No dramatices.
+
+No utilices lenguaje infantil.
+
+No escribas como un asistente de inteligencia artificial.
+
+SALIDA OBLIGATORIA:
+- Devuelve únicamente el guion final.
+- No expliques el proceso.
+- No añadas comentarios.
+- No añadas encabezados técnicos.
+- No escribas "Answer", "Response", "Output" ni "Final answer".
+- No escribas "Word count" ni recuentos de palabras.
+- No añadas un título.
+- No uses Markdown.
+- No uses bloques de código.
+- No uses formato JSON.
+- No uses XML.

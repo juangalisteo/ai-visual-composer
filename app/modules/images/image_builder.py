@@ -43,8 +43,6 @@ from app.visual_quality import ImageQualityFlowCoordinator
 
 class ImageBuilder:
 
-    base_visual_identity = ImagePromptSystem.base_visual_identity
-
     def __init__(
         self,
         comfyui_url="http://127.0.0.1:8188",
@@ -70,10 +68,8 @@ class ImageBuilder:
             workflow_path
         )
 
-        self.prompt_system = (
-            prompt_system
-            or ImagePromptSystem()
-        )
+        # Without one, it is created with the tone of the profile (identity).
+        self.prompt_system = prompt_system
 
         self.backend = (
             backend
@@ -498,7 +494,9 @@ class ImageBuilder:
             )
         )
         operational_prompt_composition = (
-            self.prompt_system.compose_cinematic_backend_prompt_with_parts(
+            self._prompt_system(
+                profile
+            ).compose_cinematic_backend_prompt_with_parts(
                 payload.prompt
             )
         )
@@ -728,6 +726,21 @@ class ImageBuilder:
             sequence
             for sequence in sequences
         )
+
+    def _prompt_system(
+        self,
+        profile=None
+    ):
+        if self.prompt_system is None:
+            self.prompt_system = ImagePromptSystem(
+                tone=(
+                    profile.get("tone")
+                    if profile
+                    else None
+                )
+            )
+
+        return self.prompt_system
 
     def _prompt_translator(
         self

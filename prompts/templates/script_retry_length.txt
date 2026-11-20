@@ -1,0 +1,1 @@
+- Debe contener entre {palabras_min} y {palabras_max} palabras para respetar la duración solicitada.

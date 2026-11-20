@@ -1,0 +1,36 @@
+TEMA:
+{tema}
+
+DURACIÓN:
+- Duración objetivo: {duracion} segundos.
+- Extensión: {palabras_max} palabras como máximo; es un límite estricto.
+- Ese límite es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
+- Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
+
+IDENTIDAD Y TONO:
+{tono}
+
+TAREA:
+{tarea}
+
+FORMATO:
+{formato}
+
+IDIOMA:
+{idioma}
+
+RESTRICCIONES:
+{restricciones}
+
+SALIDA OBLIGATORIA:
+- Devuelve únicamente el guion final.
+- No expliques el proceso.
+- No añadas comentarios.
+- No añadas encabezados técnicos.
+- No escribas "Answer", "Response", "Output" ni "Final answer".
+- No escribas "Word count" ni recuentos de palabras.
+- No añadas un título.
+- No uses Markdown.
+- No uses bloques de código.
+- No uses formato JSON.
+- No uses XML.

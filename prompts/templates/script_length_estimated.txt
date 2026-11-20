@@ -1,0 +1,1 @@
+- Leído en voz alta, el guion anterior ({palabras} palabras) duraría unos {segundos} segundos y debe durar {segundos_objetivo}.

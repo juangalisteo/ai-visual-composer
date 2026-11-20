@@ -1,0 +1,7 @@
+GUION ANTERIOR:
+{guion_anterior}
+
+CORRECCIÓN DE EXTENSIÓN:
+{observacion}
+{reescritura}
+- Conserva el tono, la idea principal y el cierre. Devuelve únicamente el guion reescrito.
