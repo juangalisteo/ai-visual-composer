@@ -156,7 +156,7 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                     "visual_truth_status": "structured",
                 }
             ],
-            scene_duration=3.25,
+            scene_durations=[3.25],
         )
 
         self.assertEqual(

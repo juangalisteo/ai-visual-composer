@@ -95,7 +95,11 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
             script_path = root / "guion.txt"
             audio_path = root / "audio.mp3"
             output_path = root / "storyboard.json"
-            script_path.write_text("Guion de prueba.", encoding="utf-8")
+            script_path.write_text(
+                "Primera frase del guion de prueba. "
+                "Segunda frase del guion de prueba.",
+                encoding="utf-8",
+            )
             audio_path.write_bytes(b"audio")
             project = SimpleNamespace(
                 final_audio_path=lambda: audio_path,
@@ -115,10 +119,7 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
                 return_value=self._profile(),
             ), patch(
                 "app.modules.storyboard.storyboard_builder.MediaProbe.get_duration",
-                return_value=20.0,
-            ), patch(
-                "app.modules.storyboard.storyboard_builder.SceneSplitter.split",
-                return_value=["Primera escena.", "Segunda escena."],
+                return_value=14.0,
             ), patch(
                 "app.modules.storyboard.storyboard_ai_builder.OllamaProvider",
             ) as provider:
@@ -151,18 +152,28 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
                 result = StoryboardBuilder().build(
                     script_path=script_path,
                     output_path=output_path,
-                    target_scene_duration=10.0,
                 )
 
-                generated_scene_numbers = [
-                    scene["scene"]
-                    for scene in json.loads(
-                        output_path.read_text(encoding="utf-8")
-                    )
-                ]
+                generated_scenes = json.loads(
+                    output_path.read_text(encoding="utf-8")
+                )
 
         self.assertEqual(output_path, result)
-        self.assertEqual([1, 2], generated_scene_numbers)
+        self.assertEqual(
+            [1, 2],
+            [scene["scene"] for scene in generated_scenes],
+        )
+        self.assertEqual(
+            [
+                "Primera frase del guion de prueba.",
+                "Segunda frase del guion de prueba.",
+            ],
+            [scene["text"] for scene in generated_scenes],
+        )
+        self.assertEqual(
+            [7.0, 7.0],
+            [scene["duration"] for scene in generated_scenes],
+        )
         provider.return_value.generate_result.assert_called_once()
 
     def test_validator_preserves_required_count_and_consecutive_numbers(self):
@@ -198,11 +209,6 @@ class StoryboardPromptCompactionTest(unittest.TestCase):
         return {
             "tone": "modo_conciencia",
             "format": "vertical",
-            "video_style": {
-                "storyboard": {
-                    "seconds_per_image": 10,
-                }
-            },
         }
 
     def _visual_scene(self, number):

@@ -5,6 +5,7 @@ from app.modules.video.ffmpeg.graphs.graph_result import GraphResult
 from app.modules.video.ffmpeg.graphs.layer_compositor import (
     LayerCompositor
 )
+from app.modules.video.media.timeline_builder import scene_spans
 from app.shared.progress_logger import ProgressLogger
 
 
@@ -83,8 +84,9 @@ class OverlayGraphBuilder(
             total_duration=(
                 timeline.audio_duration
             ),
-            scene_duration=(
-                timeline.image_duration
+            spans=scene_spans(
+                timeline,
+                scene_count
             )
         )
 
@@ -146,7 +148,7 @@ class OverlayGraphBuilder(
         context,
         scene_count,
         total_duration,
-        scene_duration
+        spans
     ):
         repeat_mode = (
             self.overlay_builder.config.repeat_mode
@@ -179,10 +181,9 @@ class OverlayGraphBuilder(
             for scene_index in range(
                 scene_count
             ):
-                start_time = (
+                start_time, scene_duration = spans[
                     scene_index
-                    * scene_duration
-                )
+                ]
 
                 end_time = min(
                     total_duration,

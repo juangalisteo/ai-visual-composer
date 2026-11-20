@@ -184,7 +184,7 @@ def _script_aligned_timing(script, timing):
     script are left out. An empty script leaves the timing unchanged.
     """
 
-    tokens = _script_tokens(script)
+    tokens = script_tokens(script)
 
     if not tokens:
         return timing
@@ -246,6 +246,37 @@ def _script_aligned_timing(script, timing):
     )
 
 
+def script_word_timings(script, timing):
+    """Return the script's words on Whisper's word times, in order.
+
+    Each item is ``(WordTiming, closes)``: the word, with the script's text
+    and the times ``_script_aligned_timing`` gives it, and whether it closes
+    a sentence or a paragraph. Every script word is kept, heard or not.
+    Without usable timing or script words the result is empty.
+    """
+
+    tokens = script_tokens(script)
+
+    if (
+        not tokens
+        or not isinstance(timing, SubtitleTiming)
+        or not timing.is_usable()
+    ):
+        return ()
+
+    words = _script_aligned_timing(script, timing).words
+
+    if len(words) != len(tokens):
+        raise ValueError(
+            "La alineación del guion con Whisper perdió palabras."
+        )
+
+    return tuple(
+        (word, closes)
+        for word, (_, closes) in zip(words, tokens)
+    )
+
+
 def _attach_unheard_words(runs, tokens):
 
     attached = []
@@ -266,7 +297,7 @@ def _attach_unheard_words(runs, tokens):
     return attached
 
 
-def _script_tokens(script):
+def script_tokens(script):
     """Return the script's words, each with whether it closes a sentence
     or a paragraph (one or more blank lines)."""
 

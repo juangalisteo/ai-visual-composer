@@ -13,6 +13,9 @@ class VideoMedia:
     media_types: tuple[str, ...] = ()
     media_durations: tuple[float | None, ...] = ()
     scene_metadata: tuple[dict, ...] = ()
+    # Storyboard duration of each entry's scene, in seconds (None if the
+    # storyboard does not give it).
+    scene_durations: tuple[float | None, ...] = ()
 
 
 class MediaLoader:
@@ -73,12 +76,9 @@ class MediaLoader:
                 "video"
                 for _ in image_paths
             )
-            scene_metadata = self._load_scene_metadata(
-                storyboard_path=storyboard_path,
-                image_entries=tuple(
-                    (scene_number, clip_path)
-                    for scene_number, clip_path, _ in clip_entries
-                )
+            scene_entries = tuple(
+                (scene_number, clip_path)
+                for scene_number, clip_path, _ in clip_entries
             )
         else:
             image_entries = self._load_image_entries(
@@ -96,10 +96,25 @@ class MediaLoader:
                 "image"
                 for _ in image_paths
             )
-            scene_metadata = self._load_scene_metadata(
-                storyboard_path=storyboard_path,
-                image_entries=image_entries
-            )
+            scene_entries = image_entries
+
+        scenes = self._load_storyboard_scenes(
+            storyboard_path
+        )
+        scene_metadata = tuple(
+            scenes.get(
+                scene_number,
+                ({}, None)
+            )[0]
+            for scene_number, _ in scene_entries
+        )
+        scene_durations = tuple(
+            scenes.get(
+                scene_number,
+                ({}, None)
+            )[1]
+            for scene_number, _ in scene_entries
+        )
 
         return VideoMedia(
             audio_path=audio_path,
@@ -111,7 +126,8 @@ class MediaLoader:
             ),
             media_types=media_types,
             media_durations=media_durations,
-            scene_metadata=scene_metadata
+            scene_metadata=scene_metadata,
+            scene_durations=scene_durations
         )
 
     def _validate_input_files(
@@ -209,27 +225,11 @@ class MediaLoader:
 
         return image_entries
 
-    def _load_scene_metadata(
-        self,
-        storyboard_path,
-        image_entries
-    ):
-        scenes = self._load_storyboard_scenes(
-            storyboard_path
-        )
-
-        return tuple(
-            scenes.get(
-                scene_number,
-                {}
-            )
-            for scene_number, _ in image_entries
-        )
-
     def _load_storyboard_scenes(
         self,
         storyboard_path
     ):
+        """Map each storyboard scene number to its metadata and duration."""
         if storyboard_path is None:
             return {}
 
@@ -281,15 +281,44 @@ class MediaLoader:
             if scene_number is None:
                 continue
 
-            scenes[scene_number] = {
-                field_name: item.get(
-                    field_name
+            scenes[scene_number] = (
+                {
+                    field_name: item.get(
+                        field_name
+                    )
+                    for field_name in fields
+                    if field_name in item
+                },
+                self._positive_seconds(
+                    item.get(
+                        "duration"
+                    )
                 )
-                for field_name in fields
-                if field_name in item
-            }
+            )
 
         return scenes
+
+    @staticmethod
+    def _positive_seconds(
+        value
+    ):
+        if isinstance(
+            value,
+            bool
+        ):
+            return None
+
+        try:
+            seconds = float(
+                value
+            )
+        except (
+            TypeError,
+            ValueError
+        ):
+            return None
+
+        return seconds if seconds > 0 else None
 
     def _scene_number(
         self,

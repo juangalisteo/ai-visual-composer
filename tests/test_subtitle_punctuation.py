@@ -8,6 +8,7 @@ from app.modules.subtitles.pipeline.cue_transformer import SubtitleCueTransforme
 from app.modules.subtitles.policies.punctuation import (
     PunctuationPolicy,
     reconcile_timing_text,
+    script_word_timings,
 )
 from app.modules.subtitles.policies.timing import SpeechSegment, SubtitleTiming, WordTiming
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
@@ -636,6 +637,44 @@ class ScriptAlignedTimingTest(unittest.TestCase):
         for script in ("", "   \n\n "):
             with self.subTest(script=script):
                 self.assertIs(timing, self._aligned(script, timing))
+
+    def test_script_word_timings_keep_every_script_word_and_its_sentence_end(self):
+        timing = self._timing(
+            [("fin", 0.0, 0.4)],
+            [("Jacob", 2.0, 2.5), ("salió", 2.6, 3.0), ("hoy", 3.1, 3.3)],
+        )
+
+        words = script_word_timings(
+            "Fin.\n\nY Jacob salió, «tarde»",
+            timing,
+        )
+
+        self.assertEqual(
+            [
+                ("Fin.", 0.0, 0.4, True),
+                ("Y", 2.0, 2.083333, False),
+                ("Jacob", 2.083333, 2.5, False),
+                ("salió,", 2.6, 3.0, False),
+                ("«tarde»", 3.1, 3.3, True),
+            ],
+            [
+                (word.text, round(word.start, 6), round(word.end, 6), closes)
+                for word, closes in words
+            ],
+        )
+
+    def test_script_word_timings_are_empty_without_script_or_timing(self):
+        timing = self._timing([("hola", 0.0, 0.4)])
+
+        self.assertEqual((), script_word_timings("   ", timing))
+        self.assertEqual((), script_word_timings("Hola.", None))
+        self.assertEqual(
+            (),
+            script_word_timings(
+                "Hola.",
+                SubtitleTiming(source="whisper", segments=()),
+            ),
+        )
 
     def test_cue_transformer_renders_exactly_the_script_words(self):
         script = "Pero quizá, ¿solo entonces? ¡Sí!"

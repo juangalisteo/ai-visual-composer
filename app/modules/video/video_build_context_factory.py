@@ -132,6 +132,13 @@ class VideoBuildContextFactory:
         }
         if not render_subtitles:
             timeline_options["render_subtitles"] = False
+        scene_durations = getattr(
+            media,
+            "scene_durations",
+            ()
+        )
+        if scene_durations:
+            timeline_options["scene_durations"] = scene_durations
 
         timeline = TimelineBuilder().build(
             **timeline_options,
@@ -142,8 +149,17 @@ class VideoBuildContextFactory:
             f"{timeline.audio_duration:.2f} segundos"
         )
 
+        timed_scenes = getattr(
+            timeline,
+            "scene_durations",
+            ()
+        )
         ProgressLogger.info(
             f"Duración por imagen: "
+            f"de {min(timed_scenes):.2f} a {max(timed_scenes):.2f} "
+            "segundos (storyboard)"
+            if timed_scenes
+            else f"Duración por imagen: "
             f"{timeline.image_duration:.2f} segundos"
         )
 

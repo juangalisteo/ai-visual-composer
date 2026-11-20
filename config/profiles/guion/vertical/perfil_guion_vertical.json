@@ -18,10 +18,6 @@
         "height": 1920,
         "fps": 30,
 
-        "storyboard": {
-            "seconds_per_image": 20
-        },
-
         "motion": {
             "enabled": true,
 

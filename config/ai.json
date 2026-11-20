@@ -3,7 +3,7 @@
     "keep_alive": 0,
     "script": {
         "model": "qwen3:14b",
-        "think": null
+        "think": false
     },
     "storyboard": {
         "options": {

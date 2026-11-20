@@ -1,5 +1,8 @@
+import json
+import tempfile
 import unittest
 from copy import deepcopy
+from pathlib import Path
 from types import SimpleNamespace
 
 from app.modules.standard.execution_coordinator import _required_builders
@@ -14,6 +17,8 @@ from app.modules.video.config.loaders.visual_effect_loader import (
     VisualEffectConfigLoader,
 )
 from app.modules.video.video_config import VideoConfigLoader
+from app.shared.format_catalog import FormatCatalog, SceneSeconds
+from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
     OperationalProfileKey,
     ProfileComponent,
@@ -68,7 +73,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "width": 1080,
             "height": 1920,
             "fps": 30,
-            "seconds_per_image": 20.0,
+            "scene_seconds": SceneSeconds(4.0, 6.0, 8.0, 10.0),
             "codec": "libx264",
             "preset": "slow",
             "crf": 16,
@@ -82,7 +87,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "width": 1920,
             "height": 1080,
             "fps": 30,
-            "seconds_per_image": 30.0,
+            "scene_seconds": SceneSeconds(4.0, 6.0, 8.0, 10.0),
             "codec": "libx264",
             "preset": "slow",
             "crf": 16,
@@ -135,10 +140,10 @@ class RequiredProfileContractsTest(unittest.TestCase):
                         expected["audio_bitrate"],
                         video_config.audio_bitrate,
                     )
+                    self.assertNotIn("storyboard", profile["video_style"])
                     self.assertEqual(
-                        expected["seconds_per_image"],
-                        StoryboardBuilder.__new__(StoryboardBuilder)
-                        ._resolve_scene_duration(profile, None),
+                        expected["scene_seconds"],
+                        StoryboardBuilder()._scene_seconds(profile),
                     )
 
     def test_video_loader_rejects_every_missing_critical_key(self):
@@ -221,19 +226,34 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "vertical",
         )
         builder = ImageBuilder.__new__(ImageBuilder)
-        storyboard = StoryboardBuilder.__new__(StoryboardBuilder)
+        storyboard = StoryboardBuilder()
 
         without_format = deepcopy(profile)
         del without_format["format"]
         with self.assertRaisesRegex(ValueError, "format"):
             builder._profile_format_guidance(without_format)
 
-        without_duration = deepcopy(profile)
-        del without_duration["video_style"]["storyboard"][
-            "seconds_per_image"
-        ]
-        with self.assertRaisesRegex(ValueError, "seconds_per_image"):
-            storyboard._resolve_scene_duration(without_duration, None)
+        with self.assertRaisesRegex(ValueError, "format"):
+            storyboard._scene_seconds(without_format)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            catalog_path = Path(temp_dir) / "formats.json"
+            catalog_path.write_text(
+                json.dumps({
+                    "formats": {
+                        "vertical": {"display_name": "Vertical", "order": 1},
+                    },
+                }),
+                encoding="utf-8",
+            )
+            with self.assertRaises(OperationalError) as caught:
+                StoryboardBuilder(
+                    format_catalog=FormatCatalog(catalog_path),
+                )._scene_seconds(profile)
+        self.assertIn(
+            "scene_seconds",
+            caught.exception.context.user_message,
+        )
 
         for key in tuple(profile["builders"]):
             with self.subTest(path=f"builders.{key}"):
@@ -349,16 +369,6 @@ class RequiredProfileContractsTest(unittest.TestCase):
         self.assertFalse(overlay.enabled)
         self.assertFalse(visual_effect.enabled)
         self.assertEqual("overlay", visual_effect.mode)
-
-        _, profile = self._profile(
-            ProfileComponent.VIDEO,
-            "vertical",
-        )
-        self.assertEqual(
-            7.5,
-            StoryboardBuilder.__new__(StoryboardBuilder)
-            ._resolve_scene_duration(profile, 7.5),
-        )
 
     def _profile(self, component, profile_format):
         key = OperationalProfileKey(

@@ -1,20 +1,25 @@
 from pathlib import Path
 import json
-import math
 import time
 
 from app.core.prompt_engine import PromptEngine
 from app.managers.project_manager import ProjectManager
 
+from app.shared.config_contract import require_text
 from app.shared.config_manager import ConfigManager
+from app.shared.format_catalog import FormatCatalog
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
-from app.shared.config_contract import (
-    require_float,
-    require_mapping,
-)
 
-from app.modules.storyboard.scene_splitter import SceneSplitter
+from app.modules.storyboard.scene_segmenter import segment_scenes
+from app.modules.subtitles.policies.punctuation import (
+    script_tokens,
+    script_word_timings,
+)
+from app.modules.subtitles.policies.timing import (
+    SubtitleTimingResolver,
+    approximate_voiced_word_timings,
+)
 from app.modules.storyboard.storyboard_ai_builder import (
     StoryboardAIBuilder
 )
@@ -31,16 +36,31 @@ from app.modules.storyboard.storyboard_validator import (
 
 class StoryboardBuilder:
 
-    def __init__(self, config_manager=None, project=None):
+    def __init__(
+        self,
+        config_manager=None,
+        project=None,
+        format_catalog=None,
+    ):
         self.config_manager = config_manager
         self.project = project
+        self.format_catalog = format_catalog
 
     def build(
         self,
         script_path=None,
         output_path=None,
-        target_scene_duration=None
+        subtitle_path=None,
+        voice_pauses=()
     ):
+        """Divide the script into scenes and describe what each one shows.
+
+        Scenes are cut at the end of sentences (``segment_scenes``), with the
+        duration of the format (``FormatCatalog.scene_seconds``). The words
+        take their times from the Whisper transcription of ``subtitle_path``;
+        without it, they are spread over the audio in proportion to their
+        letters, skipping the ``voice_pauses`` the voice wrote.
+        """
         total_start = time.perf_counter()
 
         ProgressLogger.start(
@@ -73,17 +93,13 @@ class StoryboardBuilder:
             config.get_profile_config()
         )
 
-        resolved_scene_duration = (
-            self._resolve_scene_duration(
-                profile=profile,
-                target_scene_duration=target_scene_duration
-            )
+        scene_seconds = self._scene_seconds(
+            profile
         )
 
         self._validate_inputs(
             script_path=script_path,
-            audio_path=audio_path,
-            target_scene_duration=resolved_scene_duration
+            audio_path=audio_path
         )
 
         script = script_path.read_text(
@@ -106,61 +122,42 @@ class StoryboardBuilder:
             )
         )
 
-        requested_scene_count = max(
-            1,
-            math.ceil(
-                audio_duration
-                / resolved_scene_duration
-            )
+        timed_words, timing_source = self._timed_words(
+            script=script,
+            audio_duration=audio_duration,
+            subtitle_path=subtitle_path,
+            voice_pauses=voice_pauses
+        )
+
+        spans = segment_scenes(
+            words=timed_words,
+            audio_duration=audio_duration,
+            scene_seconds=scene_seconds
+        )
+
+        durations = [
+            span.duration
+            for span in spans
+        ]
+
+        ProgressLogger.info(
+            f"Tiempos de las escenas: {timing_source}"
         )
 
         ProgressLogger.info(
-            f"Duración objetivo por imagen: "
-            f"{resolved_scene_duration:.2f} segundos"
-        )
-
-        ProgressLogger.info(
-            f"Escenas solicitadas: "
-            f"{requested_scene_count}"
-        )
-
-        scene_texts = SceneSplitter().split(
-            text=script,
-            scene_count=requested_scene_count
-        )
-
-        if not scene_texts:
-            raise ValueError(
-                "No se pudieron generar "
-                "escenas desde el guion."
-            )
-
-        scene_count = len(
-            scene_texts
-        )
-
-        scene_duration = (
-            audio_duration
-            / scene_count
-        )
-
-        ProgressLogger.info(
-            f"Escenas generadas: "
-            f"{scene_count}"
-        )
-
-        ProgressLogger.info(
-            f"Duración real por escena: "
-            f"{scene_duration:.2f} segundos"
+            f"Escenas: {len(spans)} · "
+            f"de {min(durations):.2f} a {max(durations):.2f} s "
+            f"(objetivo {scene_seconds.target_min:g}–"
+            f"{scene_seconds.target_max:g} s)"
         )
 
         base_scenes = [
             {
                 "scene": index,
-                "text": scene_text
+                "text": span.text
             }
-            for index, scene_text in enumerate(
-                scene_texts,
+            for index, span in enumerate(
+                spans,
                 start=1
             )
         ]
@@ -193,7 +190,7 @@ class StoryboardBuilder:
             StoryboardValidator()
             .validate(
                 visual_scenes=parsed_response,
-                expected_scene_count=scene_count
+                expected_scene_count=len(spans)
             )
         )
 
@@ -202,7 +199,7 @@ class StoryboardBuilder:
             .compose(
                 base_scenes=base_scenes,
                 visual_scenes=visual_scenes,
-                scene_duration=scene_duration
+                scene_durations=durations
             )
         )
 
@@ -231,16 +228,10 @@ class StoryboardBuilder:
 
         return output_path
 
-    def _resolve_scene_duration(
+    def _scene_seconds(
         self,
-        profile,
-        target_scene_duration
+        profile
     ):
-        if target_scene_duration is not None:
-            return float(
-                target_scene_duration
-            )
-
         if not isinstance(
             profile,
             dict
@@ -249,41 +240,57 @@ class StoryboardBuilder:
                 "El perfil debe ser un diccionario."
             )
 
-        video_style = require_mapping(
-            profile,
-            "video_style",
-            "video_style"
+        catalog = (
+            self.format_catalog
+            or FormatCatalog()
         )
 
-        if not isinstance(
-            video_style,
-            dict
-        ):
-            raise TypeError(
-                "La configuración video_style "
-                "debe ser un diccionario."
-            )
-
-        storyboard_config = require_mapping(
-            video_style,
-            "storyboard",
-            "video_style.storyboard"
+        return catalog.scene_seconds(
+            require_text(
+                profile,
+                "format",
+                "format"
+            ).lower()
         )
 
-        if not isinstance(
-            storyboard_config,
-            dict
-        ):
-            raise TypeError(
-                "La configuración "
-                "video_style.storyboard "
-                "debe ser un diccionario."
+    @staticmethod
+    def _timed_words(
+        script,
+        audio_duration,
+        subtitle_path,
+        voice_pauses
+    ):
+        """The script's words with their times, and where the times come from."""
+        if subtitle_path is not None:
+            timed_words = script_word_timings(
+                script,
+                SubtitleTimingResolver().resolve(
+                    subtitle_path=subtitle_path
+                )
             )
 
-        return require_float(
-            storyboard_config,
-            "seconds_per_image",
-            "video_style.storyboard.seconds_per_image"
+            if timed_words:
+                return timed_words, "Whisper"
+
+        tokens = script_tokens(
+            script
+        )
+        words = approximate_voiced_word_timings(
+            0.0,
+            audio_duration,
+            [text for text, _ in tokens],
+            voice_pauses,
+            [closes for _, closes in tokens]
+        )
+
+        return (
+            tuple(
+                zip(
+                    words,
+                    (closes for _, closes in tokens)
+                )
+            ),
+            "estimados por letras y pausas de la voz (sin Whisper)"
         )
 
     def _resolve_audio_path(
@@ -313,8 +320,7 @@ class StoryboardBuilder:
     def _validate_inputs(
         self,
         script_path,
-        audio_path,
-        target_scene_duration
+        audio_path
     ):
         if not script_path.exists():
             raise FileNotFoundError(
@@ -326,12 +332,6 @@ class StoryboardBuilder:
             raise FileNotFoundError(
                 f"No existe el audio: "
                 f"{audio_path}"
-            )
-
-        if target_scene_duration <= 0:
-            raise ValueError(
-                "seconds_per_image debe "
-                "ser superior a 0."
             )
 
     def _validate_output(
