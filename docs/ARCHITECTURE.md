@@ -509,6 +509,15 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   ninguna línea sigue en pantalla durante una pausa de la voz, ni en el SRT ni
   en el ASS. Sin `voice_pauses` (STUDIO, o una voz sin pausas) los tiempos son
   los de Whisper.
+- **Redondeo de Whisper.** Whisper escribe a veces un tiempo con un error de
+  redondeo: una palabra acaba en 27,720000000000002 s y la siguiente empieza en
+  27,72 s. Al leer el JSON, `WhisperTimingParser` toma como redondeo un solape
+  entre dos palabras seguidas de hasta `word_overlap_tolerance_seconds`
+  (`config/whisper.json`, 1 ms) y hace que la segunda empiece donde acaba la
+  primera. Un solape mayor es real y la transcripción se descarta como antes:
+  el SRT se queda sin tiempos por palabra, el storyboard reparte el tiempo por
+  letras y, en STUDIO, SOLO VIDEO y EXPORTAR SRT → TRANSCRIBIR se paran con un
+  error.
 - **Texto y tiempos.** En la ruta estándar manda el **texto del guion**: Whisper
   solo aporta los tiempos. `reconcile_timing_text` alinea palabra a palabra el
   guion con lo que oyó Whisper (`difflib.SequenceMatcher`, sin contar
@@ -740,6 +749,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
+| `config/whisper.json` | Whisper: tolerancia del redondeo de los tiempos por palabra (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
@@ -801,6 +811,15 @@ por defecto:
 | `keep_alive` | Cuánto tiempo deja Ollama el modelo cargado después de responder: segundos o una duración como `"5m"`. Con `0` lo descarga en cuanto responde y deja la GPU libre para Whisper y ComfyUI; a cambio, cada llamada lo vuelve a cargar (unos 10 s con `qwen3:14b`) |
 | `script` | Guion por tema: `model` y `think` (`true`, `false` o `null`; con `null` no se envía y decide el modelo: `qwen3` razona antes de escribir) |
 | `storyboard` | Storyboard e interpretación de DISEÑO: `model`, `think` (sin declarar, `false`) y `options`, las opciones de Ollama tal cual. `num_ctx` es el contexto en tokens: con 8192 caben unas 25 escenas |
+
+**Whisper** (`config/whisper.json`, lo lee
+`app/modules/subtitles/io/whisper_settings.py`). Todas las claves son
+obligatorias; si falta una o no es válida, la ejecución se para con un error de
+configuración (CONFIG) que nombra el archivo y la clave:
+
+| Clave | Para qué sirve |
+|---|---|
+| `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
 
 **Cómo se cargan:**
 

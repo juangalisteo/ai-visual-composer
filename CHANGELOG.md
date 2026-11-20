@@ -98,6 +98,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   resúmenes y los mensajes de error.
 - Whisper ya no añade al SRT frases que no se dijeron en voz (repeticiones
   al final del audio o sobre la música).
+- Un error de redondeo en los tiempos de Whisper (una palabra que acaba en
+  27,720000000000002 s y la siguiente que empieza en 27,72 s) ya no descarta
+  toda la transcripción: un solape de hasta 1 ms
+  (`word_overlap_tolerance_seconds` en `config/whisper.json`) se toma como
+  redondeo. Antes, los subtítulos de ese vídeo salían sin tiempos por palabra,
+  el storyboard estimaba los cortes y SOLO VIDEO de STUDIO se paraba. Ver
+  [ARCHITECTURE.md §14](docs/ARCHITECTURE.md#14-subtítulos).
 
 ### Retirado
 
