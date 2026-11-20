@@ -405,12 +405,15 @@ componente:
 | `manual` | GUION | Usa `input/guion.txt` tal cual. Si falta o está vacío, la ejecución se para con un error |
 | `generated` | IMAGEN y VIDEO | Lee `input/tema.txt`, monta el prompt con `PromptEngine` (`app/core/prompt_engine.py`) y se lo pide a Ollama con `ScriptBuilder` |
 
-- **El prompt** se compone con archivos de `prompts/`: el tono
-  (`prompts/tones/<tone>.txt`, según la clave `tone` del perfil), la tarea
-  (`prompts/tasks/script.txt`), el formato (`prompts/formats/<formato>.txt`) y
-  las reglas de idioma y restricciones (`prompts/rules/`). Incluye además el
-  rango de palabras que corresponde a la duración (`duration`) del perfil; el
-  cálculo está en [VOICEOVER.md](VOICEOVER.md).
+- **El prompt** se monta con la plantilla `prompts/templates/script.txt` y
+  archivos de `prompts/`: el tono (`prompts/tones/<tone>.txt`, según la clave
+  `tone` del perfil), la tarea (`prompts/tasks/script.txt`), el formato
+  (`prompts/formats/<formato>.txt`) y las reglas de idioma y restricciones
+  (`prompts/rules/`). Incluye además el rango de palabras que corresponde a la
+  duración (`duration`) del perfil; el cálculo está en
+  [VOICEOVER.md](VOICEOVER.md). Lo que se añade al reintentar o al ajustar la
+  extensión sale de `prompts/templates/script_retry*.txt` y
+  `script_length*.txt` ([apartado 19](#19-perfiles-y-configuración)).
 - **La respuesta se valida antes de usarla** (`ScriptOutputValidator`): se
   rechaza si trae Markdown, bloques de código, JSON, XML, encabezados del
   modelo, recuentos de palabras o comentarios, o si se sale del rango de
@@ -566,8 +569,22 @@ verse, sin instrucciones para ningún backend. Sus campos son
 `visible_subject`, `visible_action`, `visible_environment`, `time_context`,
 `key_objects`, `spatial_relationships`, `continuity_links`, `abstract_source`,
 `filmable_interpretation`, `visual_constraints` y `visual_truth_status`. El
-prompt sale de `prompts/tasks/storyboard.txt`, con el tono y el formato del
-perfil.
+prompt se monta con la plantilla `prompts/templates/storyboard.txt`: el texto
+de cada escena (`storyboard_scene.txt`), el tono y el formato del perfil, la
+tarea (`prompts/tasks/storyboard.txt`), los criterios de diseño del tono
+(`prompts/criteria/storyboard/`) y el ejemplo de respuesta
+(`storyboard_example.json`).
+
+- **En inglés.** Ollama escribe en inglés todos los campos (salvo `scene` y
+  `visual_truth_status`): Flux y Wan trabajan en inglés y así el prompt de la
+  imagen no mezcla idiomas, sin otra llamada para traducir. El texto de cada
+  escena (`text`) sigue siendo el del guion.
+- `filmable_interpretation` es la imagen completa en una o dos frases (sujeto,
+  acción, entorno, luz y atmósfera) y es lo que recibe Flux;
+  `visual_constraints` se deja vacío.
+- Los criterios piden no proponer objetos con letras (libros abiertos,
+  periódicos, carteles, pantallas, etiquetas…) y mostrar sin letras lo que
+  hable de leer o estudiar.
 
 ---
 
@@ -584,8 +601,8 @@ Visual Intelligence                      análisis → razonamiento → síntesi
     ↓
 EffectiveVisualBrief
     ↓  CinematicDirectionOrchestrator    composición, fotografía, luz, color, movimiento, continuidad
-Prompt Translation                       prompt final dentro del presupuesto del modelo
-    ↓  ComfyUIAdapter + ImagePromptSystem
+Prompt Translation                       plantilla de escena (prompts/image/scene.txt)
+    ↓  ComfyUIAdapter + ImagePromptSystem    + identidad visual y reglas (prompts/image/)
 ComfyUI + Flux                           config/comfyui_flux_workflow_api.json
     ↓
 control de calidad                       ImageQualityFlowCoordinator
@@ -597,8 +614,31 @@ images/scene_*.png + images/images_manifest.json
 |---|---|---|
 | Visual Intelligence | `app/visual_intelligence/` (`analysis/`, `reasoning/`, `synthesis/`) | Interpreta la escena: qué es importante, qué intención tiene, qué la une a las demás y qué conflictos hay. El resultado es un `EffectiveVisualBrief` |
 | Dirección cinematográfica | `app/cinematic_direction/` y los directores de `app/*_direction/` | Convierte el brief en decisiones de composición, fotografía, luz, color, movimiento y continuidad |
-| Traducción a prompt | `app/prompt_translation/` | Escoge y ordena la información visual, quita duplicados y ajusta el prompt al presupuesto de tokens del modelo; no reinterpreta la escena |
+| Traducción a prompt | `app/prompt_translation/` | Escribe la parte de la escena con la plantilla `prompts/image/scene.txt` (ver abajo); no reinterpreta la escena |
 | Backend | `app/backend_adapters/`, `app/modules/images/backends/comfyui_backend.py` | Adapta el prompt a ComfyUI y lanza el workflow de Flux |
+
+- **La escena.** La plantilla `prompts/image/scene.txt`
+  (`{filmable_interpretation}, {visual_constraints}`) dice qué campos del
+  storyboard forman la escena; admite `visible_subject`, `visible_action`,
+  `visible_environment`, `time_context`, `key_objects`,
+  `spatial_relationships`, `filmable_interpretation` y `visual_constraints`.
+  Cada campo entra entero (sin partirlo por las comas ni recortarlo); un valor
+  que ya dice otro no se repite; y los objetos con letras de
+  `prompts/image/text_free_objects.json` se cambian por su sustituto visual
+  («an open book» → «a closed leather-bound book with a plain cover»). A
+  `visual_constraints` se le añade la guía de formato (`image_guidance`). Si la
+  escena no cabe en el presupuesto del modelo, la ejecución se para: no se
+  recorta. Sin plantilla, `PromptTranslator` compila fragmentos de todos los
+  campos por prioridad (lo que hacía antes de I4).
+- **Identidad visual y reglas.** `ImagePromptSystem` añade a cada prompt la
+  identidad visual del tono (`prompts/image/identity/`), sin las partes que la
+  escena ya dice, y las reglas comunes de `prompts/image/rules.json`: las de
+  personas o de escenas sin personas (con sus palabras clave, en inglés y
+  español), la dirección por tipo de escena (arquitectura, objeto simbólico,
+  anatomía, energía, geometría) y la de no poner texto.
+- **Semilla.** La escena N se genera la primera vez con `images.seed` del
+  perfil + N: cada escena tiene la suya y el mismo perfil las repite. Los
+  reintentos del control de calidad usan sus propias semillas.
 
 - Ollama no interviene en estas etapas: la imagen parte solo de la Visual
   Truth del storyboard.
@@ -627,7 +667,7 @@ En VIDEO (y en GUION → Video) cada imagen se convierte en un clip con Wan
 imagen de la escena + su Visual Truth
     ↓  SourceImageAnalyzer        qué hay en la imagen
     ↓  MotionIntentBuilder        qué movimiento pide la escena
-    ↓  VideoPromptTranslator      prompt de vídeo
+    ↓  VideoPromptTranslator      prompt de vídeo y negativo (prompts/video/)
     ↓  ComfyUIVideoAdapter        workflow config/comfyui_wan22_ti2v_i2v_workflow_api.json
 ComfyUI + Wan
     ↓
@@ -704,7 +744,32 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
 | `config/profiles/<componente>/<formato>/<familia>/subtitulos/*.json` | Perfiles de subtítulos |
-| `prompts/` | Textos de los prompts: `tones/`, `tasks/`, `formats/` y `rules/` |
+| `prompts/` | Todos los textos que se envían a Ollama, Flux y Wan (ver abajo) |
+
+**Prompts** (`prompts/`, leídos con `PromptLibrary`,
+`app/shared/prompt_library.py`). Ningún texto que llegue a un modelo está en
+el código:
+
+| Carpeta | Contenido |
+|---|---|
+| `tones/`, `tasks/`, `formats/`, `rules/` | Tono, tarea de cada etapa, formato y reglas de idioma y restricciones |
+| `templates/` | Cómo se monta cada petición a Ollama: guion (`script.txt`), reintento y ajuste de extensión (`script_retry*.txt`, `script_length*.txt`), storyboard (`storyboard.txt`, `storyboard_scene.txt`) y su ejemplo de respuesta (`storyboard_example.json`) |
+| `criteria/storyboard/` | Criterios de diseño del storyboard |
+| `image/` | Plantilla de la escena (`scene.txt`), objetos con letras y su sustituto (`text_free_objects.json`), identidad visual (`identity/`) y reglas (`rules.json`) |
+| `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) |
+
+- **Marcadores.** Una plantilla marca con `{nombre}` cada dato que rellena el
+  programa (`{tema}`, `{palabras_max}`, `{escenas}`…). Si a una plantilla le
+  falta un marcador o tiene uno que el programa no rellena, la ejecución se
+  para con un error de configuración (CONFIG) que nombra el archivo.
+- **Por tono.** Los textos que dependen del tono (criterios del storyboard e
+  identidad visual) van en una carpeta con un archivo por tono
+  (`<tono>.txt` o `.json`) y `default` común para los tonos que no tienen el
+  suyo.
+- **Instantáneas.** `tests/test_prompt_snapshots.py` compara los prompts
+  montados con `tests/fixtures/prompt_snapshots/`; si se cambia un prompt a
+  propósito, se regeneran con
+  `AIVC_UPDATE_PROMPT_SNAPSHOTS=1 python -m pytest tests/test_prompt_snapshots.py`.
 
 **Perfil operacional** (`OperationalProfileKey`). En GUION, IMAGEN y VIDEO
 declara:
@@ -713,6 +778,7 @@ declara:
 |---|---|
 | `component`, `format`, `profile_id` | Identidad: tienen que coincidir con la carpeta |
 | `tone` | Archivo de `prompts/tones/` |
+| `images.seed` | Semilla de las imágenes: la escena N usa `seed` + N ([apartado 16](#16-imágenes)) |
 | `duration` | Duración pedida al guion generado (IMAGEN y VIDEO; GUION no la lleva) |
 | `builders` | Qué etapas puede ejecutar el componente |
 | `video_style` | Tamaño, FPS y las etapas del vídeo final ([apartado 18](#18-composición-del-vídeo-final)) |

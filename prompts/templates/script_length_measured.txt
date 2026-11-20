@@ -1,0 +1,1 @@
+- La voz leyó el guion anterior ({palabras} palabras) en {segundos} segundos y debe durar {segundos_objetivo}.

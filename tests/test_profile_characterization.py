@@ -258,7 +258,7 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         video["generation"]["height"],
                     )
                 )
-                self.assertEqual(49, video["frames"])
+                self.assertEqual(81, video["frames"])
                 self.assertEqual(12, video["fps"])
                 self.assertEqual(20, video["sampling"]["steps"])
                 self.assertEqual(5.0, video["sampling"]["cfg"])

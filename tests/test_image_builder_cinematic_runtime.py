@@ -634,7 +634,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         self.assertEqual(b"attempt_002", final_image_bytes)
         self.assertEqual(str(final_image), manifest[0]["image"])
 
-    def test_retries_receive_distinct_seeds_and_first_attempt_keeps_workflow_seed(self):
+    def test_retries_receive_distinct_seeds_and_first_attempt_uses_profile_seed(self):
         seeds = []
 
         def record_seed(
@@ -692,7 +692,8 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
             )
             for attempt in (2, 3)
         ]
-        self.assertEqual([None, *expected_retry_seeds], seeds)
+        # images.seed 1000 of the test profile + scene 1.
+        self.assertEqual([1001, *expected_retry_seeds], seeds)
         self.assertNotEqual(*expected_retry_seeds)
 
     def test_safe_image_does_not_create_quality_attempt_directories(self):
@@ -1073,6 +1074,7 @@ class ImageBuilderCinematicRuntimeTest(unittest.TestCase):
         config = SimpleNamespace(
             get_profile_config=lambda: {
                 "format": "horizontal",
+                "images": {"seed": 1000},
                 "video_style": {
                     "width": 640,
                     "height": 360

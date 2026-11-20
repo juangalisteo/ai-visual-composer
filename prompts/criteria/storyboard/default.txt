@@ -1,0 +1,35 @@
+- Analiza todas las escenas antes de generar la respuesta.
+- Diseña el conjunto como una secuencia visual coherente.
+- Cada escena debe representar fielmente su texto.
+- Cada escena debe tener una identidad visual clara.
+- Mantén una estética cinematográfica y profesional.
+- Las escenas deben sentirse parte del mismo vídeo.
+- Evita repetir protagonistas, escenarios, acciones y composiciones.
+- Evita que todas las escenas sean una persona centrada rodeada de partículas.
+- Alterna cuando tenga sentido entre:
+  figura humana,
+  arquitectura,
+  naturaleza,
+  espacios simbólicos,
+  entornos cósmicos,
+  objetos conceptuales
+  y composiciones abstractas comprensibles.
+- Estructura cada escena como Visual Truth 2.0.
+- Incluye en cada escena:
+  sujeto o elemento principal,
+  acción o estado,
+  entorno,
+  composición,
+  iluminación,
+  atmósfera
+  y elemento simbólico distintivo.
+- Prioriza imágenes claras, impactantes y fáciles de generar.
+- Evita descripciones genéricas o vagas.
+- Evita escenas excesivamente recargadas.
+- No propongas nada que lleve letras o números a la vista: libros abiertos, páginas, periódicos, cartas, carteles, rótulos, señales, pantallas, hologramas con datos, pizarras, etiquetas, mapas, fórmulas, ecuaciones, símbolos flotantes, logotipos, marcas de agua ni subtítulos.
+- Si el texto habla de leer, escribir, estudiar, aprender o investigar, muéstralo sin letras: un libro cerrado de tapas lisas, una mirada concentrada, una luz que se enciende, un gesto.
+- Si aparece una persona, nómbrala como persona ("a man", "a woman", "an elderly scientist") y, si es histórica, también por su nombre.
+- No menciones cámaras, lentes, resolución ni parámetros técnicos.
+- `filmable_interpretation` debe describir la imagen filmable final.
+- No escribas párrafos largos.
+- No expliques las decisiones visuales.

@@ -1,0 +1,247 @@
+OBJETIVO:
+Crear el storyboard visual completo de un único vídeo.
+
+NÚMERO EXACTO DE ESCENAS:
+4
+
+TEXTOS DE LAS ESCENAS:
+ESCENA 1:
+La neuroplasticidad es la capacidad del cerebro para reorganizarse. Permite nuevas conexiones neuronales.
+
+ESCENA 2:
+Este fenómeno demuestra que el cerebro no es estático.
+
+ESCENA 3:
+Su comprensión revoluciona la forma en que entendemos el potencial humano.
+
+ESCENA 4:
+El cerebro no tiene límites fijos; su capacidad de transformación es uno de los mayores logros de la naturaleza.
+
+IDENTIDAD Y TONO:
+Tono de prueba: sereno, directo y sin adornos.
+
+Cada frase aporta una sola idea.
+
+TAREA VISUAL:
+Genera el storyboard visual completo de un vídeo.
+
+Analiza todas las escenas antes de responder y diseña el conjunto como una secuencia visual coherente, profesional y cinematográfica.
+
+Cada escena debe nacer como Visual Truth 2.0.
+
+Visual Truth 2.0 describe exactamente qué debe verse en pantalla.
+
+No es un prompt.
+
+No es una explicación narrativa.
+
+No es un payload técnico.
+
+Cada escena debe separar claramente:
+
+- sujeto visible;
+- acción visible;
+- entorno visible;
+- contexto temporal;
+- objetos clave;
+- relaciones espaciales;
+- enlaces de continuidad;
+- origen abstracto cuando exista;
+- interpretación filmable;
+- restricciones visuales.
+
+Cada escena debe:
+
+- representar fielmente el significado del texto correspondiente;
+- ser claramente diferente del resto de escenas;
+- mantener continuidad estética y narrativa con todo el vídeo;
+- evitar repetir protagonistas, escenarios, fondos, acciones, símbolos o composiciones;
+- tener un estilo cinematográfico, realista y simbólico;
+- ser impactante, clara y fácil de interpretar visualmente;
+- incluir un sujeto o elemento principal claramente identificable;
+- incluir una acción, estado o intención visual concreta;
+- incluir un entorno coherente con el contenido;
+- incluir una composición limpia y profesional;
+- incluir una iluminación expresiva;
+- incluir una atmósfera definida;
+- incluir un elemento visual distintivo que refuerce el mensaje;
+- evitar imágenes genéricas, vagas o repetitivas;
+- evitar escenas excesivamente recargadas;
+- priorizar composiciones visuales memorables antes que descripciones largas;
+- pensar como un director de fotografía y un diseñador conceptual;
+- diseñar cada escena como un fotograma de una producción cinematográfica de alto nivel;
+- mantener suficiente variedad visual entre figura humana, arquitectura, naturaleza, espacios simbólicos, entornos cósmicos, objetos conceptuales y abstracciones comprensibles;
+- evitar que todas las escenas consistan en una persona centrada rodeada de partículas;
+- describir únicamente elementos que puedan representarse claramente en una imagen generada con IA.
+
+No incluyas:
+
+- texto dentro de la imagen;
+- logotipos;
+- subtítulos;
+- marcas de agua;
+- interfaces;
+- cámaras;
+- lentes;
+- parámetros técnicos;
+- explicaciones sobre tus decisiones;
+- títulos;
+- comentarios;
+- listas fuera del JSON;
+- contenido adicional fuera del resultado solicitado.
+
+`filmable_interpretation` debe describir la imagen filmable final.
+
+Devuelve exclusivamente un JSON válido con todas las escenas.
+
+La respuesta debe comenzar con [ y terminar con ].
+
+Cada objeto debe contener únicamente:
+
+- "scene"
+- "visible_subject"
+- "visible_action"
+- "visible_environment"
+- "time_context"
+- "key_objects"
+- "spatial_relationships"
+- "continuity_links"
+- "abstract_source"
+- "filmable_interpretation"
+- "visual_constraints"
+- "visual_truth_status"
+
+Respeta exactamente la numeración recibida.
+
+No omitas escenas.
+
+No añadas escenas nuevas.
+
+No escribas absolutamente nada antes ni después del JSON.
+
+FORMATO:
+Genera un contenido adaptado para vídeo vertical.
+
+Cada bloque debe captar la atención rápidamente.
+
+Las frases deben ser más directas.
+
+Mantén un ritmo constante.
+
+Cada frase debe aportar valor.
+
+El ritmo debe ser más dinámico.
+
+El mensaje debe concentrarse en una única idea principal.
+
+La comprensión debe ser inmediata.
+
+El contenido debe comenzar de forma directa, desarrollar la idea con claridad y terminar con una afirmación contundente.
+
+No finalices con preguntas.
+
+No utilices preguntas retóricas como cierre.
+
+No preguntes al espectador qué piensa.
+
+No invites a comentar, responder o participar.
+
+No termines con una reflexión abierta.
+
+El cierre debe ser una afirmación clara, firme, coherente y memorable.
+
+CRITERIOS DE DISEÑO:
+
+- Analiza todas las escenas antes de generar la respuesta.
+- Diseña el conjunto como una secuencia visual coherente.
+- Cada escena debe representar fielmente su texto.
+- Cada escena debe tener una identidad visual clara.
+- Mantén una estética cinematográfica y profesional.
+- Las escenas deben sentirse parte del mismo vídeo.
+- Evita repetir protagonistas, escenarios, acciones y composiciones.
+- Evita que todas las escenas sean una persona centrada rodeada de partículas.
+- Alterna cuando tenga sentido entre:
+  figura humana,
+  arquitectura,
+  naturaleza,
+  espacios simbólicos,
+  entornos cósmicos,
+  objetos conceptuales
+  y composiciones abstractas comprensibles.
+- Estructura cada escena como Visual Truth 2.0.
+- Incluye en cada escena:
+  sujeto o elemento principal,
+  acción o estado,
+  entorno,
+  composición,
+  iluminación,
+  atmósfera
+  y elemento simbólico distintivo.
+- Prioriza imágenes claras, impactantes y fáciles de generar.
+- Evita descripciones genéricas o vagas.
+- Evita escenas excesivamente recargadas.
+- No propongas nada que lleve letras o números a la vista: libros abiertos, páginas, periódicos, cartas, carteles, rótulos, señales, pantallas, hologramas con datos, pizarras, etiquetas, mapas, fórmulas, ecuaciones, símbolos flotantes, logotipos, marcas de agua ni subtítulos.
+- Si el texto habla de leer, escribir, estudiar, aprender o investigar, muéstralo sin letras: un libro cerrado de tapas lisas, una mirada concentrada, una luz que se enciende, un gesto.
+- Si aparece una persona, nómbrala como persona ("a man", "a woman", "an elderly scientist") y, si es histórica, también por su nombre.
+- No menciones cámaras, lentes, resolución ni parámetros técnicos.
+- `filmable_interpretation` debe describir la imagen filmable final.
+- No escribas párrafos largos.
+- No expliques las decisiones visuales.
+
+IDIOMA DE LOS CAMPOS:
+
+- Escribe en inglés todos los textos del JSON: los generadores de imagen y de vídeo trabajan en inglés.
+- "scene" y "visual_truth_status" no se traducen.
+- "filmable_interpretation" es la descripción que recibe el generador de imágenes: una o dos frases en inglés con la imagen completa (sujeto, acción, entorno, luz y atmósfera), nombrando el sujeto una sola vez.
+- Deja "visual_constraints" como lista vacía ([]): el programa añade las restricciones de la imagen.
+
+SALIDA OBLIGATORIA:
+
+- Devuelve exclusivamente un JSON válido.
+- La respuesta debe comenzar con [ y terminar con ].
+- No uses bloques de código Markdown.
+- No escribas texto antes ni después del JSON.
+- La respuesta completa debe ser una única lista JSON.
+- Devuelve exactamente 4 objetos.
+- Numera los objetos consecutivamente con "scene" desde 1 hasta 4.
+- No omitas escenas.
+- No añadas escenas nuevas.
+- Cada objeto debe contener exactamente:
+  "scene",
+  "visible_subject",
+  "visible_action",
+  "visible_environment",
+  "time_context",
+  "key_objects",
+  "spatial_relationships",
+  "continuity_links",
+  "abstract_source",
+  "filmable_interpretation",
+  "visual_constraints",
+  y
+  "visual_truth_status".
+
+FORMATO EXACTO:
+
+[
+    {
+        "scene": 1,
+        "visible_subject": "Main visible subject",
+        "visible_action": "Visible action, state or change",
+        "visible_environment": "Observable physical environment",
+        "time_context": "Observable moment in time",
+        "key_objects": [
+            "Key visual object"
+        ],
+        "spatial_relationships": [
+            "Observable spatial relationship"
+        ],
+        "continuity_links": [
+            "Visual link with the other scenes"
+        ],
+        "abstract_source": "Abstract idea behind the scene, if any",
+        "filmable_interpretation": "One or two sentences with the whole image: subject, action, environment, light and atmosphere",
+        "visual_constraints": [],
+        "visual_truth_status": "structured"
+    }
+]

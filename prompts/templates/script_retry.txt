@@ -1,0 +1,3 @@
+CORRECCIÓN:
+- La respuesta anterior incumple el formato requerido. Motivo: {motivo}.
+- Devuelve únicamente el guion final válido, sin encabezados, sin comentarios, sin markdown, sin JSON y sin metadatos.

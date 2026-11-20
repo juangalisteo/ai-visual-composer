@@ -18,10 +18,20 @@ from app.providers.ollama_provider import (
 )
 from app.providers.ollama_settings import ollama_call_settings
 from app.shared.progress_logger import ProgressLogger
+from app.shared.prompt_library import PromptLibrary
 
 
 # Section of config/ai.json with the script's model, think and options.
 SCRIPT_AI_TASK = "script"
+
+# Templates of prompts/ for the corrections asked of Ollama.
+RETRY_TEMPLATE = "templates/script_retry.txt"
+RETRY_LENGTH_TEMPLATE = "templates/script_retry_length.txt"
+LENGTH_TEMPLATE = "templates/script_length.txt"
+LENGTH_ESTIMATED_TEMPLATE = "templates/script_length_estimated.txt"
+LENGTH_MEASURED_TEMPLATE = "templates/script_length_measured.txt"
+LENGTH_SHORTER_TEMPLATE = "templates/script_length_shorter.txt"
+LENGTH_LONGER_TEMPLATE = "templates/script_length_longer.txt"
 
 
 class ScriptBuilder:
@@ -31,7 +41,9 @@ class ScriptBuilder:
         ai_config,
         provider=None,
         max_attempts=2,
+        prompts=None,
     ):
+        self.prompts = prompts or PromptLibrary()
         settings = ollama_call_settings(
             ai_config,
             SCRIPT_AI_TASK,
@@ -135,6 +147,7 @@ class ScriptBuilder:
                     last_report,
                     length,
                     previous_script,
+                    prompts=self.prompts,
                 ),
                 **self._call_options,
             )
@@ -221,6 +234,7 @@ class ScriptBuilder:
                     length=length,
                     previous_script=str(previous_script).strip(),
                     measured_seconds=measured_seconds,
+                    prompts=self.prompts,
                 ),
                 **self._call_options,
             )
@@ -327,10 +341,12 @@ def _attempt_prompt(
     previous_report=None,
     length=None,
     previous_script: str = "",
+    prompts=None,
 ) -> str:
     """Prompt of one attempt: the original prompt plus, on retries, a correction."""
     if attempt <= 1:
         return prompt
+    prompts = prompts or PromptLibrary()
     previous_reason = _previous_reason(
         previous_report
     )
@@ -343,21 +359,21 @@ def _attempt_prompt(
             prompt,
             length=length,
             previous_script=previous_script,
+            prompts=prompts,
         )
     length_instruction = ""
     if length is not None:
-        length_instruction = (
-            f"\n- Debe contener entre {length.min_words} y "
-            f"{length.max_words} palabras para respetar la duración "
-            "solicitada."
+        length_instruction = "\n" + prompts.render(
+            RETRY_LENGTH_TEMPLATE,
+            palabras_min=length.min_words,
+            palabras_max=length.max_words,
         )
     return (
         f"{prompt}\n\n"
-        "CORRECCIÓN:\n"
-        "- La respuesta anterior incumple el formato requerido. "
-        f"Motivo: {previous_reason}.\n"
-        "- Devuelve únicamente el guion final válido, sin encabezados, "
-        "sin comentarios, sin markdown, sin JSON y sin metadatos."
+        + prompts.render(
+            RETRY_TEMPLATE,
+            motivo=previous_reason,
+        )
         + length_instruction
     )
 
@@ -368,6 +384,7 @@ def _length_correction_prompt(
     length,
     previous_script: str,
     measured_seconds=None,
+    prompts=None,
 ) -> str:
     """Original prompt, the previous script and then a strict word limit.
 
@@ -377,6 +394,7 @@ def _length_correction_prompt(
     with a range it removed about half of what was asked. The script first and
     a strict maximum (or minimum) at the end is what it follows best.
     """
+    prompts = prompts or PromptLibrary()
     words = count_script_words(
         previous_script
     )
@@ -384,38 +402,36 @@ def _length_correction_prompt(
         observed_seconds = length.estimate_seconds(
             previous_script
         )
-        observation = (
-            f"- Leído en voz alta, el guion anterior ({words} palabras) "
-            f"duraría unos {_seconds(observed_seconds)} segundos y debe "
-            f"durar {_seconds(length.duration_seconds)}.\n"
-        )
+        observation_template = LENGTH_ESTIMATED_TEMPLATE
     else:
         observed_seconds = float(measured_seconds)
-        observation = (
-            f"- La voz leyó el guion anterior ({words} palabras) en "
-            f"{_seconds(observed_seconds)} segundos y debe durar "
-            f"{_seconds(length.duration_seconds)}.\n"
-        )
+        observation_template = LENGTH_MEASURED_TEMPLATE
+    observation = prompts.render(
+        observation_template,
+        palabras=words,
+        segundos=_seconds(observed_seconds),
+        segundos_objetivo=_seconds(length.duration_seconds),
+    )
     rewrite = length.rescaled(
         words=words,
         observed_seconds=observed_seconds,
     )
-    limit = (
-        "como máximo"
+    rewrite_template = (
+        LENGTH_SHORTER_TEMPLATE
         if observed_seconds > length.duration_seconds
-        else "como mínimo"
+        else LENGTH_LONGER_TEMPLATE
     )
     return (
         f"{prompt}\n\n"
-        "GUION ANTERIOR:\n"
-        f"{previous_script}\n\n"
-        "CORRECCIÓN DE EXTENSIÓN:\n"
-        f"{observation}"
-        f"- Reescríbelo con {rewrite.target_words} palabras {limit}; es un "
-        "límite estricto que sustituye a la extensión indicada en "
-        "DURACIÓN.\n"
-        "- Conserva el tono, la idea principal y el cierre. Devuelve "
-        "únicamente el guion reescrito."
+        + prompts.render(
+            LENGTH_TEMPLATE,
+            guion_anterior=previous_script,
+            observacion=observation,
+            reescritura=prompts.render(
+                rewrite_template,
+                palabras=rewrite.target_words,
+            ),
+        )
     )
 
 

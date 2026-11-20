@@ -1,5 +1,11 @@
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 
+from app.shared.prompt_library import (
+    PromptLibrary,
+    require_prompt_text,
+    require_prompt_texts,
+)
 from app.shared.prompt_metrics import (
     estimate_conservative_tokens,
 )
@@ -31,162 +37,114 @@ class OperationalPromptComposition:
     rules: tuple[OperationalPromptRule, ...] = ()
 
 
+# Files of prompts/ with the fixed texts of every image prompt.
+IMAGE_RULES = "image/rules.json"
+# Visual identity: one file per tone or the shared default.
+IMAGE_IDENTITY = "image/identity"
+
+
+@dataclass(frozen=True)
+class ImagePromptTexts:
+    """Fixed texts joined to every image prompt, read from prompts/image/."""
+
+    base_visual_identity: str
+    cinematic_operational_identity: str
+    human_subject_cues: tuple[str, ...]
+    human_casting_policy: str
+    human_anatomy_policy: str
+    human_wardrobe_policy: str
+    no_extra_people_policy: str
+    cinematic_operational_restrictions: str
+    # (category, cues, text) in order: the first category whose cue appears wins.
+    non_human_scene_policies: tuple[tuple[str, tuple[str, ...], str], ...]
+
+    @classmethod
+    def load(cls, prompts=None, tone=None):
+        prompts = prompts or PromptLibrary()
+        identity_path = prompts.tone_file(
+            IMAGE_IDENTITY,
+            tone,
+            suffix=".json",
+        )
+        identity = prompts.mapping(identity_path)
+        rules = prompts.mapping(IMAGE_RULES)
+
+        def text(document, path, key):
+            return require_prompt_text(document, key, prompts, path)
+
+        return cls(
+            base_visual_identity=text(identity, identity_path, "base_visual"),
+            cinematic_operational_identity=text(
+                identity, identity_path, "cinematic"
+            ),
+            human_subject_cues=require_prompt_texts(
+                rules, "human_subject_cues", prompts, IMAGE_RULES
+            ),
+            human_casting_policy=text(rules, IMAGE_RULES, "human_casting"),
+            human_anatomy_policy=text(rules, IMAGE_RULES, "human_anatomy"),
+            human_wardrobe_policy=text(rules, IMAGE_RULES, "human_wardrobe"),
+            no_extra_people_policy=text(rules, IMAGE_RULES, "no_extra_people"),
+            cinematic_operational_restrictions=text(
+                rules, IMAGE_RULES, "no_text"
+            ),
+            non_human_scene_policies=_non_human_scene_policies(
+                rules, prompts
+            ),
+        )
+
+
+def _non_human_scene_policies(rules, prompts):
+    directions = rules.get("non_human_directions")
+    if not isinstance(directions, list) or not directions:
+        require_prompt_texts(
+            rules, "non_human_directions", prompts, IMAGE_RULES
+        )
+    policies = []
+    for direction in directions:
+        if not isinstance(direction, dict):
+            direction = {}
+        policies.append(
+            (
+                require_prompt_text(
+                    direction, "category", prompts, IMAGE_RULES
+                ),
+                require_prompt_texts(
+                    direction, "cues", prompts, IMAGE_RULES
+                ),
+                require_prompt_text(
+                    direction, "text", prompts, IMAGE_RULES
+                ),
+            )
+        )
+    return tuple(policies)
+
+
 class ImagePromptSystem:
+    """Joins to each image prompt the visual identity and the rules.
 
-    non_human_scene_policies = (
-        (
-            "architecture",
-            (
-                "architecture",
-                "architectural",
-                "building",
-                "cathedral",
-                "temple",
-                "palace",
-                "ruins",
-                "cityscape",
-                "interior",
-                "corridor",
-            ),
-            (
-                "Credible architectural scale, layered depth, structural material "
-                "detail, disciplined composition, motivated light, atmospheric "
-                "perspective, and believable inhabitable space; avoid flat generic "
-                "backdrops"
-            ),
-        ),
-        (
-            "symbolic_object",
-            (
-                "relic",
-                "artifact",
-                "amulet",
-                "chalice",
-                "mask",
-                "hourglass",
-                "candle",
-                "key",
-                "ritual object",
-            ),
-            (
-                "Make the declared object the clear focal point with intentional "
-                "composition, focal light, resolved tactile materials, controlled "
-                "detail, and clear visual hierarchy; avoid competing focal points"
-            ),
-        ),
-        (
-            "anatomical_scientific",
-            (
-                "brain",
-                "neuron",
-                "neural",
-                "heart",
-                "anatomy",
-                "anatomical",
-                "organ",
-                "cell",
-                "molecule",
-                "dna",
-                "scientific structure",
-            ),
-            (
-                "Present the declared subject with convincing structure, readable "
-                "volume, precise material or anatomical detail, refined texture, "
-                "and sophisticated light; avoid deformed, generic, or chaotic forms"
-            ),
-        ),
-        (
-            "energy_abstract",
-            (
-                "energy",
-                "electric",
-                "electricity",
-                "magnetic",
-                "plasma",
-                "light field",
-                "abstract",
-                "wave",
-                "particles",
-                "aura",
-            ),
-            (
-                "Use controlled layered composition, sculpted light, restrained "
-                "color, and readable depth for clean powerful abstraction; avoid "
-                "chaos, oversaturation, harsh effects, and visual noise"
-            ),
-        ),
-        (
-            "symbolic_geometry",
-            (
-                "geometry",
-                "geometric",
-                "glyph",
-                "mandala",
-                "constellation",
-                "symbol",
-            ),
-            (
-                "Make declared geometry clear and legible through refined balance, "
-                "visual hierarchy, disciplined proportions, and coherent spatial "
-                "composition; avoid floating symbols, visual noise, and awkward arrangement"
-            ),
-        ),
-    )
+    The texts come from prompts/image/ (``ImagePromptTexts``); they are read
+    the first time they are needed, with the identity of ``tone``.
+    """
 
-    human_subject_cues = (
-        "person",
-        "people",
-        "man",
-        "woman",
-        "child",
-        "scientist",
-        "researcher",
-        "historian",
-        "team",
-        "portrait",
-        "persona",
-        "personas",
-        "hombre",
-        "mujer",
-        "nino",
-        "nina",
-        "cientifico",
-        "investigadora",
-        "historiador",
-        "equipo",
-        "retrato",
-    )
+    def __init__(
+        self,
+        texts=None,
+        *,
+        tone=None,
+        prompts=None,
+    ):
+        self._texts = texts
+        self._tone = tone
+        self._prompts = prompts
 
-    base_visual_identity = (
-        "professional photorealism, grounded documentary aesthetic"
-    )
-
-    cinematic_operational_identity = (
-        "coherent production design, cinematic light, balanced composition, "
-        "atmospheric depth, sharp detail"
-    )
-
-    human_casting_policy = (
-        "Use only described people; preserve declared age, appearance, cultural, "
-        "historical, narrative, and continuity cues"
-    )
-
-    human_anatomy_policy = (
-        "Natural anatomy, accurate hands, distinctive non-generic faces, realistic "
-        "skin, believable proportions"
-    )
-
-    human_wardrobe_policy = (
-        "Fully clothed, non-revealing, appropriate wardrobe; no sexualization"
-    )
-
-    no_extra_people_policy = (
-        "No people or faces unless explicitly described"
-    )
-
-    cinematic_operational_restrictions = (
-        "No text, logos, watermarks, or readable writing"
-    )
+    @property
+    def texts(self) -> ImagePromptTexts:
+        if self._texts is None:
+            self._texts = ImagePromptTexts.load(
+                self._prompts,
+                self._tone,
+            )
+        return self._texts
 
     def compose_cinematic_backend_prompt(
         self,
@@ -200,8 +158,18 @@ class ImagePromptSystem:
         self,
         positive_prompt
     ):
-        rules = self.operational_rules_for_prompt(
-            positive_prompt
+        rules = tuple(
+            rule
+            for rule in (
+                self._without_what_the_scene_says(
+                    rule,
+                    positive_prompt,
+                )
+                for rule in self.operational_rules_for_prompt(
+                    positive_prompt
+                )
+            )
+            if rule is not None
         )
         parts = self._dedupe_labeled_prompt_parts(
             (
@@ -227,6 +195,43 @@ class ImagePromptSystem:
             rules=rules,
         )
 
+    def _without_what_the_scene_says(
+        self,
+        rule,
+        positive_prompt,
+    ):
+        """Identity rule without the comma-separated parts the scene already says.
+
+        "cinematic light" is not added again to a scene lit by cinematic
+        light; an identity left with nothing is dropped.
+        """
+        if rule.category != "identity":
+            return rule
+        scene = _comparable(
+            positive_prompt
+        )
+        fragments = tuple(
+            fragment.strip()
+            for fragment in rule.text.split(",")
+            if fragment.strip()
+        )
+        kept = tuple(
+            fragment
+            for fragment in fragments
+            if not _says(
+                scene,
+                _comparable(fragment),
+            )
+        )
+        if len(kept) == len(fragments):
+            return rule
+        if not kept:
+            return None
+        return replace(
+            rule,
+            text=", ".join(kept),
+        )
+
     def operational_rules_for_prompt(
         self,
         positive_prompt,
@@ -244,7 +249,7 @@ class ImagePromptSystem:
                 90,
                 True,
                 ("always",),
-                self.base_visual_identity,
+                self.texts.base_visual_identity,
             ),
             self._rule(
                 "identity.cinematic",
@@ -252,7 +257,7 @@ class ImagePromptSystem:
                 90,
                 True,
                 ("always",),
-                self.cinematic_operational_identity,
+                self.texts.cinematic_operational_identity,
             ),
         ]
         if human_subject:
@@ -264,7 +269,7 @@ class ImagePromptSystem:
                         100,
                         True,
                         ("human_subject",),
-                        self.human_casting_policy,
+                        self.texts.human_casting_policy,
                     ),
                     self._rule(
                         "casting.human.anatomy",
@@ -272,7 +277,7 @@ class ImagePromptSystem:
                         100,
                         True,
                         ("human_subject",),
-                        self.human_anatomy_policy,
+                        self.texts.human_anatomy_policy,
                     ),
                     self._rule(
                         "safety.human.wardrobe",
@@ -280,7 +285,7 @@ class ImagePromptSystem:
                         100,
                         True,
                         ("human_subject",),
-                        self.human_wardrobe_policy,
+                        self.texts.human_wardrobe_policy,
                     ),
                 )
             )
@@ -292,7 +297,7 @@ class ImagePromptSystem:
                     100,
                     True,
                     ("non_human_subject",),
-                    self.no_extra_people_policy,
+                    self.texts.no_extra_people_policy,
                 )
             )
             direction_rule = self._non_human_direction_rule(
@@ -309,7 +314,7 @@ class ImagePromptSystem:
                 100,
                 True,
                 ("always",),
-                self.cinematic_operational_restrictions,
+                self.texts.cinematic_operational_restrictions,
             )
         )
         return tuple(
@@ -324,7 +329,7 @@ class ImagePromptSystem:
             positive_prompt
             or ""
         ).lower()
-        for category, cues, text in self.non_human_scene_policies:
+        for category, cues, text in self.texts.non_human_scene_policies:
             if self._contains_any(
                 prompt,
                 cues,
@@ -408,7 +413,7 @@ class ImagePromptSystem:
         if self._contains_human_subject(prompt):
             return ""
 
-        for _, cues, policy in self.non_human_scene_policies:
+        for _, cues, policy in self.texts.non_human_scene_policies:
             if self._contains_any(
                 prompt,
                 cues
@@ -441,7 +446,7 @@ class ImagePromptSystem:
 
         return any(
             f" {cue} " in padded
-            for cue in self.human_subject_cues
+            for cue in self.texts.human_subject_cues
         )
 
     def dedupe_prompt_parts(
@@ -473,3 +478,21 @@ class ImagePromptSystem:
             )
 
         return result
+
+
+def _comparable(text):
+    """Lowercase words without punctuation, to compare what two texts say."""
+    return " ".join(
+        re.sub(
+            r"[^\w\s]",
+            " ",
+            str(text or "").lower(),
+        ).split()
+    )
+
+
+def _says(text, part):
+    return bool(part) and re.search(
+        rf"(?<!\w){re.escape(part)}(?:e?s)?(?!\w)",
+        text,
+    ) is not None

@@ -1,0 +1,22 @@
+[
+    {
+        "scene": 1,
+        "visible_subject": "Main visible subject",
+        "visible_action": "Visible action, state or change",
+        "visible_environment": "Observable physical environment",
+        "time_context": "Observable moment in time",
+        "key_objects": [
+            "Key visual object"
+        ],
+        "spatial_relationships": [
+            "Observable spatial relationship"
+        ],
+        "continuity_links": [
+            "Visual link with the other scenes"
+        ],
+        "abstract_source": "Abstract idea behind the scene, if any",
+        "filmable_interpretation": "One or two sentences with the whole image: subject, action, environment, light and atmosphere",
+        "visual_constraints": [],
+        "visual_truth_status": "structured"
+    }
+]

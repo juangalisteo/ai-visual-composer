@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import requests
@@ -15,6 +16,10 @@ from app.providers.ollama_provider import (
 from app.providers.ollama_settings import ollama_call_settings
 from app.shared.error_context import ErrorContext, ErrorSeverity, ExitKind
 from app.shared.operational_error import OperationalError
+from app.shared.prompt_library import PromptLibrary
+
+
+REPOSITORY_PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
 
 
 class FakeResponse:
@@ -315,7 +320,12 @@ class OllamaConfiguredCallsTest(unittest.TestCase):
             },
         }
         with self._post({"response": "Guion libre válido."}) as post_mock:
-            builder = ScriptBuilder(ai_config, max_attempts=1)
+            # The test runs in a temporary folder: prompts/ is the repository one.
+            builder = ScriptBuilder(
+                ai_config,
+                max_attempts=1,
+                prompts=PromptLibrary(REPOSITORY_PROMPTS),
+            )
             builder.build("Prompt libre")
             builder.adjust(
                 "Prompt libre",

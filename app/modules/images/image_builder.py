@@ -16,6 +16,10 @@ from app.modules.images.backends import ComfyUIBackend
 from app.shared.config_contract import (
     require_text,
 )
+from app.shared.prompt_library import (
+    PromptLibrary,
+    require_prompt_replacements,
+)
 from app.shared.config_manager import ConfigManager
 from app.shared.format_catalog import FormatCatalog
 from app.shared.progress_logger import ProgressLogger
@@ -24,11 +28,16 @@ from app.shared.error_context import (
     ErrorSeverity,
     ExitKind,
 )
-from app.shared.operational_error import OperationalError
+from app.shared.operational_error import (
+    OperationalError,
+    create_operational_error,
+)
 from app.modules.images.manifest_writer import ImageManifestWriter
 from app.modules.images.prompt_system import ImagePromptSystem
 from app.prompt_translation import (
+    SCENE_TEMPLATE_FIELDS,
     PromptTranslator,
+    ScenePromptTemplate,
     build_operational_prompt_observation,
     prompt_fingerprint,
     validate_operational_prompt,
@@ -41,9 +50,12 @@ from app.visual_intelligence import (
 from app.visual_quality import ImageQualityFlowCoordinator
 
 
-class ImageBuilder:
+# Files of prompts/ with the scene part of each image prompt.
+SCENE_TEMPLATE = "image/scene.txt"
+TEXT_FREE_OBJECTS = "image/text_free_objects.json"
 
-    base_visual_identity = ImagePromptSystem.base_visual_identity
+
+class ImageBuilder:
 
     def __init__(
         self,
@@ -70,10 +82,8 @@ class ImageBuilder:
             workflow_path
         )
 
-        self.prompt_system = (
-            prompt_system
-            or ImagePromptSystem()
-        )
+        # Without one, it is created with the tone of the profile (identity).
+        self.prompt_system = prompt_system
 
         self.backend = (
             backend
@@ -128,6 +138,10 @@ class ImageBuilder:
         ProgressLogger.info(
             f"Formato de imagen: "
             f"{width}x{height}"
+        )
+
+        base_seed = self._base_seed(
+            profile
         )
 
         if storyboard_path is None:
@@ -267,6 +281,7 @@ class ImageBuilder:
                             "_operational_prompt_observation"
                         ]
                     ),
+                    seed=base_seed + scene_number,
                 )
             )
 
@@ -452,6 +467,50 @@ class ImageBuilder:
 
         return width, height
 
+    def _base_seed(
+        self,
+        profile
+    ):
+        """Seed of the profile: scene N is first generated with seed + N.
+
+        Each scene gets its own seed and the same profile repeats them;
+        the quality retries keep their own seeds.
+        """
+        images = profile.get(
+            "images"
+        ) if isinstance(profile, dict) else None
+        seed = (
+            images.get("seed")
+            if isinstance(images, dict)
+            else None
+        )
+        if (
+            isinstance(seed, bool)
+            or not isinstance(seed, int)
+            or seed < 0
+        ):
+            profile_id = (
+                profile.get("profile_id", "")
+                if isinstance(profile, dict)
+                else ""
+            )
+            raise create_operational_error(
+                family="CONFIG",
+                user_message=(
+                    "El perfil "
+                    + (f"«{profile_id}» " if profile_id else "")
+                    + "no declara la semilla de las imágenes "
+                    "(images.seed, entero de 0 o más)."
+                ),
+                recommended_action=(
+                    'Añada al perfil "images": {"seed": <entero>}; '
+                    "la escena N se genera con esa semilla + N."
+                ),
+                operation="Leer perfil de imagen",
+                resource=profile_id or None,
+            )
+        return seed
+
     def _build_cinematic_runtime_metadata(
         self,
         storyboard_scene,
@@ -498,7 +557,9 @@ class ImageBuilder:
             )
         )
         operational_prompt_composition = (
-            self.prompt_system.compose_cinematic_backend_prompt_with_parts(
+            self._prompt_system(
+                profile
+            ).compose_cinematic_backend_prompt_with_parts(
                 payload.prompt
             )
         )
@@ -729,15 +790,51 @@ class ImageBuilder:
             for sequence in sequences
         )
 
+    def _prompt_system(
+        self,
+        profile=None
+    ):
+        if self.prompt_system is None:
+            self.prompt_system = ImagePromptSystem(
+                tone=(
+                    profile.get("tone")
+                    if profile
+                    else None
+                )
+            )
+
+        return self.prompt_system
+
     def _prompt_translator(
         self
     ):
         if self.prompt_translator is None:
             self.prompt_translator = (
-                PromptTranslator()
+                PromptTranslator(
+                    scene_template=self._scene_prompt_template()
+                )
             )
 
         return self.prompt_translator
+
+    def _scene_prompt_template(
+        self
+    ):
+        """Scene template and letter-free objects of prompts/image/."""
+        prompts = PromptLibrary()
+        return ScenePromptTemplate(
+            template=prompts.template(
+                SCENE_TEMPLATE,
+                SCENE_TEMPLATE_FIELDS,
+            ),
+            text_free_objects=require_prompt_replacements(
+                prompts.mapping(
+                    TEXT_FREE_OBJECTS
+                ),
+                prompts,
+                TEXT_FREE_OBJECTS,
+            ),
+        )
 
     def _cinematic_orchestrator(
         self

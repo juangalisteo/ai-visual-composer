@@ -26,6 +26,12 @@ from app.prompt_translation.operational_prompt import (
     prompt_fingerprint,
     validate_operational_prompt,
 )
+from app.prompt_translation.scene_template import (
+    SCENE_TEMPLATE_FIELDS,
+    ScenePromptComposition,
+    ScenePromptTemplate,
+    compose_scene_prompt,
+)
 from app.prompt_translation.translator import (
     PromptBudgetExceededError,
     PromptTranslator,
@@ -48,6 +54,10 @@ __all__ = [
     "PromptTextMetrics",
     "PromptTranslationObservation",
     "PromptTranslator",
+    "SCENE_TEMPLATE_FIELDS",
+    "ScenePromptComposition",
+    "ScenePromptTemplate",
+    "compose_scene_prompt",
     "OperationalPromptBudgetExceededError",
     "OperationalPromptContribution",
     "OperationalPromptObservation",

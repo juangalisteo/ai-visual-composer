@@ -1,45 +1,33 @@
-from pathlib import Path
-
 from app.core.script_length import (
     ScriptLengthBudget,
     ScriptRequest,
     SpeechPacing,
 )
+from app.shared.prompt_library import PromptLibrary
+
+
+# Templates of prompts/ that assemble each request.
+SCRIPT_TEMPLATE = "templates/script.txt"
+STORYBOARD_TEMPLATE = "templates/storyboard.txt"
+STORYBOARD_SCENE_TEMPLATE = "templates/storyboard_scene.txt"
+STORYBOARD_EXAMPLE = "templates/storyboard_example.json"
+# Design criteria of the storyboard: one file per tone or the shared default.
+STORYBOARD_CRITERIA = "criteria/storyboard"
 
 
 class PromptEngine:
 
-    def __init__(self):
-        self.prompts_path = Path("prompts")
+    def __init__(self, library=None):
+        self.library = library or PromptLibrary()
 
     def read_prompt_file(
         self,
         category: str,
         name: str
     ) -> str:
-        file_path = (
-            self.prompts_path
-            / category
-            / f"{name}.txt"
+        return self.library.text(
+            f"{category}/{name}.txt"
         )
-
-        if not file_path.exists():
-            raise FileNotFoundError(
-                f"No existe el archivo de prompt: "
-                f"{file_path}"
-            )
-
-        content = file_path.read_text(
-            encoding="utf-8"
-        ).strip()
-
-        if not content:
-            raise ValueError(
-                f"El archivo de prompt está vacío: "
-                f"{file_path}"
-            )
-
-        return content
 
     def build_script_request(
         self,
@@ -92,44 +80,17 @@ class PromptEngine:
             "restrictions"
         )
 
-        prompt = f"""
-TEMA:
-{topic}
-
-DURACIÓN:
-- Duración objetivo: {duration} segundos.
-- Extensión: {length.target_words} palabras como máximo; es un límite estricto.
-- Ese límite es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
-- Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
-
-IDENTIDAD Y TONO:
-{tone_text}
-
-TAREA:
-{task_text}
-
-FORMATO:
-{format_text}
-
-IDIOMA:
-{language_text}
-
-RESTRICCIONES:
-{restrictions_text}
-
-SALIDA OBLIGATORIA:
-- Devuelve únicamente el guion final.
-- No expliques el proceso.
-- No añadas comentarios.
-- No añadas encabezados técnicos.
-- No escribas "Answer", "Response", "Output" ni "Final answer".
-- No escribas "Word count" ni recuentos de palabras.
-- No añadas un título.
-- No uses Markdown.
-- No uses bloques de código.
-- No uses formato JSON.
-- No uses XML.
-""".strip()
+        prompt = self.library.render(
+            SCRIPT_TEMPLATE,
+            tema=topic,
+            duracion=duration,
+            palabras_max=length.target_words,
+            tono=tone_text,
+            tarea=task_text,
+            formato=format_text,
+            idioma=language_text,
+            restricciones=restrictions_text,
+        ).strip()
 
         return ScriptRequest(
             prompt=prompt,
@@ -176,111 +137,31 @@ SALIDA OBLIGATORIA:
         )
 
         scenes_text = "\n\n".join(
-            (
-                f"ESCENA {scene['scene']}:\n"
-                f"{scene['text']}"
+            self.library.render(
+                STORYBOARD_SCENE_TEMPLATE,
+                numero=scene["scene"],
+                texto=scene["text"],
             )
             for scene in normalized_scenes
         )
 
-        json_example = self._build_json_example()
-
-        prompt = f"""
-OBJETIVO:
-Crear el storyboard visual completo de un único vídeo.
-
-NÚMERO EXACTO DE ESCENAS:
-{scene_count}
-
-TEXTOS DE LAS ESCENAS:
-{scenes_text}
-
-IDENTIDAD Y TONO:
-{tone_text}
-
-TAREA VISUAL:
-{task_text}
-
-FORMATO:
-{format_text}
-
-CRITERIOS DE DISEÑO:
-
-- Analiza todas las escenas antes de generar la respuesta.
-- Diseña el conjunto como una secuencia visual coherente.
-- Cada escena debe representar fielmente su texto.
-- Cada escena debe tener una identidad visual clara.
-- Mantén una estética cinematográfica y profesional.
-- Las escenas deben sentirse parte del mismo vídeo.
-- Evita repetir protagonistas, escenarios, acciones y composiciones.
-- Evita que todas las escenas sean una persona centrada rodeada de partículas.
-- Alterna cuando tenga sentido entre:
-  figura humana,
-  arquitectura,
-  naturaleza,
-  espacios simbólicos,
-  entornos cósmicos,
-  objetos conceptuales
-  y composiciones abstractas comprensibles.
-- Estructura cada escena como Visual Truth 2.0.
-- Incluye en cada escena:
-  sujeto o elemento principal,
-  acción o estado,
-  entorno,
-  composición,
-  iluminación,
-  atmósfera
-  y elemento simbólico distintivo.
-- Prioriza imágenes claras, impactantes y fáciles de generar.
-- Evita descripciones genéricas o vagas.
-- Evita escenas excesivamente recargadas.
-- No incluyas ningún texto dentro de la imagen.
-- No incluyas letras, palabras ni tipografía.
-- No incluyas carteles, rótulos ni señales.
-- No incluyas pantallas con texto.
-- No incluyas libros abiertos con texto legible.
-- No incluyas texto escrito a mano.
-- No incluyas logotipos.
-- No incluyas marcas de agua.
-- No incluyas subtítulos.
-- Evita cualquier objeto que pueda inducir al modelo a generar texto visible.
-- No menciones cámaras, lentes, resolución ni parámetros técnicos.
-- `filmable_interpretation` debe describir la imagen filmable final.
-- No escribas párrafos largos.
-- No expliques las decisiones visuales.
-
-SALIDA OBLIGATORIA:
-
-- Devuelve exclusivamente un JSON válido.
-- La respuesta debe comenzar con [ y terminar con ].
-- No uses bloques de código Markdown.
-- No escribas texto antes ni después del JSON.
-- La respuesta completa debe ser una única lista JSON.
-- Devuelve exactamente {scene_count} objetos.
-- Numera los objetos consecutivamente con "scene" desde 1 hasta {scene_count}.
-- No omitas escenas.
-- No añadas escenas nuevas.
-- Cada objeto debe contener exactamente:
-  "scene",
-  "visible_subject",
-  "visible_action",
-  "visible_environment",
-  "time_context",
-  "key_objects",
-  "spatial_relationships",
-  "continuity_links",
-  "abstract_source",
-  "filmable_interpretation",
-  "visual_constraints",
-  y
-  "visual_truth_status".
-
-FORMATO EXACTO:
-
-{json_example}
-""".strip()
-
-        return prompt
+        return self.library.render(
+            STORYBOARD_TEMPLATE,
+            numero_escenas=scene_count,
+            escenas=scenes_text,
+            tono=tone_text,
+            tarea=task_text,
+            formato=format_text,
+            criterios=self.library.text(
+                self.library.tone_file(
+                    STORYBOARD_CRITERIA,
+                    tone,
+                )
+            ),
+            ejemplo_json=self.library.text(
+                STORYBOARD_EXAMPLE
+            ),
+        ).strip()
 
     def _normalize_storyboard_scenes(
         self,
@@ -353,39 +234,3 @@ FORMATO EXACTO:
             )
 
         return normalized
-
-    def _build_json_example(
-        self
-    ) -> str:
-        return (
-            "[\n"
-            "    {\n"
-            '        "scene": 1,\n'
-            '        "visible_subject": '
-            '"Sujeto o elemento visible principal",\n'
-            '        "visible_action": '
-            '"Accion, estado o cambio visible",\n'
-            '        "visible_environment": '
-            '"Entorno fisico observable",\n'
-            '        "time_context": '
-            '"Momento temporal observable",\n'
-            '        "key_objects": [\n'
-            '            "Objeto visual clave"\n'
-            "        ],\n"
-            '        "spatial_relationships": [\n'
-            '            "Relacion espacial observable"\n'
-            "        ],\n"
-            '        "continuity_links": [\n'
-            '            "Elemento de continuidad con otras escenas"\n'
-            "        ],\n"
-            '        "abstract_source": '
-            '"Idea abstracta de origen si existe",\n'
-            '        "filmable_interpretation": '
-            '"Descripcion filmable concreta de la escena",\n'
-            '        "visual_constraints": [\n'
-            '            "Sin texto legible"\n'
-            "        ],\n"
-            '        "visual_truth_status": "structured"\n'
-            "    }\n"
-            "]"
-        )

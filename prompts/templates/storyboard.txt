@@ -1,0 +1,58 @@
+OBJETIVO:
+Crear el storyboard visual completo de un único vídeo.
+
+NÚMERO EXACTO DE ESCENAS:
+{numero_escenas}
+
+TEXTOS DE LAS ESCENAS:
+{escenas}
+
+IDENTIDAD Y TONO:
+{tono}
+
+TAREA VISUAL:
+{tarea}
+
+FORMATO:
+{formato}
+
+CRITERIOS DE DISEÑO:
+
+{criterios}
+
+IDIOMA DE LOS CAMPOS:
+
+- Escribe en inglés todos los textos del JSON: los generadores de imagen y de vídeo trabajan en inglés.
+- "scene" y "visual_truth_status" no se traducen.
+- "filmable_interpretation" es la descripción que recibe el generador de imágenes: una o dos frases en inglés con la imagen completa (sujeto, acción, entorno, luz y atmósfera), nombrando el sujeto una sola vez.
+- Deja "visual_constraints" como lista vacía ([]): el programa añade las restricciones de la imagen.
+
+SALIDA OBLIGATORIA:
+
+- Devuelve exclusivamente un JSON válido.
+- La respuesta debe comenzar con [ y terminar con ].
+- No uses bloques de código Markdown.
+- No escribas texto antes ni después del JSON.
+- La respuesta completa debe ser una única lista JSON.
+- Devuelve exactamente {numero_escenas} objetos.
+- Numera los objetos consecutivamente con "scene" desde 1 hasta {numero_escenas}.
+- No omitas escenas.
+- No añadas escenas nuevas.
+- Cada objeto debe contener exactamente:
+  "scene",
+  "visible_subject",
+  "visible_action",
+  "visible_environment",
+  "time_context",
+  "key_objects",
+  "spatial_relationships",
+  "continuity_links",
+  "abstract_source",
+  "filmable_interpretation",
+  "visual_constraints",
+  y
+  "visual_truth_status".
+
+FORMATO EXACTO:
+
+{ejemplo_json}

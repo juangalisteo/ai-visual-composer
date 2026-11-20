@@ -79,7 +79,7 @@ AI_VISUAL_COMPOSER
 ├── data/             Intenciones y lecturas narrativas (YAML); hoy solo las usan los tests
 ├── docs/             Toda la documentación del proyecto
 ├── input/            Guion, tema y material de STUDIO que aporta el usuario
-├── prompts/          Plantillas de prompt para guion, formatos, tonos y tareas
+├── prompts/          Textos de los prompts de guion, storyboard, imagen y vídeo
 ├── tests/            Pruebas automáticas (pytest)
 ├── tools/            Utilidades de desarrollo
 ├── main.py           Punto de arranque del programa

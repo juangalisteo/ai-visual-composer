@@ -1,0 +1,131 @@
+{
+    "human_subject_cues": [
+        "person",
+        "people",
+        "man",
+        "woman",
+        "child",
+        "scientist",
+        "researcher",
+        "historian",
+        "team",
+        "portrait",
+        "men",
+        "women",
+        "children",
+        "figure",
+        "figures",
+        "silhouette",
+        "boy",
+        "girl",
+        "elder",
+        "inventor",
+        "engineer",
+        "student",
+        "teacher",
+        "doctor",
+        "monk",
+        "worker",
+        "crowd",
+        "he",
+        "she",
+        "his",
+        "her",
+        "face",
+        "hands",
+        "persona",
+        "personas",
+        "hombre",
+        "mujer",
+        "nino",
+        "nina",
+        "cientifico",
+        "investigadora",
+        "historiador",
+        "equipo",
+        "retrato"
+    ],
+    "human_casting": "Use only described people; preserve declared age, appearance, cultural, historical, narrative, and continuity cues",
+    "human_anatomy": "Natural anatomy, accurate hands, distinctive non-generic faces, realistic skin, believable proportions",
+    "human_wardrobe": "Fully clothed, non-revealing, appropriate wardrobe; no sexualization",
+    "no_extra_people": "No people or faces unless explicitly described",
+    "no_text": "No text, logos, watermarks, or readable writing",
+    "non_human_directions": [
+        {
+            "category": "architecture",
+            "cues": [
+                "architecture",
+                "architectural",
+                "building",
+                "cathedral",
+                "temple",
+                "palace",
+                "ruins",
+                "cityscape",
+                "interior",
+                "corridor"
+            ],
+            "text": "Credible architectural scale, layered depth, structural material detail, disciplined composition, motivated light, atmospheric perspective, and believable inhabitable space; avoid flat generic backdrops"
+        },
+        {
+            "category": "symbolic_object",
+            "cues": [
+                "relic",
+                "artifact",
+                "amulet",
+                "chalice",
+                "mask",
+                "hourglass",
+                "candle",
+                "key",
+                "ritual object"
+            ],
+            "text": "Make the declared object the clear focal point with intentional composition, focal light, resolved tactile materials, controlled detail, and clear visual hierarchy; avoid competing focal points"
+        },
+        {
+            "category": "anatomical_scientific",
+            "cues": [
+                "brain",
+                "neuron",
+                "neural",
+                "heart",
+                "anatomy",
+                "anatomical",
+                "organ",
+                "cell",
+                "molecule",
+                "dna",
+                "scientific structure"
+            ],
+            "text": "Present the declared subject with convincing structure, readable volume, precise material or anatomical detail, refined texture, and sophisticated light; avoid deformed, generic, or chaotic forms"
+        },
+        {
+            "category": "energy_abstract",
+            "cues": [
+                "energy",
+                "electric",
+                "electricity",
+                "magnetic",
+                "plasma",
+                "light field",
+                "abstract",
+                "wave",
+                "particles",
+                "aura"
+            ],
+            "text": "Use controlled layered composition, sculpted light, restrained color, and readable depth for clean powerful abstraction; avoid chaos, oversaturation, harsh effects, and visual noise"
+        },
+        {
+            "category": "symbolic_geometry",
+            "cues": [
+                "geometry",
+                "geometric",
+                "glyph",
+                "mandala",
+                "constellation",
+                "symbol"
+            ],
+            "text": "Make declared geometry clear and legible through refined balance, visual hierarchy, disciplined proportions, and coherent spatial composition; avoid floating symbols, visual noise, and awkward arrangement"
+        }
+    ]
+}
