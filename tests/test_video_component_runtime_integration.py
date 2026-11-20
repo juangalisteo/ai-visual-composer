@@ -310,7 +310,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             call["overrides"]["generation_height"]
         )
         self.assertEqual(
-            49,
+            81,
             call["overrides"]["frames"]
         )
         self.assertEqual(
@@ -511,7 +511,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     ]
                 )
                 self.assertEqual(
-                    49,
+                    81,
                     video_component[
                         "frames"
                     ]

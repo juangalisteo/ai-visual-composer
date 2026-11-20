@@ -14,7 +14,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
         "vertical": {
             "generation": {"width": 448, "height": 800},
             "delivery": {"intermediate_output": "lossless_ffv1"},
-            "frames": 49,
+            "frames": 81,
             "fps": 12,
             "seed_mode": "random",
             "progress_interval_seconds": 30,
@@ -28,7 +28,7 @@ class WanDeclarativeResolutionTest(unittest.TestCase):
         "horizontal": {
             "generation": {"width": 800, "height": 448},
             "delivery": {"intermediate_output": "lossless_ffv1"},
-            "frames": 49,
+            "frames": 81,
             "fps": 12,
             "seed_mode": "random",
             "progress_interval_seconds": 30,

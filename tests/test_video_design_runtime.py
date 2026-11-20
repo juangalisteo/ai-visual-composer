@@ -743,7 +743,7 @@ class VideoDesignRuntimeTest(unittest.TestCase):
                     call["overrides"]["generation_height"]
                 )
                 self.assertEqual(
-                    49,
+                    81,
                     call["overrides"]["frames"]
                 )
                 self.assertEqual(

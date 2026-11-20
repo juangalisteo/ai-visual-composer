@@ -73,7 +73,7 @@ class VideoComponentProfileParametersTest(unittest.TestCase):
 
             self.assertEqual(width, overrides["generation_width"])
             self.assertEqual(height, overrides["generation_height"])
-            self.assertEqual(49, overrides["frames"])
+            self.assertEqual(81, overrides["frames"])
             self.assertEqual(12.0, overrides["fps"])
             self.assertEqual(20, overrides["steps"])
             self.assertEqual(5.0, overrides["cfg"])

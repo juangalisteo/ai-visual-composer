@@ -64,6 +64,9 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   final da a cada imagen la duración de su escena. Sustituye a
   `seconds_per_image` de los perfiles (una imagen cada 20 o 30 s, que cambiaba
   a mitad de frase). Ver [ARCHITECTURE.md §15](docs/ARCHITECTURE.md#15-storyboard).
+- Los clips de vídeo (Wan) duran 81 fotogramas a 12 fps (6,75 s) en vez de 49
+  (4,08 s), en `frames` de `wan_i2v_<formato>.json`: casi no se repiten en las
+  escenas de 6–8 s, a cambio de ~45 s más por clip.
 
 ### Corregido
 
