@@ -1,4 +1,13 @@
 {
-    "provider": "ollama",
-    "model": "qwen3:14b"
+    "model": "qwen3:14b",
+    "keep_alive": 0,
+    "script": {
+        "model": "qwen3:14b",
+        "think": null
+    },
+    "storyboard": {
+        "options": {
+            "num_ctx": 8192
+        }
+    }
 }

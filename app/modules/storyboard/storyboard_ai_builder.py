@@ -4,6 +4,12 @@ from app.providers.ollama_provider import (
     OllamaProvider,
     OllamaRequestPolicy,
 )
+from app.providers.ollama_settings import ollama_call_settings
+
+
+# Section of config/ai.json with the storyboard's model, think and options
+# (num_ctx: the storyboard prompt grows with the number of scenes).
+STORYBOARD_AI_TASK = "storyboard"
 
 
 @dataclass(frozen=True)
@@ -16,6 +22,21 @@ class StoryboardRequestPolicy:
             think=False,
         )
     )
+
+    @classmethod
+    def from_settings(cls, settings):
+        """Structured output plus what ``config/ai.json`` declares."""
+        return cls(
+            OllamaRequestPolicy(
+                format=storyboard_response_schema(),
+                think=(
+                    False
+                    if settings.think is None
+                    else settings.think
+                ),
+                options=settings.options,
+            )
+        )
 
 
 def storyboard_response_schema():
@@ -82,10 +103,18 @@ class StoryboardAIBuilder:
         provider=None,
         request_policy=None,
     ):
-        self.provider = provider or OllamaProvider(
-            ai_config["model"]
+        settings = ollama_call_settings(
+            ai_config,
+            STORYBOARD_AI_TASK,
         )
-        self.request_policy = request_policy or StoryboardRequestPolicy()
+        self.provider = provider or OllamaProvider(
+            settings.model,
+            keep_alive=settings.keep_alive,
+        )
+        self.request_policy = (
+            request_policy
+            or StoryboardRequestPolicy.from_settings(settings)
+        )
         if not isinstance(self.request_policy, StoryboardRequestPolicy):
             raise TypeError(
                 "request_policy debe ser StoryboardRequestPolicy."

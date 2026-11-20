@@ -384,17 +384,14 @@ class ScriptOutputContractTest(unittest.TestCase):
             ),
             (23, 29, 26),
         )
+        # I2: a strict cap at the target, measured with Ollama (think=False:
+        # 2/6 → 4/6 scripts within ±10 %); the range stays as data.
         self.assertIn(
+            "- Extensión: 26 palabras como máximo; es un límite estricto.",
+            prompt,
+        )
+        self.assertNotIn(
             "entre 23 y 29 palabras",
-            prompt,
-        )
-
-        self.assertIn(
-            "Extensión requerida",
-            prompt,
-        )
-        self.assertIn(
-            "objetivo de 26 palabras",
             prompt,
         )
         self.assertIn(
@@ -533,8 +530,8 @@ class ScriptOutputContractTest(unittest.TestCase):
 
         self.assertEqual(slower.length.target_words, 76)
         self.assertEqual(faster.length.target_words, 79)
-        self.assertIn("con objetivo de 76 palabras", slower.prompt)
-        self.assertIn("con objetivo de 79 palabras", faster.prompt)
+        self.assertIn("76 palabras como máximo", slower.prompt)
+        self.assertIn("79 palabras como máximo", faster.prompt)
 
     def test_prompt_engine_requires_the_voice_pacing(self):
         with self.assertRaises(TypeError):

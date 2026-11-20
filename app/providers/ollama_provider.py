@@ -73,9 +73,11 @@ class OllamaProviderResult:
 
 class OllamaProvider:
 
-    def __init__(self, model):
+    def __init__(self, model, *, keep_alive=None):
         self.url = "http://localhost:11434/api/generate"
         self.model = model
+        # Declared in config/ai.json; None sends nothing (Ollama's default).
+        self.keep_alive = keep_alive
 
     def generate(
         self,
@@ -197,6 +199,8 @@ class OllamaProvider:
             "prompt": prompt,
             "stream": False,
         }
+        if self.keep_alive is not None:
+            payload["keep_alive"] = self.keep_alive
         if policy.format is not None:
             payload["format"] = self._json_value(policy.format)
         if policy.think is not None:

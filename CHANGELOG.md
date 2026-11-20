@@ -28,6 +28,11 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   (traceback), y la terminal dice en qué archivo está.
 - README en cada carpeta de entrada de STUDIO (`input/studio/*/`).
 - Identidad visual propia: logo AIVC, icono, banner y paleta azul.
+- Progreso de los clips de vídeo (Wan) en la terminal: «Clip 2/3 · 1 min 30 s»
+  cada 30 s y «Clip 2/3 listo» al acabar cada uno.
+- Ajustes de Ollama en `config/ai.json`: `keep_alive`, modelo y razonamiento
+  (`think`) del guion y opciones del storyboard, como el contexto (`num_ctx`).
+  Ver [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
 
 ### Cambiado
 
@@ -46,6 +51,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   inglés.
 - La documentación de referencia, antes en la raíz, vive ahora en `docs/`.
 - Licencia cambiada de MIT a GPL-3.0 o posterior; las versiones anteriores siguen con MIT.
+- Ollama descarga el modelo de la GPU en cuanto responde (`keep_alive: 0`):
+  Whisper y ComfyUI ya no comparten la tarjeta con él.
+- El storyboard pide a Ollama un contexto de 8192 tokens, suficiente para unas
+  25 escenas (antes, 4096: al límite con 3).
 
 ### Corregido
 
@@ -68,6 +77,8 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   validación y la información privada de los asistentes siguen en el disco).
 - TRADUCTOR deja de anunciarse en el README como componente del producto
   (sus archivos nunca llegaron a versionarse).
+- La clave `provider` de `config/ai.json`: nadie la leía (el único proveedor es
+  Ollama).
 
 ---
 

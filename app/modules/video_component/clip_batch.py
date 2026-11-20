@@ -12,7 +12,9 @@ from app.modules.video_component.builder import VideoComponentBuilder
 from app.modules.video_component.profile_parameters import (
     build_video_backend_overrides,
     load_video_component_parameters,
+    video_progress_interval_seconds,
 )
+from app.shared.progress_heartbeat import ProgressHeartbeat, format_elapsed
 from app.shared.progress_logger import ProgressLogger
 
 
@@ -143,8 +145,21 @@ def generate_video_clips(
     )
 
     clip_entries = []
+    clip_count = len(
+        image_entries
+    )
+    progress_interval = video_progress_interval_seconds(
+        video_profile
+    )
 
-    for entry in image_entries:
+    ProgressLogger.start(
+        "GENERANDO CLIPS DE VÍDEO (WAN)"
+    )
+
+    for clip_index, entry in enumerate(
+        image_entries,
+        start=1
+    ):
         scene_number = _required_manifest_scene_number(
             entry
         )
@@ -176,15 +191,25 @@ def generate_video_clips(
             )
         )
         scene_identity = scene_clip_identity(scene_number)
+        clip_label = f"Clip {clip_index}/{clip_count}"
 
-        result = video_builder.generate_clip(
-            source_path=source_image,
-            output_dir=output_dir,
-            output_name=f"{scene_identity}.mp4",
-            storyboard_scene=storyboard_scene,
-            **build_video_backend_overrides(
-                video_profile
+        with ProgressHeartbeat(
+            clip_label,
+            progress_interval,
+        ) as heartbeat:
+            result = video_builder.generate_clip(
+                source_path=source_image,
+                output_dir=output_dir,
+                output_name=f"{scene_identity}.mp4",
+                storyboard_scene=storyboard_scene,
+                **build_video_backend_overrides(
+                    video_profile
+                )
             )
+
+        ProgressLogger.info(
+            f"{clip_label} listo · "
+            f"{format_elapsed(heartbeat.elapsed())}"
         )
 
         clip_entries.append(
