@@ -4,6 +4,7 @@ from app.modules.video.ffmpeg.graphs.base_graph_builder import (
     BaseGraphBuilder
 )
 from app.modules.video.ffmpeg.graphs.graph_result import GraphResult
+from app.modules.video.media.timeline_builder import scene_spans
 
 from app.modules.video.transitions.transition_selector import (
     TransitionSelector
@@ -100,6 +101,10 @@ class TransitionGraphBuilder(
         current_stream = (
             video_streams[0]
         )
+        spans = scene_spans(
+            timeline,
+            image_count
+        )
 
         for scene_index in range(
             1,
@@ -122,10 +127,9 @@ class TransitionGraphBuilder(
                 f"[tx{scene_index}]"
             )
 
-            transition_offset = (
-                timeline.image_duration
-                * scene_index
-            )
+            transition_offset, _ = spans[
+                scene_index
+            ]
 
             transition = (
                 self.transition_builder.build(

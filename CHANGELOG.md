@@ -58,6 +58,12 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - El guion por tema se pide a Ollama sin razonamiento previo (`think: false`
   en `config/ai.json`): sale unas 4 veces más rápido y más cerca de la
   duración pedida.
+- Las escenas del storyboard terminan siempre al final de una frase, con los
+  tiempos de la voz (Whisper), y duran lo que digan sus frases dentro de los
+  límites `scene_seconds` de cada formato en `config/formats.json`; el vídeo
+  final da a cada imagen la duración de su escena. Sustituye a
+  `seconds_per_image` de los perfiles (una imagen cada 20 o 30 s, que cambiaba
+  a mitad de frase). Ver [ARCHITECTURE.md §15](docs/ARCHITECTURE.md#15-storyboard).
 
 ### Corregido
 

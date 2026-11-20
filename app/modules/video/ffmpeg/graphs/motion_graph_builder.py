@@ -7,6 +7,7 @@ from app.modules.video.ffmpeg.graphs.graph_result import GraphResult
 from app.modules.video.ffmpeg.i2v_normalizer import (
     I2VClipTransform,
 )
+from app.modules.video.media.timeline_builder import scene_spans
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
 
@@ -56,6 +57,10 @@ class MotionGraphBuilder(
             )
 
         video_streams = []
+        spans = scene_spans(
+            timeline,
+            image_count
+        )
 
         transitions_enabled = (
             config.transitions.enabled
@@ -76,9 +81,9 @@ class MotionGraphBuilder(
                 == image_count - 1
             )
 
-            motion_duration = (
-                timeline.image_duration
-            )
+            _, motion_duration = spans[
+                index
+            ]
 
             if (
                 transitions_enabled

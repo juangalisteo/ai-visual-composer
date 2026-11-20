@@ -7,6 +7,7 @@ from app.modules.video.ffmpeg.graphs.graph_result import (
 from app.modules.video.ffmpeg.graphs.layer_compositor import (
     LayerCompositor
 )
+from app.modules.video.media.timeline_builder import scene_spans
 from app.shared.progress_logger import (
     ProgressLogger
 )
@@ -88,8 +89,9 @@ class VisualEffectGraphBuilder(
             total_duration=(
                 timeline.audio_duration
             ),
-            scene_duration=(
-                timeline.image_duration
+            spans=scene_spans(
+                timeline,
+                scene_count
             )
         )
 
@@ -149,7 +151,7 @@ class VisualEffectGraphBuilder(
         self,
         scene_count,
         total_duration,
-        scene_duration
+        spans
     ):
         mode = (
             self.visual_effect_builder.config.mode
@@ -165,7 +167,7 @@ class VisualEffectGraphBuilder(
                 self._build_repeat_operations(
                     scene_count=scene_count,
                     total_duration=total_duration,
-                    scene_duration=scene_duration
+                    spans=spans
                 )
             )
 
@@ -177,7 +179,7 @@ class VisualEffectGraphBuilder(
                 self._build_transition_operations(
                     scene_count=scene_count,
                     total_duration=total_duration,
-                    scene_duration=scene_duration
+                    spans=spans
                 )
             )
 
@@ -192,7 +194,7 @@ class VisualEffectGraphBuilder(
         self,
         scene_count,
         total_duration,
-        scene_duration
+        spans
     ):
         repeat_mode = (
             self.visual_effect_builder.config.repeat_mode
@@ -221,10 +223,9 @@ class VisualEffectGraphBuilder(
             for scene_index in range(
                 scene_count
             ):
-                start_time = (
+                start_time, scene_duration = spans[
                     scene_index
-                    * scene_duration
-                )
+                ]
 
                 end_time = min(
                     total_duration,
@@ -293,7 +294,7 @@ class VisualEffectGraphBuilder(
         self,
         scene_count,
         total_duration,
-        scene_duration
+        spans
     ):
         operations = []
 
@@ -313,10 +314,9 @@ class VisualEffectGraphBuilder(
                 effect["duration"]
             )
 
-            boundary = (
+            boundary, _ = spans[
                 scene_index
-                * scene_duration
-            )
+            ]
 
             start_time = max(
                 0.0,

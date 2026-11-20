@@ -8,8 +8,48 @@ from app.shared.media_probe import MediaProbe
 @dataclass(frozen=True)
 class VideoTimeline:
     audio_duration: float
+    # Average duration of each image (the audio over the number of images).
     image_duration: float
     subtitle_path: Path | None
+    # Duration of each image, in order; they add up to audio_duration.
+    # Empty: every image lasts image_duration.
+    scene_durations: tuple[float, ...] = ()
+
+
+# Largest difference, in seconds, between the audio and the storyboard
+# durations added up that still counts as the same audio (they are rounded
+# to milliseconds in the storyboard).
+_DURATION_TOLERANCE = 0.05
+
+
+def scene_spans(timeline, scene_count):
+    """``(start, duration)`` of each of ``scene_count`` images, in seconds.
+
+    The images follow one another from 0. They take the timeline's
+    ``scene_durations`` when it has one per image; otherwise each one lasts
+    its ``image_duration``.
+    """
+    durations = tuple(
+        getattr(
+            timeline,
+            "scene_durations",
+            ()
+        )
+    )
+
+    if len(durations) != scene_count:
+        durations = (timeline.image_duration,) * scene_count
+
+    spans = []
+    start = 0.0
+
+    for duration in durations:
+        spans.append(
+            (start, duration)
+        )
+        start += duration
+
+    return tuple(spans)
 
 
 class TimelineBuilder:
@@ -21,7 +61,15 @@ class TimelineBuilder:
         image_count,
         subtitle_offset,
         render_subtitles=True,
+        scene_durations=(),
     ):
+        """Time the images over the audio.
+
+        ``scene_durations`` holds the storyboard duration of each image (None
+        when unknown). When every image has one and they add up to the audio
+        duration, each image lasts its own; the last one ends with the audio.
+        Otherwise, as without a storyboard, the audio is shared out equally.
+        """
         audio_duration = (
             MediaProbe.get_duration(
                 audio_path
@@ -55,7 +103,36 @@ class TimelineBuilder:
         return VideoTimeline(
             audio_duration=audio_duration,
             image_duration=image_duration,
-            subtitle_path=subtitle_path
+            subtitle_path=subtitle_path,
+            scene_durations=self._scene_durations(
+                scene_durations=tuple(scene_durations),
+                image_count=image_count,
+                audio_duration=audio_duration
+            )
+        )
+
+    @staticmethod
+    def _scene_durations(
+        scene_durations,
+        image_count,
+        audio_duration
+    ):
+        if (
+            len(scene_durations) != image_count
+            or any(
+                duration is None
+                for duration in scene_durations
+            )
+            or abs(
+                sum(scene_durations)
+                - audio_duration
+            ) > _DURATION_TOLERANCE
+        ):
+            return ()
+
+        return (
+            *scene_durations[:-1],
+            audio_duration - sum(scene_durations[:-1])
         )
 
     def _shift_srt(

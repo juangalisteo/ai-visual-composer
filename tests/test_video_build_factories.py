@@ -648,6 +648,71 @@ class VideoBuildFactoriesTest(
             render_subtitles=False,
         )
 
+    def test_context_factory_times_the_images_with_the_storyboard_durations(
+        self
+    ):
+        project = SimpleNamespace(
+            subtitle_path=lambda: Path("project.srt"),
+            storyboard_path=lambda: Path("project_storyboard.json"),
+            images_manifest_path=lambda: Path("project_images.json"),
+            video_path=lambda: Path("project.mp4"),
+        )
+        config = SimpleNamespace(
+            subtitle_offset=0.0,
+            transitions=SimpleNamespace(duration=0.4),
+            width=640,
+            height=360,
+            fps=24,
+        )
+        media = SimpleNamespace(
+            audio_path=Path("audio.mp3"),
+            subtitle_path=None,
+            output_path=Path("out.mp4"),
+            image_paths=(Path("one.png"), Path("two.png")),
+            scene_durations=(6.6, 7.4),
+        )
+        timeline = SimpleNamespace(
+            audio_duration=14.0,
+            image_duration=7.0,
+            scene_durations=(6.6, 7.4),
+        )
+
+        with patch(
+            "app.modules.video.video_build_context_factory.ProjectManager",
+            return_value=project,
+        ), patch(
+            "app.modules.video.video_build_context_factory.AudioResolver",
+        ) as audio_resolver_class, patch(
+            "app.modules.video.video_build_context_factory.VideoConfigLoader",
+        ) as config_loader_class, patch(
+            "app.modules.video.video_build_context_factory.MediaLoader",
+        ) as media_loader_class, patch(
+            "app.modules.video.video_build_context_factory.TimelineBuilder",
+        ) as timeline_builder_class:
+            audio_resolver_class.return_value.resolve.return_value = Path(
+                "audio.mp3"
+            )
+            config_loader_class.return_value.load.return_value = config
+            media_loader_class.return_value.load.return_value = media
+            timeline_builder_class.return_value.build.return_value = timeline
+
+            result = VideoBuildContextFactory().build(
+                audio_path="audio.mp3",
+                images_manifest_path="images.json",
+                output_path="out.mp4",
+                render_subtitles=False,
+            )
+
+        self.assertIs(result.timeline, timeline)
+        timeline_builder_class.return_value.build.assert_called_once_with(
+            audio_path=media.audio_path,
+            subtitle_path=None,
+            image_count=2,
+            subtitle_offset=0.0,
+            render_subtitles=False,
+            scene_durations=(6.6, 7.4),
+        )
+
     def test_render_service_preserves_filter_complex_and_command(
         self
     ):

@@ -655,8 +655,10 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
 ## 18. Composición del vídeo final
 
 `VideoBuilder` (`app/modules/video/`) monta el MP4 final con un único comando
-FFmpeg. Usa `audio/audio_final.mp3` y reparte su duración a partes iguales
-entre las escenas. El grafo de filtros se construye por etapas, siempre en este
+FFmpeg. Usa `audio/audio_final.mp3`; cada escena dura lo que dice su
+`duration` del storyboard (la última acaba con el audio). Si alguna escena no
+la tiene o no suman la duración del audio (DISEÑO), el audio se reparte a
+partes iguales. El grafo de filtros se construye por etapas, siempre en este
 orden:
 
 | Etapa | Qué hace | Clave del perfil (`video_style`) |
