@@ -87,7 +87,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_size": 14,
             "subtitle_margin": 55,
             "subtitle_offset": -0.06,
-            "seconds_per_image": 20,
         },
         "horizontal": {
             "format": "horizontal",
@@ -99,7 +98,6 @@ class ProfileCharacterizationTest(unittest.TestCase):
             "subtitle_size": 16,
             "subtitle_margin": 25,
             "subtitle_offset": 0.0,
-            "seconds_per_image": 30,
         },
     }
 
@@ -169,12 +167,9 @@ class ProfileCharacterizationTest(unittest.TestCase):
                         expected["subtitle_offset"],
                         subtitles["offset"]
                     )
-                    self.assertEqual(
-                        expected["seconds_per_image"],
-                        video_style["storyboard"][
-                            "seconds_per_image"
-                        ]
-                    )
+                    # The scene duration belongs to the format
+                    # (config/formats.json), not to the profile.
+                    self.assertNotIn("storyboard", video_style)
                     self.assertEqual(
                         "scene",
                         video_style["overlays"][

@@ -4,8 +4,18 @@ class StoryboardComposer:
         self,
         base_scenes,
         visual_scenes,
-        scene_duration
+        scene_durations
     ):
+        """Join each base scene with its Visual Truth and its duration.
+
+        ``scene_durations`` holds one duration in seconds per base scene,
+        in the same order.
+        """
+        if len(scene_durations) != len(base_scenes):
+            raise ValueError(
+                "Cada escena necesita su duración."
+            )
+
         visual_truth_by_scene = {
             item["scene"]: item
             for item in visual_scenes
@@ -13,7 +23,10 @@ class StoryboardComposer:
 
         final_scenes = []
 
-        for base_scene in base_scenes:
+        for base_scene, scene_duration in zip(
+            base_scenes,
+            scene_durations
+        ):
             scene_number = (
                 base_scene["scene"]
             )

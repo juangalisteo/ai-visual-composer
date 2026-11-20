@@ -1,10 +1,11 @@
-"""Formatos declarados en la configuración: etiqueta, orden, orientación y guía de imagen."""
+"""Formatos declarados en la configuración: etiqueta, orden, orientación, guía de imagen y duración de las escenas."""
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from app.shared.config_contract import (
+    require_float,
     require_int,
     require_mapping,
     require_text,
@@ -25,11 +26,26 @@ def fallback_label(profile_format):
 
 
 @dataclass(frozen=True)
+class SceneSeconds:
+    """Duración de cada escena del storyboard, en segundos.
+
+    Las escenas se cortan al final de una frase y duran entre min y max;
+    mejor, entre target_min y target_max.
+    """
+
+    min: float
+    target_min: float
+    target_max: float
+    max: float
+
+
+@dataclass(frozen=True)
 class FormatDeclaration:
     display_name: str
     order: int
     orientation: str | None = None
     image_guidance: str | None = None
+    scene_seconds: SceneSeconds | None = None
 
 
 class FormatCatalog:
@@ -38,10 +54,11 @@ class FormatCatalog:
     Un formato declarado sale con su display_name y en su order. Uno
     descubierto sin declaración sale con fallback_label y detrás de los
     declarados, por orden alfabético. Sin el archivo, todos salen así.
-    orientation (portrait o landscape) e image_guidance son opcionales: sin
-    orientation no se comprueba la orientación de sus perfiles, y sin
-    image_guidance sus imágenes no se pueden generar. Nunca decide qué
-    formatos existen.
+    orientation (portrait o landscape), image_guidance y scene_seconds son
+    opcionales: sin orientation no se comprueba la orientación de sus
+    perfiles, sin image_guidance sus imágenes no se pueden generar y sin
+    scene_seconds no se puede hacer su storyboard. Nunca decide qué formatos
+    existen.
 
     Leer el archivo no depende de ProfileResolver (que lo usa para la
     orientación); la comprobación de carpetas, validate, recibe el resolver.
@@ -92,6 +109,28 @@ class FormatCatalog:
             recommended_action=(
                 "Declare el formato en el catálogo de formatos con "
                 "image_guidance (texto)."
+            ),
+            operation="Leer catálogo de formatos",
+            resource=str(self.catalog_path),
+        ) from error
+
+    def scene_seconds(self, profile_format):
+        """Duración de las escenas del storyboard de ese formato."""
+        declaration = self._load().get(profile_format)
+        if declaration is not None and declaration.scene_seconds is not None:
+            return declaration.scene_seconds
+        error = ValueError(
+            f"Sin formats.{profile_format}.scene_seconds."
+        )
+        raise create_operational_error(
+            family="CONFIG",
+            user_message=(
+                "El catálogo de formatos no declara la duración de las "
+                f"escenas (scene_seconds) del formato «{profile_format}»."
+            ),
+            recommended_action=(
+                "Declare en el formato scene_seconds con min, target_min, "
+                "target_max y max (segundos)."
             ),
             operation="Leer catálogo de formatos",
             resource=str(self.catalog_path),
@@ -193,4 +232,28 @@ class FormatCatalog:
                 if "image_guidance" in declaration
                 else None
             ),
+            scene_seconds=(
+                _scene_seconds(declaration, f"{path}.scene_seconds")
+                if "scene_seconds" in declaration
+                else None
+            ),
         )
+
+
+def _scene_seconds(declaration, path):
+    values = require_mapping(declaration, "scene_seconds", path)
+    seconds = SceneSeconds(
+        **{
+            key: require_float(values, key, f"{path}.{key}")
+            for key in ("min", "target_min", "target_max", "max")
+        }
+    )
+    if not (
+        0 < seconds.min <= seconds.target_min
+        <= seconds.target_max <= seconds.max
+    ):
+        raise ValueError(
+            f"La configuración {path} debe cumplir "
+            "0 < min <= target_min <= target_max <= max."
+        )
+    return seconds

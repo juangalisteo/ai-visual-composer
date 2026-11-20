@@ -4,13 +4,25 @@
       "display_name": "Vertical 9:16",
       "order": 1,
       "orientation": "portrait",
-      "image_guidance": "vertical 9:16"
+      "image_guidance": "vertical 9:16",
+      "scene_seconds": {
+        "min": 4,
+        "target_min": 6,
+        "target_max": 8,
+        "max": 10
+      }
     },
     "horizontal": {
       "display_name": "Horizontal 16:9",
       "order": 2,
       "orientation": "landscape",
-      "image_guidance": "wide horizontal 16:9"
+      "image_guidance": "wide horizontal 16:9",
+      "scene_seconds": {
+        "min": 4,
+        "target_min": 6,
+        "target_max": 8,
+        "max": 10
+      }
     }
   }
 }

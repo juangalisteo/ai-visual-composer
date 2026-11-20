@@ -169,6 +169,7 @@ Cómo se declaran:
   | `order` | Posición en el menú (Vertical primero) |
   | `orientation` | `portrait` o `landscape`: al cargar un perfil, `ProfileResolver` rechaza un `video_style` cuyo ancho y alto contradigan la orientación |
   | `image_guidance` | Texto de formato que se añade al prompt de cada imagen |
+  | `scene_seconds` | Cuánto dura cada escena del storyboard, en segundos: `min`, `target_min`, `target_max` y `max` ([apartado 15](#15-storyboard)) |
 
 - Al arrancar, `main.py` comprueba que cada formato declarado tenga su carpeta
   de perfiles; si el catálogo está mal, el programa se para antes del primer
@@ -194,7 +195,7 @@ y se detiene en la última que pide el modo elegido ([apartado 6](#6-modos-de-ej
 | Guion | GUION lee `input/guion.txt` tal cual; IMAGEN y VIDEO escriben un guion a partir de `input/tema.txt` | Ollama (solo IMAGEN y VIDEO) |
 | Voz y audio | Locución y mezcla con la música elegida | Piper ([VOICEOVER.md](VOICEOVER.md)) y FFmpeg |
 | Subtítulos | Transcribe la locución y ajusta el SRT al texto del guion y al perfil de subtítulos | Whisper ([SUBTITLES.md](SUBTITLES.md)) |
-| Storyboard | Divide el guion en escenas visuales: tantas como la duración del audio entre `video_style.storyboard.seconds_per_image` del perfil, redondeando hacia arriba | Ollama |
+| Storyboard | Divide el guion en escenas visuales que terminan al final de una frase, con la duración `scene_seconds` del formato | Ollama |
 | Imágenes | Una imagen por escena | ComfyUI + Flux |
 | Vídeo | IMAGEN compone el vídeo con las imágenes; VIDEO genera antes un clip por imagen | FFmpeg; VIDEO también ComfyUI + Wan |
 
@@ -545,11 +546,20 @@ visuales y las guarda en `output/<proyecto>/storyboard/storyboard.json`.
 
 | Paso | Qué hace | Quién |
 |---|---|---|
-| Número de escenas | Duración del audio entre `video_style.storyboard.seconds_per_image` del perfil, redondeando hacia arriba | `StoryboardBuilder` |
-| Reparto del texto | Divide el guion en ese número de fragmentos; cada escena dura lo mismo (la duración del audio entre el número de escenas) | `SceneSplitter` |
+| Tiempos | Pone cada palabra del guion en su tiempo de la voz: los de Whisper, con la misma alineación que los subtítulos; sin Whisper («Proyecto completo sin subtítulos»), los reparte por letras saltando las pausas que escribió la voz | `StoryboardBuilder` |
+| Escenas | Agrupa frases enteras en escenas de la duración `scene_seconds` del formato (ver abajo) | `segment_scenes` (`scene_segmenter.py`) |
 | Descripción visual | Pide a Ollama, con respuesta JSON de esquema fijo, qué se ve en cada escena | `StoryboardAIBuilder` |
 | Comprobación | Lee la respuesta y exige una descripción por escena | `StoryboardResponseParser`, `StoryboardValidator` |
 | Unión | Junta el texto, la duración y la descripción de cada escena | `StoryboardComposer` |
+
+**Cómo se cortan las escenas.** Siempre al final de una frase, en la mitad
+del silencio entre las dos; la primera empieza en 0 y la última acaba con el
+audio. Solo una frase que sola dura más de `max` se corta por dentro: tras una
+coma (o `;`, `:`, una raya) y, si no tiene, entre dos palabras. Entre todas
+las formas de cortar se elige la que, por este orden: deja menos segundos
+fuera de `min`–`max`; corta menos veces dentro de una frase; y deja las
+escenas más cerca de `target_min`–`target_max`. El texto de cada escena son
+sus frases enteras y su duración queda en `storyboard.json` (`duration`).
 
 La descripción visual de cada escena se llama **Visual Truth**: lo que tiene que
 verse, sin instrucciones para ningún backend. Sus campos son
@@ -703,7 +713,7 @@ declara:
 | `tone` | Archivo de `prompts/tones/` |
 | `duration` | Duración pedida al guion generado (IMAGEN y VIDEO; GUION no la lleva) |
 | `builders` | Qué etapas puede ejecutar el componente |
-| `video_style` | Tamaño, FPS y las etapas del vídeo final ([apartado 18](#18-composición-del-vídeo-final)); `storyboard.seconds_per_image` |
+| `video_style` | Tamaño, FPS y las etapas del vídeo final ([apartado 18](#18-composición-del-vídeo-final)) |
 | `validation` | Diferencia de duración que se tolera en el vídeo final |
 | `video`, `audio` | Códecs y calidad del MP4 final |
 

@@ -7,7 +7,7 @@ import main
 from app.cli import studio_summary
 from app.controllers.run_controller import RunController
 from app.modules.studio import StudioInputMode
-from app.shared.format_catalog import FormatCatalog
+from app.shared.format_catalog import FormatCatalog, SceneSeconds
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import OperationalProfileKey, ProfileComponent
 from app.shared.profile_resolver import (
@@ -94,6 +94,14 @@ def test_declaration_without_format_directory_is_a_clear_config_error(tmp_path):
         ("{", "Expecting property name"),
         ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "orientation": "test_orientation"}}}, "formats.test_format.orientation debe ser portrait o landscape"),
         ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "image_guidance": "   "}}}, "formats.test_format.image_guidance"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": 7}}}, "formats.test_format.scene_seconds"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 5, "target_min": 6, "target_max": 8}}}}, "formats.test_format.scene_seconds.max"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 5, "target_min": "seis", "target_max": 8, "max": 9}}}}, "formats.test_format.scene_seconds.target_min"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 5, "target_min": 6, "target_max": 8, "max": True}}}}, "formats.test_format.scene_seconds.max"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 0, "target_min": 6, "target_max": 8, "max": 9}}}}, "0 < min <= target_min <= target_max <= max"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 5, "target_min": 8, "target_max": 6, "max": 9}}}}, "0 < min <= target_min <= target_max <= max"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 5, "target_min": 6, "target_max": 10, "max": 9}}}}, "0 < min <= target_min <= target_max <= max"),
+        ({"formats": {"test_format": {"display_name": "Formato técnico", "order": 1, "scene_seconds": {"min": 6.5, "target_min": 6, "target_max": 8, "max": 9}}}}, "0 < min <= target_min <= target_max <= max"),
     ),
 )
 def test_invalid_catalog_is_a_config_error_that_names_the_problem(
@@ -142,6 +150,41 @@ def test_orientation_and_image_guidance_come_only_from_the_declaration(tmp_path)
         assert context.resource == str(path)
 
 
+def test_scene_seconds_come_only_from_the_declaration(tmp_path):
+    path = _write_catalog(tmp_path, {
+        "formats": {
+            "test_timed_format": {
+                "display_name": "Formato técnico con escenas",
+                "order": 1,
+                "scene_seconds": {
+                    "min": 4,
+                    "target_min": 4.5,
+                    "target_max": 7,
+                    "max": 7,
+                },
+            },
+            "test_bare_format": {"display_name": "Formato técnico", "order": 2},
+        },
+    })
+    catalog = FormatCatalog(path)
+
+    assert catalog.scene_seconds("test_timed_format") == SceneSeconds(
+        min=4.0,
+        target_min=4.5,
+        target_max=7.0,
+        max=7.0,
+    )
+    for profile_format in ("test_bare_format", "test_undeclared_format"):
+        with pytest.raises(OperationalError) as caught:
+            catalog.scene_seconds(profile_format)
+
+        context = caught.value.context
+        assert context.family == "CONFIG"
+        assert "scene_seconds" in context.user_message
+        assert f"«{profile_format}»" in context.user_message
+        assert context.resource == str(path)
+
+
 def test_project_catalog_declares_vertical_first_with_its_aspect_ratio():
     catalog = FormatCatalog()
 
@@ -152,6 +195,13 @@ def test_project_catalog_declares_vertical_first_with_its_aspect_ratio():
     assert catalog.orientation("horizontal") == "landscape"
     assert catalog.image_guidance("vertical") == "vertical 9:16"
     assert catalog.image_guidance("horizontal") == "wide horizontal 16:9"
+    for profile_format in ("vertical", "horizontal"):
+        assert catalog.scene_seconds(profile_format) == SceneSeconds(
+            min=4.0,
+            target_min=6.0,
+            target_max=8.0,
+            max=10.0,
+        )
     catalog.validate(ProfileResolver())
 
 

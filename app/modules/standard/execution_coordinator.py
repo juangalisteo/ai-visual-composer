@@ -198,6 +198,7 @@ class StandardExecutionCoordinator:
             output_script_path
         )
         voice_pauses = ()
+        whisper_subtitle_path = None
 
         if (
             "voice_and_audio" in stages
@@ -289,6 +290,7 @@ class StandardExecutionCoordinator:
                 output_path=project.subtitle_path(),
                 voice_pauses=voice_pauses,
             )
+            whisper_subtitle_path = subtitle_path
 
             optimizer_options = {
                 "subtitle_profile": subtitle_profile,
@@ -324,7 +326,9 @@ class StandardExecutionCoordinator:
             )
             storyboard_path, storyboard_elapsed = (
                 self._pipeline_telemetry.measure_stage(
-                    storyboard_builder.build
+                    storyboard_builder.build,
+                    subtitle_path=whisper_subtitle_path,
+                    voice_pauses=voice_pauses,
                 )
             )
 

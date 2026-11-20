@@ -263,6 +263,76 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     assert optimizer.call_args.kwargs["project"] is project
 
 
+def _storyboard_build_options(pipeline_mode):
+    project = _project()
+    config = Mock()
+    config.get_ai_config.return_value = object()
+    config.get_profile_config.return_value = object()
+    config.get_subtitle_profile_by_key.return_value = object()
+    telemetry = _telemetry()
+    request = ApplicationExecutionRequest(
+        project_name="typed bridge",
+        clear_output=False,
+        operational_profile_key=_profile_key(ProfileComponent.IMAGEN),
+        subtitle_profile_key=_subtitle_key(),
+        route=StandardExecutionRequest(
+            pipeline_mode=pipeline_mode,
+            visual_pipeline="image",
+            script_source="manual",
+            voice_config_id="piper_davefx",
+        ),
+    )
+
+    with patch.object(start, "ProjectManager", return_value=project), patch.object(
+        start, "ConfigManager", return_value=config
+    ), patch.object(
+        standard,
+        "_required_builders",
+        return_value={"voice": True, "subtitles": True, "storyboard": True},
+    ), patch.object(
+        standard, "_required_render_fps", return_value=30
+    ), patch.object(
+        standard, "_pipeline_telemetry_artifacts", return_value=Mock()
+    ), patch.object(
+        start._STANDARD_EXECUTION_COORDINATOR, "_pipeline_telemetry", telemetry
+    ), patch.object(
+        standard.ScriptOperation, "execute", return_value=SimpleNamespace(text="Texto")
+    ), patch.object(standard, "VoiceBuilder") as voice_builder, patch.object(
+        standard, "AudioMixer"
+    ), patch.object(standard, "SubtitleBuilder") as subtitle_builder, patch.object(
+        standard, "SrtOptimizer"
+    ), patch.object(standard, "StoryboardBuilder") as storyboard_builder, patch.object(
+        standard, "VideoBuilder"
+    ):
+        voice_builder.return_value.build.return_value = project.audio_path.return_value
+        voice_builder.return_value.last_pauses = (
+            TtsPause(1.0, 1.5),
+            TtsPause(3.25, 3.75),
+        )
+        subtitle_builder.return_value.build.return_value = Path(
+            "output/typed/subtitles/whisper.srt"
+        )
+
+        start.run_application(request=request)
+
+    storyboard_builder.return_value.build.assert_called_once()
+    return storyboard_builder.return_value.build.call_args.kwargs
+
+
+def test_typed_standard_storyboard_takes_the_whisper_times_of_this_run():
+    assert _storyboard_build_options("storyboard") == {
+        "subtitle_path": Path("output/typed/subtitles/whisper.srt"),
+        "voice_pauses": ((1.0, 1.5), (3.25, 3.75)),
+    }
+
+
+def test_typed_standard_storyboard_without_subtitles_takes_the_voice_pauses():
+    assert _storyboard_build_options("full_without_subtitles") == {
+        "subtitle_path": None,
+        "voice_pauses": ((1.0, 1.5), (3.25, 3.75)),
+    }
+
+
 def test_typed_standard_voice_config_id_is_injected_into_config_manager():
     project = _project()
     config = Mock()
