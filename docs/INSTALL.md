@@ -397,6 +397,11 @@ whisper --help
 
 Si Whisper está bien instalado, el comando muestra sus opciones disponibles.
 
+El modelo, el dispositivo y el idioma que usa AI Visual Composer están en
+`config/whisper.json` (en el proyecto, `medium`, `cuda` y `Spanish`). Whisper
+descarga el modelo la primera vez que se usa. Qué significa cada clave:
+[ARCHITECTURE.md §19](ARCHITECTURE.md#19-perfiles-y-configuración).
+
 Whisper depende de FFmpeg, así que FFmpeg también debe estar disponible en el
 `PATH` del sistema.
 

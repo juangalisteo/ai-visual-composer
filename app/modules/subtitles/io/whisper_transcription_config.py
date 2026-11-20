@@ -4,11 +4,15 @@ import math
 
 @dataclass(frozen=True)
 class WhisperTranscriptionConfig:
-    """Immutable technical baseline for a Whisper CLI transcription."""
+    """Immutable technical baseline for a Whisper CLI transcription.
 
-    model: str = "medium"
-    device: str = "cuda"
-    language: str = "Spanish"
+    ``model``, ``device`` and ``language`` have no value here: the program
+    reads them from ``config/whisper.json`` (``whisper_transcription_config``).
+    """
+
+    model: str
+    device: str
+    language: str
     task: str = "transcribe"
     word_timestamps: bool = True
     condition_on_previous_text: bool = True

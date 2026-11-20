@@ -1,5 +1,10 @@
 """Whisper settings declared in ``config/whisper.json``.
 
+- ``model``, ``device`` and ``language``: the Whisper model (such as
+  ``medium``), where it runs (such as ``cuda``) and the language it
+  transcribes (such as ``Spanish``), passed to the Whisper command as they
+  are. The other transcription options are fixed in
+  ``WhisperTranscriptionConfig``.
 - ``word_overlap_tolerance_seconds``: Whisper writes some word times with a
   float rounding error, such as a word that ends at 28.080000000000002 s
   while the next one starts at 28.08 s. An overlap between two consecutive
@@ -14,10 +19,41 @@ import json
 import math
 from pathlib import Path
 
+from app.modules.subtitles.io.whisper_transcription_config import (
+    WhisperTranscriptionConfig,
+)
 from app.shared.operational_error import create_operational_error
 
 
 WHISPER_SETTINGS_PATH = Path("config/whisper.json")
+
+# Keys passed to the Whisper command, with what each one names (for the
+# user, in the CONFIG error).
+_TRANSCRIPTION_KEYS = (
+    ("model", "el nombre del modelo de Whisper"),
+    ("device", "el dispositivo en que se ejecuta Whisper"),
+    ("language", "el idioma que transcribe Whisper"),
+)
+
+
+def whisper_transcription_config(
+    path=WHISPER_SETTINGS_PATH,
+) -> WhisperTranscriptionConfig:
+    """Transcription settings with the declared model, device and language."""
+    path = Path(path)
+    document = _load(path)
+    values = {}
+    for key, meaning in _TRANSCRIPTION_KEYS:
+        value = _require_key(document, key, path)
+        if not isinstance(value, str) or not value.strip():
+            raise _config_error(
+                f"En «{_display(path)}», «{key}» debe ser un texto no vacío.",
+                f"Escriba en «{key}» {meaning}.",
+                path,
+                key=key,
+            )
+        values[key] = value.strip()
+    return WhisperTranscriptionConfig(**values)
 
 
 def whisper_word_overlap_tolerance(path=WHISPER_SETTINGS_PATH) -> float:

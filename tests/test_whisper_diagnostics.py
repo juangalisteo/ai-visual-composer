@@ -28,6 +28,13 @@ from app.modules.subtitles.policies.timing import (
 from app.shared.operational_error import OperationalError
 
 
+# Model, device and language have no value in the code (config/whisper.json).
+TEST_TRANSCRIPTION = {
+    "model": "test_model",
+    "device": "test_device",
+    "language": "test_language",
+}
+
 W01_SEGMENTS = [
     {
         "id": 7,
@@ -92,7 +99,7 @@ def _write_native_json(path, segments=W01_SEGMENTS):
 
 
 def test_w01_native_json_preserves_segment_diagnostics_without_text_or_tokens():
-    config = WhisperTranscriptionConfig()
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     with tempfile.TemporaryDirectory() as directory:
         source = Path(directory) / "native.json"
         _write_native_json(source)
@@ -134,7 +141,7 @@ def test_w01_native_json_preserves_segment_diagnostics_without_text_or_tokens():
 
 
 def test_missing_native_diagnostic_fields_remain_optional():
-    config = WhisperTranscriptionConfig()
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     with tempfile.TemporaryDirectory() as directory:
         source = Path(directory) / "native.json"
         _write_native_json(
@@ -160,7 +167,7 @@ def test_missing_native_diagnostic_fields_remain_optional():
 
 
 def _diagnostics(config=None):
-    config = config or WhisperTranscriptionConfig()
+    config = config or WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     with tempfile.TemporaryDirectory() as directory:
         source = Path(directory) / "native.json"
         _write_native_json(source)
@@ -170,7 +177,7 @@ def _diagnostics(config=None):
 
 
 def test_diagnostics_writer_writes_deterministic_versioned_json_without_text_or_tokens():
-    config = WhisperTranscriptionConfig(model="test_model")
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     diagnostics = _diagnostics(config)
     with tempfile.TemporaryDirectory() as directory:
         output_path = Path(directory) / "nested" / "diagnostics.json"
@@ -189,8 +196,8 @@ def test_diagnostics_writer_writes_deterministic_versioned_json_without_text_or_
         "backend_version": "20250625",
         "transcription_config": {
             "model": "test_model",
-            "device": "cuda",
-            "language": "Spanish",
+            "device": "test_device",
+            "language": "test_language",
             "task": "transcribe",
             "word_timestamps": True,
             "condition_on_previous_text": True,
@@ -232,7 +239,7 @@ def test_diagnostics_writer_writes_deterministic_versioned_json_without_text_or_
 
 
 def test_diagnostics_remain_separate_from_generic_timing_and_word_confidence():
-    config = WhisperTranscriptionConfig()
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     with tempfile.TemporaryDirectory() as directory:
         source = Path(directory) / "native.json"
         _write_native_json(source)
@@ -299,7 +306,7 @@ class _Runner:
 def test_external_preparation_transports_optional_diagnostics_without_changing_timing(
     valid_diagnostics,
 ):
-    config = WhisperTranscriptionConfig(model="test_model")
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     builder = _WhisperBuilder(config, valid_diagnostics=valid_diagnostics)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -322,7 +329,7 @@ def test_external_preparation_transports_optional_diagnostics_without_changing_t
 
 
 def test_external_preparation_writes_diagnostics_only_with_explicit_opt_in():
-    config = WhisperTranscriptionConfig(model="test_model")
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     builder = _WhisperBuilder(config)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -355,7 +362,7 @@ def test_external_preparation_writes_diagnostics_only_with_explicit_opt_in():
 
 
 def test_external_preparation_does_not_write_when_diagnostics_are_absent():
-    config = WhisperTranscriptionConfig()
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     builder = _WhisperBuilder(config, valid_diagnostics=False)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -382,7 +389,7 @@ class _FailingDiagnosticsWriter:
 
 
 def test_explicit_diagnostics_write_failure_is_an_operational_error():
-    config = WhisperTranscriptionConfig()
+    config = WhisperTranscriptionConfig(**TEST_TRANSCRIPTION)
     builder = _WhisperBuilder(config)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)

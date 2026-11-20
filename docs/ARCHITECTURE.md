@@ -485,8 +485,10 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
 ```
 
 - **Transcripción.** `SubtitleBuilder` lanza Whisper como proceso aparte
-  (`python -m whisper`) con una configuración fija (`WhisperTranscriptionConfig`:
-  modelo `medium`, idioma español, tiempos por palabra). En la ruta estándar
+  (`python -m whisper`) con el modelo, el dispositivo y el idioma de
+  `config/whisper.json` (en el proyecto, `medium`, `cuda` y `Spanish`) y el resto
+  de opciones fijas en `WhisperTranscriptionConfig` (tiempos por palabra,
+  umbrales, temperatura). En la ruta estándar
   transcribe la voz sin música (`voz.mp3`). En STUDIO, SOLO VIDEO y EXPORTAR SRT
   → TRANSCRIBIR usan el mismo `SubtitleBuilder`, tras sacar el audio del vídeo
   con FFmpeg (`ExternalMediaSubtitlePreparationService`).
@@ -749,7 +751,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
-| `config/whisper.json` | Whisper: tolerancia del redondeo de los tiempos por palabra (ver abajo) |
+| `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
@@ -819,6 +821,9 @@ configuración (CONFIG) que nombra el archivo y la clave:
 
 | Clave | Para qué sirve |
 |---|---|
+| `model` | Modelo de Whisper (`medium` en el proyecto). Whisper lo descarga la primera vez que se usa |
+| `device` | Dónde se ejecuta: `cuda` (la GPU) o `cpu` |
+| `language` | Idioma que transcribe (`Spanish`): el de la voz o el del vídeo de STUDIO |
 | `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
 
 **Cómo se cargan:**
@@ -852,7 +857,7 @@ Todos se ejecutan en el propio equipo. Su instalación y sus modelos están en
 | **ComfyUI + Flux** | Imágenes | HTTP local (`http://127.0.0.1:8188`) con el workflow de Flux |
 | **ComfyUI + Wan** | Clips I2V | El mismo servidor, con el workflow de Wan. Sin tiempo límite |
 | **Piper** | Voz | Librería de Python, en el mismo proceso, con el modelo ONNX de cada voz |
-| **Whisper** (OpenAI) | Transcripción y tiempos por palabra | Proceso aparte (`python -m whisper`) |
+| **Whisper** (OpenAI) | Transcripción y tiempos por palabra | Proceso aparte (`python -m whisper`); el modelo, el dispositivo y el idioma están en `config/whisper.json` ([apartado 19](#19-perfiles-y-configuración)) |
 | **NudeNet** | Control de desnudos en las imágenes | Librería de Python, con su modelo ONNX |
 | **FFmpeg** | Mezcla de audio, vídeo final, render de STUDIO, intro/outro y extracción de audio para Whisper | Proceso aparte (`ffmpeg`, `ffprobe`) |
 
