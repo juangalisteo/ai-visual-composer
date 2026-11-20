@@ -677,8 +677,8 @@ En VIDEO (y en GUION → Video) cada imagen se convierte en un clip con Wan
 ```text
 imagen de la escena + su Visual Truth
     ↓  SourceImageAnalyzer        qué hay en la imagen
-    ↓  MotionIntentBuilder        qué movimiento pide la escena
-    ↓  VideoPromptTranslator      prompt de vídeo y negativo (prompts/video/)
+    ↓  MotionIntentBuilder        qué movimiento pide la escena (prompts/video/motion.json)
+    ↓  VideoPromptTranslator      prompt de vídeo y negativo (prompts/video/wan*.txt)
     ↓  ComfyUIVideoAdapter        workflow config/comfyui_wan22_ti2v_i2v_workflow_api.json
 ComfyUI + Wan
     ↓
@@ -690,6 +690,16 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
   `"kind": "video_component"`): tamaño de generación, número de fotogramas, FPS,
   semilla, muestreo y `progress_interval_seconds`. Si en un formato hay más de
   uno o ninguno, la ejecución se para con un error.
+- **Movimiento.** `MotionIntentBuilder` elige uno de tres niveles (`subtle`,
+  `normal`, `intense`) con las palabras clave de `prompts/video/motion.json`:
+  una palabra de quietud en la acción o la interpretación de la escena
+  («sits», «contempla»…) o una restricción visual estática («static
+  composition», «sin movimiento»…) da `subtle`; si no, una de acción intensa
+  («runs», «explota»…) da `intense`; otra acción cualquiera, `normal`; sin
+  acción, `subtle`. Cada nivel declara allí su movimiento de cámara, intensidad,
+  estabilidad y ritmo, que entran en el prompt de Wan con las restricciones de
+  conservar y evitar del mismo archivo y, por cada campo de la escena, la línea
+  de `motion_storyboard_field.txt` (`{campo}`, `{valor}`).
 - **Progreso.** Mientras Wan genera un clip, la terminal escribe
   «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
   «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.
@@ -768,7 +778,7 @@ el código:
 | `templates/` | Cómo se monta cada petición a Ollama: guion (`script.txt`), reintento y ajuste de extensión (`script_retry*.txt`, `script_length*.txt`), storyboard (`storyboard.txt`, `storyboard_scene.txt`) y su ejemplo de respuesta (`storyboard_example.json`) |
 | `criteria/storyboard/` | Criterios de diseño del storyboard |
 | `image/` | Plantilla de la escena (`scene.txt`), objetos con letras y su sustituto (`text_free_objects.json`), identidad visual (`identity/`) y reglas (`rules.json`) |
-| `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) |
+| `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) y movimiento de cada clip: textos de cada nivel, palabras clave que lo eligen y restricciones (`motion.json`, `motion_storyboard_field.txt`; [apartado 17](#17-clips-de-vídeo-i2v)) |
 
 - **Marcadores.** Una plantilla marca con `{nombre}` cada dato que rellena el
   programa (`{tema}`, `{palabras_max}`, `{escenas}`…). Si a una plantilla le

@@ -5,7 +5,10 @@ and compares it with ``tests/fixtures/prompt_snapshots/<case>.txt``.
 
 The snapshots of I4 (PARTE B) were written by the code of ``main`` 4c8238d,
 when these texts still lived in Python: moving them to ``prompts/`` had to
-leave every prompt byte for byte the same. A prompt changed on purpose
+leave every prompt byte for byte the same. The ``wan_motion__`` snapshots of
+I5a (PARTE D) were written the same way by ``main`` 9e8c52d, when the motion
+keywords and constraints still lived in ``motion_intent_builder.py``. A prompt
+changed on purpose
 changes its snapshot; rewrite them with
 ``AIVC_UPDATE_PROMPT_SNAPSHOTS=1 python -m pytest tests/test_prompt_snapshots.py``
 and review the diff.
@@ -234,6 +237,90 @@ WAN_INTENTS = (
 )
 
 
+# Clips as the video stage builds them: MotionIntentBuilder decides the motion
+# from the storyboard scene and VideoPromptTranslator writes the WAN prompt.
+WAN_MOTION_CONTEXT = {
+    "source_path": Path("test_source.png"),
+    "width": 1080,
+    "height": 1920,
+    "aspect_ratio": "9:16",
+    "orientation": "portrait",
+    "image_format": "PNG",
+    "stability_constraints": (
+        "preserve_source_composition",
+        "preserve_source_geometry",
+        "avoid_identity_or_subject_changes",
+    ),
+}
+
+WAN_MOTION_SCENES = (
+    ("no_storyboard", None),
+    (
+        "full_storyboard",
+        {
+            "visible_subject": "An elderly inventor",
+            "visible_action": "walks slowly across the workshop",
+            "visible_environment": "a dim workshop with copper coils",
+            "time_context": "late at night",
+            "key_objects": ("copper coil", "oil lamp"),
+            "spatial_relationships": ("the lamp stands behind the inventor",),
+            "continuity_links": ("same workshop as scene 1", "  "),
+            "filmable_interpretation": "A slow walk through warm lamplight",
+            "visual_constraints": ("soft haze",),
+        },
+    ),
+    (
+        "static_constraint_over_intense_action",
+        {
+            "visible_action": "runs toward the sea",
+            "visual_constraints": ("Static composition",),
+        },
+    ),
+    (
+        "intense_action",
+        {"visible_action": "The horse sprints across the field"},
+    ),
+    (
+        "intense_interpretation_without_action",
+        {"filmable_interpretation": "una ola explota contra las rocas"},
+    ),
+    (
+        "static_action",
+        {"visible_action": "Sentado junto a la ventana, observa la lluvia"},
+    ),
+    (
+        "subtle_without_action",
+        {"filmable_interpretation": "a quiet valley at dawn"},
+    ),
+    (
+        "blank_list_values",
+        {"visible_subject": "a lighthouse", "key_objects": (" ",)},
+    ),
+)
+
+# Words that decide the motion level in the code of main 9e8c52d, plus words
+# that are not keywords or only contain one. Each one is tried where the code
+# looks for it; the snapshot keeps the motion level it gives.
+WAN_MOTION_ACTION_PROBES = (
+    "runs", "running", "sprints", "sprinting", "jumps", "jumping", "races",
+    "racing", "falls", "falling", "fights", "fighting", "throws", "throwing",
+    "flees", "chases", "dives", "explodes", "collapses", "corre", "corriendo",
+    "salta", "saltando", "cae", "cayendo", "lucha", "luchando", "lanza",
+    "lanzando", "huye", "persigue", "se zambulle", "explota", "colapsa",
+    "sits", "sitting", "seated", "stands still", "standing still",
+    "contemplates", "contemplating", "rests", "resting", "observes",
+    "waiting", "waits", "still life", "sentado", "sentada", "contempla",
+    "descansa", "observa", "espera", "quieto", "quieta", "estático",
+    "estática",
+    "walks", "RUNS", "waterfalls", "zambulle", "no movement",
+    "sits and runs",
+)
+WAN_MOTION_CONSTRAINT_PROBES = (
+    "no motion", "no movement", "static composition", "sin movimiento",
+    "composición estática", "NO MOTION", "slow motion",
+)
+
+
 @contextmanager
 def _working_directory(path):
     previous = Path.cwd()
@@ -425,6 +512,55 @@ def _wan_prompts():
     return snapshots
 
 
+def _wan_motion_prompts():
+    from app.domain import StoryboardScene
+    from app.modules.video_component import (
+        MinimalVisualContext,
+        MotionIntentBuilder,
+        VideoPromptTranslator,
+    )
+
+    context = MinimalVisualContext(**WAN_MOTION_CONTEXT)
+
+    def motion(fields):
+        storyboard_scene = (
+            None
+            if fields is None
+            else StoryboardScene(scene_number=1, text="Texto.", **fields)
+        )
+        return MotionIntentBuilder().build(
+            context,
+            storyboard_scene=storyboard_scene,
+        )
+
+    snapshots = {}
+    for name, fields in WAN_MOTION_SCENES:
+        plan = VideoPromptTranslator().translate(motion(fields))
+        snapshots[f"wan_motion__{name}__prompt"] = plan.prompt
+        snapshots[f"wan_motion__{name}__negative"] = plan.negative_prompt
+
+    lines = [
+        f"visible_action={probe!r}: "
+        + motion({"visible_action": probe}).motion_level
+        for probe in WAN_MOTION_ACTION_PROBES
+    ]
+    lines += [
+        f"filmable_interpretation={probe!r}: "
+        + motion({"filmable_interpretation": probe}).motion_level
+        for probe in WAN_MOTION_ACTION_PROBES
+    ]
+    lines += [
+        f"visual_constraints={probe!r} + visible_action='runs': "
+        + motion({
+            "visible_action": "runs",
+            "visual_constraints": (probe,),
+        }).motion_level
+        for probe in WAN_MOTION_CONSTRAINT_PROBES
+    ]
+    snapshots["wan_motion__levels"] = "\n".join(lines) + "\n"
+    return snapshots
+
+
 def assemble_prompt_snapshots(code_root=REPOSITORY_ROOT):
     """Every prompt case, assembled inside a temporary project root."""
     with snapshot_project(code_root):
@@ -435,6 +571,7 @@ def assemble_prompt_snapshots(code_root=REPOSITORY_ROOT):
             _storyboard_prompts,
             _image_prompts,
             _wan_prompts,
+            _wan_motion_prompts,
         ):
             snapshots.update(assemble())
         return snapshots
@@ -476,6 +613,7 @@ class PromptSnapshotTest(unittest.TestCase):
             "storyboard__",
             "image__",
             "wan__",
+            "wan_motion__",
         ):
             with self.subTest(stage=stage):
                 self.assertTrue(

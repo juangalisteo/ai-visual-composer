@@ -85,6 +85,12 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - Los clips de vídeo (Wan) duran 81 fotogramas a 12 fps (6,75 s) en vez de 49
   (4,08 s), en `frames` de `wan_i2v_<formato>.json`: casi no se repiten en las
   escenas de 6–8 s, a cambio de ~45 s más por clip.
+- El movimiento de los clips de Wan (texto de cada nivel, palabras clave que
+  lo eligen y restricciones de conservar y evitar) pasa de
+  `motion_intent_builder.py` a `prompts/video/motion.json` y
+  `motion_storyboard_field.txt`; lo que llega a Wan no cambia. Si falta un
+  archivo, un texto o un marcador, error de configuración con la ruta. Ver
+  [ARCHITECTURE.md §17](docs/ARCHITECTURE.md#17-clips-de-vídeo-i2v).
 - El modelo, el dispositivo y el idioma de Whisper (`medium`, `cuda` y
   `Spanish`) se declaran en `config/whisper.json` en vez de estar en el
   código; la transcripción no cambia. Si falta una clave, error de
