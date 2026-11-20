@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import re
 
+from app.modules.subtitles.io.whisper_settings import (
+    whisper_word_overlap_tolerance,
+)
+
 
 @dataclass(frozen=True)
 class WordTiming:
@@ -401,6 +405,21 @@ def whisper_timing_path(
 
 
 class WhisperTimingParser:
+    """Read the word times of a Whisper JSON.
+
+    Whisper writes some times with a float rounding error: a word may end at
+    28.080000000000002 s while the next one starts at 28.08 s. When a word
+    starts before the previous one ends by no more than
+    ``word_overlap_tolerance`` seconds (``config/whisper.json`` when not
+    given), it starts where the previous one ends instead. A larger overlap
+    is real and the transcription is rejected, as before.
+    """
+
+    def __init__(
+        self,
+        word_overlap_tolerance: float | None = None
+    ):
+        self.word_overlap_tolerance = word_overlap_tolerance
 
     def parse(
         self,
@@ -414,6 +433,13 @@ class WhisperTimingParser:
             raise FileNotFoundError(
                 f"No existe metadata Whisper: {path}"
             )
+
+        tolerance = (
+            self.word_overlap_tolerance
+            if self.word_overlap_tolerance is not None
+            else whisper_word_overlap_tolerance()
+        )
+        previous_end = None
 
         try:
             data = json.loads(
@@ -469,23 +495,21 @@ class WhisperTimingParser:
                     continue
 
                 try:
-                    words.append(
-                        WordTiming(
-                            text=raw_word.get(
-                                "word",
-                                ""
-                            ),
-                            start=raw_word[
-                                "start"
-                            ],
-                            end=raw_word[
-                                "end"
-                            ],
-                            confidence=raw_word.get(
-                                "probability"
-                            ),
-                            source="whisper"
-                        )
+                    word = WordTiming(
+                        text=raw_word.get(
+                            "word",
+                            ""
+                        ),
+                        start=raw_word[
+                            "start"
+                        ],
+                        end=raw_word[
+                            "end"
+                        ],
+                        confidence=raw_word.get(
+                            "probability"
+                        ),
+                        source="whisper"
                     )
                 except (
                     KeyError,
@@ -495,6 +519,16 @@ class WhisperTimingParser:
                     raise ValueError(
                         "Word timestamp Whisper inválido."
                     ) from error
+
+                word = _absorb_rounding_overlap(
+                    word,
+                    previous_end,
+                    tolerance
+                )
+                words.append(
+                    word
+                )
+                previous_end = word.end
 
             if not words:
                 continue
@@ -550,7 +584,46 @@ class WhisperTimingParser:
         )
 
 
+def _absorb_rounding_overlap(
+    word: WordTiming,
+    previous_end: float | None,
+    tolerance: float
+) -> WordTiming:
+    """Start ``word`` at ``previous_end`` when it overlaps it by rounding.
+
+    The overlap must be no larger than ``tolerance`` seconds; the word's end
+    moves too only if it was before ``previous_end``. Any other word is
+    returned unchanged.
+    """
+    if (
+        previous_end is None
+        or word.start >= previous_end
+        or previous_end - word.start > tolerance
+    ):
+        return word
+
+    return replace(
+        word,
+        start=previous_end,
+        end=max(
+            word.end,
+            previous_end
+        )
+    )
+
+
 class SubtitleTimingResolver:
+    """Word times of a subtitle, from the Whisper JSON next to it.
+
+    ``word_overlap_tolerance`` goes to ``WhisperTimingParser`` (from
+    ``config/whisper.json`` when not given).
+    """
+
+    def __init__(
+        self,
+        word_overlap_tolerance: float | None = None
+    ):
+        self.word_overlap_tolerance = word_overlap_tolerance
 
     def resolve(
         self,
@@ -564,7 +637,9 @@ class SubtitleTimingResolver:
 
         try:
             timing = fit_words_to_voice_pauses(
-                WhisperTimingParser().parse(path)
+                WhisperTimingParser(
+                    self.word_overlap_tolerance
+                ).parse(path)
             )
         except (OSError, ValueError):
             return None

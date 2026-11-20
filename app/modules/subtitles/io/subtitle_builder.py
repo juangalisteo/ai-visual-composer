@@ -12,6 +12,9 @@ from app.modules.subtitles.io.whisper_segment_filter import (
     REPETITION_WITHOUT_SPEECH,
     WhisperRepetitionFilter,
 )
+from app.modules.subtitles.io.whisper_settings import (
+    whisper_transcription_config,
+)
 from app.modules.subtitles.io.whisper_transcription_config import (
     WhisperTranscriptionConfig,
 )
@@ -32,16 +35,19 @@ class SubtitleBuilder:
         transcription_config: WhisperTranscriptionConfig | None = None,
         segment_filter: WhisperRepetitionFilter | None = None,
     ):
-        self.transcription_config = (
-            transcription_config
-            if transcription_config is not None
-            else WhisperTranscriptionConfig()
-        )
+        # Without one, it is read from config/whisper.json when first needed.
+        self._transcription_config = transcription_config
         self.segment_filter = (
             segment_filter
             if segment_filter is not None
             else WhisperRepetitionFilter()
         )
+
+    @property
+    def transcription_config(self) -> WhisperTranscriptionConfig:
+        if self._transcription_config is None:
+            self._transcription_config = whisper_transcription_config()
+        return self._transcription_config
 
     def build(
         self,
@@ -60,6 +66,7 @@ class SubtitleBuilder:
             (float(start), float(end))
             for start, end in voice_pauses
         )
+        transcription_config = self.transcription_config
         ProgressLogger.start(
             "GENERANDO TRANSCRIPCI\u00d3N TEMPORAL"
         )
@@ -110,7 +117,7 @@ class SubtitleBuilder:
                 "-m",
                 "whisper",
                 str(audio_path),
-                *self.transcription_config.cli_arguments(),
+                *transcription_config.cli_arguments(),
                 "--output_dir",
                 str(temp_output_dir)
             ]
@@ -127,7 +134,7 @@ class SubtitleBuilder:
                     technical_metadata={
                         "command": tuple(map(str, error.cmd or command)),
                         "returncode": error.returncode,
-                        "model": self.transcription_config.model,
+                        "model": transcription_config.model,
                         "phase": "transcription",
                         "expected_output": str(temp_output_dir),
                     },
@@ -160,7 +167,7 @@ class SubtitleBuilder:
             discarded = self.segment_filter.apply(
                 generated_srt,
                 generated_json,
-                self.transcription_config.no_speech_threshold,
+                transcription_config.no_speech_threshold,
             )
 
             if discarded:

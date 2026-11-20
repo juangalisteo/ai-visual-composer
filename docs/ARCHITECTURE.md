@@ -485,8 +485,10 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
 ```
 
 - **Transcripción.** `SubtitleBuilder` lanza Whisper como proceso aparte
-  (`python -m whisper`) con una configuración fija (`WhisperTranscriptionConfig`:
-  modelo `medium`, idioma español, tiempos por palabra). En la ruta estándar
+  (`python -m whisper`) con el modelo, el dispositivo y el idioma de
+  `config/whisper.json` (en el proyecto, `medium`, `cuda` y `Spanish`) y el resto
+  de opciones fijas en `WhisperTranscriptionConfig` (tiempos por palabra,
+  umbrales, temperatura). En la ruta estándar
   transcribe la voz sin música (`voz.mp3`). En STUDIO, SOLO VIDEO y EXPORTAR SRT
   → TRANSCRIBIR usan el mismo `SubtitleBuilder`, tras sacar el audio del vídeo
   con FFmpeg (`ExternalMediaSubtitlePreparationService`).
@@ -509,6 +511,15 @@ vídeo final                se pinta con el render_style del perfil (apartado 18
   ninguna línea sigue en pantalla durante una pausa de la voz, ni en el SRT ni
   en el ASS. Sin `voice_pauses` (STUDIO, o una voz sin pausas) los tiempos son
   los de Whisper.
+- **Redondeo de Whisper.** Whisper escribe a veces un tiempo con un error de
+  redondeo: una palabra acaba en 27,720000000000002 s y la siguiente empieza en
+  27,72 s. Al leer el JSON, `WhisperTimingParser` toma como redondeo un solape
+  entre dos palabras seguidas de hasta `word_overlap_tolerance_seconds`
+  (`config/whisper.json`, 1 ms) y hace que la segunda empiece donde acaba la
+  primera. Un solape mayor es real y la transcripción se descarta como antes:
+  el SRT se queda sin tiempos por palabra, el storyboard reparte el tiempo por
+  letras y, en STUDIO, SOLO VIDEO y EXPORTAR SRT → TRANSCRIBIR se paran con un
+  error.
 - **Texto y tiempos.** En la ruta estándar manda el **texto del guion**: Whisper
   solo aporta los tiempos. `reconcile_timing_text` alinea palabra a palabra el
   guion con lo que oyó Whisper (`difflib.SequenceMatcher`, sin contar
@@ -666,8 +677,8 @@ En VIDEO (y en GUION → Video) cada imagen se convierte en un clip con Wan
 ```text
 imagen de la escena + su Visual Truth
     ↓  SourceImageAnalyzer        qué hay en la imagen
-    ↓  MotionIntentBuilder        qué movimiento pide la escena
-    ↓  VideoPromptTranslator      prompt de vídeo y negativo (prompts/video/)
+    ↓  MotionIntentBuilder        qué movimiento pide la escena (prompts/video/motion.json)
+    ↓  VideoPromptTranslator      prompt de vídeo y negativo (prompts/video/wan*.txt)
     ↓  ComfyUIVideoAdapter        workflow config/comfyui_wan22_ti2v_i2v_workflow_api.json
 ComfyUI + Wan
     ↓
@@ -679,6 +690,16 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
   `"kind": "video_component"`): tamaño de generación, número de fotogramas, FPS,
   semilla, muestreo y `progress_interval_seconds`. Si en un formato hay más de
   uno o ninguno, la ejecución se para con un error.
+- **Movimiento.** `MotionIntentBuilder` elige uno de tres niveles (`subtle`,
+  `normal`, `intense`) con las palabras clave de `prompts/video/motion.json`:
+  una palabra de quietud en la acción o la interpretación de la escena
+  («sits», «contempla»…) o una restricción visual estática («static
+  composition», «sin movimiento»…) da `subtle`; si no, una de acción intensa
+  («runs», «explota»…) da `intense`; otra acción cualquiera, `normal`; sin
+  acción, `subtle`. Cada nivel declara allí su movimiento de cámara, intensidad,
+  estabilidad y ritmo, que entran en el prompt de Wan con las restricciones de
+  conservar y evitar del mismo archivo y, por cada campo de la escena, la línea
+  de `motion_storyboard_field.txt` (`{campo}`, `{valor}`).
 - **Progreso.** Mientras Wan genera un clip, la terminal escribe
   «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
   «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.
@@ -740,6 +761,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
+| `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
@@ -756,7 +778,7 @@ el código:
 | `templates/` | Cómo se monta cada petición a Ollama: guion (`script.txt`), reintento y ajuste de extensión (`script_retry*.txt`, `script_length*.txt`), storyboard (`storyboard.txt`, `storyboard_scene.txt`) y su ejemplo de respuesta (`storyboard_example.json`) |
 | `criteria/storyboard/` | Criterios de diseño del storyboard |
 | `image/` | Plantilla de la escena (`scene.txt`), objetos con letras y su sustituto (`text_free_objects.json`), identidad visual (`identity/`) y reglas (`rules.json`) |
-| `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) |
+| `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) y movimiento de cada clip: textos de cada nivel, palabras clave que lo eligen y restricciones (`motion.json`, `motion_storyboard_field.txt`; [apartado 17](#17-clips-de-vídeo-i2v)) |
 
 - **Marcadores.** Una plantilla marca con `{nombre}` cada dato que rellena el
   programa (`{tema}`, `{palabras_max}`, `{escenas}`…). Si a una plantilla le
@@ -802,6 +824,18 @@ por defecto:
 | `script` | Guion por tema: `model` y `think` (`true`, `false` o `null`; con `null` no se envía y decide el modelo: `qwen3` razona antes de escribir) |
 | `storyboard` | Storyboard e interpretación de DISEÑO: `model`, `think` (sin declarar, `false`) y `options`, las opciones de Ollama tal cual. `num_ctx` es el contexto en tokens: con 8192 caben unas 25 escenas |
 
+**Whisper** (`config/whisper.json`, lo lee
+`app/modules/subtitles/io/whisper_settings.py`). Todas las claves son
+obligatorias; si falta una o no es válida, la ejecución se para con un error de
+configuración (CONFIG) que nombra el archivo y la clave:
+
+| Clave | Para qué sirve |
+|---|---|
+| `model` | Modelo de Whisper (`medium` en el proyecto). Whisper lo descarga la primera vez que se usa |
+| `device` | Dónde se ejecuta: `cuda` (la GPU) o `cpu` |
+| `language` | Idioma que transcribe (`Spanish`): el de la voz o el del vídeo de STUDIO |
+| `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
+
 **Cómo se cargan:**
 
 - `ProfileResolver` (`app/shared/profile_resolver.py`) descubre los perfiles
@@ -833,7 +867,7 @@ Todos se ejecutan en el propio equipo. Su instalación y sus modelos están en
 | **ComfyUI + Flux** | Imágenes | HTTP local (`http://127.0.0.1:8188`) con el workflow de Flux |
 | **ComfyUI + Wan** | Clips I2V | El mismo servidor, con el workflow de Wan. Sin tiempo límite |
 | **Piper** | Voz | Librería de Python, en el mismo proceso, con el modelo ONNX de cada voz |
-| **Whisper** (OpenAI) | Transcripción y tiempos por palabra | Proceso aparte (`python -m whisper`) |
+| **Whisper** (OpenAI) | Transcripción y tiempos por palabra | Proceso aparte (`python -m whisper`); el modelo, el dispositivo y el idioma están en `config/whisper.json` ([apartado 19](#19-perfiles-y-configuración)) |
 | **NudeNet** | Control de desnudos en las imágenes | Librería de Python, con su modelo ONNX |
 | **FFmpeg** | Mezcla de audio, vídeo final, render de STUDIO, intro/outro y extracción de audio para Whisper | Proceso aparte (`ffmpeg`, `ffprobe`) |
 

@@ -1,0 +1,110 @@
+{
+    "levels": {
+        "subtle": {
+            "camera_motion": "slow micro camera drift",
+            "motion_intensity": "subtle",
+            "stability": "very high",
+            "temporal_rhythm": "slow and steady"
+        },
+        "normal": {
+            "camera_motion": "gentle slow push-in",
+            "motion_intensity": "moderate",
+            "stability": "high",
+            "temporal_rhythm": "natural and controlled"
+        },
+        "intense": {
+            "camera_motion": "controlled short tracking move",
+            "motion_intensity": "strong but controlled",
+            "stability": "high",
+            "temporal_rhythm": "dynamic but stable"
+        }
+    },
+    "intense_action_cues": [
+        "runs",
+        "running",
+        "sprints",
+        "sprinting",
+        "jumps",
+        "jumping",
+        "races",
+        "racing",
+        "falls",
+        "falling",
+        "fights",
+        "fighting",
+        "throws",
+        "throwing",
+        "flees",
+        "chases",
+        "dives",
+        "explodes",
+        "collapses",
+        "corre",
+        "corriendo",
+        "salta",
+        "saltando",
+        "cae",
+        "cayendo",
+        "lucha",
+        "luchando",
+        "lanza",
+        "lanzando",
+        "huye",
+        "persigue",
+        "se zambulle",
+        "explota",
+        "colapsa"
+    ],
+    "static_action_cues": [
+        "sits",
+        "sitting",
+        "seated",
+        "stands still",
+        "standing still",
+        "contemplates",
+        "contemplating",
+        "rests",
+        "resting",
+        "observes",
+        "waiting",
+        "waits",
+        "still life",
+        "sentado",
+        "sentada",
+        "contempla",
+        "descansa",
+        "observa",
+        "espera",
+        "quieto",
+        "quieta",
+        "estático",
+        "estática"
+    ],
+    "static_visual_constraint_cues": [
+        "no motion",
+        "no movement",
+        "static composition",
+        "sin movimiento",
+        "composición estática"
+    ],
+    "preservation_constraints": [
+        "preserve_original_lighting",
+        "preserve_original_framing"
+    ],
+    "storyboard_preservation_constraints": [
+        "contextual_environment_motion_only",
+        "minimal_natural_subject_motion"
+    ],
+    "avoidance_constraints": [
+        "no abrupt motion",
+        "no invented action",
+        "no new subjects",
+        "no geometry deformation",
+        "no identity change"
+    ],
+    "storyboard_avoidance_constraints": [
+        "no action beyond StoryboardScene.visible_action",
+        "no subject beyond StoryboardScene.visible_subject",
+        "no environment beyond StoryboardScene.visible_environment"
+    ]
+}
