@@ -477,6 +477,36 @@ class ScenePromptFilesTest(unittest.TestCase):
             template.text_free_objects,
         )
 
+    def test_real_blueprint_becomes_a_glowing_wireframe_model(self):
+        template = ImageBuilder()._scene_prompt_template()
+        cases = (
+            # The I4 storyboard wrote this one; "glowing" is not repeated.
+            (
+                "A glowing blueprint of a futuristic city slowly unfolds",
+                "A glowing wireframe model of a futuristic city slowly unfolds",
+            ),
+            (
+                "Two glowing blueprints on a desk",
+                "Two glowing wireframe models on a desk",
+            ),
+            (
+                "An engineer studies a blueprint",
+                "An engineer studies a glowing wireframe model",
+            ),
+            (
+                "Blueprints of a motor",
+                "Glowing wireframe models of a motor",
+            ),
+        )
+
+        for scene, expected in cases:
+            with self.subTest(scene=scene):
+                prompt = compose_scene_prompt(
+                    template,
+                    {"filmable_interpretation": scene, "visual_constraints": ""},
+                )
+                self.assertEqual(expected, prompt.prompt)
+
 
 class StoryboardSceneStillComposesTest(unittest.TestCase):
 
