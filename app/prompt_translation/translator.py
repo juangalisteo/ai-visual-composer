@@ -14,6 +14,10 @@ from app.prompt_translation.models import (
     PromptBudgetPolicy,
     PromptCompilationMetrics,
 )
+from app.prompt_translation.scene_template import (
+    ScenePromptTemplate,
+    compose_scene_prompt,
+)
 from app.prompt_translation.observability import (
     PromptCandidateUtilizationObservation,
     PromptCandidateObservation,
@@ -63,9 +67,16 @@ class PromptTranslator:
         self,
         budget_policy: PromptBudgetPolicy | None = None,
         capture_observation: bool = True,
+        scene_template: ScenePromptTemplate | None = None,
     ) -> None:
+        """``scene_template`` writes the prompt from whole fields of the brief.
+
+        Without it, the prompt is compiled from fragments of every visual
+        field, compacted by priority to fit the budget.
+        """
         self.budget_policy = budget_policy or PromptBudgetPolicy()
         self.capture_observation = capture_observation
+        self.scene_template = scene_template
         self.last_observation: PromptTranslationObservation | None = None
 
     def translate_visual_synthesis_result(
@@ -112,6 +123,12 @@ class PromptTranslator:
             )
 
         self.last_observation = None
+        if self.scene_template is not None:
+            return self._translate_with_scene_template(
+                effective_brief,
+                cinematic_direction_set,
+                source_contract,
+            )
         observation_stages: list[PromptCompilationStageObservation] = []
         if self.capture_observation:
             observation_stages.append(
@@ -305,6 +322,150 @@ class PromptTranslator:
                     observation_stages
                 ),
                 compiled_prompt=final_prompt.compiled_prompt,
+                backend_prompt_fingerprint=final_prompt.fingerprint,
+            )
+        return final_prompt
+
+    def _translate_with_scene_template(
+        self,
+        effective_brief: EffectiveVisualBrief,
+        cinematic_direction_set: CinematicDirectionSet | None,
+        source_contract: str,
+    ) -> BackendPrompt:
+        prefix = (
+            f"{source_contract}.brief"
+            if source_contract == "VisualSynthesisResult"
+            else source_contract
+        )
+        composition = compose_scene_prompt(
+            self.scene_template,
+            {
+                field_name: getattr(
+                    effective_brief,
+                    field_name,
+                )
+                for field_name in self.scene_template.fields
+            },
+        )
+        prompt = composition.prompt
+        if not prompt:
+            raise ValueError(
+                "The scene template produced an empty prompt."
+            )
+        tokens = _estimate_tokens(
+            prompt
+        )
+        used_fields = tuple(
+            dict.fromkeys(
+                field_name
+                for field_name, _ in composition.values
+            )
+        )
+        if tokens > self.budget_policy.hard_prompt_tokens:
+            raise PromptBudgetExceededError(
+                tokens=tokens,
+                limit=self.budget_policy.hard_prompt_tokens,
+                dominant_categories=used_fields,
+            )
+        instructions = tuple(
+            BackendPromptInstruction(
+                id=_instruction_id(
+                    f"{prefix}.{field_name}"
+                ),
+                category="scene",
+                source_field=f"{prefix}.{field_name}",
+                value=", ".join(
+                    text
+                    for name, text in composition.values
+                    if name == field_name
+                ),
+            )
+            for field_name in used_fields
+        )
+        trace = BackendPromptTrace(
+            source_effective_brief_fingerprint=effective_brief.fingerprint,
+            items=tuple(
+                BackendPromptTraceItem(
+                    instruction_id=instruction.id,
+                    source_fields=(
+                        instruction.source_field,
+                    ),
+                    transformation="scene_template",
+                )
+                for instruction in instructions
+            ),
+        )
+        metrics = PromptCompilationMetrics(
+            prompt_char_count=len(
+                prompt
+            ),
+            prompt_word_count=len(
+                prompt.split()
+            ),
+            prompt_line_count=1,
+            prompt_token_count=tokens,
+            token_count_method=self.budget_policy.token_count_method,
+            target_budget=self.budget_policy.target_prompt_tokens,
+            warning_threshold=self.budget_policy.warning_prompt_tokens,
+            hard_limit=self.budget_policy.hard_prompt_tokens,
+            compactation_applied=False,
+            compactation_stages=(
+                "scene_template",
+            ),
+            duplicate_fragments_removed=len(
+                composition.repeated
+            ),
+        )
+        unsigned = BackendPrompt(
+            instructions=instructions,
+            trace=trace,
+            compiled_prompt=prompt,
+            budget_policy=self.budget_policy,
+            metrics=metrics,
+        )
+        final_prompt = BackendPrompt(
+            instructions=instructions,
+            trace=trace,
+            compiled_prompt=prompt,
+            budget_policy=self.budget_policy,
+            metrics=metrics,
+            fingerprint=self._fingerprint(
+                unsigned
+            ),
+        )
+        if self.capture_observation:
+            self.last_observation = PromptTranslationObservation(
+                source_contract=source_contract,
+                source_effective_brief_fingerprint=effective_brief.fingerprint,
+                source_cinematic_direction_set_fingerprint=(
+                    cinematic_direction_set.fingerprint
+                    if cinematic_direction_set is not None
+                    else ""
+                ),
+                stages=(
+                    PromptCompilationStageObservation(
+                        stage_id="scene_template",
+                        description=(
+                            "Scene prompt written from whole brief fields "
+                            "with the scene template."
+                        ),
+                        prompt=prompt,
+                        metadata={
+                            "template": self.scene_template.template,
+                            "fields": self.scene_template.fields,
+                            "values": composition.values,
+                            "repeated_values_removed": composition.repeated,
+                            "text_objects_replaced": (
+                                composition.replaced_objects
+                            ),
+                            "estimated_tokens": tokens,
+                            "hard_limit": (
+                                self.budget_policy.hard_prompt_tokens
+                            ),
+                        },
+                    ),
+                ),
+                compiled_prompt=prompt,
                 backend_prompt_fingerprint=final_prompt.fingerprint,
             )
         return final_prompt

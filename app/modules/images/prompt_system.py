@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 
 from app.shared.prompt_library import (
     PromptLibrary,
@@ -157,8 +158,18 @@ class ImagePromptSystem:
         self,
         positive_prompt
     ):
-        rules = self.operational_rules_for_prompt(
-            positive_prompt
+        rules = tuple(
+            rule
+            for rule in (
+                self._without_what_the_scene_says(
+                    rule,
+                    positive_prompt,
+                )
+                for rule in self.operational_rules_for_prompt(
+                    positive_prompt
+                )
+            )
+            if rule is not None
         )
         parts = self._dedupe_labeled_prompt_parts(
             (
@@ -182,6 +193,43 @@ class ImagePromptSystem:
             ),
             parts=parts,
             rules=rules,
+        )
+
+    def _without_what_the_scene_says(
+        self,
+        rule,
+        positive_prompt,
+    ):
+        """Identity rule without the comma-separated parts the scene already says.
+
+        "cinematic light" is not added again to a scene lit by cinematic
+        light; an identity left with nothing is dropped.
+        """
+        if rule.category != "identity":
+            return rule
+        scene = _comparable(
+            positive_prompt
+        )
+        fragments = tuple(
+            fragment.strip()
+            for fragment in rule.text.split(",")
+            if fragment.strip()
+        )
+        kept = tuple(
+            fragment
+            for fragment in fragments
+            if not _says(
+                scene,
+                _comparable(fragment),
+            )
+        )
+        if len(kept) == len(fragments):
+            return rule
+        if not kept:
+            return None
+        return replace(
+            rule,
+            text=", ".join(kept),
         )
 
     def operational_rules_for_prompt(
@@ -430,3 +478,21 @@ class ImagePromptSystem:
             )
 
         return result
+
+
+def _comparable(text):
+    """Lowercase words without punctuation, to compare what two texts say."""
+    return " ".join(
+        re.sub(
+            r"[^\w\s]",
+            " ",
+            str(text or "").lower(),
+        ).split()
+    )
+
+
+def _says(text, part):
+    return bool(part) and re.search(
+        rf"(?<!\w){re.escape(part)}(?:e?s)?(?!\w)",
+        text,
+    ) is not None

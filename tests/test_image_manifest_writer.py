@@ -353,6 +353,7 @@ class ImageManifestWriterTest(unittest.TestCase):
             config = SimpleNamespace(
                 get_profile_config=lambda: {
                     "format": "horizontal",
+                    "images": {"seed": 1000},
                     "video_style": {
                         "width": 640,
                         "height": 360

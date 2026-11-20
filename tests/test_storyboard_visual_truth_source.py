@@ -232,6 +232,7 @@ class StoryboardVisualTruthSourceTest(unittest.TestCase):
                 manifest_path=manifest_path,
                 profile={
                     "format": "horizontal",
+                    "images": {"seed": 1000},
                     "video_style": {
                         "width": 640,
                         "height": 360,

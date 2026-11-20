@@ -72,6 +72,16 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   un archivo o un marcador, error de configuración con la ruta. Lo que llega a
   cada modelo no cambia. Ver
   [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
+- El prompt de cada imagen va en inglés y sin repeticiones: el storyboard
+  escribe sus campos en inglés y la escena entra entera, desde la plantilla
+  `prompts/image/scene.txt`, en vez de trozos de todos los campos partidos
+  por las comas y recortados. La identidad visual no repite lo que ya dice la
+  escena. Ver [ARCHITECTURE.md §16](docs/ARCHITECTURE.md#16-imágenes).
+- El storyboard ya no propone objetos con letras (libros abiertos, periódicos,
+  carteles, pantallas…); si alguno llega al prompt de la imagen, se cambia por
+  su sustituto de `prompts/image/text_free_objects.json`.
+- Cada escena tiene su propia semilla en la imagen (`images.seed` del perfil
+  + número de escena) y se puede repetir; antes todas usaban la del workflow.
 - Los clips de vídeo (Wan) duran 81 fotogramas a 12 fps (6,75 s) en vez de 49
   (4,08 s), en `frames` de `wan_i2v_<formato>.json`: casi no se repiten en las
   escenas de 6–8 s, a cambio de ~45 s más por clip.

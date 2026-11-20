@@ -38,6 +38,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest_path=manifest_path,
                 profile={
                     "format": "test_landscape_format",
+                    "images": {"seed": 1000},
                     "video_style": {
                         "width": 640,
                         "height": 360
@@ -138,6 +139,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
                 manifest_path=manifest_path,
                 profile={
                     "format": "test_portrait_format",
+                    "images": {"seed": 1000},
                     "video_style": {
                         "width": 360,
                         "height": 640
@@ -187,6 +189,7 @@ class ImageBuilderRuntimePromptTest(unittest.TestCase):
             )
             profile = {
                 "format": "test_landscape_format",
+                "images": {"seed": 1000},
                 "video_style": {
                     "width": 640,
                     "height": 360

@@ -4,6 +4,10 @@
     "format": "horizontal",
     "tone": "modo_conciencia",
 
+    "images": {
+        "seed": 521431369277982
+    },
+
     "builders": {
         "script": true,
         "voice": true,

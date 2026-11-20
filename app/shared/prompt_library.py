@@ -81,6 +81,31 @@ class PromptLibrary:
             template,
         )
 
+    def template(self, relative_path, allowed_markers) -> str:
+        """Template filled later, whose markers are any of ``allowed_markers``.
+
+        At least one marker is needed; an unknown one is a CONFIG error.
+        """
+        template = self.text(relative_path)
+        found = tuple(dict.fromkeys(_MARKER.findall(template)))
+        allowed = ", ".join("{" + name + "}" for name in allowed_markers)
+        unknown = [name for name in found if name not in allowed_markers]
+        if unknown:
+            raise _config_error(
+                f"El archivo de prompt «{self.display(relative_path)}» "
+                f"tiene un marcador desconocido: {{{unknown[0]}}}.",
+                f"Quítelo o use solo estos marcadores: {allowed}.",
+                self.display(relative_path),
+            )
+        if not found:
+            raise _config_error(
+                f"El archivo de prompt «{self.display(relative_path)}» "
+                "no tiene ningún marcador.",
+                f"Escriba al menos uno de estos marcadores: {allowed}.",
+                self.display(relative_path),
+            )
+        return template
+
     def mapping(self, relative_path) -> dict:
         """JSON object of one file."""
         content = self.text(relative_path)
@@ -143,6 +168,25 @@ def require_prompt_texts(document, key, library, relative_path) -> tuple:
             library.display(relative_path),
         )
     return tuple(value)
+
+
+def require_prompt_replacements(document, library, relative_path) -> tuple:
+    """``(phrase, replacement)`` pairs of a JSON object of texts, in order."""
+    pairs = []
+    for phrase, replacement in document.items():
+        if (
+            not phrase.strip()
+            or not isinstance(replacement, str)
+            or not replacement.strip()
+        ):
+            raise _config_error(
+                f"El archivo de prompt «{library.display(relative_path)}» "
+                f"no declara con qué se sustituye «{phrase}».",
+                "Escriba cada objeto con su sustituto como texto.",
+                library.display(relative_path),
+            )
+        pairs.append((phrase.strip(), replacement.strip()))
+    return tuple(pairs)
 
 
 def _config_error(user_message, recommended_action, resource):

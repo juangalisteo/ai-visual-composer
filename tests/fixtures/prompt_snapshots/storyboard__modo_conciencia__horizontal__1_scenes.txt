@@ -411,20 +411,20 @@ CRITERIOS DE DISEÑO:
 - Prioriza imágenes claras, impactantes y fáciles de generar.
 - Evita descripciones genéricas o vagas.
 - Evita escenas excesivamente recargadas.
-- No incluyas ningún texto dentro de la imagen.
-- No incluyas letras, palabras ni tipografía.
-- No incluyas carteles, rótulos ni señales.
-- No incluyas pantallas con texto.
-- No incluyas libros abiertos con texto legible.
-- No incluyas texto escrito a mano.
-- No incluyas logotipos.
-- No incluyas marcas de agua.
-- No incluyas subtítulos.
-- Evita cualquier objeto que pueda inducir al modelo a generar texto visible.
+- No propongas nada que lleve letras o números a la vista: libros abiertos, páginas, periódicos, cartas, carteles, rótulos, señales, pantallas, hologramas con datos, pizarras, etiquetas, mapas, fórmulas, ecuaciones, símbolos flotantes, logotipos, marcas de agua ni subtítulos.
+- Si el texto habla de leer, escribir, estudiar, aprender o investigar, muéstralo sin letras: un libro cerrado de tapas lisas, una mirada concentrada, una luz que se enciende, un gesto.
+- Si aparece una persona, nómbrala como persona ("a man", "a woman", "an elderly scientist") y, si es histórica, también por su nombre.
 - No menciones cámaras, lentes, resolución ni parámetros técnicos.
 - `filmable_interpretation` debe describir la imagen filmable final.
 - No escribas párrafos largos.
 - No expliques las decisiones visuales.
+
+IDIOMA DE LOS CAMPOS:
+
+- Escribe en inglés todos los textos del JSON: los generadores de imagen y de vídeo trabajan en inglés.
+- "scene" y "visual_truth_status" no se traducen.
+- "filmable_interpretation" es la descripción que recibe el generador de imágenes: una o dos frases en inglés con la imagen completa (sujeto, acción, entorno, luz y atmósfera), nombrando el sujeto una sola vez.
+- Deja "visual_constraints" como lista vacía ([]): el programa añade las restricciones de la imagen.
 
 SALIDA OBLIGATORIA:
 
@@ -457,24 +457,22 @@ FORMATO EXACTO:
 [
     {
         "scene": 1,
-        "visible_subject": "Sujeto o elemento visible principal",
-        "visible_action": "Accion, estado o cambio visible",
-        "visible_environment": "Entorno fisico observable",
-        "time_context": "Momento temporal observable",
+        "visible_subject": "Main visible subject",
+        "visible_action": "Visible action, state or change",
+        "visible_environment": "Observable physical environment",
+        "time_context": "Observable moment in time",
         "key_objects": [
-            "Objeto visual clave"
+            "Key visual object"
         ],
         "spatial_relationships": [
-            "Relacion espacial observable"
+            "Observable spatial relationship"
         ],
         "continuity_links": [
-            "Elemento de continuidad con otras escenas"
+            "Visual link with the other scenes"
         ],
-        "abstract_source": "Idea abstracta de origen si existe",
-        "filmable_interpretation": "Descripcion filmable concreta de la escena",
-        "visual_constraints": [
-            "Sin texto legible"
-        ],
+        "abstract_source": "Abstract idea behind the scene, if any",
+        "filmable_interpretation": "One or two sentences with the whole image: subject, action, environment, light and atmosphere",
+        "visual_constraints": [],
         "visual_truth_status": "structured"
     }
 ]

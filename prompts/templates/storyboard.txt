@@ -20,6 +20,13 @@ CRITERIOS DE DISEÑO:
 
 {criterios}
 
+IDIOMA DE LOS CAMPOS:
+
+- Escribe en inglés todos los textos del JSON: los generadores de imagen y de vídeo trabajan en inglés.
+- "scene" y "visual_truth_status" no se traducen.
+- "filmable_interpretation" es la descripción que recibe el generador de imágenes: una o dos frases en inglés con la imagen completa (sujeto, acción, entorno, luz y atmósfera), nombrando el sujeto una sola vez.
+- Deja "visual_constraints" como lista vacía ([]): el programa añade las restricciones de la imagen.
+
 SALIDA OBLIGATORIA:
 
 - Devuelve exclusivamente un JSON válido.

@@ -26,16 +26,9 @@
 - Prioriza imágenes claras, impactantes y fáciles de generar.
 - Evita descripciones genéricas o vagas.
 - Evita escenas excesivamente recargadas.
-- No incluyas ningún texto dentro de la imagen.
-- No incluyas letras, palabras ni tipografía.
-- No incluyas carteles, rótulos ni señales.
-- No incluyas pantallas con texto.
-- No incluyas libros abiertos con texto legible.
-- No incluyas texto escrito a mano.
-- No incluyas logotipos.
-- No incluyas marcas de agua.
-- No incluyas subtítulos.
-- Evita cualquier objeto que pueda inducir al modelo a generar texto visible.
+- No propongas nada que lleve letras o números a la vista: libros abiertos, páginas, periódicos, cartas, carteles, rótulos, señales, pantallas, hologramas con datos, pizarras, etiquetas, mapas, fórmulas, ecuaciones, símbolos flotantes, logotipos, marcas de agua ni subtítulos.
+- Si el texto habla de leer, escribir, estudiar, aprender o investigar, muéstralo sin letras: un libro cerrado de tapas lisas, una mirada concentrada, una luz que se enciende, un gesto.
+- Si aparece una persona, nómbrala como persona ("a man", "a woman", "an elderly scientist") y, si es histórica, también por su nombre.
 - No menciones cámaras, lentes, resolución ni parámetros técnicos.
 - `filmable_interpretation` debe describir la imagen filmable final.
 - No escribas párrafos largos.

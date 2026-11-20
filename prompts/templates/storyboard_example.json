@@ -1,24 +1,22 @@
 [
     {
         "scene": 1,
-        "visible_subject": "Sujeto o elemento visible principal",
-        "visible_action": "Accion, estado o cambio visible",
-        "visible_environment": "Entorno fisico observable",
-        "time_context": "Momento temporal observable",
+        "visible_subject": "Main visible subject",
+        "visible_action": "Visible action, state or change",
+        "visible_environment": "Observable physical environment",
+        "time_context": "Observable moment in time",
         "key_objects": [
-            "Objeto visual clave"
+            "Key visual object"
         ],
         "spatial_relationships": [
-            "Relacion espacial observable"
+            "Observable spatial relationship"
         ],
         "continuity_links": [
-            "Elemento de continuidad con otras escenas"
+            "Visual link with the other scenes"
         ],
-        "abstract_source": "Idea abstracta de origen si existe",
-        "filmable_interpretation": "Descripcion filmable concreta de la escena",
-        "visual_constraints": [
-            "Sin texto legible"
-        ],
+        "abstract_source": "Abstract idea behind the scene, if any",
+        "filmable_interpretation": "One or two sentences with the whole image: subject, action, environment, light and atmosphere",
+        "visual_constraints": [],
         "visual_truth_status": "structured"
     }
 ]

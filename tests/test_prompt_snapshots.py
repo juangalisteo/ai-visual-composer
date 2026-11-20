@@ -165,6 +165,24 @@ IMAGE_SCENES = (
         "visual_constraints": [],
         "visual_truth_status": "structured",
     },
+    {
+        "scene": 8,
+        "text": "Un inventor anciano estudia de noche.",
+        "visible_subject": "An elderly inventor",
+        "visible_action": "He studies an open book",
+        "visible_environment": "A dim workshop",
+        "time_context": "Night",
+        "key_objects": ["open book", "oil lamp"],
+        "spatial_relationships": ["The lamp lights the book"],
+        "continuity_links": [],
+        "abstract_source": "Curiosidad",
+        "filmable_interpretation": (
+            "An elderly inventor reads an open book by an oil lamp in a dim "
+            "workshop at night, with cinematic light and deep shadows."
+        ),
+        "visual_constraints": [],
+        "visual_truth_status": "structured",
+    },
 )
 
 WAN_INTENTS = (
