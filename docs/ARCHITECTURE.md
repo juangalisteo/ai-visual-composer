@@ -662,9 +662,6 @@ images/scene_*.png + images/images_manifest.json
   Ningún resultado rechazado llega al manifiesto.
 - **Evidencias.** Cada etapa deja su resultado por escena en
   `images/evidence/`, para poder rastrear de dónde sale cada prompt.
-- Las biblias visuales (`config/visual_bibles/`, `app/visual_bibles/`) y los
-  datos de `data/` existen como capacidad, pero hoy ninguna ruta del menú los
-  carga.
 
 ---
 
@@ -884,7 +881,7 @@ cortaban generaciones válidas ([AGENTS.md](../AGENTS.md) §8).
 
 - El código: `main.py`, `app/`, `certification/` (campaña de certificación de
   la generación de imágenes) y `tools/`.
-- La configuración: `config/`, `prompts/` y `data/`.
+- La configuración: `config/` y `prompts/`.
 - `tests/`.
 - `assets/`: las fuentes Anton y Oswald y `assets/README.md`.
 - Los `.txt` de `input/` (vacíos) y las carpetas de `input/studio/` (con su

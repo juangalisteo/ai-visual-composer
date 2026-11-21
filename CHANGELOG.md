@@ -139,6 +139,11 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   regla por escena usaba dos nombres de carpeta escritos en el código: no se
   podía elegir desde el menú. Los overlays siguen con «Sí» / «No» y eligen
   igual que antes.
+- Código y datos que ninguna ruta cargaba: las biblias visuales
+  (`config/visual_bibles/`, `app/visual_bibles/`), las intenciones y lecturas
+  narrativas (`app/intentions/`, `app/narrative_readings/`, `data/`), el lector
+  `app/shared/simple_yaml.py` y el banco de pruebas OVB-001 (`app/benchmarks/`),
+  con sus tests.
 
 ---
 
