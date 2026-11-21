@@ -1,0 +1,5 @@
+{
+    "input_directory": "ComfyUI/ComfyUI/input",
+    "output_directory": "ComfyUI/ComfyUI/output",
+    "cleanup_after_copy": true
+}

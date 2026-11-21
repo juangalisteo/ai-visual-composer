@@ -8,7 +8,17 @@ from unittest.mock import patch
 
 from app.modules.images.backends import ComfyUIBackend, ComfyUIBackendError
 from app.modules.images.image_builder import ImageBuilder
+from app.shared.comfyui_files import ComfyUISettings
 from app.shared.operational_error import OperationalError
+
+
+# Without the cleanup the workflow is the one sent before I5b (see
+# test_comfyui_cleanup.py for the cleanup).
+KEEP_COMFYUI_FILES = ComfyUISettings(
+    input_directory=Path("test_comfyui/input"),
+    output_directory=Path("test_comfyui/output"),
+    cleanup_after_copy=False,
+)
 
 
 class MockResponse:
@@ -226,7 +236,8 @@ class ComfyUIBackendTest(unittest.TestCase):
                 encoding="utf-8"
             )
             backend = ComfyUIBackend(
-                workflow_path=workflow_path
+                workflow_path=workflow_path,
+                comfyui_settings=KEEP_COMFYUI_FILES,
             )
 
             with patch.object(
@@ -656,7 +667,8 @@ class ComfyUIBackendTest(unittest.TestCase):
             ):
                 image_path = ComfyUIBackend(
                     comfyui_url="http://localhost:8188",
-                    workflow_path=workflow_path
+                    workflow_path=workflow_path,
+                    comfyui_settings=KEEP_COMFYUI_FILES,
                 ).generate(
                     prompt="final prompt",
                     scene_number=1,

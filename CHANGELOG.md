@@ -101,6 +101,14 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   configuración con la ruta. Ver
   [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
 
+- El programa borra de ComfyUI lo que deja en él (cada imagen de Flux, la
+  copia de la imagen de cada clip y sus fotogramas) en cuanto lo ha copiado al
+  proyecto, y nada más: cada trabajo usa su propia carpeta. Se desactiva con
+  `cleanup_after_copy` en `config/comfyui.json`, que declara también las
+  carpetas `input/` y `output/` de ComfyUI. Si un borrado falla, la terminal lo
+  avisa y la ejecución sigue (antes, un fallo al limpiar la copia de la imagen
+  paraba el clip). Ver [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
+
 ### Corregido
 
 - Los mensajes de error de entrada dicen qué falta y qué hacer, en vez de

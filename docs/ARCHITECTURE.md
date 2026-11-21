@@ -705,6 +705,13 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
 - **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
   los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
   clips son intermedios: se borran cuando el vídeo final se ha publicado bien.
+- **Limpieza de ComfyUI.** Cada clip deja en ComfyUI la copia de su imagen
+  (`input/wan_i2v/<trabajo>/`) y sus fotogramas (`output/aivc_wan_lossless/<trabajo>/`),
+  y cada imagen de Flux su PNG (`output/aivc_flux/<trabajo>/`). Con
+  `cleanup_after_copy` de `config/comfyui.json` (activado), en cuanto se han
+  copiado al proyecto se borra la carpeta de ese trabajo y las carpetas vacías
+  que creó encima; nada más de ComfyUI. Si un borrado falla, la terminal lo
+  avisa y la ejecución sigue ([apartado 19](#19-perfiles-y-configuración)).
 - DISEÑO → Video usa el mismo `VideoComponentBuilder` para su único
   clip ([apartado 7](#7-diseño)).
 - La llamada a Wan no tiene tiempo límite, a propósito
@@ -761,6 +768,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
 | `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
+| `config/comfyui.json` | ComfyUI: sus carpetas `input/` y `output/` y si se borra lo que deja el programa una vez copiado al proyecto (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
@@ -834,6 +842,17 @@ configuración (CONFIG) que nombra el archivo y la clave:
 | `device` | Dónde se ejecuta: `cuda` (la GPU) o `cpu` |
 | `language` | Idioma que transcribe (`Spanish`): el de la voz o el del vídeo de STUDIO |
 | `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
+
+**ComfyUI** (`config/comfyui.json`, lo lee `app/shared/comfyui_files.py` la
+primera vez que se genera una imagen o un clip). Todas las claves son
+obligatorias; si falta una o no es válida, error de configuración (CONFIG) con
+el archivo y la clave:
+
+| Clave | Para qué sirve |
+|---|---|
+| `input_directory` | Carpeta `input/` de ComfyUI (`ComfyUI/ComfyUI/input`): ahí se copia la imagen de cada clip de Wan |
+| `output_directory` | Carpeta `output/` de ComfyUI (`ComfyUI/ComfyUI/output`): ahí guarda ComfyUI cada imagen y los fotogramas de cada clip |
+| `cleanup_after_copy` | `true` (por defecto): al terminar cada imagen o clip, una vez copiado al proyecto, se borra de ComfyUI solo lo que dejó ese trabajo (su carpeta, ver [apartado 17](#17-clips-de-vídeo-i2v)). `false`: se conserva todo, como antes |
 
 **Cómo se cargan:**
 
