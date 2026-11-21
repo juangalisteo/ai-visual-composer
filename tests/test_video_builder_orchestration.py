@@ -284,10 +284,10 @@ class VideoBuilderOrchestrationTest(
                 VideoBuildArtifacts(filter_complex="[vout]", command=["ffmpeg"])
             )
 
-            VideoBuilder(overlays_mode="smart").build()
+            VideoBuilder(overlays_mode="on").build()
 
         self.assertEqual(
-            "smart",
+            "on",
             context_factory_class.call_args.kwargs["overlays_mode"],
         )
 

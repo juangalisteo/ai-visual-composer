@@ -561,7 +561,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ) as music_mock, patch.object(
             controller,
             "select_overlays_mode",
-            return_value="smart"
+            return_value="on"
         ) as overlays_mock, patch.object(
             controller,
             "select_intro_outro",
@@ -651,7 +651,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ), patch.object(
             controller,
             "select_overlays_mode",
-            return_value="smart"
+            return_value="on"
         ), patch.object(
             controller,
             "select_intro_outro",
@@ -684,7 +684,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             request.project_name
         )
         self.assertEqual(
-            "smart",
+            "on",
             request.route.overlays_mode
         )
         self.assertIsInstance(request.route, StandardExecutionRequest)
@@ -739,7 +739,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ) as music_mock, patch.object(
             controller,
             "select_overlays_mode",
-            return_value="smart"
+            return_value="on"
         ) as overlays_mock, patch.object(
             controller,
             "select_intro_outro",
@@ -833,7 +833,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ) as music_mock, patch.object(
             controller,
             "select_overlays_mode",
-            return_value="smart"
+            return_value="on"
         ) as overlays_mock, patch.object(
             controller,
             "select_intro_outro",
@@ -877,7 +877,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             request.route.music_category
         )
         self.assertEqual(
-            "smart",
+            "on",
             request.route.overlays_mode
         )
 
@@ -1232,7 +1232,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 ) as music_mock, patch.object(
                     controller,
                     "select_overlays_mode",
-                    return_value="smart"
+                    return_value="on"
                 ) as overlays_mock, patch.object(
                     controller,
                     "select_intro_outro",
@@ -1256,7 +1256,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     overlays_mock.assert_called_once()
                     intro_outro_mock.assert_called_once()
                     self.assertEqual(
-                        "smart",
+                        "on",
                         request.route.overlays_mode
                     )
                 else:
@@ -1306,7 +1306,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ), patch.object(
             controller,
             "select_overlays_mode",
-            return_value="smart",
+            return_value="on",
         ), patch.object(
             controller,
             "select_intro_outro",

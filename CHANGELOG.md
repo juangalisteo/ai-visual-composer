@@ -135,6 +135,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   (`perfil_video_<formato>.json`): ese perfil solo monta clips de Wan, que no
   llevan movimiento añadido. `video_style.motion` solo se lee cuando el montaje
   lleva imágenes fijas (perfiles de guion e imagen, que lo conservan).
+- El modo «smart» de los overlays, en el que la IA elegía las carpetas y una
+  regla por escena usaba dos nombres de carpeta escritos en el código: no se
+  podía elegir desde el menú. Los overlays siguen con «Sí» / «No» y eligen
+  igual que antes.
 
 ---
 

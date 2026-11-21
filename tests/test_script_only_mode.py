@@ -447,7 +447,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                                 script_source="manual",
                                 voice_config_id="masculina",
                                 music_category=None,
-                                overlays_mode="smart",
+                                overlays_mode="on",
                                 intro_outro_plan=intro_outro_selection,
                             ),
                         )
@@ -612,7 +612,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                                 script_source="manual",
                                 voice_config_id="masculina",
                                 music_category=None,
-                                overlays_mode="smart",
+                                overlays_mode="on",
                             ),
                         )
                     )

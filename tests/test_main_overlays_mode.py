@@ -32,7 +32,7 @@ class MainOverlaysModeTest(
                 script_source="generated",
                 voice_config_id="masculina",
                 music_category=None,
-                overlays_mode="smart",
+                overlays_mode="on",
             ),
         )
 
@@ -55,7 +55,7 @@ class MainOverlaysModeTest(
 
         run_application_mock.assert_called_once()
         request = run_application_mock.call_args.kwargs["request"]
-        self.assertEqual("smart", request.route.overlays_mode)
+        self.assertEqual("on", request.route.overlays_mode)
         self.assertEqual("imagen_horizontal", request.operational_profile_key.profile_id)
         self.assertEqual({"request"}, set(run_application_mock.call_args.kwargs))
         self.assertNotIn(

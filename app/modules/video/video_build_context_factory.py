@@ -9,9 +9,6 @@ from app.modules.subtitles.policies.timing import SubtitleTimingResolver
 from app.modules.video.media.audio_resolver import AudioResolver
 from app.modules.video.media.media_loader import MediaLoader
 from app.modules.video.media.timeline_builder import TimelineBuilder
-from app.modules.video.overlays.overlay_folder_resolver import (
-    OverlayFolderResolver
-)
 from app.modules.video.video_build_context import VideoBuildContext
 from app.modules.video.video_config import VideoConfigLoader
 
@@ -256,87 +253,5 @@ class VideoBuildContextFactory:
                 ),
             )
 
-        if overlays_mode != "smart":
-            return video_config
-
-        resolver = OverlayFolderResolver(
-            warnings=self.warnings
-        )
-
-        valid_folders = (
-            resolver.discover_valid_folders(
-                directory=(
-                    video_config.overlays.directory
-                ),
-                extensions=(
-                    video_config.overlays.extensions
-                ),
-                types=(
-                    video_config.overlays.types
-                )
-            )
-        )
-
-        if not valid_folders:
-            return replace(
-                video_config,
-                overlays=replace(
-                    video_config.overlays,
-                    enabled=False,
-                    folders=()
-                )
-            )
-
-        neutral_folder = self._neutral_overlay_folder(
-            valid_folders
-        )
-        if neutral_folder is None:
-            return self._apply_selected_overlay_folder(
-                video_config=video_config,
-                selected_folder=None
-            )
-
-        return replace(
-            video_config,
-            overlays=replace(
-                video_config.overlays,
-                enabled=True,
-                folders=valid_folders,
-                repeat_mode="scene",
-                folder_selection="random",
-                folder_weights={}
-            )
-        )
-
-    def _neutral_overlay_folder(
-        self,
-        folders
-    ):
-        for folder in folders:
-            if folder == "Light Leaks":
-                return folder
-
-        return None
-
-    def _apply_selected_overlay_folder(
-        self,
-        video_config,
-        selected_folder
-    ):
-        enabled = selected_folder is not None
-
-        if selected_folder:
-            folders = (
-                selected_folder,
-            )
-        else:
-            folders = ()
-
-        return replace(
-            video_config,
-            overlays=replace(
-                video_config.overlays,
-                enabled=enabled,
-                folders=folders
-            )
-        )
+        # Any other value keeps the overlays of the profile.
+        return video_config
