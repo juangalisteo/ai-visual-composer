@@ -7,8 +7,10 @@ The snapshots of I4 (PARTE B) were written by the code of ``main`` 4c8238d,
 when these texts still lived in Python: moving them to ``prompts/`` had to
 leave every prompt byte for byte the same. The ``wan_motion__`` snapshots of
 I5a (PARTE D) were written the same way by ``main`` 9e8c52d, when the motion
-keywords and constraints still lived in ``motion_intent_builder.py``. A prompt
-changed on purpose
+keywords and constraints still lived in ``motion_intent_builder.py``. The
+``wan_source__`` snapshots of I5b (PARTE A) were written by ``main`` 798d614,
+when the stability constraints of the source image still lived in
+``source_image_analysis.py``. A prompt changed on purpose
 changes its snapshot; rewrite them with
 ``AIVC_UPDATE_PROMPT_SNAPSHOTS=1 python -m pytest tests/test_prompt_snapshots.py``
 and review the diff.
@@ -19,6 +21,7 @@ so the same function also wrote the snapshots from the old code.
 
 import os
 import shutil
+import struct
 import tempfile
 import unittest
 from contextlib import contextmanager
@@ -320,6 +323,27 @@ WAN_MOTION_CONSTRAINT_PROBES = (
     "composición estática", "NO MOTION", "slow motion",
 )
 
+# Clips prepared as the video stage prepares them, from a real PNG source
+# image: SourceImageAnalyzer adds its stability constraints, then
+# MotionIntentBuilder and VideoPromptTranslator write the WAN prompt.
+WAN_SOURCE_CLIPS = (
+    ("portrait_without_storyboard", (1080, 1920), None),
+    (
+        "landscape_with_storyboard",
+        (1920, 1080),
+        {
+            "visible_subject": "An elderly inventor",
+            "visible_action": "walks slowly across the workshop",
+            "key_objects": ("copper coil",),
+        },
+    ),
+    (
+        "square_intense_action",
+        (1024, 1024),
+        {"visible_action": "The horse sprints across the field"},
+    ),
+)
+
 
 @contextmanager
 def _working_directory(path):
@@ -561,6 +585,42 @@ def _wan_motion_prompts():
     return snapshots
 
 
+def _png_header(width, height):
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + struct.pack(">I", 13)
+        + b"IHDR"
+        + struct.pack(">II", width, height)
+        + b"\x08\x02\x00\x00\x00\x00\x00\x00\x00"
+    )
+
+
+def _wan_source_prompts():
+    from app.domain import StoryboardScene
+    from app.modules.video_component import VideoComponentBuilder
+
+    snapshots = {}
+    for name, (width, height), fields in WAN_SOURCE_CLIPS:
+        source = Path(f"test_source_{name}.png")
+        source.write_bytes(_png_header(width, height))
+        storyboard_scene = (
+            None
+            if fields is None
+            else StoryboardScene(scene_number=1, text="Texto.", **fields)
+        )
+        preparation = VideoComponentBuilder().prepare(
+            source_path=source,
+            storyboard_scene=storyboard_scene,
+        )
+        plan = preparation.prompt_plan
+        snapshots[f"wan_source__{name}__prompt"] = plan.prompt
+        snapshots[f"wan_source__{name}__negative"] = plan.negative_prompt
+        snapshots[f"wan_source__{name}__stability"] = "\n".join(
+            preparation.visual_context.stability_constraints
+        ) + "\n"
+    return snapshots
+
+
 def assemble_prompt_snapshots(code_root=REPOSITORY_ROOT):
     """Every prompt case, assembled inside a temporary project root."""
     with snapshot_project(code_root):
@@ -572,6 +632,7 @@ def assemble_prompt_snapshots(code_root=REPOSITORY_ROOT):
             _image_prompts,
             _wan_prompts,
             _wan_motion_prompts,
+            _wan_source_prompts,
         ):
             snapshots.update(assemble())
         return snapshots
@@ -614,6 +675,7 @@ class PromptSnapshotTest(unittest.TestCase):
             "image__",
             "wan__",
             "wan_motion__",
+            "wan_source__",
         ):
             with self.subTest(stage=stage):
                 self.assertTrue(

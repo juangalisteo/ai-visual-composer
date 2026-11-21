@@ -699,7 +699,9 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
   acción, `subtle`. Cada nivel declara allí su movimiento de cámara, intensidad,
   estabilidad y ritmo, que entran en el prompt de Wan con las restricciones de
   conservar y evitar del mismo archivo y, por cada campo de la escena, la línea
-  de `motion_storyboard_field.txt` (`{campo}`, `{valor}`).
+  de `motion_storyboard_field.txt` (`{campo}`, `{valor}`). Delante van las
+  restricciones de estabilidad de la imagen de origen, que `SourceImageAnalyzer`
+  lee de `source_stability_constraints` del mismo `motion.json`.
 - **Progreso.** Mientras Wan genera un clip, la terminal escribe
   «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
   «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.

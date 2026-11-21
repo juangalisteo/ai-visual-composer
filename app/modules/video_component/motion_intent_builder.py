@@ -2,7 +2,9 @@
 
 Every text lives in ``prompts/video/``: ``motion.json`` holds the texts of
 each motion level, the keywords that choose the level and the fixed
-preservation and avoidance constraints; ``motion_storyboard_field.txt`` says
+preservation and avoidance constraints (also the stability constraints of
+every source image, read by ``SourceImageAnalyzer``);
+``motion_storyboard_field.txt`` says
 how each storyboard field is preserved (``{campo}``, ``{valor}``). A missing
 file, text or marker is a CONFIG error.
 """

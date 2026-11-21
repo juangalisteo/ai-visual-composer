@@ -91,6 +91,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   `motion_storyboard_field.txt`; lo que llega a Wan no cambia. Si falta un
   archivo, un texto o un marcador, error de configuración con la ruta. Ver
   [ARCHITECTURE.md §17](docs/ARCHITECTURE.md#17-clips-de-vídeo-i2v).
+- Las restricciones de estabilidad de la imagen de origen de cada clip de Wan
+  (conservar composición, geometría e identidad) pasan de
+  `source_image_analysis.py` a `prompts/video/motion.json`
+  (`source_stability_constraints`); lo que llega a Wan no cambia.
 - El modelo, el dispositivo y el idioma de Whisper (`medium`, `cuda` y
   `Spanish`) se declaran en `config/whisper.json` en vez de estar en el
   código; la transcripción no cambia. Si falta una clave, error de
