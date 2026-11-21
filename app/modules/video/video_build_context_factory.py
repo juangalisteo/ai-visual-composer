@@ -81,11 +81,12 @@ class VideoBuildContextFactory:
             subtitle_profile=self.subtitle_profile,
             config_manager=self.config_manager,
         )
-        video_config = (
-            config_loader.load()
-            if render_subtitles
-            else config_loader.load(render_subtitles=False)
-        )
+        load_options = {}
+        if not render_subtitles:
+            load_options["render_subtitles"] = False
+        if media_manifest_type == "video_clips":
+            load_options["still_images"] = False
+        video_config = config_loader.load(**load_options)
 
         video_config = (
             self._apply_overlay_mode(

@@ -131,6 +131,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   (sus archivos nunca llegaron a versionarse).
 - La clave `provider` de `config/ai.json`: nadie la leía (el único proveedor es
   Ollama).
+- El zoom y el paneo (`video_style.motion`) de los perfiles de vídeo
+  (`perfil_video_<formato>.json`): ese perfil solo monta clips de Wan, que no
+  llevan movimiento añadido. `video_style.motion` solo se lee cuando el montaje
+  lleva imágenes fijas (perfiles de guion e imagen, que lo conservan).
 
 ---
 

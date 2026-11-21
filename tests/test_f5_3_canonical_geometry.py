@@ -15,11 +15,11 @@ class _ProfileConfigManager:
         return self._profile
 
 
-def _video_config(profile):
+def _video_config(profile, still_images=True):
     return VideoConfigLoader(
         subtitle_profile=None,
         config_manager=_ProfileConfigManager(profile),
-    ).load(render_subtitles=False)
+    ).load(render_subtitles=False, still_images=still_images)
 
 
 def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
@@ -40,7 +40,12 @@ def test_guion_imagen_and_video_use_video_style_dimensions_without_resolution():
 
             assert "resolution" not in profile
             assert (profile["video_style"]["width"], profile["video_style"]["height"]) == dimensions
-            assert (_video_config(profile).width, _video_config(profile).height) == dimensions
+            # The VIDEO profile only montages video clips (no still images).
+            video_config = _video_config(
+                profile,
+                still_images=component is not ProfileComponent.VIDEO,
+            )
+            assert (video_config.width, video_config.height) == dimensions
 
 
 def test_legacy_resolution_and_format_do_not_determine_runtime_pixels():

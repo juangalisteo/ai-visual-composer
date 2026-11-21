@@ -50,7 +50,9 @@ class VideoConfig:
     pixel_format: str
 
     subtitles: SubtitleConfig | None
-    motion: MotionConfig
+    # Zoom and pan of the still images; None when the montage only has
+    # video clips (they get no added motion).
+    motion: MotionConfig | None
     transitions: TransitionConfig
     overlays: OverlayConfig
     visual_effects: VisualEffectConfig
@@ -131,7 +133,14 @@ class VideoConfigLoader:
     def load(
         self,
         render_subtitles=True,
+        still_images=True,
     ):
+        """Video settings of the active profile.
+
+        ``video_style.motion`` (zoom and pan) only acts on still images, so
+        it is read only when the montage has them: a montage of video clips
+        (``still_images=False``) neither needs nor reads it.
+        """
         profile = (
             self.config_manager
             .get_profile_config()
@@ -195,6 +204,8 @@ class VideoConfigLoader:
             MotionConfigLoader().load(
                 profile
             )
+            if still_images
+            else None
         )
 
         transition_config = (

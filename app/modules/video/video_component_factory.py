@@ -15,8 +15,14 @@ class VideoComponentFactory:
         self,
         video_config
     ):
-        motion_builder = MotionBuilder(
-            video_config.motion
+        # A montage of video clips has no motion settings: its clips never
+        # reach the motion builder.
+        motion_builder = (
+            MotionBuilder(
+                video_config.motion
+            )
+            if video_config.motion is not None
+            else None
         )
 
         transition_builder = (

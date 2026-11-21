@@ -726,7 +726,7 @@ orden:
 
 | Etapa | Qué hace | Clave del perfil (`video_style`) |
 |---|---|---|
-| Movimiento | Imagen fija: zoom o desplazamiento (`zoompan`). Clip I2V: se alarga hasta la duración de la escena (ver abajo); no lleva movimiento añadido | `motion` |
+| Movimiento | Imagen fija: zoom o desplazamiento (`zoompan`). Clip I2V: se alarga hasta la duración de la escena (ver abajo); no lleva movimiento añadido | `motion` (solo se lee si el montaje lleva imágenes fijas: los perfiles de guion e imagen lo declaran; el de vídeo, que solo monta clips, no) |
 | Transiciones | Une las escenas con una transición (`xfade`) del tipo y la duración del perfil | `transitions` |
 | Overlays | Superpone vídeos de `assets/videos/overlays/<categoría>/` con mezcla y opacidad | `overlays` |
 | Efectos visuales | Otra capa de vídeos superpuestos, de `assets/videos/visual_effects/` | `visual_effects` |

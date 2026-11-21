@@ -374,10 +374,11 @@ class ProfileCharacterizationTest(unittest.TestCase):
                 subtitle_profile = config.get_subtitle_profile_by_key(
                     _official_subtitle_key(profile_key)
                 )
+                # The VIDEO profile only montages video clips.
                 identity_video = VideoConfigLoader(
                     subtitle_profile=subtitle_profile,
                     config_manager=config,
-                ).load()
+                ).load(still_images=False)
 
                 self.assertEqual(
                     self.resolver.load_operational(
