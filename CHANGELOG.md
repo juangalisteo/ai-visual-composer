@@ -151,7 +151,8 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   (`config/visual_bibles/`, `app/visual_bibles/`), las intenciones y lecturas
   narrativas (`app/intentions/`, `app/narrative_readings/`, `data/`), el lector
   `app/shared/simple_yaml.py` y el banco de pruebas OVB-001 (`app/benchmarks/`),
-  con sus tests.
+  con sus tests, y después sus modelos de dominio (`app/domain/visual_bible.py`,
+  `intention.py` y `narrative_reading.py`), que solo usaban esos módulos.
 - Dos datos que el montaje del vídeo recibía y ya nadie leía tras quitar el modo
   «smart»: el texto de cada escena que llegaba a los overlays y el registro de
   avisos que se pasaba a `VideoBuilder`. Los avisos del resumen siguen igual.

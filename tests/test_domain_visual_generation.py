@@ -9,8 +9,6 @@ from app.domain import (
     GlobalIntent,
     LightingPlan,
     MotionSense,
-    NarrativeFacts,
-    NarrativeReading,
     PhotographyPlan,
     SceneIntent,
     StagingPlan,
@@ -23,25 +21,19 @@ from app.domain import (
 class VisualGenerationDomainModelsTest(unittest.TestCase):
 
     def test_models_are_passive_immutable_domain_structures(self):
-        reading = NarrativeReading(
-            facts=NarrativeFacts(
-                stated=(
-                    "La ley de correspondencia.",
-                )
-            )
+        intent = GlobalIntent(
+            expressive_purpose="La ley de correspondencia."
         )
 
         self.assertEqual(
-            reading.facts.stated,
-            (
-                "La ley de correspondencia.",
-            )
+            intent.expressive_purpose,
+            "La ley de correspondencia."
         )
 
         with self.assertRaises(
             FrozenInstanceError
         ):
-            reading.facts = NarrativeFacts()
+            intent.expressive_purpose = ""
 
     def test_intent_models_keep_global_and_scene_responsibilities(self):
         global_intent = GlobalIntent(
@@ -485,13 +477,6 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
         )
 
     def test_cognitive_language_models_can_be_composed(self):
-        reading = NarrativeReading(
-            facts=NarrativeFacts(
-                stated=(
-                    "A principle is explained.",
-                )
-            )
-        )
         global_intent = GlobalIntent(
             expressive_purpose="Reveal an invisible order.",
             dominant_emotion="wonder",
@@ -568,12 +553,6 @@ class VisualGenerationDomainModelsTest(unittest.TestCase):
             )
         )
 
-        self.assertEqual(
-            reading.facts.stated,
-            (
-                "A principle is explained.",
-            )
-        )
         self.assertEqual(
             global_intent.global_energy,
             "calm"
