@@ -27,7 +27,6 @@ class VideoBuilder:
         subtitle_profile=None,
         intro_outro_selection=None,
         render_subtitles=True,
-        warnings=None,
         config_manager=None,
         project=None,
         overlays_mode=None,
@@ -37,7 +36,6 @@ class VideoBuilder:
             intro_outro_selection
         )
         self.render_subtitles = bool(render_subtitles)
-        self.warnings = warnings
         self.config_manager = config_manager
         self.project = project
         self._overlays_mode = overlays_mode
@@ -68,7 +66,6 @@ class VideoBuilder:
 
         context_factory_options = {
             "subtitle_profile": self.subtitle_profile,
-            "warnings": self.warnings,
             "config_manager": self.config_manager,
             "project": self.project,
         }

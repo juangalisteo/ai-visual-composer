@@ -18,13 +18,11 @@ class VideoBuildContextFactory:
     def __init__(
         self,
         subtitle_profile=None,
-        warnings=None,
         config_manager=None,
         project=None,
         overlays_mode=None,
     ):
         self.subtitle_profile = subtitle_profile
-        self.warnings = warnings
         self.config_manager = config_manager
         self.project = project
         self._overlays_mode = overlays_mode

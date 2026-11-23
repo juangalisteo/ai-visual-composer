@@ -851,7 +851,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         )
         video_builder.assert_called_once_with(
             subtitle_profile=resolved_subtitle_profile,
-            warnings=ANY,
             overlays_mode=None,
             intro_outro_selection=intro_outro_selection,
             config_manager=ANY,
@@ -967,7 +966,6 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
         )
         video_builder.assert_called_once_with(
             subtitle_profile=None,
-            warnings=ANY,
             overlays_mode=None,
             render_subtitles=False,
             config_manager=config,

@@ -31,8 +31,7 @@ class TemporalAssetBuilder:
     def build(
         self,
         scene_index,
-        scene_count,
-        scene_metadata=None
+        scene_count
     ):
         if not self.config.enabled:
             return None
@@ -46,8 +45,7 @@ class TemporalAssetBuilder:
         try:
             asset_path = self.selector.select(
                 scene_index=scene_index,
-                scene_count=scene_count,
-                scene_metadata=scene_metadata
+                scene_count=scene_count
             )
         except (FileNotFoundError, NotADirectoryError) as error:
             raise create_missing_asset_error(

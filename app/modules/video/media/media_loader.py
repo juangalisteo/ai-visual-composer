@@ -12,7 +12,6 @@ class VideoMedia:
     image_paths: tuple[Path, ...]
     media_types: tuple[str, ...] = ()
     media_durations: tuple[float | None, ...] = ()
-    scene_metadata: tuple[dict, ...] = ()
     # Storyboard duration of each entry's scene, in seconds (None if the
     # storyboard does not give it).
     scene_durations: tuple[float | None, ...] = ()
@@ -98,21 +97,13 @@ class MediaLoader:
             )
             scene_entries = image_entries
 
-        scenes = self._load_storyboard_scenes(
+        storyboard_durations = self._load_storyboard_durations(
             storyboard_path
         )
-        scene_metadata = tuple(
-            scenes.get(
-                scene_number,
-                ({}, None)
-            )[0]
-            for scene_number, _ in scene_entries
-        )
         scene_durations = tuple(
-            scenes.get(
-                scene_number,
-                ({}, None)
-            )[1]
+            storyboard_durations.get(
+                scene_number
+            )
             for scene_number, _ in scene_entries
         )
 
@@ -126,7 +117,6 @@ class MediaLoader:
             ),
             media_types=media_types,
             media_durations=media_durations,
-            scene_metadata=scene_metadata,
             scene_durations=scene_durations
         )
 
@@ -225,11 +215,11 @@ class MediaLoader:
 
         return image_entries
 
-    def _load_storyboard_scenes(
+    def _load_storyboard_durations(
         self,
         storyboard_path
     ):
-        """Map each storyboard scene number to its metadata and duration."""
+        """Map each storyboard scene number to its duration in seconds."""
         if storyboard_path is None:
             return {}
 
@@ -258,14 +248,7 @@ class MediaLoader:
         ):
             return {}
 
-        fields = (
-            "visible_subject",
-            "visible_action",
-            "visible_environment",
-            "key_objects",
-            "visual_constraints"
-        )
-        scenes = {}
+        durations = {}
 
         for item in data:
             if not isinstance(
@@ -281,22 +264,13 @@ class MediaLoader:
             if scene_number is None:
                 continue
 
-            scenes[scene_number] = (
-                {
-                    field_name: item.get(
-                        field_name
-                    )
-                    for field_name in fields
-                    if field_name in item
-                },
-                self._positive_seconds(
-                    item.get(
-                        "duration"
-                    )
+            durations[scene_number] = self._positive_seconds(
+                item.get(
+                    "duration"
                 )
             )
 
-        return scenes
+        return durations
 
     @staticmethod
     def _positive_seconds(

@@ -74,10 +74,12 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
                     [
                         {
                             "scene": 1,
+                            "duration": 3.0,
                             "visible_subject": "stone temple",
                         },
                         {
                             "scene": 2,
+                            "duration": 4.5,
                             "visible_subject": "Tesla coil",
                             "visible_action": "electric sparks",
                             "key_objects": [
@@ -120,12 +122,17 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
             media.media_durations
         )
         self.assertEqual(
-            "stone temple",
-            media.scene_metadata[0]["visible_subject"]
+            (
+                3.0,
+                4.5,
+            ),
+            media.scene_durations
         )
-        self.assertEqual(
-            "Tesla coil",
-            media.scene_metadata[1]["visible_subject"]
+        self.assertFalse(
+            hasattr(
+                media,
+                "scene_metadata"
+            )
         )
 
     def test_missing_clip_fails_clearly(self):

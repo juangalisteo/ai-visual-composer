@@ -1,3 +1,4 @@
+import importlib.util
 import inspect
 import unittest
 from dataclasses import FrozenInstanceError, fields, is_dataclass
@@ -10,8 +11,6 @@ from app.domain import (
     GlobalIntent,
     LightingPlan,
     MotionSense,
-    NarrativeFacts,
-    NarrativeReading,
     PhotographyPlan,
     SceneIntent,
     StagingPlan,
@@ -21,7 +20,6 @@ from app.domain import (
 
 
 COGNITIVE_MODELS = (
-    NarrativeReading,
     GlobalIntent,
     SceneIntent,
     VisualStrategy,
@@ -33,6 +31,52 @@ COGNITIVE_MODELS = (
     MotionSense,
     VisualBrief,
     GenerationTranslation,
+)
+
+REMOVED_DOMAIN_MODULES = (
+    "app.domain.visual_bible",
+    "app.domain.intention",
+    "app.domain.narrative_reading",
+)
+
+REMOVED_DOMAIN_MODELS = (
+    "VisualPhilosophy",
+    "Identity",
+    "CinematicLanguage",
+    "RealismAndAbstraction",
+    "SymbolicSystem",
+    "CompositionPrinciples",
+    "PhotographyPrinciples",
+    "LightingPrinciples",
+    "ColorSystem",
+    "TextureAndMateriality",
+    "ContinuityPrinciples",
+    "CreativeLimits",
+    "QualityCriteria",
+    "VisualBible",
+    "IntentionLevel",
+    "CommunicativeIntention",
+    "EmotionalIntention",
+    "CognitiveIntention",
+    "NarrativeIntention",
+    "SymbolicIntention",
+    "TransformativeIntention",
+    "AttentionalIntention",
+    "NegativeIntention",
+    "Intention",
+    "NarrativeConfidence",
+    "NarrativeFacts",
+    "NarrativeEvent",
+    "NarrativeContext",
+    "NarrativeChange",
+    "NarrativeFunction",
+    "NarrativeEntities",
+    "NarrativeRelations",
+    "NarrativeConflict",
+    "NarrativeConcepts",
+    "ExplicitSymbols",
+    "NarrativeContinuity",
+    "NarrativeReading",
 )
 
 
@@ -76,13 +120,6 @@ class CognitiveLanguageDomainTest(unittest.TestCase):
         )
 
         instances = (
-            NarrativeReading(
-                facts=NarrativeFacts(
-                    stated=(
-                        "A thought is presented.",
-                    )
-                )
-            ),
             GlobalIntent(
                 expressive_purpose="Create contemplative clarity."
             ),
@@ -121,18 +158,14 @@ class CognitiveLanguageDomainTest(unittest.TestCase):
         )
 
     def test_models_are_immutable(self):
-        reading = NarrativeReading(
-            facts=NarrativeFacts(
-                stated=(
-                    "A scene happens.",
-                )
-            )
+        intent = GlobalIntent(
+            expressive_purpose="A scene happens."
         )
 
         with self.assertRaises(
             FrozenInstanceError
         ):
-            reading.facts = NarrativeFacts()
+            intent.expressive_purpose = "Another scene."
 
     def test_public_domain_imports_expose_cognitive_models(self):
         for model in COGNITIVE_MODELS:
@@ -294,6 +327,33 @@ class CognitiveLanguageDomainTest(unittest.TestCase):
                         domain,
                         name
                     )
+                )
+
+    def test_unused_visual_bible_intention_and_reading_models_are_gone(self):
+        # I5c: only the modules removed in I5b (N5) used these models.
+        for module in REMOVED_DOMAIN_MODULES:
+            with self.subTest(
+                module=module
+            ):
+                self.assertIsNone(
+                    importlib.util.find_spec(
+                        module
+                    )
+                )
+
+        for name in REMOVED_DOMAIN_MODELS:
+            with self.subTest(
+                name=name
+            ):
+                self.assertFalse(
+                    hasattr(
+                        domain,
+                        name
+                    )
+                )
+                self.assertNotIn(
+                    name,
+                    domain.__all__
                 )
 
 

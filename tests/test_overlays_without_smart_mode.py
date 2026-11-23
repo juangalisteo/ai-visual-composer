@@ -7,13 +7,17 @@ user's (``assets/videos/overlays/<folder>/``).
 """
 
 import importlib.util
+import inspect
 import random
 from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
 
+from app.modules.video.assets.asset_selector import AssetSelector
+from app.modules.video.assets.temporal_asset_builder import TemporalAssetBuilder
 from app.modules.video.config.overlay_config import OverlayConfig
+from app.modules.video.media.media_loader import VideoMedia
 from app.modules.video.overlays.overlay_builder import OverlayBuilder
 from app.modules.video.video_build_context_factory import (
     VideoBuildContextFactory,
@@ -104,7 +108,7 @@ def _write_family(root, name, count):
         (folder / f"{name}_{index}.mp4").write_bytes(b"test")
 
 
-def _selections(root, scene_metadata):
+def _selections(root):
     random.seed(20261121)
     builder = OverlayBuilder(_overlays(root))
     builder.reset()
@@ -112,27 +116,38 @@ def _selections(root, scene_metadata):
         builder.build(
             scene_index=index,
             scene_count=6,
-            scene_metadata=scene_metadata(index),
         )["overlay_path"]
         for index in range(6)
     ]
 
 
-def test_the_scene_text_does_not_choose_the_overlay(tmp_path):
+def test_the_overlays_take_every_folder_of_the_user(tmp_path):
     _write_family(tmp_path, "test_family_a", 2)
     _write_family(tmp_path, "test_family_b", 2)
 
-    without_text = _selections(tmp_path, lambda index: {})
-    with_text = _selections(
-        tmp_path,
-        lambda index: {
-            "visible_subject": "electric sparks and lightning",
-            "key_objects": ["rayo", "chispa"],
-        },
-    )
+    selections = _selections(tmp_path)
 
-    assert with_text == without_text
-    assert {Path(overlay).parent.name for overlay in without_text} == {
+    assert selections == _selections(tmp_path)
+    assert {Path(overlay).parent.name for overlay in selections} == {
         "test_family_a",
         "test_family_b",
     }
+
+
+# I5c: the scene text no longer reaches the overlays (nobody read it after
+# the «smart» mode was removed) and the selector has no folder filter.
+@pytest.mark.parametrize(
+    ("function", "removed"),
+    [
+        (OverlayBuilder.build, "scene_metadata"),
+        (TemporalAssetBuilder.build, "scene_metadata"),
+        (AssetSelector.select, "scene_metadata"),
+        (AssetSelector.select, "allowed_folders"),
+    ],
+)
+def test_the_overlay_chain_receives_no_scene_text(function, removed):
+    assert removed not in inspect.signature(function).parameters
+
+
+def test_the_loaded_media_carry_no_scene_text():
+    assert "scene_metadata" not in VideoMedia.__dataclass_fields__

@@ -130,7 +130,9 @@ de cada etapa:
 - En la ruta estándar y en DISEÑO lo imprime `PipelineTelemetry.complete()`
   (`app/core/pipeline_telemetry.py`). El resumen estándar (`PipelineSummary`) se
   crea al **empezar** la ejecución, porque recoge avisos mientras se ejecuta: el
-  coordinador pasa `summary.warnings` a `VideoBuilder`. Por eso no está en
+  coordinador pasa `summary.warnings` al ajuste de duración del guion
+  (`ScriptDurationFit`), y la telemetría añade los de las métricas que no se
+  pueden medir. Por eso no está en
   `app/cli/`: sacarlo de ahí cambiaría lo que devuelve la ruta estándar sin
   ningún cambio visible.
 - En STUDIO, cada modo devuelve un resultado y `main.py` lo imprime con
@@ -744,7 +746,7 @@ orden:
 - **Overlays.** El menú OVERLAYS («Sí» / «No») decide si la etapa se aplica.
   Con «Sí», `OverlaySelector` elige carpeta (categoría) y archivo según el
   perfil: al azar, con pesos y, si hay alternativa, sin repetir el archivo ni la
-  categoría de la escena anterior.
+  categoría de la escena anterior. El texto de la escena no interviene.
 - **Efectos visuales.** Tienen la misma forma que los overlays, pero se activan
   solo con `visual_effects.enabled` del perfil.
 - **Validación.** El render se escribe primero en un archivo temporal; después

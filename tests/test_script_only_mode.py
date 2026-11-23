@@ -501,8 +501,9 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     FakeConfigManager.subtitle_profile,
                     video_builder.call_args.kwargs["subtitle_profile"],
                 )
-                self.assertIsNotNone(
-                    video_builder.call_args.kwargs["warnings"]
+                self.assertNotIn(
+                    "warnings",
+                    video_builder.call_args.kwargs,
                 )
                 self.assertEqual(
                     intro_outro_selection,
@@ -760,7 +761,6 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 srt_optimizer.assert_not_called()
                 video_builder.assert_called_once_with(
                     subtitle_profile=None,
-                    warnings=ANY,
                     overlays_mode=None,
                     render_subtitles=False,
                     config_manager=ANY,
