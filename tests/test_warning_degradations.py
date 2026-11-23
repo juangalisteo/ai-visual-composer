@@ -10,25 +10,9 @@ from app.core.pipeline_telemetry import (
     PipelineTelemetryArtifacts,
 )
 from app.managers.pipeline_summary import PipelineSummary
-from app.modules.video.overlays.overlay_folder_resolver import (
-    OverlayCategoryResolution,
-    OverlayFolderResolver,
-)
 from app.shared.operational_error import create_operational_error
 from app.shared.operation_warnings import OperationWarnings
 from app.shared.progress_logger import ProgressLogger
-
-
-class _FailingOverlayProvider:
-
-    def generate(self, prompt):
-        raise RuntimeError("service unavailable")
-
-
-class _WorkingOverlayProvider:
-
-    def generate(self, prompt):
-        return "PRIMARY: Electricity\nSECONDARY: NONE"
 
 
 class _AsciiStdout:
@@ -48,42 +32,6 @@ class _AsciiStdout:
 
 
 class WarningDegradationsTest(unittest.TestCase):
-
-    def test_overlay_ai_failure_keeps_neutral_result_and_records_warning(self):
-        summary = PipelineSummary("warnings")
-        resolver = OverlayFolderResolver(
-            provider=_FailingOverlayProvider(),
-            warnings=summary.warnings,
-        )
-
-        result = resolver.resolve_categories(
-            topic="Tema",
-            folders=("Electricity",),
-        )
-
-        self.assertEqual(OverlayCategoryResolution(), result)
-        self.assertEqual(1, len(summary.warnings))
-        warning = summary.warnings.snapshot()[0]
-        self.assertEqual("DEGRADATION", warning.family)
-        self.assertIn("overlays", warning.user_message.lower())
-        self.assertEqual("RuntimeError", warning.technical_metadata["cause_type"])
-        self.assertIn("AVISO", summary.render())
-        self.assertNotIn("OperationalError", summary.render())
-
-    def test_successful_overlay_resolution_does_not_add_a_warning(self):
-        warnings = OperationWarnings()
-        resolver = OverlayFolderResolver(
-            provider=_WorkingOverlayProvider(),
-            warnings=warnings,
-        )
-
-        result = resolver.resolve_categories(
-            topic="Tema",
-            folders=("Electricity",),
-        )
-
-        self.assertEqual("Electricity", result.primary)
-        self.assertEqual(0, len(warnings))
 
     def test_failed_json_metric_is_unavailable_and_warned(self):
         with tempfile.TemporaryDirectory() as directory:

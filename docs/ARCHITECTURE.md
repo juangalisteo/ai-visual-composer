@@ -662,9 +662,6 @@ images/scene_*.png + images/images_manifest.json
   Ningún resultado rechazado llega al manifiesto.
 - **Evidencias.** Cada etapa deja su resultado por escena en
   `images/evidence/`, para poder rastrear de dónde sale cada prompt.
-- Las biblias visuales (`config/visual_bibles/`, `app/visual_bibles/`) y los
-  datos de `data/` existen como capacidad, pero hoy ninguna ruta del menú los
-  carga.
 
 ---
 
@@ -699,13 +696,22 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
   acción, `subtle`. Cada nivel declara allí su movimiento de cámara, intensidad,
   estabilidad y ritmo, que entran en el prompt de Wan con las restricciones de
   conservar y evitar del mismo archivo y, por cada campo de la escena, la línea
-  de `motion_storyboard_field.txt` (`{campo}`, `{valor}`).
+  de `motion_storyboard_field.txt` (`{campo}`, `{valor}`). Delante van las
+  restricciones de estabilidad de la imagen de origen, que `SourceImageAnalyzer`
+  lee de `source_stability_constraints` del mismo `motion.json`.
 - **Progreso.** Mientras Wan genera un clip, la terminal escribe
   «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
   «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.
 - **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
   los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
   clips son intermedios: se borran cuando el vídeo final se ha publicado bien.
+- **Limpieza de ComfyUI.** Cada clip deja en ComfyUI la copia de su imagen
+  (`input/wan_i2v/<trabajo>/`) y sus fotogramas (`output/aivc_wan_lossless/<trabajo>/`),
+  y cada imagen de Flux su PNG (`output/aivc_flux/<trabajo>/`). Con
+  `cleanup_after_copy` de `config/comfyui.json` (activado), en cuanto se han
+  copiado al proyecto se borra la carpeta de ese trabajo y las carpetas vacías
+  que creó encima; nada más de ComfyUI. Si un borrado falla, la terminal lo
+  avisa y la ejecución sigue ([apartado 19](#19-perfiles-y-configuración)).
 - DISEÑO → Video usa el mismo `VideoComponentBuilder` para su único
   clip ([apartado 7](#7-diseño)).
 - La llamada a Wan no tiene tiempo límite, a propósito
@@ -724,7 +730,7 @@ orden:
 
 | Etapa | Qué hace | Clave del perfil (`video_style`) |
 |---|---|---|
-| Movimiento | Imagen fija: zoom o desplazamiento (`zoompan`). Clip I2V: se alarga hasta la duración de la escena (ver abajo); no lleva movimiento añadido | `motion` |
+| Movimiento | Imagen fija: zoom o desplazamiento (`zoompan`). Clip I2V: se alarga hasta la duración de la escena (ver abajo); no lleva movimiento añadido | `motion` (solo se lee si el montaje lleva imágenes fijas: los perfiles de guion e imagen lo declaran; el de vídeo, que solo monta clips, no) |
 | Transiciones | Une las escenas con una transición (`xfade`) del tipo y la duración del perfil | `transitions` |
 | Overlays | Superpone vídeos de `assets/videos/overlays/<categoría>/` con mezcla y opacidad | `overlays` |
 | Efectos visuales | Otra capa de vídeos superpuestos, de `assets/videos/visual_effects/` | `visual_effects` |
@@ -762,6 +768,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
 | `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
+| `config/comfyui.json` | ComfyUI: sus carpetas `input/` y `output/` y si se borra lo que deja el programa una vez copiado al proyecto (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
 | `config/profiles/<componente>/<formato>/*.json` | Perfil operacional; en VIDEO, también el documento Wan |
@@ -836,6 +843,17 @@ configuración (CONFIG) que nombra el archivo y la clave:
 | `language` | Idioma que transcribe (`Spanish`): el de la voz o el del vídeo de STUDIO |
 | `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
 
+**ComfyUI** (`config/comfyui.json`, lo lee `app/shared/comfyui_files.py` la
+primera vez que se genera una imagen o un clip). Todas las claves son
+obligatorias; si falta una o no es válida, error de configuración (CONFIG) con
+el archivo y la clave:
+
+| Clave | Para qué sirve |
+|---|---|
+| `input_directory` | Carpeta `input/` de ComfyUI (`ComfyUI/ComfyUI/input`): ahí se copia la imagen de cada clip de Wan |
+| `output_directory` | Carpeta `output/` de ComfyUI (`ComfyUI/ComfyUI/output`): ahí guarda ComfyUI cada imagen y los fotogramas de cada clip |
+| `cleanup_after_copy` | `true` (por defecto): al terminar cada imagen o clip, una vez copiado al proyecto, se borra de ComfyUI solo lo que dejó ese trabajo (su carpeta, ver [apartado 17](#17-clips-de-vídeo-i2v)). `false`: se conserva todo, como antes |
+
 **Cómo se cargan:**
 
 - `ProfileResolver` (`app/shared/profile_resolver.py`) descubre los perfiles
@@ -882,7 +900,7 @@ cortaban generaciones válidas ([AGENTS.md](../AGENTS.md) §8).
 
 - El código: `main.py`, `app/`, `certification/` (campaña de certificación de
   la generación de imágenes) y `tools/`.
-- La configuración: `config/`, `prompts/` y `data/`.
+- La configuración: `config/` y `prompts/`.
 - `tests/`.
 - `assets/`: las fuentes Anton y Oswald y `assets/README.md`.
 - Los `.txt` de `input/` (vacíos) y las carpetas de `input/studio/` (con su

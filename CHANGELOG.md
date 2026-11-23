@@ -91,11 +91,23 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   `motion_storyboard_field.txt`; lo que llega a Wan no cambia. Si falta un
   archivo, un texto o un marcador, error de configuración con la ruta. Ver
   [ARCHITECTURE.md §17](docs/ARCHITECTURE.md#17-clips-de-vídeo-i2v).
+- Las restricciones de estabilidad de la imagen de origen de cada clip de Wan
+  (conservar composición, geometría e identidad) pasan de
+  `source_image_analysis.py` a `prompts/video/motion.json`
+  (`source_stability_constraints`); lo que llega a Wan no cambia.
 - El modelo, el dispositivo y el idioma de Whisper (`medium`, `cuda` y
   `Spanish`) se declaran en `config/whisper.json` en vez de estar en el
   código; la transcripción no cambia. Si falta una clave, error de
   configuración con la ruta. Ver
   [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
+
+- El programa borra de ComfyUI lo que deja en él (cada imagen de Flux, la
+  copia de la imagen de cada clip y sus fotogramas) en cuanto lo ha copiado al
+  proyecto, y nada más: cada trabajo usa su propia carpeta. Se desactiva con
+  `cleanup_after_copy` en `config/comfyui.json`, que declara también las
+  carpetas `input/` y `output/` de ComfyUI. Si un borrado falla, la terminal lo
+  avisa y la ejecución sigue (antes, un fallo al limpiar la copia de la imagen
+  paraba el clip). Ver [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
 
 ### Corregido
 
@@ -127,6 +139,19 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   (sus archivos nunca llegaron a versionarse).
 - La clave `provider` de `config/ai.json`: nadie la leía (el único proveedor es
   Ollama).
+- El zoom y el paneo (`video_style.motion`) de los perfiles de vídeo
+  (`perfil_video_<formato>.json`): ese perfil solo monta clips de Wan, que no
+  llevan movimiento añadido. `video_style.motion` solo se lee cuando el montaje
+  lleva imágenes fijas (perfiles de guion e imagen, que lo conservan).
+- El modo «smart» de los overlays, en el que la IA elegía las carpetas y una
+  regla por escena usaba dos nombres de carpeta escritos en el código: no se
+  podía elegir desde el menú. Los overlays siguen con «Sí» / «No» y eligen
+  igual que antes.
+- Código y datos que ninguna ruta cargaba: las biblias visuales
+  (`config/visual_bibles/`, `app/visual_bibles/`), las intenciones y lecturas
+  narrativas (`app/intentions/`, `app/narrative_readings/`, `data/`), el lector
+  `app/shared/simple_yaml.py` y el banco de pruebas OVB-001 (`app/benchmarks/`),
+  con sus tests.
 
 ---
 

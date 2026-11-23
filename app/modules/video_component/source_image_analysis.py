@@ -1,3 +1,10 @@
+"""Size, shape and format of the source image of each WAN clip.
+
+The stability constraints every clip keeps from its source image are texts
+sent to WAN, so they live in ``prompts/video/motion.json``
+(``source_stability_constraints``); a missing list is a CONFIG error.
+"""
+
 from math import gcd
 from pathlib import Path
 import struct
@@ -6,12 +13,48 @@ from app.modules.video_component.models import (
     MinimalVisualContext,
     SourceImageAnalysisError,
 )
+from app.modules.video_component.motion_intent_builder import MOTION_TEXTS
+from app.shared.prompt_library import PromptLibrary, require_prompt_texts
 
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
+# List of motion.json with the stability constraints of every source image.
+SOURCE_STABILITY_CONSTRAINTS = "source_stability_constraints"
+
+
+def load_source_stability_constraints(prompts=None) -> tuple[str, ...]:
+    prompts = prompts or PromptLibrary()
+    return require_prompt_texts(
+        prompts.mapping(MOTION_TEXTS),
+        SOURCE_STABILITY_CONSTRAINTS,
+        prompts,
+        MOTION_TEXTS,
+    )
+
 
 class SourceImageAnalyzer:
+    """The constraints are read from prompts/ the first time they are needed."""
+
+    def __init__(
+        self,
+        stability_constraints=None,
+        prompts=None,
+    ):
+        self.prompts = prompts or PromptLibrary()
+        self._stability_constraints = (
+            None
+            if stability_constraints is None
+            else tuple(stability_constraints)
+        )
+
+    @property
+    def stability_constraints(self) -> tuple[str, ...]:
+        if self._stability_constraints is None:
+            self._stability_constraints = (
+                load_source_stability_constraints(self.prompts)
+            )
+        return self._stability_constraints
 
     def analyze(
         self,
@@ -50,11 +93,7 @@ class SourceImageAnalyzer:
                 height
             ),
             image_format=image_format,
-            stability_constraints=(
-                "preserve_source_composition",
-                "preserve_source_geometry",
-                "avoid_identity_or_subject_changes",
-            )
+            stability_constraints=self.stability_constraints
         )
 
     def _read_image_metadata(

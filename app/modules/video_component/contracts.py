@@ -138,6 +138,9 @@ class StagedComfyInput:
     staged_path: Path
     ownership: ComfyUIInputOwnership = ComfyUIInputOwnership.BACKEND_OWNED
     retention: ComfyUIInputRetention = ComfyUIInputRetention.CLEANUP_ON_SUCCESS
+    # Closest folder above the job folder that existed before staging: the
+    # cleanup never deletes it (None: only the job folder is deleted).
+    existing_folder: Path | None = None
 
     def __post_init__(self):
         object.__setattr__(self, "job_id", _required_text(self.job_id, "job_id"))
@@ -149,6 +152,8 @@ class StagedComfyInput:
             raise ValueError("relative_input_name must stay relative to the ComfyUI input root.")
         object.__setattr__(self, "source_path", Path(self.source_path))
         object.__setattr__(self, "staged_path", Path(self.staged_path))
+        if self.existing_folder is not None:
+            object.__setattr__(self, "existing_folder", Path(self.existing_folder))
         object.__setattr__(self, "relative_input_name", relative_name)
         object.__setattr__(self, "ownership", ComfyUIInputOwnership(self.ownership))
         object.__setattr__(self, "retention", ComfyUIInputRetention(self.retention))

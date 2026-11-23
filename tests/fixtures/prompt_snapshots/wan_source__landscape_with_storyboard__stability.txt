@@ -1,0 +1,3 @@
+preserve_source_composition
+preserve_source_geometry
+avoid_identity_or_subject_changes

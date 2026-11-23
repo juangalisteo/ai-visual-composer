@@ -87,6 +87,11 @@
         "sin movimiento",
         "composición estática"
     ],
+    "source_stability_constraints": [
+        "preserve_source_composition",
+        "preserve_source_geometry",
+        "avoid_identity_or_subject_changes"
+    ],
     "preservation_constraints": [
         "preserve_original_lighting",
         "preserve_original_framing"

@@ -23,6 +23,10 @@ from app.modules.video_component.lossless_frame_output import (
     LosslessWanFrameOutput,
     LosslessWanFrameOutputError,
 )
+from app.shared.comfyui_files import (
+    ComfyUIJobFolder,
+    load_comfyui_settings,
+)
 from app.shared.operational_error import (
     OperationalError,
     create_operational_error,
@@ -30,31 +34,70 @@ from app.shared.operational_error import (
 
 
 class ComfyUIVideoBackend:
+    """WAN clips through ComfyUI.
+
+    The ComfyUI folders and whether the files this program leaves there are
+    deleted once copied into the project come from config/comfyui.json (read
+    the first time they are needed); each one can be injected instead.
+    """
 
     def __init__(
         self,
         comfyui_url="http://127.0.0.1:8188",
-        comfyui_input_dir="ComfyUI/ComfyUI/input",
-        comfyui_output_dir="ComfyUI/ComfyUI/output",
+        comfyui_input_dir=None,
+        comfyui_output_dir=None,
         poll_interval_seconds=2,
-        staging_retention=ComfyUIInputRetention.CLEANUP_ON_SUCCESS,
+        staging_retention=None,
         lossless_frame_output=None,
+        comfyui_settings=None,
     ):
         self.comfyui_url = comfyui_url.rstrip(
             "/"
         )
-        self.comfyui_input_dir = Path(
-            comfyui_input_dir
+        self._comfyui_input_dir = (
+            None if comfyui_input_dir is None else Path(comfyui_input_dir)
         )
-        self.comfyui_output_dir = Path(comfyui_output_dir)
+        self._comfyui_output_dir = (
+            None if comfyui_output_dir is None else Path(comfyui_output_dir)
+        )
         self.poll_interval_seconds = poll_interval_seconds
-        self.staging_retention = ComfyUIInputRetention(
-            staging_retention
+        self._staging_retention = (
+            None
+            if staging_retention is None
+            else ComfyUIInputRetention(staging_retention)
         )
+        self._comfyui_settings = comfyui_settings
         self.lossless_frame_output = (
             lossless_frame_output
             or LosslessWanFrameOutput()
         )
+
+    @property
+    def comfyui_settings(self):
+        if self._comfyui_settings is None:
+            self._comfyui_settings = load_comfyui_settings()
+        return self._comfyui_settings
+
+    @property
+    def comfyui_input_dir(self):
+        if self._comfyui_input_dir is None:
+            return self.comfyui_settings.input_directory
+        return self._comfyui_input_dir
+
+    @property
+    def comfyui_output_dir(self):
+        if self._comfyui_output_dir is None:
+            return self.comfyui_settings.output_directory
+        return self._comfyui_output_dir
+
+    @property
+    def staging_retention(self):
+        """Injected, or from ``cleanup_after_copy`` of config/comfyui.json."""
+        if self._staging_retention is not None:
+            return self._staging_retention
+        if self.comfyui_settings.cleanup_after_copy:
+            return ComfyUIInputRetention.CLEANUP_ON_SUCCESS
+        return ComfyUIInputRetention.PRESERVE_ALWAYS
 
     def generate(
         self,
@@ -148,6 +191,10 @@ class ComfyUIVideoBackend:
         plan = prepared_workflow.lossless_capture
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+        capture_folder = ComfyUIJobFolder.before_creating(
+            self.comfyui_output_dir,
+            Path(plan.output_prefix).parent,
+        )
         prompt_id = self.queue_prompt(prepared_workflow.workflow, str(uuid.uuid4()))
         sequence = self.lossless_frame_output.capture(
             history_item=self.wait_for_lossless_capture(prompt_id, plan),
@@ -160,7 +207,7 @@ class ComfyUIVideoBackend:
             sequence,
             output_dir / Path(output_name).with_suffix(".mkv").name,
         )
-        self._cleanup_remote_lossless_output(plan)
+        self._cleanup_remote_lossless_output(plan, capture_folder)
         self.lossless_frame_output.cleanup_after_success(sequence)
         return self._result_from_output(
             prepared_workflow=prepared_workflow,
@@ -514,8 +561,16 @@ class ComfyUIVideoBackend:
             status=status.get("status_str", ""),
         )
 
-    def _cleanup_remote_lossless_output(self, plan):
-        if plan.retention is WanArtifactRetention.PRESERVE_ALWAYS:
+    def _cleanup_remote_lossless_output(self, plan, capture_folder=None):
+        """Delete the frames of this clip from the ComfyUI output.
+
+        Only the folder of this job (and the empty folders it created above
+        it); a failed deletion is a warning and the clip is kept.
+        """
+        if (
+            plan.retention is WanArtifactRetention.PRESERVE_ALWAYS
+            or not self.comfyui_settings.cleanup_after_copy
+        ):
             return
         output_root = self.comfyui_output_dir.resolve()
         capture_directory = (
@@ -530,16 +585,12 @@ class ComfyUIVideoBackend:
                 "La limpieza remota lossless WAN no posee ese output.",
                 category="INPUT_VALIDATION_ERROR",
             )
-        try:
-            if capture_directory.exists():
-                shutil.rmtree(capture_directory)
-        except OSError as error:
-            raise ComfyUIVideoBackendError(
-                "No se pudo limpiar el output lossless WAN poseido.",
-                category="FILESYSTEM_ERROR",
-                exception_type=type(error).__name__,
-                exception_message=str(error),
-            ) from error
+        if capture_folder is None:
+            capture_folder = ComfyUIJobFolder(
+                path=capture_directory,
+                existing=capture_directory.parent,
+            )
+        capture_folder.remove()
 
     def _history(
         self,
@@ -584,6 +635,10 @@ class ComfyUIVideoBackend:
             / job_id
             / _safe_staged_basename(source_image)
         ).as_posix()
+        job_folder = ComfyUIJobFolder.before_creating(
+            self.comfyui_input_dir,
+            Path(relative_input_name).parent,
+        )
         staged_input = StagedComfyInput(
             job_id=job_id,
             source_path=source_image,
@@ -592,6 +647,7 @@ class ComfyUIVideoBackend:
                 self.comfyui_input_dir / relative_input_name
             ),
             retention=self.staging_retention,
+            existing_folder=job_folder.existing,
         )
         staged_input.staged_path.parent.mkdir(
             parents=True,
@@ -620,19 +676,29 @@ class ComfyUIVideoBackend:
             )
 
     def _cleanup_after_success(self, staged_input):
+        """Delete the copy of the source image and the folder of its job.
+
+        Also the empty folders the job created above it; a failed deletion is
+        a warning and the clip is kept.
+        """
         if staged_input.retention is ComfyUIInputRetention.PRESERVE_ALWAYS:
             return
 
-        staged_path = self._owned_staged_path(staged_input)
-        try:
-            staged_path.unlink(missing_ok=True)
-        except OSError as error:
+        self._owned_staged_path(staged_input)
+        job_folder = ComfyUIJobFolder(
+            path=staged_input.staged_path.parent,
+            existing=(
+                staged_input.existing_folder
+                if staged_input.existing_folder is not None
+                else staged_input.staged_path.parent.parent
+            ),
+        )
+        if job_folder.contains(staged_input.source_path):
             raise ComfyUIVideoBackendError(
-                "No se pudo limpiar el input staged de ComfyUI.",
-                category="FILESYSTEM_ERROR",
-                exception_type=type(error).__name__,
-                exception_message=str(error),
-            ) from error
+                "El backend no puede limpiar la imagen fuente original.",
+                category="INPUT_VALIDATION_ERROR",
+            )
+        job_folder.remove()
 
     def _owned_staged_path(self, staged_input):
         input_root = self.comfyui_input_dir.resolve()

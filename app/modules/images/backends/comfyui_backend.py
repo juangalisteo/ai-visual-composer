@@ -5,10 +5,21 @@ import urllib.parse
 import urllib.request
 import uuid
 
+from app.shared.comfyui_files import (
+    ComfyUIJobFolder,
+    load_comfyui_settings,
+)
 from app.shared.operational_error import (
     OperationalError,
     create_operational_error,
 )
+
+
+# Folder of the ComfyUI output where each image saves its file, inside a
+# folder of its own job, when the program cleans ComfyUI after copying it
+# (config/comfyui.json). A new job name also keeps ComfyUI from reusing a
+# cached result that points to a file already deleted.
+IMAGE_JOB_FOLDER = "aivc_flux"
 
 
 class ComfyUIBackendError(RuntimeError):
@@ -41,12 +52,21 @@ class ComfyUIBackend:
     def __init__(
         self,
         comfyui_url="http://127.0.0.1:8188",
-        workflow_path="config/comfyui_flux_workflow_api.json"
+        workflow_path="config/comfyui_flux_workflow_api.json",
+        comfyui_settings=None,
     ):
         self.comfyui_url = comfyui_url
         self.workflow_path = Path(
             workflow_path
         )
+        self._comfyui_settings = comfyui_settings
+
+    @property
+    def comfyui_settings(self):
+        """config/comfyui.json, read the first time an image is generated."""
+        if self._comfyui_settings is None:
+            self._comfyui_settings = load_comfyui_settings()
+        return self._comfyui_settings
 
     def generate(
         self,
@@ -110,6 +130,18 @@ class ComfyUIBackend:
                 seed
             )
 
+        job_folder = None
+        if self.comfyui_settings.cleanup_after_copy:
+            relative_folder = f"{IMAGE_JOB_FOLDER}/{uuid.uuid4().hex}"
+            job_folder = ComfyUIJobFolder.before_creating(
+                self.comfyui_settings.output_directory,
+                relative_folder,
+            )
+            workflow = self.inject_output_prefix(
+                workflow,
+                f"{relative_folder}/scene_{scene_number:03d}",
+            )
+
         client_id = str(
             uuid.uuid4()
         )
@@ -123,11 +155,16 @@ class ComfyUIBackend:
             prompt_id
         )
 
-        return self.download_image(
+        image_path = self.download_image(
             image_info=image_info,
             scene_number=scene_number,
             output_dir=output_dir
         )
+
+        if job_folder is not None:
+            job_folder.remove()
+
+        return image_path
 
     def inject_dimensions(
         self,
@@ -197,6 +234,31 @@ class ComfyUIBackend:
                 "No se encontró ningún nodo con noise_seed "
                 "en el workflow de ComfyUI."
             )
+
+        return workflow
+
+    def inject_output_prefix(
+        self,
+        workflow,
+        filename_prefix
+    ):
+        save_nodes = [
+            node
+            for node in workflow.values()
+            if isinstance(node, dict)
+            and node.get("class_type") == "SaveImage"
+        ]
+
+        if len(save_nodes) != 1:
+            raise ValueError(
+                "El workflow de ComfyUI debe tener un solo nodo "
+                f"SaveImage (tiene {len(save_nodes)})."
+            )
+
+        save_nodes[0].setdefault(
+            "inputs",
+            {}
+        )["filename_prefix"] = filename_prefix
 
         return workflow
 

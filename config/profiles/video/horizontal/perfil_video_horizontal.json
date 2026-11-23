@@ -23,39 +23,6 @@
         "height": 1080,
         "fps": 30,
 
-        "motion": {
-            "enabled": true,
-
-            "internal_scale": 2,
-
-            "base_zoom": 0.05,
-            "zoom_amount": 0.20,
-
-            "pan_zoom_enabled": true,
-            "pan_zoom_start": 0.05,
-
-            "selection": "random",
-            "avoid_repeats": true,
-
-            "types": [
-                "zoom_in",
-                "zoom_out",
-                "pan_left",
-                "pan_right",
-                "pan_up",
-                "pan_down"
-            ],
-
-            "weights": {
-                "zoom_in": 2,
-                "zoom_out": 2,
-                "pan_left": 1,
-                "pan_right": 1,
-                "pan_up": 1,
-                "pan_down": 1
-            }
-        },
-
         "transitions": {
             "enabled": true,
 

@@ -341,10 +341,13 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
                     subtitle_profile=resolved,
                     render_fps=fps
                 )
+                # The VIDEO profile only montages video clips.
                 video_config = VideoConfigLoader(
                     subtitle_profile=resolved,
                     config_manager=config,
-                ).load()
+                ).load(
+                    still_images=component is not ProfileComponent.VIDEO,
+                )
 
             self.assertEqual(expected_cue, resolved.cue_policy)
             self.assertEqual(expected_render, resolved.render_style)
@@ -381,7 +384,7 @@ class SubtitleProfileRuntimePhase4BTest(unittest.TestCase):
         loaded = VideoConfigLoader(
             subtitle_profile=resolved,
             config_manager=config,
-        ).load()
+        ).load(still_images=False)
 
         expected = self._load(
             self._expected_path(

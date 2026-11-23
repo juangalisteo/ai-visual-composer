@@ -76,7 +76,6 @@ AI_VISUAL_COMPOSER
 ├── assets/           Fuentes Anton y Oswald; la música y los overlays los pone cada persona
 ├── certification/    Comprobaciones de certificación real de imagen y vídeo
 ├── config/           Formatos, perfiles operacionales y de subtítulos, workflows de ComfyUI
-├── data/             Intenciones y lecturas narrativas (YAML); hoy solo las usan los tests
 ├── docs/             Toda la documentación del proyecto
 ├── input/            Guion, tema y material de STUDIO que aporta el usuario
 ├── prompts/          Textos de los prompts de guion, storyboard, imagen y vídeo

@@ -145,6 +145,15 @@ class RequiredProfileContractsTest(unittest.TestCase):
                         expected["scene_seconds"],
                         StoryboardBuilder()._scene_seconds(profile),
                     )
+                    # Zoom and pan only act on still images: the VIDEO
+                    # profile only montages WAN clips and does not declare
+                    # them (I5b, N2).
+                    if component is ProfileComponent.VIDEO:
+                        self.assertNotIn("motion", profile["video_style"])
+                        self.assertIsNone(video_config.motion)
+                    else:
+                        self.assertIn("motion", profile["video_style"])
+                        self.assertIsNotNone(video_config.motion)
 
     def test_video_loader_rejects_every_missing_critical_key(self):
         profile_key, profile = self._profile(
@@ -176,10 +185,13 @@ class RequiredProfileContractsTest(unittest.TestCase):
                     self._video_config(profile_key, incomplete)
 
     def test_visual_loaders_reject_missing_critical_keys(self):
-        profile_key, profile = self._profile(
-            ProfileComponent.VIDEO,
-            "vertical",
-        )
+        # Motion is checked with a profile that montages still images; the
+        # other sections with the VIDEO profile, as its montage loads it.
+        profiles = {
+            "motion": self._profile(ProfileComponent.IMAGEN, "vertical"),
+            "transitions": self._profile(ProfileComponent.VIDEO, "vertical"),
+            "fade": self._profile(ProfileComponent.VIDEO, "vertical"),
+        }
         critical_paths = {
             "motion": (
                 "enabled",
@@ -210,6 +222,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
         }
 
         for section, keys in critical_paths.items():
+            profile_key, profile = profiles[section]
             for key in keys:
                 with self.subTest(path=f"video_style.{section}.{key}"):
                     incomplete = deepcopy(profile)
@@ -396,10 +409,14 @@ class RequiredProfileContractsTest(unittest.TestCase):
         manager = SimpleNamespace(
             get_profile_config=lambda: deepcopy(profile),
         )
+        # Each profile is loaded as its montage loads it: the VIDEO profile
+        # only montages video clips.
         return VideoConfigLoader(
             subtitle_profile=subtitle_profile,
             config_manager=manager,
-        ).load()
+        ).load(
+            still_images=profile_key.component is not ProfileComponent.VIDEO,
+        )
 
 
 if __name__ == "__main__":
