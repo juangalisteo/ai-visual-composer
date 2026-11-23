@@ -84,7 +84,11 @@ class TtsProsody:
 
 @dataclass(frozen=True)
 class ResolvedTtsVoice:
-    """Technical voice settings already resolved for one TTS request."""
+    """Technical voice settings already resolved for one TTS request.
+
+    ``seed`` is optional: with it, the backend gives the same audio for the
+    same text in every run; with None, it behaves as without a seed.
+    """
 
     voice_id: str
     backend_key: str
@@ -92,6 +96,7 @@ class ResolvedTtsVoice:
     language: str
     prosody: TtsProsody = field(default_factory=TtsProsody)
     backend_options: Mapping[str, object] = field(default_factory=dict)
+    seed: int | None = None
 
     def __post_init__(self):
         object.__setattr__(self, "voice_id", _required_text(self.voice_id, "voice_id"))
@@ -110,6 +115,8 @@ class ResolvedTtsVoice:
             "backend_options",
             _freeze_options(self.backend_options),
         )
+        if self.seed is not None:
+            require_tts_seed(self.seed)
 
 
 @dataclass(frozen=True)
@@ -303,6 +310,24 @@ def _require_pause_seconds(value: object, name: str) -> None:
             f"prosody.{name} debe ser un número de segundos mayor o igual que 0 "
             f"(0 = sin pausa extra); se recibió {value!r}."
         )
+
+
+TTS_SEED_MAX = 2**32 - 1
+
+
+def require_tts_seed(value: object) -> int:
+    """Return a declared voice seed: an integer from 0 to ``TTS_SEED_MAX``."""
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= TTS_SEED_MAX
+    ):
+        raise TtsVoiceConfigurationError(
+            f"seed debe ser un número entero entre 0 y {TTS_SEED_MAX} "
+            "(sin «seed», la voz no repite el mismo audio); se recibió "
+            f"{value!r}."
+        )
+    return value
 
 
 def _require_positive_int(value: object, name: str) -> None:

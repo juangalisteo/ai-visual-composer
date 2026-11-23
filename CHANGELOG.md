@@ -33,6 +33,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - Ajustes de Ollama en `config/ai.json`: `keep_alive`, modelo y razonamiento
   (`think`) del guion y opciones del storyboard, como el contexto (`num_ctx`).
   Ver [ARCHITECTURE.md §19](docs/ARCHITECTURE.md#19-perfiles-y-configuración).
+- Semilla opcional en cada voz (`seed` en `config/voice_configs/*.json`): con
+  ella, Piper da el mismo audio byte a byte en cada ejecución, para rehacer un
+  vídeo idéntico. Sin ella, todo sigue igual. Ver
+  [VOICEOVER.md §6](docs/VOICEOVER.md#6-repetir-el-mismo-audio-semilla).
 
 ### Cambiado
 
@@ -40,6 +44,9 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   de Edge TTS.
 - Las dos voces de Piper leen algo más despacio que la velocidad normal de su
   modelo. Ver [VOICEOVER.md](docs/VOICEOVER.md).
+- Un valor no válido en el documento de una voz es un error de configuración
+  que nombra ese documento (`config/voice_configs/…`), también al abrir el
+  menú VOZ (antes, en el menú, era un error inesperado).
 - Los subtítulos usan siempre el texto del guion —también en los efectos por
   palabra— y no muestran texto en las pausas de la voz.
 - Los MP3 de la voz y de la mezcla final se exportan a 44 100 Hz, para que

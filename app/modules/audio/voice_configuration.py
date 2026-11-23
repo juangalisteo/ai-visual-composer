@@ -13,6 +13,7 @@ from app.modules.audio.tts_contracts import (
     ResolvedTtsVoice,
     TtsProsody,
     TtsVoiceConfigurationError,
+    require_tts_seed,
 )
 
 
@@ -42,6 +43,7 @@ _VOICE_CONFIGURATION_FIELDS = frozenset(
         "prosody",
         "pacing",
         "backend_options",
+        "seed",
     }
 )
 
@@ -95,6 +97,7 @@ def load_tts_voice_configuration(document: Mapping[str, object]) -> TtsVoiceConf
             },
         ),
         backend_options=backend_options,
+        seed=_optional_seed(document),
     )
     return TtsVoiceConfiguration(
         kind=_required_text(document, "kind"),
@@ -138,6 +141,13 @@ def _optional_pacing(document: Mapping[str, object]) -> SpeechPacing | None:
         )
     except (TypeError, ValueError) as error:
         raise TtsVoiceConfigurationError(f"pacing.{error}") from error
+
+
+def _optional_seed(document: Mapping[str, object]) -> int | None:
+    """Optional seed; when the key is present it must hold a valid seed."""
+    if "seed" not in document:
+        return None
+    return require_tts_seed(document["seed"])
 
 
 def _required_mapping(

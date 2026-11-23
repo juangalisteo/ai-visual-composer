@@ -43,6 +43,7 @@ _ELLIPSIS_BREAK = re.compile(r"(?:…|\.\.\.)[.?!…]*[\"'”’»)\]]*(?=\s)")
 
 PiperVoiceFactory = Callable[[Path, Path], object]
 SynthesisConfigFactory = Callable[..., object]
+SeedSetter = Callable[[int], None]
 
 
 class PiperBackend:
@@ -51,6 +52,9 @@ class PiperBackend:
     The backend has no model cache: each ``synthesize`` call loads exactly the
     model declared by that request.  This makes resource ownership and
     validation local to one workspace and avoids persistent ONNX state.
+
+    A voice that declares ``seed`` fixes the noise Piper samples, so the same
+    text gives the same audio in every run; without it, nothing is fixed.
     """
 
     backend_key = _BACKEND_KEY
@@ -61,12 +65,14 @@ class PiperBackend:
         *,
         piper_voice_factory: PiperVoiceFactory | None = None,
         synthesis_config_factory: SynthesisConfigFactory | None = None,
+        seed_setter: SeedSetter | None = None,
     ):
         self._project_root = _require_project_root(project_root)
         self._piper_voice_factory = piper_voice_factory or _default_piper_voice_factory
         self._synthesis_config_factory = (
             synthesis_config_factory or _default_synthesis_config_factory
         )
+        self._seed_setter = seed_setter or _default_seed_setter
 
     def synthesize(self, request: TtsSynthesisRequest) -> TtsSynthesisResult:
         """Create a validated native-rate WAV only inside request.workspace."""
@@ -90,7 +96,7 @@ class PiperBackend:
             ) from error
 
         try:
-            voice = self._load_voice(model_path, sidecar_path)
+            voice = self._load_voice(model_path, sidecar_path, request.voice.seed)
         except TtsBackendError:
             raise
         except Exception as error:
@@ -199,8 +205,17 @@ class PiperBackend:
             )
         return candidate, sidecar, document
 
-    def _load_voice(self, model_path: Path, sidecar_path: Path) -> object:
+    def _load_voice(
+        self,
+        model_path: Path,
+        sidecar_path: Path,
+        seed: int | None,
+    ) -> object:
         try:
+            if seed is not None:
+                # Before loading: onnxruntime seeds the noise of the model
+                # when it creates its session.
+                self._seed_setter(seed)
             return self._piper_voice_factory(model_path, sidecar_path)
         except TtsBackendError:
             raise
@@ -270,6 +285,17 @@ def _default_piper_voice_factory(model_path: Path, sidecar_path: Path) -> object
         config_path=sidecar_path,
         use_cuda=False,
     )
+
+
+def _default_seed_setter(seed: int) -> None:
+    """Fix onnxruntime's seed for the sessions this process creates next.
+
+    The seed is process-wide: sessions created later in the same process
+    (another voice without ``seed``) also start from it.
+    """
+    import onnxruntime
+
+    onnxruntime.set_seed(seed)
 
 
 def _default_synthesis_config_factory(**kwargs: object) -> object:

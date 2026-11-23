@@ -3,7 +3,9 @@
 import json
 from pathlib import Path
 
+from app.modules.audio.tts_contracts import TtsVoiceConfigurationError
 from app.modules.audio.voice_configuration import load_tts_voice_configuration
+from app.shared.operational_error import create_operational_error
 
 
 class CommonOptions:
@@ -49,7 +51,19 @@ class CommonOptions:
         """Read presentation data from the canonical neutral voice document."""
         with config.open(encoding="utf-8") as voice_config_file:
             document = json.load(voice_config_file)
-        return load_tts_voice_configuration(document).display_name
+        try:
+            return load_tts_voice_configuration(document).display_name
+        except TtsVoiceConfigurationError as error:
+            raise create_operational_error(
+                family="CONFIG",
+                user_message=(
+                    "La configuración de la voz no es válida: "
+                    f"en «{config.as_posix()}», {error}"
+                ),
+                recommended_action=f"Corrige «{config.as_posix()}».",
+                operation="Elegir la voz",
+                resource=config.as_posix(),
+            ) from error
 
     def select_music_category(self, writer=None, selector=None):
         options = ["random", None]
