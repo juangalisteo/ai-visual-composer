@@ -49,7 +49,7 @@ Dos formatos de salida: **vertical 9:16** (Reels, TikTok, YouTube Shorts) y **ho
 
 ## Requisitos e instalación
 
-Windows 10 u 11, Python 3.13 y FFmpeg; además, según la ruta que uses, Ollama, ComfyUI (Flux y Wan), Piper y Whisper en local. Guía completa, paso a paso: **[INSTALL.md](docs/INSTALL.md)**.
+Windows 10 u 11, Python 3.13 y FFmpeg; además, según la ruta que uses, Ollama, ComfyUI (Flux y Wan), Piper (o Chatterbox, con su propio entorno) y Whisper en local. Guía completa, paso a paso: **[INSTALL.md](docs/INSTALL.md)**.
 
 ## Uso
 
@@ -96,6 +96,7 @@ Las reglas para los agentes de IA que colaboran en el desarrollo están en [AGEN
 | **Ollama** | Modelo de lenguaje local: guion, storyboard y dirección cinematográfica |
 | **ComfyUI** (Flux + Wan) | Generación de imágenes y de clips imagen a vídeo (I2V) |
 | **Piper** | Síntesis de voz local |
+| **Chatterbox Multilingual** (Resemble AI) | Voz local más natural, en la GPU. Licencia MIT; proyecto retirado (sin mantenimiento desde agosto de 2026); cada audio lleva una marca de agua inaudible (Perth). Ver [VOICEOVER.md §8](docs/VOICEOVER.md#8-licencias-de-las-voces) |
 | **OpenAI Whisper** | Transcripción y ajuste temporal de subtítulos |
 
 ## Diseño

@@ -84,6 +84,7 @@ def test_piper_voice_documents_are_unique_native_baselines_and_resolve_by_backen
     assert len({configuration.voice.voice_id for configuration in configurations.values()}) == 2
     assert len({configuration.voice.voice_id for configuration in catalog}) == len(catalog)
     assert tuple(path.stem for path in sorted(VOICE_CONFIGS_PATH.glob("*.json"))) == (
+        "chatterbox_multilingual",
         "piper_carlfm",
         "piper_davefx",
     )

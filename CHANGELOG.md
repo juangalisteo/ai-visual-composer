@@ -37,6 +37,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   ella, Piper da el mismo audio byte a byte en cada ejecución, para rehacer un
   vídeo idéntico. Sin ella, todo sigue igual. Ver
   [VOICEOVER.md §6](docs/VOICEOVER.md#6-repetir-el-mismo-audio-semilla).
+- Voz Chatterbox Multilingual (`config/voice_configs/chatterbox_multilingual.json`),
+  más natural que Piper: se genera en la GPU con su propio entorno de Python,
+  en un proceso aparte que termina al acabar y deja la GPU libre. Su entorno y
+  sus pesos van en `models/tts/`, dentro del proyecto; rutas y ajustes en su
+  documento de voz; admite la semilla (`seed`). Ver
+  [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual) e
+  [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-y-chatterbox).
 
 ### Cambiado
 
