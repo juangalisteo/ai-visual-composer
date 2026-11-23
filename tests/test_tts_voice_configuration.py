@@ -48,13 +48,13 @@ def test_current_voice_documents_load_as_neutral_configuration():
     } == {
         "piper_davefx": (
             "piper_voice_davefx",
-            "Davefx",
+            "Piper Davefx (rápida, CPU)",
             "piper_onnx",
             None,
         ),
         "piper_carlfm": (
             "piper_voice_carlfm",
-            "Carlfm",
+            "Piper Carlfm (rápida, CPU)",
             "piper_onnx",
             None,
         ),

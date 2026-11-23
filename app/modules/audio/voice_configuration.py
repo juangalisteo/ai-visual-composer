@@ -44,6 +44,7 @@ _VOICE_CONFIGURATION_FIELDS = frozenset(
         "pacing",
         "backend_options",
         "seed",
+        "menu_order",
     }
 )
 
@@ -57,6 +58,9 @@ class TtsVoiceConfiguration:
     kind: str = _VOICE_CONFIGURATION_KIND
     # None when the document does not declare its reading rate.
     pacing: SpeechPacing | None = None
+    # Position in the VOZ menu (presentation only); None goes after the
+    # numbered ones.
+    menu_order: int | None = None
 
     def __post_init__(self):
         if self.kind != _VOICE_CONFIGURATION_KIND:
@@ -104,6 +108,7 @@ def load_tts_voice_configuration(document: Mapping[str, object]) -> TtsVoiceConf
         voice=voice,
         display_name=_required_text(document, "display_name"),
         pacing=_optional_pacing(document),
+        menu_order=_optional_menu_order(document),
     )
 
 
@@ -141,6 +146,19 @@ def _optional_pacing(document: Mapping[str, object]) -> SpeechPacing | None:
         )
     except (TypeError, ValueError) as error:
         raise TtsVoiceConfigurationError(f"pacing.{error}") from error
+
+
+def _optional_menu_order(document: Mapping[str, object]) -> int | None:
+    """Optional position in the VOZ menu: a whole number from 1."""
+    if "menu_order" not in document:
+        return None
+    value = document["menu_order"]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise TtsVoiceConfigurationError(
+            "menu_order debe ser un número entero mayor que 0 (la posición de "
+            f"la voz en el menú VOZ); se recibió {value!r}."
+        )
+    return value
 
 
 def _optional_seed(document: Mapping[str, object]) -> int | None:

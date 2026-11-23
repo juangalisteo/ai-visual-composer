@@ -542,8 +542,8 @@ def test_voice_builder_reports_a_missing_environment_as_config(tmp_path):
     context = error.value.context
     assert context.family == "CONFIG"
     assert context.user_message == (
-        "La configuración de la voz no es válida: no existe "
-        f"«{PYTHON}» (backend_options.runtime.python_path). Monta el entorno de "
+        "La configuración de la voz «Chatterbox (natural, GPU)» no es válida: "
+        f"no existe «{PYTHON}» (backend_options.runtime.python_path). Monta el entorno de "
         "la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el "
         "documento de la voz."
     )

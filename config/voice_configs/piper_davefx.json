@@ -1,7 +1,8 @@
 {
   "kind": "tts_voice",
   "voice_id": "piper_voice_davefx",
-  "display_name": "Davefx",
+  "display_name": "Piper Davefx (rápida, CPU)",
+  "menu_order": 3,
   "backend_key": "piper_onnx",
   "language": "es-ES",
   "prosody": {

@@ -432,21 +432,27 @@ config/voice_configs/<voz>.json    documento de la voz (backend_key, modelo, idi
         ↓
 TtsBackendRegistry                 elige el backend por su backend_key exacto
         ↓
-PiperBackend                       sintetiza un WAV en una carpeta temporal
+PiperBackend o ChatterboxBackend   sintetiza un WAV en una carpeta temporal
         ↓
 VoiceBuilder                       lo publica como audio/voz.mp3
         ↓
 AudioMixer                         mezcla la voz con la música → audio/audio_final.mp3
 ```
 
-- **Voces.** El menú VOZ lista los documentos de `config/voice_configs/` por su
-  `display_name` («Carlfm», «Davefx»). Qué declara cada documento y cómo se
-  añade una voz: [VOICEOVER.md](VOICEOVER.md#2-documento-de-voz).
+- **Voces.** El menú VOZ lista los documentos de `config/voice_configs/` en el
+  orden que declara su `menu_order` y con su `display_name` («Chatterbox
+  (natural, GPU)», «Piper Carlfm (rápida, CPU)», «Piper Davefx (rápida, CPU)»).
+  Qué declara cada documento y cómo se añade una voz:
+  [VOICEOVER.md](VOICEOVER.md#2-documento-de-voz).
 - **Backend.** `TtsBackendRegistry` (`app/modules/audio/`) solo resuelve claves
   técnicas exactas: nunca elige el backend por un nombre visible, un componente
-  o un menú. Hoy el único registrado es Piper (`PiperBackend`), que se ejecuta
-  en el propio proceso de Python. GUION, IMAGEN y VIDEO solo conocen
-  `VoiceBuilder`.
+  o un menú. Hay dos registrados: Piper (`PiperBackend`), que se ejecuta en el
+  propio proceso de Python, y Chatterbox (`ChatterboxBackend`), que se ejecuta
+  en un proceso aparte con el Python de su entorno y termina al acabar, dejando
+  la GPU libre (`external_tts_process.py`, capacidad común para voces con
+  entorno propio; [VOICEOVER.md](VOICEOVER.md#7-chatterbox-multilingual)).
+  GUION, IMAGEN y VIDEO solo conocen `VoiceBuilder`. Si la voz falla, el
+  programa para con un error que nombra la voz; nunca prueba otra.
 - **Tiempos por palabra.** Piper no devuelve tiempos por palabra. El contrato
   neutro (`TtsWordTiming`) está preparado para un backend que sí los dé; hoy los
   tiempos de los subtítulos salen siempre de Whisper

@@ -2,6 +2,7 @@
   "kind": "tts_voice",
   "voice_id": "chatterbox_multilingual_builtin",
   "display_name": "Chatterbox (natural, GPU)",
+  "menu_order": 1,
   "backend_key": "chatterbox_multilingual",
   "language": "es-ES",
   "prosody": {

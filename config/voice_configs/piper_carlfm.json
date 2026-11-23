@@ -1,7 +1,8 @@
 {
   "kind": "tts_voice",
   "voice_id": "piper_voice_carlfm",
-  "display_name": "Carlfm",
+  "display_name": "Piper Carlfm (rápida, CPU)",
+  "menu_order": 2,
   "backend_key": "piper_onnx",
   "language": "es-ES",
   "prosody": {

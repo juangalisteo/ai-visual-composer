@@ -37,9 +37,18 @@ class CommonOptions:
                 "config/voice_configs."
             )
 
+        # Declared menu_order first (presentation only); the rest after, in
+        # file-name order. sorted() is stable, so ties keep file-name order.
+        entries = sorted(
+            ((config, self._voice_configuration(config)) for config in configs),
+            key=lambda entry: (
+                entry[1].menu_order is None,
+                entry[1].menu_order or 0,
+            ),
+        )
         options = tuple(
-            (config, self._voice_display_name(config))
-            for config in configs
+            (config, configuration.display_name)
+            for config, configuration in entries
         )
         self._write("\nVOZ\n", writer)
         for index, (_, display_name) in enumerate(options, start=1):
@@ -47,12 +56,12 @@ class CommonOptions:
         return self._select(tuple(config for config, _ in options), selector).stem
 
     @staticmethod
-    def _voice_display_name(config: Path) -> str:
+    def _voice_configuration(config: Path):
         """Read presentation data from the canonical neutral voice document."""
         with config.open(encoding="utf-8") as voice_config_file:
             document = json.load(voice_config_file)
         try:
-            return load_tts_voice_configuration(document).display_name
+            return load_tts_voice_configuration(document)
         except TtsVoiceConfigurationError as error:
             raise create_operational_error(
                 family="CONFIG",

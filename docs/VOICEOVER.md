@@ -21,18 +21,19 @@ Otros documentos:
 | Documento | En el menú VOZ | Modelo | Idioma |
 |---|---|---|---|
 | `config/voice_configs/chatterbox_multilingual.json` | Chatterbox (natural, GPU) | Chatterbox Multilingual, su voz de serie: `models/tts/chatterbox/weights/` (apartado 7) | `es-ES` |
-| `config/voice_configs/piper_carlfm.json` | Carlfm | `models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx` | `es-ES` |
-| `config/voice_configs/piper_davefx.json` | Davefx | `models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx` | `es-ES` |
+| `config/voice_configs/piper_carlfm.json` | Piper Carlfm (rápida, CPU) | `models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx` | `es-ES` |
+| `config/voice_configs/piper_davefx.json` | Piper Davefx (rápida, CPU) | `models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx` | `es-ES` |
 
-- El menú VOZ lista los documentos de `config/voice_configs/` por orden de
-  nombre de archivo y muestra su `display_name`:
+- El menú VOZ lista los documentos de `config/voice_configs/` por el
+  `menu_order` que declara cada uno (Chatterbox 1, Carlfm 2, Davefx 3) y
+  muestra su `display_name`. Es el mismo menú en GUION, IMAGEN y VIDEO:
 
   ```text
   VOZ
 
   1. Chatterbox (natural, GPU)
-  2. Carlfm
-  3. Davefx
+  2. Piper Carlfm (rápida, CPU)
+  3. Piper Davefx (rápida, CPU)
   ```
 
 - Si una ejecución no trae una voz elegida, `ConfigManager` usa
@@ -53,8 +54,13 @@ Otros documentos:
   Chatterbox) no están en el repositorio: se descargan al instalar
   ([INSTALL.md](INSTALL.md)).
 - Si la voz elegida falla, el programa para con un error que dice qué voz
-  falló y por qué; nunca cambia de voz por su cuenta. Se puede elegir otra
-  voz en el menú VOZ.
+  falló, qué pasó y qué hacer; nunca cambia de voz por su cuenta. Por ejemplo,
+  si a Chatterbox le falta memoria en la GPU:
+
+  ```text
+  No se pudo generar la voz «Chatterbox (natural, GPU)»: Chatterbox falló: OutOfMemoryError: CUDA out of memory. …
+  Elige otra voz en el menú VOZ y vuelve a lanzar la operación, o revisa la instalación de esta voz (docs/INSTALL.md, apartado 10). El programa no cambia de voz por su cuenta.
+  ```
 
 ---
 
@@ -68,7 +74,8 @@ que rechaza las claves que no conoce.
 |---|---|
 | `kind` | Siempre `tts_voice` |
 | `voice_id` | Identidad técnica de la voz |
-| `display_name` | Nombre en el menú VOZ; es solo presentación |
+| `display_name` | Nombre en el menú VOZ y en los errores de la voz; es solo presentación |
+| `menu_order` | Posición en el menú VOZ, opcional: un número entero desde 1. Las voces sin él van detrás, por nombre de archivo; con el mismo número, también por nombre de archivo. Es solo presentación |
 | `backend_key` | Qué programa sintetiza la voz: `piper_onnx` (Piper) o `chatterbox_multilingual` (Chatterbox, apartado 7) |
 | `language` | Idioma de la voz. Con Piper tiene que coincidir con el del modelo (`espeak.voice` de su `.onnx.json`); Chatterbox usa su primera parte (`es`) |
 | `prosody.speaking_rate` | Velocidad: 1.0 es la del modelo; con otro valor, Piper divide entre él el `length_scale` del modelo |
@@ -315,7 +322,7 @@ que necesite su propio entorno solo añade su script y sus opciones.
   ejemplo:
 
   ```text
-  La configuración de la voz no es válida: no existe «models/tts/chatterbox/env/Scripts/python.exe» (backend_options.runtime.python_path). Monta el entorno de la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el documento de la voz.
+  La configuración de la voz «Chatterbox (natural, GPU)» no es válida: no existe «models/tts/chatterbox/env/Scripts/python.exe» (backend_options.runtime.python_path). Monta el entorno de la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el documento de la voz.
   ```
 
 - Si el proceso falla (por ejemplo, sin memoria en la GPU), el error dice qué
