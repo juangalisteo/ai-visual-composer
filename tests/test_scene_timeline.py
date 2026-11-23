@@ -152,11 +152,7 @@ def test_media_loader_reads_the_storyboard_duration_of_each_clip(tmp_path):
     )
 
     assert media.scene_durations == (6.6, None, None)
-    assert media.scene_metadata == (
-        {"visible_subject": "uno"},
-        {"visible_subject": "dos"},
-        {},
-    )
+    assert not hasattr(media, "scene_metadata")
 
 
 def test_media_loader_reads_the_storyboard_duration_of_each_image(tmp_path):
@@ -188,6 +184,36 @@ def test_media_loader_reads_the_storyboard_duration_of_each_image(tmp_path):
     )
 
     assert media.scene_durations == (7.4, 6.6)
+
+
+def test_media_loader_gives_no_duration_to_a_scene_missing_from_the_storyboard(
+    tmp_path,
+):
+    images = []
+    for number in (1, 2):
+        image = tmp_path / f"scene_{number:03d}.png"
+        image.write_bytes(b"png")
+        images.append({"scene": number, "image": str(image)})
+    manifest = tmp_path / "images.json"
+    manifest.write_text(json.dumps(images), encoding="utf-8")
+    storyboard = tmp_path / "storyboard.json"
+    storyboard.write_text(
+        json.dumps([{"scene": 1, "duration": 6.6}]),
+        encoding="utf-8",
+    )
+    audio = tmp_path / "audio.mp3"
+    audio.write_bytes(b"audio")
+
+    media = MediaLoader().load(
+        audio_path=audio,
+        subtitle_path=None,
+        images_manifest_path=manifest,
+        output_path=tmp_path / "out.mp4",
+        storyboard_path=storyboard,
+        render_subtitles=False,
+    )
+
+    assert media.scene_durations == (6.6, None)
 
 
 class _MotionBuilder:
@@ -260,7 +286,7 @@ class _LayerBuilder:
     def __init__(self, config):
         self.config = config
 
-    def build(self, scene_index, scene_count, scene_metadata=None):
+    def build(self, scene_index, scene_count):
         return {
             "overlay": f"layer_{scene_index}.mov",
             "effect": f"layer_{scene_index}.mov",
@@ -281,7 +307,7 @@ def _layer_graph():
                 overlays=SimpleNamespace(enabled=True),
                 visual_effects=SimpleNamespace(enabled=True),
             ),
-            media=SimpleNamespace(scene_metadata=()),
+            media=SimpleNamespace(),
             timeline=_timeline(),
             first_overlay_input=3,
             first_visual_effect_input=3,

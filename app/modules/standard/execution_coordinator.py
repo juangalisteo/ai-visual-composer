@@ -366,7 +366,6 @@ class StandardExecutionCoordinator:
         if "video" in stages:
             video_builder_options = {
                 "subtitle_profile": subtitle_profile,
-                "warnings": summary.warnings,
                 "overlays_mode": overlays_mode,
             }
             if not render_subtitles:

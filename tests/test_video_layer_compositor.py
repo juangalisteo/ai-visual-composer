@@ -27,8 +27,7 @@ class FakeOverlayBuilder:
     def build(
         self,
         scene_index,
-        scene_count,
-        scene_metadata=None
+        scene_count
     ):
         return {
             "overlay": "overlay.mov",

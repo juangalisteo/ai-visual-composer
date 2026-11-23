@@ -1,3 +1,4 @@
+import inspect
 import io
 import json
 import tempfile
@@ -10,6 +11,8 @@ from app.core.pipeline_telemetry import (
     PipelineTelemetryArtifacts,
 )
 from app.managers.pipeline_summary import PipelineSummary
+from app.modules.video.video_build_context_factory import VideoBuildContextFactory
+from app.modules.video.video_builder import VideoBuilder
 from app.shared.operational_error import create_operational_error
 from app.shared.operation_warnings import OperationWarnings
 from app.shared.progress_logger import ProgressLogger
@@ -124,6 +127,16 @@ class WarningDegradationsTest(unittest.TestCase):
 
         self.assertEqual("FILESYSTEM", error.context.family)
         self.assertFalse(hasattr(error, "warning"))
+
+    def test_the_video_assembly_takes_no_warnings_channel(self):
+        # I5c: the pipeline warnings reached VideoBuilder and its context
+        # factory, but nothing there added to them after the «smart» mode.
+        for video_class in (VideoBuilder, VideoBuildContextFactory):
+            with self.subTest(video_class=video_class.__name__):
+                self.assertNotIn(
+                    "warnings",
+                    inspect.signature(video_class).parameters,
+                )
 
 
 if __name__ == "__main__":

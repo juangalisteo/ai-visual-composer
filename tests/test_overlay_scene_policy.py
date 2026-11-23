@@ -24,14 +24,12 @@ class RecordingOverlayBuilder:
     def build(
         self,
         scene_index,
-        scene_count,
-        scene_metadata=None
+        scene_count
     ):
         self.calls.append(
             (
                 scene_index,
-                scene_count,
-                scene_metadata
+                scene_count
             )
         )
         return {
@@ -61,19 +59,7 @@ class OverlaySceneTimingTest(
                         enabled=True
                     )
                 ),
-                media=SimpleNamespace(
-                    scene_metadata=(
-                        {
-                            "visible_subject": "scene one"
-                        },
-                        {
-                            "visible_subject": "scene two"
-                        },
-                        {
-                            "visible_subject": "scene three"
-                        }
-                    )
-                ),
+                media=SimpleNamespace(),
                 timeline=SimpleNamespace(
                     audio_duration=5.0,
                     image_duration=2.0
@@ -101,15 +87,9 @@ class OverlaySceneTimingTest(
 
         self.assertEqual(
             [
-                (0, 3, {
-                    "visible_subject": "scene one"
-                }),
-                (1, 3, {
-                    "visible_subject": "scene two"
-                }),
-                (2, 3, {
-                    "visible_subject": "scene three"
-                })
+                (0, 3),
+                (1, 3),
+                (2, 3)
             ],
             overlay_builder.calls
         )
@@ -133,11 +113,11 @@ class OverlaySceneTimingTest(
         )
 
 
-class OverlaySceneMetadataLoaderTest(
+class OverlaySceneLoaderTest(
     unittest.TestCase
 ):
 
-    def test_media_loader_aligns_visual_truth_with_image_scenes(
+    def test_media_loader_aligns_storyboard_scenes_without_scene_text(
         self
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -184,11 +164,13 @@ class OverlaySceneMetadataLoaderTest(
                     [
                         {
                             "scene": 1,
+                            "duration": 3.0,
                             "visible_subject": "stone temple",
                             "visible_action": "sunlight moves"
                         },
                         {
                             "scene": 2,
+                            "duration": 4.5,
                             "visible_subject": "Tesla coil",
                             "visible_action": (
                                 "electric sparks cross the coil"
@@ -218,16 +200,17 @@ class OverlaySceneMetadataLoaderTest(
             media.image_paths
         )
         self.assertEqual(
-            "Tesla coil",
-            media.scene_metadata[0][
-                "visible_subject"
-            ]
+            (
+                4.5,
+                3.0
+            ),
+            media.scene_durations
         )
-        self.assertEqual(
-            "stone temple",
-            media.scene_metadata[1][
-                "visible_subject"
-            ]
+        self.assertFalse(
+            hasattr(
+                media,
+                "scene_metadata"
+            )
         )
 
 if __name__ == "__main__":

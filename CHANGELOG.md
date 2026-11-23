@@ -152,6 +152,9 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   narrativas (`app/intentions/`, `app/narrative_readings/`, `data/`), el lector
   `app/shared/simple_yaml.py` y el banco de pruebas OVB-001 (`app/benchmarks/`),
   con sus tests.
+- Dos datos que el montaje del vídeo recibía y ya nadie leía tras quitar el modo
+  «smart»: el texto de cada escena que llegaba a los overlays y el registro de
+  avisos que se pasaba a `VideoBuilder`. Los avisos del resumen siguen igual.
 
 ---
 

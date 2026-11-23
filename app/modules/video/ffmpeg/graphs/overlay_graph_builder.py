@@ -79,7 +79,6 @@ class OverlayGraphBuilder(
         )
 
         operations = self._build_operations(
-            context=context,
             scene_count=scene_count,
             total_duration=(
                 timeline.audio_duration
@@ -145,7 +144,6 @@ class OverlayGraphBuilder(
 
     def _build_operations(
         self,
-        context,
         scene_count,
         total_duration,
         spans
@@ -157,11 +155,7 @@ class OverlayGraphBuilder(
         if repeat_mode == "full_video":
             overlay = self.overlay_builder.build(
                 scene_index=0,
-                scene_count=scene_count,
-                scene_metadata=self._scene_metadata(
-                    context,
-                    0
-                )
+                scene_count=scene_count
             )
 
             if overlay["overlay"] is None:
@@ -193,11 +187,7 @@ class OverlayGraphBuilder(
 
                 overlay = self.overlay_builder.build(
                     scene_index=scene_index,
-                    scene_count=scene_count,
-                    scene_metadata=self._scene_metadata(
-                        context,
-                        scene_index
-                    )
+                    scene_count=scene_count
                 )
 
                 if overlay["overlay"] is None:
@@ -220,11 +210,7 @@ class OverlayGraphBuilder(
         while current_time < total_duration:
             overlay = self.overlay_builder.build(
                 scene_index=interval_index,
-                scene_count=scene_count,
-                scene_metadata=self._scene_metadata(
-                    context,
-                    interval_index
-                )
+                scene_count=scene_count
             )
 
             duration = float(
@@ -253,34 +239,6 @@ class OverlayGraphBuilder(
             interval_index += 1
 
         return operations
-
-    def _scene_metadata(
-        self,
-        context,
-        scene_index
-    ):
-        media = getattr(
-            context,
-            "media",
-            None
-        )
-        metadata = getattr(
-            media,
-            "scene_metadata",
-            ()
-        )
-
-        if scene_index >= len(metadata):
-            return {}
-
-        item = metadata[
-            scene_index
-        ]
-
-        return item if isinstance(
-            item,
-            dict
-        ) else {}
 
     def _operation(
         self,
