@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from app.modules.audio.tts_contracts import TtsVoiceConfigurationError
 from app.modules.audio.voice_configuration import load_tts_voice_configuration
 from app.shared.profile_identity import OperationalProfileKey
 from app.shared.profile_resolver import ProfileResolver
@@ -87,23 +88,29 @@ class ConfigManager:
         return self.load_json(self.config_path / "ai.json")
 
     def get_tts_voice_configuration(self):
-        """Load the canonical, backend-neutral configuration of one voice."""
-        return load_tts_voice_configuration(
-            self._voice_config_document()
-        )
+        """Load the canonical, backend-neutral configuration of one voice.
 
-    def _voice_config_document(self):
+        An invalid value names the document that holds it.
+        """
+        voice_config_path = self._voice_config_path()
+        document = self.load_json(voice_config_path)
+        try:
+            return load_tts_voice_configuration(document)
+        except TtsVoiceConfigurationError as error:
+            raise TtsVoiceConfigurationError(
+                f"en «{voice_config_path.as_posix()}», {error}"
+            ) from error
+
+    def _voice_config_path(self):
         selected_voice_config = self._voice_config_id
         if selected_voice_config is None:
             selected_voice_config = "piper_davefx"
 
-        voice_config_path = (
+        return (
             self.config_path
             / "voice_configs"
             / f"{selected_voice_config}.json"
         )
-
-        return self.load_json(voice_config_path)
 
     def get_profile_config(self):
         profile_key = self.get_operational_profile_key()

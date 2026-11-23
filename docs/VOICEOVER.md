@@ -2,7 +2,7 @@
 
 Este documento es la referencia de la voz: qué voces hay, cómo se declara cada
 una, cuántas palabras se piden al guion generado, a qué ritmo lee de verdad
-Piper y cómo hace las pausas.
+Piper, cómo hace las pausas y cómo repetir el mismo audio (semilla).
 
 Otros documentos:
 
@@ -68,14 +68,18 @@ que rechaza las claves que no conoce.
 | `prosody.paragraph_pause_seconds` | Silencio extra, en segundos, entre párrafos (una o más líneas en blanco). Opcional: sin la clave, 0. Apartado 5 |
 | `backend_options.model.onnx_path` | Ruta del modelo `.onnx`, dentro de `models/audio/piper/`; su `.onnx.json` tiene que estar al lado |
 | `backend_options.synthesis` | Ajustes de Piper, opcionales: `length_scale`, `noise_scale`, `noise_w_scale`, `normalize_audio` y `volume`. `length_scale` y `volume` mandan sobre `prosody` |
+| `seed` | Semilla, opcional: un número entero de 0 a 4294967295. Con ella, el mismo texto da siempre el mismo audio; sin la clave, cada ejecución da un audio un poco distinto. Apartado 6 |
 
 `prosody` solo admite esas cuatro claves. Un valor que no vale (o una clave
-mal escrita) detiene la generación de la voz con un mensaje que nombra la
-clave, por ejemplo:
+mal escrita) detiene la generación de la voz con un error de configuración
+(CONFIG) que nombra el documento y la clave, por ejemplo:
 
 ```text
-La configuración de la voz no es válida: prosody.paragraph_pause_seconds debe ser un número de segundos mayor o igual que 0 (0 = sin pausa extra); se recibió -1.
+La configuración de la voz no es válida: en «config/voice_configs/piper_davefx.json», prosody.paragraph_pause_seconds debe ser un número de segundos mayor o igual que 0 (0 = sin pausa extra); se recibió -1.
 ```
+
+El menú VOZ lee todos los documentos para mostrar sus nombres, así que un
+valor que no vale en cualquiera de ellos da ese mismo error al abrir el menú.
 
 Añadir una voz de Piper es copiar su modelo y su `.onnx.json` en una carpeta de
 `models/audio/piper/` y escribir su documento en `config/voice_configs/`:
@@ -207,3 +211,40 @@ Lo que decide dónde acaba una frase es Piper: tras una abreviatura con punto
 
 Los subtítulos siguen la voz: Whisper da los tiempos de cada palabra y en las
 pausas no hay texto ([SUBTITLES.md](SUBTITLES.md)).
+
+---
+
+## 6. Repetir el mismo audio (semilla)
+
+Piper añade un poco de azar al leer: con el mismo texto, cada ejecución del programa da un audio algo distinto (unas décimas de segundo
+de diferencia en 30 s) y Whisper puede transcribir distinto alguna palabra.
+Dentro de una misma ejecución sí repite.
+
+Para rehacer un vídeo idéntico, o para comparar dos versiones del programa, el
+documento de la voz puede declarar una semilla:
+
+```json
+{
+  "kind": "tts_voice",
+  "voice_id": "piper_voice_davefx",
+  "...": "...",
+  "seed": 1234
+}
+```
+
+- **Con `seed`**, el mismo texto da el mismo audio byte a byte en cualquier
+  ejecución. Otra semilla da otra lectura igual de válida.
+- **Sin `seed`** (como vienen las dos voces), todo funciona como siempre.
+- El valor tiene que ser un número entero de 0 a 4294967295; con otra cosa
+  (texto, decimales, `true`, `null`, negativos…) la voz no se genera y el error
+  CONFIG nombra el documento (apartado 2):
+
+  ```text
+  La configuración de la voz no es válida: en «config/voice_configs/piper_davefx.json», seed debe ser un número entero entre 0 y 4294967295 (sin «seed», la voz no repite el mismo audio); se recibió '1234'.
+  ```
+
+**Cómo se hace (Piper).** El azar de Piper lo pone ONNX Runtime al crear la
+sesión del modelo. `PiperBackend` fija la semilla de ONNX Runtime
+(`onnxruntime.set_seed`) justo antes de cargar el modelo, en cada voz que se
+genera. Esa semilla vale para todo el proceso: si en la misma ejecución se
+genera después otra voz sin `seed`, también parte de ella.
