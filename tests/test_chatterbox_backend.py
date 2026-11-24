@@ -60,6 +60,8 @@ def _options(**changes):
         "runtime": {
             "python_path": PYTHON,
             "cache_dir": "test_runtime/cache",
+            "cuda_cache_dir": "test_runtime/cache/cuda",
+            "temp_dir": "test_tmp/tts",
             "device": "cuda",
         },
         "model": {"checkpoint_dir": CHECKPOINT},
@@ -225,6 +227,130 @@ def test_worker_environment_never_downloads_and_keeps_caches_in_the_project(tmp_
     assert env["HF_HOME"] == str(cache / "huggingface")
     assert env["TORCH_HOME"] == str(cache / "torch")
     assert env["XDG_CACHE_HOME"] == str(cache / "xdg")
+
+
+def test_cuda_cache_and_temporary_files_go_to_the_declared_folders(tmp_path):
+    root = _project(tmp_path)
+    cuda_cache = Path(os.path.abspath(root / "test_runtime/cache/cuda"))
+    temp = Path(os.path.abspath(root / "test_tmp/tts"))
+    fake = FakeWorker()
+    folders_at_launch = []
+
+    def worker(command, **kwargs):
+        folders_at_launch.append((cuda_cache.is_dir(), temp.is_dir()))
+        return fake(command, **kwargs)
+
+    _backend(root, worker).synthesize(_request(root))
+
+    assert folders_at_launch == [(True, True)]
+    env = fake.calls[0]["env"]
+    assert env["CUDA_CACHE_PATH"] == str(cuda_cache)
+    assert env["TEMP"] == str(temp)
+    assert env["TMP"] == str(temp)
+    assert env["TMPDIR"] == str(temp)
+
+
+def test_existing_cache_folders_are_reused(tmp_path):
+    root = _project(tmp_path)
+    (root / "test_runtime/cache/cuda").mkdir(parents=True)
+    (root / "test_tmp/tts").mkdir(parents=True)
+    worker = FakeWorker()
+
+    _backend(root, worker).synthesize(_request(root))
+
+    assert len(worker.calls) == 1
+
+
+@pytest.mark.parametrize("name", ("cuda_cache_dir", "temp_dir"))
+def test_missing_cache_folder_key_is_a_config_error_with_its_relative_path(tmp_path, name):
+    options = _options()
+    del options["runtime"][name]
+
+    message = _config_error(tmp_path, {"options": options})
+
+    assert message == (
+        f"falta backend_options.runtime.{name}: declara una ruta relativa dentro "
+        "de la carpeta del proyecto (docs/VOICEOVER.md)."
+    )
+
+
+@pytest.mark.parametrize("name", ("cuda_cache_dir", "temp_dir"))
+@pytest.mark.parametrize("value", ("../outside/cache", str(Path(__file__).resolve().parent)))
+def test_cache_folders_must_stay_inside_the_project(tmp_path, name, value):
+    options = _options()
+    options["runtime"][name] = value
+
+    message = _config_error(tmp_path, {"options": options})
+
+    assert message.startswith(
+        f"backend_options.runtime.{name} debe ser una ruta relativa dentro "
+        "de la carpeta del proyecto"
+    )
+
+
+@pytest.mark.parametrize("name", ("cuda_cache_dir", "temp_dir"))
+@pytest.mark.parametrize("value", ("", None, 3))
+def test_cache_folders_must_be_text(tmp_path, name, value):
+    options = _options()
+    options["runtime"][name] = value
+
+    message = _config_error(tmp_path, {"options": options})
+
+    assert message == (
+        f"backend_options.runtime.{name} debe ser una ruta relativa a la "
+        f"carpeta del proyecto; se recibió {value!r}."
+    )
+
+
+@pytest.mark.parametrize("name", ("cuda_cache_dir", "temp_dir"))
+def test_cache_folder_that_cannot_be_created_is_a_resource_error(tmp_path, name):
+    root = _project(tmp_path)
+    blocker = root / "test_blocker"
+    blocker.write_text("no es una carpeta", encoding="utf-8")
+    options = _options()
+    options["runtime"][name] = "test_blocker/inside"
+    worker = FakeWorker()
+
+    with pytest.raises(TtsBackendError) as error:
+        _backend(root, worker).synthesize(_request(root, options=options))
+
+    assert worker.calls == []
+    assert error.value.diagnostic.kind is TtsBackendErrorKind.RESOURCE_UNAVAILABLE
+    assert error.value.diagnostic.detail.startswith(
+        f"no se pudo crear la carpeta «{os.path.abspath(blocker / 'inside')}» del "
+        "proceso de Chatterbox: "
+    )
+
+
+def test_voice_builder_reports_a_missing_cache_folder_key_as_config(tmp_path):
+    root = _project(tmp_path)
+    document = json.loads(VOICE_DOCUMENT.read_text(encoding="utf-8"))
+    options = _options()
+    del options["runtime"]["temp_dir"]
+    document["backend_options"] = options
+    configuration = load_tts_voice_configuration(document)
+    worker = FakeWorker()
+
+    class _Manager:
+        def get_tts_voice_configuration(self):
+            return configuration
+
+    builder = VoiceBuilder(
+        config_manager=_Manager(),
+        backend_registry=TtsBackendRegistry((_backend(root, worker),)),
+        workspace_parent=tmp_path / "workspaces",
+    )
+    with pytest.raises(OperationalError) as error:
+        builder.build("Texto de prueba.", output_path=tmp_path / "voz.mp3")
+
+    context = error.value.context
+    assert context.family == "CONFIG"
+    assert context.user_message == (
+        "La configuración de la voz «Chatterbox (natural, GPU)» no es válida: "
+        "falta backend_options.runtime.temp_dir: declara una ruta relativa "
+        "dentro de la carpeta del proyecto (docs/VOICEOVER.md)."
+    )
+    assert worker.calls == []
 
 
 @pytest.mark.parametrize("seed", (0, 1234))
@@ -885,6 +1011,8 @@ def test_default_environment_starts_from_the_parent_environment(tmp_path, monkey
     runtime = external_tts_process.ExternalTtsRuntime(
         python_path=tmp_path / "python.exe",
         cache_dir=tmp_path / "cache",
+        cuda_cache_dir=tmp_path / "cache" / "cuda",
+        temp_dir=tmp_path / "tmp",
         device="cpu",
     )
 
@@ -892,6 +1020,8 @@ def test_default_environment_starts_from_the_parent_environment(tmp_path, monkey
 
     assert environment["TEST_PARENT_VARIABLE"] == "sí"
     assert environment["HF_HUB_OFFLINE"] == "1"
+    assert environment["CUDA_CACHE_PATH"] == str(tmp_path / "cache" / "cuda")
+    assert environment["TEMP"] == str(tmp_path / "tmp")
 
 
 # --- the worker script's pure parts ----------------------------------------
@@ -1018,6 +1148,8 @@ def test_project_voice_document_declares_the_environment_inside_the_project():
     options = voice.backend_options
     assert options["runtime"]["python_path"] == "models/tts/chatterbox/env/Scripts/python.exe"
     assert options["runtime"]["cache_dir"] == "models/tts/_cache"
+    assert options["runtime"]["cuda_cache_dir"] == "models/tts/_cache/cuda"
+    assert options["runtime"]["temp_dir"] == "tmp/tts"
     assert options["runtime"]["device"] == "cuda"
     assert options["model"]["checkpoint_dir"] == "models/tts/chatterbox/weights"
     assert options["segmentation"]["max_characters"] == 300

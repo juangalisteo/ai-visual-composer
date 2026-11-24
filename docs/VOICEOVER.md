@@ -310,7 +310,10 @@ Finalizado (1 min 33.26 s)
 ```
 
 El proceso no descarga nada (Hugging Face sin conexión) y guarda sus cachés en
-la carpeta declarada, dentro del proyecto. La capacidad de lanzar una voz en su
+las carpetas declaradas, dentro del proyecto: también la caché de CUDA (que si
+no iría a `%APPDATA%\NVIDIA\ComputeCache`) y sus archivos temporales, los de
+torch incluidos (que si no irían al `%TEMP%` del sistema). Las crea al lanzar
+el proceso. La capacidad de lanzar una voz en su
 propio proceso (`app/modules/audio/external_tts_process.py`) es común: otra voz
 que necesite su propio entorno solo añade su script y sus opciones: así entra
 Kokoro (apartado 8).
@@ -321,6 +324,8 @@ Kokoro (apartado 8).
 |---|---|---|
 | `runtime.python_path` | Python del entorno de la voz | `models/tts/chatterbox/env/Scripts/python.exe` |
 | `runtime.cache_dir` | Carpeta de las cachés del proceso (Hugging Face, torch) | `models/tts/_cache` |
+| `runtime.cuda_cache_dir` | Caché de CUDA (kernels compilados para la GPU). Obligatoria | `models/tts/_cache/cuda` |
+| `runtime.temp_dir` | Archivos temporales del proceso (`TEMP`, `TMP`, `TMPDIR`), los de torch incluidos. Obligatoria | `tmp/tts` |
 | `runtime.device` | `cuda` (GPU) o `cpu` | `cuda` |
 | `model.checkpoint_dir` | Carpeta con los pesos (`ve.pt`, `t3_mtl23ls_v2.safetensors`, `s3gen.pt`, `grapheme_mtl_merged_expanded_v1.json`, `conds.pt`) | `models/tts/chatterbox/weights` |
 | `segmentation.max_characters` | Máximo de caracteres de un trozo | 300 |
@@ -335,6 +340,12 @@ Kokoro (apartado 8).
 
   ```text
   La configuración de la voz «Chatterbox (natural, GPU)» no es válida: no existe «models/tts/chatterbox/env/Scripts/python.exe» (backend_options.runtime.python_path). Monta el entorno de la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el documento de la voz.
+  ```
+
+  Si falta `runtime.cuda_cache_dir` o `runtime.temp_dir`:
+
+  ```text
+  La configuración de la voz «Chatterbox (natural, GPU)» no es válida: falta backend_options.runtime.temp_dir: declara una ruta relativa dentro de la carpeta del proyecto (docs/VOICEOVER.md).
   ```
 
 - Si el proceso falla (por ejemplo, sin memoria en la GPU), el error dice qué
@@ -417,6 +428,8 @@ Finalizado (13.52 s)
 |---|---|---|
 | `runtime.python_path` | Python del entorno de la voz | `models/tts/kokoro/env/Scripts/python.exe` |
 | `runtime.cache_dir` | Carpeta de las cachés del proceso (Hugging Face, torch) | `models/tts/_cache` |
+| `runtime.cuda_cache_dir` | Caché de CUDA (kernels compilados para la GPU). Obligatoria | `models/tts/_cache/cuda` |
+| `runtime.temp_dir` | Archivos temporales del proceso (`TEMP`, `TMP`, `TMPDIR`), los de torch incluidos. Obligatoria | `tmp/tts` |
 | `runtime.device` | `cuda` (GPU) o `cpu` | `cuda` |
 | `model.repo_id` | Nombre del modelo en Hugging Face; no se descarga nada, solo lo pide Kokoro al cargar | `hexgrad/Kokoro-82M` |
 | `model.config_path` | Configuración del modelo | `models/tts/kokoro/weights/config.json` |

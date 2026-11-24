@@ -55,6 +55,8 @@ def _options(**changes):
         "runtime": {
             "python_path": PYTHON,
             "cache_dir": "test_runtime/cache",
+            "cuda_cache_dir": "test_runtime/cache/cuda",
+            "temp_dir": "test_tmp/tts",
             "device": "cuda",
         },
         "model": {
@@ -223,6 +225,9 @@ def test_worker_environment_never_downloads_and_keeps_caches_in_the_project(tmp_
     assert env["HF_HUB_OFFLINE"] == "1"
     assert env["HF_HOME"] == str(cache / "huggingface")
     assert env["TORCH_HOME"] == str(cache / "torch")
+    assert env["CUDA_CACHE_PATH"] == str(cache / "cuda")
+    temp = os.path.abspath(root / "test_tmp/tts")
+    assert (env["TEMP"], env["TMP"], env["TMPDIR"]) == (temp, temp, temp)
 
 
 @pytest.mark.parametrize("seed", (0, 1234))
@@ -901,6 +906,8 @@ def test_project_voice_documents_declare_everything_inside_the_project(
     assert dict(options["runtime"]) == {
         "python_path": "models/tts/kokoro/env/Scripts/python.exe",
         "cache_dir": "models/tts/_cache",
+        "cuda_cache_dir": "models/tts/_cache/cuda",
+        "temp_dir": "tmp/tts",
         "device": "cuda",
     }
     assert dict(options["model"]) == {

@@ -55,7 +55,9 @@ SETUP_HINT = (
     "ruta en el documento de la voz."
 )
 
-_RUNTIME_FIELDS = frozenset({"python_path", "cache_dir", "device"})
+_RUNTIME_FIELDS = frozenset(
+    {"python_path", "cache_dir", "cuda_cache_dir", "temp_dir", "device"}
+)
 _SEGMENTATION_FIELDS = frozenset({"max_characters"})
 _DEVICES = ("cuda", "cpu")
 _RESULT_ERROR_KINDS = {
@@ -86,6 +88,8 @@ class ExternalTtsRuntime:
 
     python_path: Path
     cache_dir: Path
+    cuda_cache_dir: Path
+    temp_dir: Path
     device: str
 
 
@@ -116,8 +120,25 @@ def parse_external_tts_runtime(
             "backend_options.runtime.cache_dir",
             must_be=None,
         ),
+        cuda_cache_dir=_required_folder(runtime, "cuda_cache_dir", project_root),
+        temp_dir=_required_folder(runtime, "temp_dir", project_root),
         device=device,
     )
+
+
+def _required_folder(
+    runtime: Mapping[str, object],
+    name: str,
+    project_root: Path,
+) -> Path:
+    """A folder the worker writes to; it is created before the launch."""
+    label = f"backend_options.runtime.{name}"
+    if name not in runtime:
+        raise TtsVoiceConfigurationError(
+            f"falta {label}: declara una ruta relativa dentro de la carpeta del "
+            "proyecto (docs/VOICEOVER.md)."
+        )
+    return resolve_project_path(runtime[name], project_root, label, must_be=None)
 
 
 def resolve_project_path(
@@ -332,6 +353,15 @@ class ExternalTtsProcess:
             encoding="utf-8",
         )
         log_path = workspace / LOG_FILE_NAME
+        for folder in (runtime.cuda_cache_dir, runtime.temp_dir):
+            try:
+                folder.mkdir(parents=True, exist_ok=True)
+            except OSError as error:
+                raise _backend_error(
+                    TtsBackendErrorKind.RESOURCE_UNAVAILABLE,
+                    f"no se pudo crear la carpeta «{folder}» del proceso de "
+                    f"{engine_label}: {error}",
+                ) from error
         command = [
             str(runtime.python_path),
             "-I",
@@ -365,7 +395,11 @@ class ExternalTtsProcess:
         return segment_paths, sample_rate
 
     def _environment(self, runtime: ExternalTtsRuntime) -> dict[str, str]:
-        """Child environment: no downloads and every cache inside the project."""
+        """Child environment: no downloads and every cache inside the project.
+
+        CUDA's compiled-kernel cache and the temporary files (torch's among
+        them) go to the declared folders, not to the user's profile.
+        """
         environment = dict(
             os.environ if self._base_environment is None else self._base_environment
         )
@@ -378,6 +412,10 @@ class ExternalTtsProcess:
                 "TRANSFORMERS_OFFLINE": "1",
                 "TORCH_HOME": str(cache / "torch"),
                 "XDG_CACHE_HOME": str(cache / "xdg"),
+                "CUDA_CACHE_PATH": str(runtime.cuda_cache_dir),
+                "TEMP": str(runtime.temp_dir),
+                "TMP": str(runtime.temp_dir),
+                "TMPDIR": str(runtime.temp_dir),
             }
         )
         return environment
