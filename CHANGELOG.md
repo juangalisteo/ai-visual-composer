@@ -61,7 +61,7 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   que nombra ese documento (`config/voice_configs/…`), también al abrir el
   menú VOZ (antes, en el menú, era un error inesperado).
 - Menú VOZ en este orden: «Chatterbox (natural, GPU)», «Piper Carlfm (rápida,
-  CPU)» y «Piper Davefx (rápida, CPU)». El orden lo declara cada documento de
+  CPU)», «Piper Davefx (rápida, CPU)», «Kokoro Alex» y «Kokoro Dora». El orden lo declara cada documento de
   voz (`menu_order`), no el nombre del archivo.
 - Si la voz elegida falla, el error dice qué voz falló, qué pasó y que se puede
   elegir otra en el menú VOZ (antes: «No se pudo generar la voz.»). El

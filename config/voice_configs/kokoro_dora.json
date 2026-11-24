@@ -2,6 +2,7 @@
   "kind": "tts_voice",
   "voice_id": "kokoro_voice_dora",
   "display_name": "Kokoro Dora",
+  "menu_order": 5,
   "backend_key": "kokoro",
   "language": "es-ES",
   "prosody": {

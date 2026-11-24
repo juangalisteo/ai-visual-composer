@@ -47,7 +47,7 @@ def test_voice_configs_are_sorted_by_selection_key_labeled_from_document_and_ret
     ]
 
 
-def test_current_voice_catalog_lists_chatterbox_carlfm_and_davefx_in_that_order():
+def test_current_voice_catalog_lists_chatterbox_carlfm_davefx_alex_and_dora_in_that_order():
     terminal = MenuAnswers(
         "Chatterbox (natural, GPU)",
         "Piper Carlfm (rápida, CPU)",

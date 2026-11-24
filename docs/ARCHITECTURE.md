@@ -442,7 +442,8 @@ AudioMixer                         mezcla la voz con la música → audio/audio_
 
 - **Voces.** El menú VOZ lista los documentos de `config/voice_configs/` en el
   orden que declara su `menu_order` y con su `display_name` («Chatterbox
-  (natural, GPU)», «Piper Carlfm (rápida, CPU)», «Piper Davefx (rápida, CPU)»).
+  (natural, GPU)», «Piper Carlfm (rápida, CPU)», «Piper Davefx (rápida, CPU)»,
+  «Kokoro Alex», «Kokoro Dora»).
   Qué declara cada documento y cómo se añade una voz:
   [VOICEOVER.md](VOICEOVER.md#2-documento-de-voz).
 - **Backend.** `TtsBackendRegistry` (`app/modules/audio/`) solo resuelve claves

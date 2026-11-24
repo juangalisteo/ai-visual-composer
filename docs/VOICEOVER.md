@@ -27,7 +27,8 @@ Otros documentos:
 | `config/voice_configs/kokoro_dora.json` | Kokoro Dora | Kokoro 82M, voz `ef_dora` (mujer): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
 
 - El menú VOZ lista los documentos de `config/voice_configs/` por el
-  `menu_order` que declara cada uno (Chatterbox 1, Carlfm 2, Davefx 3) y
+  `menu_order` que declara cada uno (Chatterbox 1, Carlfm 2, Davefx 3, Alex 4,
+  Dora 5) y
   muestra su `display_name`. Es el mismo menú en GUION, IMAGEN y VIDEO:
 
   ```text
@@ -36,6 +37,8 @@ Otros documentos:
   1. Chatterbox (natural, GPU)
   2. Piper Carlfm (rápida, CPU)
   3. Piper Davefx (rápida, CPU)
+  4. Kokoro Alex
+  5. Kokoro Dora
   ```
 
 - Si una ejecución no trae una voz elegida, `ConfigManager` usa
