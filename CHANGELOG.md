@@ -43,7 +43,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   sus pesos van en `models/tts/`, dentro del proyecto; rutas y ajustes en su
   documento de voz; admite la semilla (`seed`). Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual) e
-  [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-y-chatterbox).
+  [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-chatterbox-y-kokoro).
+- Voces Kokoro Alex y Kokoro Dora (`config/voice_configs/kokoro_alex.json` y
+  `kokoro_dora.json`; Kokoro 0.9.4, Apache-2.0): naturales y ligeras, en un
+  proceso aparte como Chatterbox, con su entorno y sus pesos en `models/tts/`;
+  rutas, idioma (`lang_code`), voz y velocidad (`speed`) en su documento de voz;
+  admiten la semilla (`seed`). Ver
+  [VOICEOVER.md §8](docs/VOICEOVER.md#8-kokoro).
 
 ### Cambiado
 
@@ -55,7 +61,7 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   que nombra ese documento (`config/voice_configs/…`), también al abrir el
   menú VOZ (antes, en el menú, era un error inesperado).
 - Menú VOZ en este orden: «Chatterbox (natural, GPU)», «Piper Carlfm (rápida,
-  CPU)» y «Piper Davefx (rápida, CPU)». El orden lo declara cada documento de
+  CPU)», «Piper Davefx (rápida, CPU)», «Kokoro Alex» y «Kokoro Dora». El orden lo declara cada documento de
   voz (`menu_order`), no el nombre del archivo.
 - Si la voz elegida falla, el error dice qué voz falló, qué pasó y que se puede
   elegir otra en el menú VOZ (antes: «No se pudo generar la voz.»). El

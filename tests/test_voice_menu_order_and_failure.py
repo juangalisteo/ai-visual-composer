@@ -42,6 +42,8 @@ CURRENT_MENU = [
     "1. Chatterbox (natural, GPU)",
     "2. Piper Carlfm (rápida, CPU)",
     "3. Piper Davefx (rápida, CPU)",
+    "4. Kokoro Alex",
+    "5. Kokoro Dora",
 ]
 
 
@@ -181,7 +183,7 @@ def test_menu_reports_an_invalid_menu_order_as_config_error_with_path(
     )
 
 
-def test_project_voices_declare_chatterbox_carlfm_and_davefx_in_that_order():
+def test_project_voices_declare_chatterbox_carlfm_davefx_alex_and_dora_in_that_order():
     orders = {
         path.stem: json.loads(path.read_text(encoding="utf-8")).get("menu_order")
         for path in VOICE_CONFIGS_PATH.glob("*.json")
@@ -191,6 +193,8 @@ def test_project_voices_declare_chatterbox_carlfm_and_davefx_in_that_order():
         "chatterbox_multilingual": 1,
         "piper_carlfm": 2,
         "piper_davefx": 3,
+        "kokoro_alex": 4,
+        "kokoro_dora": 5,
     }
 
 
@@ -223,7 +227,7 @@ def test_voice_menu_is_the_same_wherever_a_voice_is_chosen(
     request = controller.run()
 
     assert request.route.voice_config_id == "chatterbox_multilingual"
-    assert [message.strip("\n") for message in terminal.messages[-4:]] == [
+    assert [message.strip("\n") for message in terminal.messages[-len(CURRENT_MENU):]] == [
         line.strip("\n") for line in CURRENT_MENU
     ]
 

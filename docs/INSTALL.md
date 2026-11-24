@@ -350,7 +350,7 @@ La integración real debe comprobarse a través de AI Visual Composer.
 
 ---
 
-## 10. Voz: Piper ONNX y Chatterbox
+## 10. Voz: Piper ONNX, Chatterbox y Kokoro
 
 AI Visual Composer usa Piper ONNX como proveedor de voz local declarativo.
 Se instala a través de `requirements.txt` como `piper-tts==1.8.0`.
@@ -389,18 +389,22 @@ menú una voz de Piper; si eliges Chatterbox sin su entorno, el programa para
 con un error CONFIG que nombra la ruta que falta.
 
 Todo va dentro de la carpeta del proyecto, en `models/tts/` (ignorada por Git):
-nada en la carpeta de usuario ni en el registro de Windows.
+nada en la carpeta de usuario ni en el registro de Windows. Kokoro (más abajo)
+usa la misma carpeta.
 
 ```text
 models/tts/
   _tools/uv/uv.exe          uv 0.13.9 (binario suelto), para montar los entornos
-  _python/                  Python de los entornos de voz (lo instala uv)
+  _python/                  Python de los entornos de voz (lo instala uv):
+                            3.11 para Chatterbox y 3.12 para Kokoro
   _cache/uv/                caché de uv; los paquetes de cada entorno son enlaces
                             duros a ella, así que no ocupan dos veces y el próximo
                             entorno de voz reutiliza torch sin descargarlo
   _cache/huggingface/, …    cachés del proceso de la voz (sin descargas)
   chatterbox/env/           entorno de Chatterbox (Python 3.11.18)
   chatterbox/weights/       pesos del modelo
+  kokoro/env/               entorno de Kokoro (Python 3.12.16)
+  kokoro/weights/           pesos de Kokoro y sus dos voces
 ```
 
 Requisitos: GPU NVIDIA con unos 5 GB libres de VRAM (con las RTX 50xx, torch
@@ -457,9 +461,54 @@ Las rutas del entorno, de los pesos y de las cachés están en
 carpeta del proyecto, cambia allí las rutas. Cómo funciona la voz y sus
 ajustes: [VOICEOVER.md](VOICEOVER.md).
 
-Para quitarlo, borra `models\tts\` entera (en `_python\` hay un enlace de
-carpeta que uv crea para la versión 3.11; el Explorador de Windows lo borra
+Para quitarlo, borra `models\tts\chatterbox\`; para quitar todas las voces con
+entorno propio, `models\tts\` entera (en `_python\` hay un enlace de carpeta
+que uv crea para cada versión, 3.11 y 3.12; el Explorador de Windows lo borra
 como enlace).
+
+### Kokoro (opcional)
+
+Las voces «Kokoro Alex» y «Kokoro Dora» del menú VOZ usan Kokoro 0.9.4
+(hexgrad, licencia Apache-2.0). Como Chatterbox, necesita su propio Python
+(3.12) con torch: no se instala en el entorno del proyecto. Si eliges una de
+sus voces sin montarlo, el programa para con un error CONFIG que nombra la ruta
+que falta.
+
+Requisitos: GPU NVIDIA con 1,5 GB libres de VRAM (o solo el procesador, con
+`runtime.device` `cpu` en su documento de voz), unos 8 GB de disco (el entorno
+en la caché de uv, casi todo torch para Python 3.12, y 0,3 GB de pesos) y
+conexión a internet solo durante la instalación.
+
+Pasos, en PowerShell desde la raíz del proyecto:
+
+1. Si no lo hiciste para Chatterbox, descarga uv (paso 1 de Chatterbox).
+2. Prepara las mismas variables que para Chatterbox (paso 2).
+3. Instala Python 3.12.16, crea el entorno e instala la lista exacta de
+   paquetes (`tools/voice_env/kokoro.txt`), sin resolver dependencias:
+
+   ```powershell
+   & $uv python install 3.12.16 --no-bin --no-registry
+   & $uv venv --python 3.12.16 "$T\kokoro\env"
+   & $uv pip install --python "$T\kokoro\env\Scripts\python.exe" --no-deps --index-strategy unsafe-best-match -r tools\voice_env\kokoro.txt
+   ```
+
+4. Descarga los pesos (`hexgrad/Kokoro-82M`, la revisión probada) y las dos
+   voces en `models\tts\kokoro\weights\`:
+
+   ```powershell
+   & "$T\kokoro\env\Scripts\python.exe" -c "from huggingface_hub import snapshot_download; snapshot_download('hexgrad/Kokoro-82M', revision='f3ff3571791e39611d31c381e3a41a3af07b4987', allow_patterns=['config.json', 'kokoro-v1_0.pth', 'voices/em_alex.pt', 'voices/ef_dora.pt'], local_dir=r'models\tts\kokoro\weights')"
+   ```
+
+5. Comprueba que el entorno ve la GPU (debe decir `2.8.0+cu128 True`):
+
+   ```powershell
+   & "$T\kokoro\env\Scripts\python.exe" -I -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+   ```
+
+Las rutas están en `config/voice_configs/kokoro_alex.json` y `kokoro_dora.json`
+(`backend_options.runtime`, `model` y `voice`). Cómo funciona y sus ajustes:
+[VOICEOVER.md, apartado 8](VOICEOVER.md#8-kokoro). Para quitarlo, borra
+`models\tts\kokoro\`.
 
 ---
 
@@ -819,6 +868,7 @@ Antes de considerar lista la instalación local:
 [ ] Workflows de ComfyUI necesarios compatibles
 [ ] Recursos de voz de Piper provistos en models/audio/piper/
 [ ] Entorno y pesos de Chatterbox en models/tts/, si usas esa voz
+[ ] Entorno y pesos de Kokoro en models/tts/, si usas sus voces
 [ ] Modelo de NudeNet provisto en models/visual_safety/
 [ ] Whisper disponible
 [ ] Assets propios en su sitio, si los usas (música, overlays; ver assets/README.md)

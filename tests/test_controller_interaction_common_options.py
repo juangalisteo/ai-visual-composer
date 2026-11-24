@@ -47,23 +47,29 @@ def test_voice_configs_are_sorted_by_selection_key_labeled_from_document_and_ret
     ]
 
 
-def test_current_voice_catalog_lists_chatterbox_carlfm_and_davefx_in_that_order():
+def test_current_voice_catalog_lists_chatterbox_carlfm_davefx_alex_and_dora_in_that_order():
     terminal = MenuAnswers(
         "Chatterbox (natural, GPU)",
         "Piper Carlfm (rápida, CPU)",
         "Piper Davefx (rápida, CPU)",
+        "Kokoro Alex",
+        "Kokoro Dora",
     )
     options = CommonOptions(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert options.select_voice_config() == "chatterbox_multilingual"
     assert options.select_voice_config() == "piper_carlfm"
     assert options.select_voice_config() == "piper_davefx"
+    assert options.select_voice_config() == "kokoro_alex"
+    assert options.select_voice_config() == "kokoro_dora"
     assert terminal.messages == [
         "\nVOZ\n",
         "1. Chatterbox (natural, GPU)",
         "2. Piper Carlfm (rápida, CPU)",
         "3. Piper Davefx (rápida, CPU)",
-    ] * 3
+        "4. Kokoro Alex",
+        "5. Kokoro Dora",
+    ] * 5
     assert "Miro" not in terminal.messages
 
 def test_voice_config_keeps_its_existing_file_not_found_contract(tmp_path):

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from app.modules.audio.chatterbox_backend import ChatterboxBackend
+from app.modules.audio.kokoro_backend import KokoroBackend
 from app.modules.audio.piper_backend_provider import PiperBackendProvider
 from app.modules.audio.tts_backend_registry import TtsBackendRegistry
 
@@ -24,5 +25,6 @@ def build_default_tts_backend_registry(
         (
             PiperBackendProvider(project_root),
             ChatterboxBackend(project_root),
+            KokoroBackend(project_root),
         )
     )
