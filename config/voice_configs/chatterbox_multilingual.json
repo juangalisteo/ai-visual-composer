@@ -1,0 +1,35 @@
+{
+  "kind": "tts_voice",
+  "voice_id": "chatterbox_multilingual_builtin",
+  "display_name": "Chatterbox (natural, GPU)",
+  "menu_order": 1,
+  "backend_key": "chatterbox_multilingual",
+  "language": "es-ES",
+  "prosody": {
+    "speaking_rate": 1.0,
+    "volume_gain_db": 0.0,
+    "sentence_pause_seconds": 0.2,
+    "paragraph_pause_seconds": 0.35
+  },
+  "pacing": {
+    "letters_per_second": 15.71,
+    "words_per_second": 3.17
+  },
+  "backend_options": {
+    "runtime": {
+      "python_path": "models/tts/chatterbox/env/Scripts/python.exe",
+      "cache_dir": "models/tts/_cache",
+      "device": "cuda"
+    },
+    "model": {
+      "checkpoint_dir": "models/tts/chatterbox/weights"
+    },
+    "segmentation": {
+      "max_characters": 300
+    },
+    "synthesis": {
+      "exaggeration": 0.5,
+      "cfg_weight": 0.5
+    }
+  }
+}

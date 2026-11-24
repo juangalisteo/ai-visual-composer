@@ -73,9 +73,11 @@ class VoiceBuilder:
 
         workspace_path = None
         voice = None
+        display_name = None
         try:
             configuration = self._config_manager.get_tts_voice_configuration()
             voice = configuration.voice
+            display_name = configuration.display_name
             backend = self._backend_registry.resolve(voice.backend_key)
             workspace_path = self._create_workspace()
             request = TtsSynthesisRequest(
@@ -101,6 +103,7 @@ class VoiceBuilder:
                 error=error,
                 output_path=output_path,
                 voice=voice,
+                display_name=display_name,
             ) from error
         finally:
             if workspace_path is not None:
@@ -218,31 +221,45 @@ class VoiceBuilder:
             pass
 
     @staticmethod
-    def _operational_error(*, error, output_path: Path, voice):
+    def _operational_error(*, error, output_path: Path, voice, display_name=None):
+        """Stop with a Spanish error that says which voice failed and why.
+
+        The selected voice is never replaced by another one: the user chooses
+        another voice in the VOZ menu.
+        """
         technical_metadata = {"phase": "voice_generation"}
         if voice is not None:
             technical_metadata["voice_id"] = voice.voice_id
             technical_metadata["backend_key"] = voice.backend_key
         if isinstance(error, TtsBackendError):
             technical_metadata["backend_error_kind"] = error.diagnostic.kind.value
+        voice_label = "la voz" if display_name is None else f"la voz «{display_name}»"
         if isinstance(error, TtsVoiceConfigurationError):
             return create_operational_error(
                 family="CONFIG",
-                user_message=f"La configuración de la voz no es válida: {error}",
+                user_message=(
+                    f"La configuración de {voice_label} no es válida: {error}"
+                ),
                 recommended_action=(
-                    "Corrige el documento de la voz en config/voice_configs/."
+                    "Corrige el documento de la voz en config/voice_configs/ "
+                    "o elige otra voz en el menú VOZ."
                 ),
                 operation="Generar voz",
                 resource=str(output_path),
                 technical_metadata=technical_metadata,
             )
 
+        user_message = f"No se pudo generar {voice_label}."
+        if isinstance(error, TtsBackendError):
+            detail = error.diagnostic.detail.rstrip(".")
+            user_message = f"No se pudo generar {voice_label}: {detail}."
         return create_operational_error(
             family="AUDIO",
-            user_message="No se pudo generar la voz.",
+            user_message=user_message,
             recommended_action=(
-                "Comprueba la configuración de voz y la disponibilidad del "
-                "backend de síntesis."
+                "Elige otra voz en el menú VOZ y vuelve a lanzar la operación, "
+                "o revisa la instalación de esta voz (docs/INSTALL.md, "
+                "apartado 10). El programa no cambia de voz por su cuenta."
             ),
             operation="Generar voz",
             resource=str(output_path),

@@ -48,13 +48,13 @@ def test_current_voice_documents_load_as_neutral_configuration():
     } == {
         "piper_davefx": (
             "piper_voice_davefx",
-            "Davefx",
+            "Piper Davefx (rápida, CPU)",
             "piper_onnx",
             None,
         ),
         "piper_carlfm": (
             "piper_voice_carlfm",
-            "Carlfm",
+            "Piper Carlfm (rápida, CPU)",
             "piper_onnx",
             None,
         ),
@@ -84,6 +84,7 @@ def test_piper_voice_documents_are_unique_native_baselines_and_resolve_by_backen
     assert len({configuration.voice.voice_id for configuration in configurations.values()}) == 2
     assert len({configuration.voice.voice_id for configuration in catalog}) == len(catalog)
     assert tuple(path.stem for path in sorted(VOICE_CONFIGS_PATH.glob("*.json"))) == (
+        "chatterbox_multilingual",
         "piper_carlfm",
         "piper_davefx",
     )

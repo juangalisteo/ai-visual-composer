@@ -51,6 +51,7 @@ FFmpeg
 Ollama
 ComfyUI
 Piper ONNX
+Chatterbox Multilingual (opcional, con su propio entorno de Python)
 OpenAI Whisper
 Modelos Flux
 Modelos Wan I2V
@@ -349,7 +350,7 @@ La integración real debe comprobarse a través de AI Visual Composer.
 
 ---
 
-## 10. Piper ONNX
+## 10. Voz: Piper ONNX y Chatterbox
 
 AI Visual Composer usa Piper ONNX como proveedor de voz local declarativo.
 Se instala a través de `requirements.txt` como `piper-tts==1.8.0`.
@@ -378,6 +379,87 @@ Configuración declarativa de voz
 
 La generación de voz debe validarse finalmente con una ejecución real de AI
 Visual Composer.
+
+### Chatterbox Multilingual (opcional)
+
+La voz «Chatterbox (natural, GPU)» del menú VOZ usa Chatterbox Multilingual
+(Resemble AI, licencia MIT). Necesita su propio Python (3.11) con torch para
+CUDA: no se instala en el entorno del proyecto. Si no lo montas, elige en el
+menú una voz de Piper; si eliges Chatterbox sin su entorno, el programa para
+con un error CONFIG que nombra la ruta que falta.
+
+Todo va dentro de la carpeta del proyecto, en `models/tts/` (ignorada por Git):
+nada en la carpeta de usuario ni en el registro de Windows.
+
+```text
+models/tts/
+  _tools/uv/uv.exe          uv 0.13.9 (binario suelto), para montar los entornos
+  _python/                  Python de los entornos de voz (lo instala uv)
+  _cache/uv/                caché de uv; los paquetes de cada entorno son enlaces
+                            duros a ella, así que no ocupan dos veces y el próximo
+                            entorno de voz reutiliza torch sin descargarlo
+  _cache/huggingface/, …    cachés del proceso de la voz (sin descargas)
+  chatterbox/env/           entorno de Chatterbox (Python 3.11.18)
+  chatterbox/weights/       pesos del modelo
+```
+
+Requisitos: GPU NVIDIA con unos 5 GB libres de VRAM (con las RTX 50xx, torch
+2.8.0+cu128), unos 11 GB de disco (caché de uv con el entorno, 7,7 GB, y pesos, 3 GB) y
+conexión a internet solo durante la instalación.
+
+Pasos, en PowerShell desde la raíz del proyecto:
+
+1. Descarga uv 0.13.9 para Windows
+   (`https://github.com/astral-sh/uv/releases/tag/0.13.9`, archivo
+   `uv-x86_64-pc-windows-msvc.zip`) y deja `uv.exe` en `models\tts\_tools\uv\`.
+2. Prepara las variables de esta terminal (todo dentro de `models\tts`; sin
+   lanzadores en la carpeta de usuario ni entradas en el registro):
+
+   ```powershell
+   $T = "$PWD\models\tts"
+   $env:UV_CACHE_DIR = "$T\_cache\uv"
+   $env:UV_PYTHON_INSTALL_DIR = "$T\_python"
+   $env:UV_PYTHON_PREFERENCE = "only-managed"
+   $env:UV_LINK_MODE = "hardlink"
+   $env:UV_PYTHON_INSTALL_BIN = "0"
+   $env:UV_PYTHON_INSTALL_REGISTRY = "0"
+   $env:UV_NO_CONFIG = "1"
+   $env:HF_HOME = "$T\_cache\huggingface"
+   $uv = "$T\_tools\uv\uv.exe"
+   ```
+
+3. Instala Python 3.11.18, crea el entorno e instala la lista exacta de
+   paquetes (`tools/voice_env/chatterbox.txt`), sin resolver dependencias:
+   `chatterbox-tts` pide torch 2.6.0, que no funciona en las RTX 50xx.
+
+   ```powershell
+   & $uv python install 3.11.18 --no-bin --no-registry
+   & $uv venv --python 3.11.18 "$T\chatterbox\env"
+   & $uv pip install --python "$T\chatterbox\env\Scripts\python.exe" --no-deps --index-strategy unsafe-best-match -r tools\voice_env\chatterbox.txt
+   ```
+
+4. Descarga los pesos (`ResembleAI/chatterbox`, la revisión probada) en
+   `models\tts\chatterbox\weights\`:
+
+   ```powershell
+   & "$T\chatterbox\env\Scripts\python.exe" -c "from huggingface_hub import snapshot_download; snapshot_download('ResembleAI/chatterbox', revision='5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18', allow_patterns=['ve.pt', 't3_mtl23ls_v2.safetensors', 's3gen.pt', 'grapheme_mtl_merged_expanded_v1.json', 'conds.pt'], local_dir=r'models\tts\chatterbox\weights')"
+   ```
+
+5. Comprueba que el entorno ve la GPU (debe decir `2.8.0+cu128 True`):
+
+   ```powershell
+   & "$T\chatterbox\env\Scripts\python.exe" -I -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+   ```
+
+Las rutas del entorno, de los pesos y de las cachés están en
+`config/voice_configs/chatterbox_multilingual.json`
+(`backend_options.runtime` y `backend_options.model`): si lo montas en otra
+carpeta del proyecto, cambia allí las rutas. Cómo funciona la voz y sus
+ajustes: [VOICEOVER.md](VOICEOVER.md).
+
+Para quitarlo, borra `models\tts\` entera (en `_python\` hay un enlace de
+carpeta que uv crea para la versión 3.11; el Explorador de Windows lo borra
+como enlace).
 
 ---
 
@@ -736,6 +818,7 @@ Antes de considerar lista la instalación local:
 [ ] Requisitos de Wan I2V disponibles en ComfyUI
 [ ] Workflows de ComfyUI necesarios compatibles
 [ ] Recursos de voz de Piper provistos en models/audio/piper/
+[ ] Entorno y pesos de Chatterbox en models/tts/, si usas esa voz
 [ ] Modelo de NudeNet provisto en models/visual_safety/
 [ ] Whisper disponible
 [ ] Assets propios en su sitio, si los usas (música, overlays; ver assets/README.md)

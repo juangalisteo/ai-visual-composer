@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from app.modules.audio.chatterbox_backend import ChatterboxBackend
 from app.modules.audio.piper_backend_provider import PiperBackendProvider
 from app.modules.audio.tts_backend_registry import TtsBackendRegistry
 
@@ -16,10 +17,12 @@ def build_default_tts_backend_registry(
     """Register product capabilities without selecting one from presentation data.
 
     Providers remain lazy: their resources are checked only when a technical
-    voice document resolves the provider's exact ``backend_key``.
+    voice document resolves the provider's exact ``backend_key``. Backends
+    that run in their own process load nothing until they synthesize.
     """
     return TtsBackendRegistry(
         (
             PiperBackendProvider(project_root),
+            ChatterboxBackend(project_root),
         )
     )

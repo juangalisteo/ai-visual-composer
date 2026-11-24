@@ -37,6 +37,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   ella, Piper da el mismo audio byte a byte en cada ejecución, para rehacer un
   vídeo idéntico. Sin ella, todo sigue igual. Ver
   [VOICEOVER.md §6](docs/VOICEOVER.md#6-repetir-el-mismo-audio-semilla).
+- Voz Chatterbox Multilingual (`config/voice_configs/chatterbox_multilingual.json`),
+  más natural que Piper: se genera en la GPU con su propio entorno de Python,
+  en un proceso aparte que termina al acabar y deja la GPU libre. Su entorno y
+  sus pesos van en `models/tts/`, dentro del proyecto; rutas y ajustes en su
+  documento de voz; admite la semilla (`seed`). Ver
+  [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual) e
+  [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-y-chatterbox).
 
 ### Cambiado
 
@@ -47,6 +54,12 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - Un valor no válido en el documento de una voz es un error de configuración
   que nombra ese documento (`config/voice_configs/…`), también al abrir el
   menú VOZ (antes, en el menú, era un error inesperado).
+- Menú VOZ en este orden: «Chatterbox (natural, GPU)», «Piper Carlfm (rápida,
+  CPU)» y «Piper Davefx (rápida, CPU)». El orden lo declara cada documento de
+  voz (`menu_order`), no el nombre del archivo.
+- Si la voz elegida falla, el error dice qué voz falló, qué pasó y que se puede
+  elegir otra en el menú VOZ (antes: «No se pudo generar la voz.»). El
+  programa sigue sin cambiar de voz por su cuenta.
 - Los subtítulos usan siempre el texto del guion —también en los efectos por
   palabra— y no muestran texto en las pausas de la voz.
 - Los MP3 de la voz y de la mezcla final se exportan a 44 100 Hz, para que

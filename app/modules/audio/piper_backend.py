@@ -187,10 +187,10 @@ class PiperBackend:
 
         if candidate.suffix.casefold() != ".onnx":
             raise ValueError("Piper onnx_path must reference an .onnx file.")
-        _validate_resource_file(candidate, "Piper ONNX model")
+        _validate_resource_file(candidate, "el modelo ONNX de Piper")
 
         sidecar = Path(f"{candidate}.json")
-        _validate_resource_file(sidecar, "Piper ONNX sidecar")
+        _validate_resource_file(sidecar, "el .onnx.json del modelo de Piper")
         try:
             document = json.loads(sidecar.read_text(encoding="utf-8"))
         except Exception as error:
@@ -323,12 +323,12 @@ def _validate_resource_file(path: Path, label: str) -> None:
     if not path.is_file():
         raise _backend_error(
             TtsBackendErrorKind.RESOURCE_UNAVAILABLE,
-            f"{label} does not exist as a regular file.",
+            f"no se encuentra {label}.",
         ) from FileNotFoundError(str(path))
     if path.stat().st_size <= 0:
         raise _backend_error(
             TtsBackendErrorKind.RESOURCE_UNAVAILABLE,
-            f"{label} is empty.",
+            f"está vacío {label}.",
         ) from ValueError(str(path))
 
 
