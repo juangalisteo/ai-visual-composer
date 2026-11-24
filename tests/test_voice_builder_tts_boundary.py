@@ -143,13 +143,13 @@ class VoiceBuilderTtsBoundaryTest(unittest.TestCase):
                 self.assertEqual("libmp3lame", command[command.index("-c:a") + 1])
                 self.assertEqual(b"encoded audio", output_path.read_bytes())
 
-    def test_default_registry_registers_piper_and_chatterbox_without_synthesizing(self):
+    def test_default_registry_registers_piper_chatterbox_and_kokoro_without_synthesizing(self):
         builder = VoiceBuilder(
             config_manager=_ConfigurationManager(_voice_configuration()),
         )
 
         self.assertEqual(
-            ("piper_onnx", "chatterbox_multilingual"),
+            ("piper_onnx", "chatterbox_multilingual", "kokoro"),
             builder._backend_registry.backend_keys,
         )
 

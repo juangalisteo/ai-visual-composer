@@ -118,10 +118,10 @@ def test_provider_requires_an_explicit_valid_project_root():
         PiperBackendProvider("   ")
 
 
-def test_default_product_registry_registers_the_piper_and_chatterbox_capabilities():
+def test_default_product_registry_registers_the_piper_chatterbox_and_kokoro_capabilities():
     registry = build_default_tts_backend_registry()
 
-    assert registry.backend_keys == ("piper_onnx", "chatterbox_multilingual")
+    assert registry.backend_keys == ("piper_onnx", "chatterbox_multilingual", "kokoro")
     with pytest.raises(UnknownTtsBackendError):
         registry.resolve("kokoro_onnx")
 

@@ -1,0 +1,39 @@
+{
+  "kind": "tts_voice",
+  "voice_id": "kokoro_voice_alex",
+  "display_name": "Kokoro Alex",
+  "backend_key": "kokoro",
+  "language": "es-ES",
+  "prosody": {
+    "speaking_rate": 1.0,
+    "volume_gain_db": 0.0,
+    "sentence_pause_seconds": 0.0,
+    "paragraph_pause_seconds": 0.35
+  },
+  "pacing": {
+    "letters_per_second": 14.42,
+    "words_per_second": 2.87
+  },
+  "backend_options": {
+    "runtime": {
+      "python_path": "models/tts/kokoro/env/Scripts/python.exe",
+      "cache_dir": "models/tts/_cache",
+      "device": "cuda"
+    },
+    "model": {
+      "repo_id": "hexgrad/Kokoro-82M",
+      "config_path": "models/tts/kokoro/weights/config.json",
+      "weights_path": "models/tts/kokoro/weights/kokoro-v1_0.pth"
+    },
+    "voice": {
+      "path": "models/tts/kokoro/weights/voices/em_alex.pt",
+      "lang_code": "e"
+    },
+    "segmentation": {
+      "max_characters": 400
+    },
+    "synthesis": {
+      "speed": 1.0
+    }
+  }
+}

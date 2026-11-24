@@ -42,6 +42,8 @@ CURRENT_MENU = [
     "1. Chatterbox (natural, GPU)",
     "2. Piper Carlfm (rápida, CPU)",
     "3. Piper Davefx (rápida, CPU)",
+    "4. Kokoro Alex",
+    "5. Kokoro Dora",
 ]
 
 
@@ -191,6 +193,8 @@ def test_project_voices_declare_chatterbox_carlfm_and_davefx_in_that_order():
         "chatterbox_multilingual": 1,
         "piper_carlfm": 2,
         "piper_davefx": 3,
+        "kokoro_alex": None,
+        "kokoro_dora": None,
     }
 
 
@@ -223,7 +227,7 @@ def test_voice_menu_is_the_same_wherever_a_voice_is_chosen(
     request = controller.run()
 
     assert request.route.voice_config_id == "chatterbox_multilingual"
-    assert [message.strip("\n") for message in terminal.messages[-4:]] == [
+    assert [message.strip("\n") for message in terminal.messages[-len(CURRENT_MENU):]] == [
         line.strip("\n") for line in CURRENT_MENU
     ]
 

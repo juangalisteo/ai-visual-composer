@@ -3,7 +3,7 @@
 Este documento es la referencia de la voz: qué voces hay, cómo se declara cada
 una, cuántas palabras se piden al guion generado, a qué ritmo lee de verdad
 Piper, cómo hace las pausas, cómo repetir el mismo audio (semilla), cómo
-funciona Chatterbox y qué licencia tiene cada voz.
+funcionan Chatterbox y Kokoro y qué licencia tiene cada voz.
 
 Otros documentos:
 
@@ -11,7 +11,7 @@ Otros documentos:
 |---|---|
 | Cómo se genera y se mezcla el audio (Piper, música, `audio_final.mp3`) | [ARCHITECTURE.md, apartado 13](ARCHITECTURE.md#13-voz-y-música) |
 | Cómo se escribe el guion y cómo se valida | [ARCHITECTURE.md, apartado 12](ARCHITECTURE.md#12-guion) |
-| Cómo se instalan Piper y sus modelos, y el entorno de Chatterbox | [INSTALL.md, apartado 10](INSTALL.md#10-voz-piper-onnx-y-chatterbox) |
+| Cómo se instalan Piper y sus modelos, y los entornos de Chatterbox y Kokoro | [INSTALL.md, apartado 10](INSTALL.md#10-voz-piper-onnx-chatterbox-y-kokoro) |
 | Subtítulos | [SUBTITLES.md](SUBTITLES.md) |
 
 ---
@@ -23,6 +23,8 @@ Otros documentos:
 | `config/voice_configs/chatterbox_multilingual.json` | Chatterbox (natural, GPU) | Chatterbox Multilingual, su voz de serie: `models/tts/chatterbox/weights/` (apartado 7) | `es-ES` |
 | `config/voice_configs/piper_carlfm.json` | Piper Carlfm (rápida, CPU) | `models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx` | `es-ES` |
 | `config/voice_configs/piper_davefx.json` | Piper Davefx (rápida, CPU) | `models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx` | `es-ES` |
+| `config/voice_configs/kokoro_alex.json` | Kokoro Alex | Kokoro 82M, voz `em_alex` (hombre): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
+| `config/voice_configs/kokoro_dora.json` | Kokoro Dora | Kokoro 82M, voz `ef_dora` (mujer): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
 
 - El menú VOZ lista los documentos de `config/voice_configs/` por el
   `menu_order` que declara cada uno (Chatterbox 1, Carlfm 2, Davefx 3) y
@@ -50,8 +52,11 @@ Otros documentos:
   párrafos (apartado 5).
 - Chatterbox lee en la GPU con su propio entorno de Python, en un proceso
   aparte (apartado 7). Es más natural, pero más lento que Piper.
-- Los modelos (`.onnx` y su `.onnx.json`, y los pesos y el entorno de
-  Chatterbox) no están en el repositorio: se descargan al instalar
+- Kokoro (Alex y Dora) funciona igual, con su propio entorno y en un proceso
+  aparte (apartado 8): entona más que Piper y tarda unos 15 s por guion, casi
+  todo en arrancar; en la GPU usa poco más de 1 GB.
+- Los modelos (`.onnx` y su `.onnx.json`, y los pesos y los entornos de
+  Chatterbox y Kokoro) no están en el repositorio: se descargan al instalar
   ([INSTALL.md](INSTALL.md)).
 - Si la voz elegida falla, el programa para con un error que dice qué voz
   falló, qué pasó y qué hacer; nunca cambia de voz por su cuenta. Por ejemplo,
@@ -76,13 +81,13 @@ que rechaza las claves que no conoce.
 | `voice_id` | Identidad técnica de la voz |
 | `display_name` | Nombre en el menú VOZ y en los errores de la voz; es solo presentación |
 | `menu_order` | Posición en el menú VOZ, opcional: un número entero desde 1. Las voces sin él van detrás, por nombre de archivo; con el mismo número, también por nombre de archivo. Es solo presentación |
-| `backend_key` | Qué programa sintetiza la voz: `piper_onnx` (Piper) o `chatterbox_multilingual` (Chatterbox, apartado 7) |
-| `language` | Idioma de la voz. Con Piper tiene que coincidir con el del modelo (`espeak.voice` de su `.onnx.json`); Chatterbox usa su primera parte (`es`) |
+| `backend_key` | Qué programa sintetiza la voz: `piper_onnx` (Piper), `chatterbox_multilingual` (Chatterbox, apartado 7) o `kokoro` (Kokoro, apartado 8) |
+| `language` | Idioma de la voz. Con Piper tiene que coincidir con el del modelo (`espeak.voice` de su `.onnx.json`); Chatterbox usa su primera parte (`es`); Kokoro toma el idioma de `backend_options.voice.lang_code` |
 | `prosody.speaking_rate` | Velocidad: 1.0 es la del modelo; con otro valor, Piper divide entre él el `length_scale` del modelo |
 | `prosody.volume_gain_db` | Volumen en dB: 0.0 deja el del modelo |
 | `prosody.sentence_pause_seconds` | Silencio extra, en segundos, tras cada final de frase. Opcional: sin la clave, 0 (sin pausa extra). Apartado 5 |
 | `prosody.paragraph_pause_seconds` | Silencio extra, en segundos, entre párrafos (una o más líneas en blanco). Opcional: sin la clave, 0. Apartado 5 |
-| `backend_options.model.onnx_path` | Piper: ruta del modelo `.onnx`, dentro de `models/audio/piper/`; su `.onnx.json` tiene que estar al lado. Las opciones de Chatterbox están en el apartado 7 |
+| `backend_options.model.onnx_path` | Piper: ruta del modelo `.onnx`, dentro de `models/audio/piper/`; su `.onnx.json` tiene que estar al lado. Las opciones de Chatterbox y de Kokoro están en los apartados 7 y 8 |
 | `backend_options.synthesis` | Piper: ajustes opcionales `length_scale`, `noise_scale`, `noise_w_scale`, `normalize_audio` y `volume`. `length_scale` y `volume` mandan sobre `prosody` |
 | `seed` | Semilla, opcional: un número entero de 0 a 4294967295. Con ella, el mismo texto da siempre el mismo audio; sin la clave, cada ejecución da un audio un poco distinto. Apartado 6 |
 
@@ -269,6 +274,9 @@ genera después otra voz sin `seed`, también parte de ella.
 de Python, NumPy y torch (también en la GPU) antes de cargar el modelo. Como
 cada voz se genera en su propio proceso, no afecta a nada más.
 
+**Cómo se hace (Kokoro).** Igual que Chatterbox: el proceso de Kokoro fija las
+semillas de Python, NumPy y torch antes de cargar el modelo.
+
 ---
 
 ## 7. Chatterbox Multilingual
@@ -301,7 +309,8 @@ Finalizado (1 min 33.26 s)
 El proceso no descarga nada (Hugging Face sin conexión) y guarda sus cachés en
 la carpeta declarada, dentro del proyecto. La capacidad de lanzar una voz en su
 propio proceso (`app/modules/audio/external_tts_process.py`) es común: otra voz
-que necesite su propio entorno solo añade su script y sus opciones.
+que necesite su propio entorno solo añade su script y sus opciones: así entra
+Kokoro (apartado 8).
 
 ### Opciones (`backend_options`)
 
@@ -379,11 +388,114 @@ Piper (con el mismo guion de 30 s, de 23,6 a 25,3 s).
 
 ---
 
-## 8. Licencias de las voces
+## 8. Kokoro
+
+Kokoro (hexgrad, modelo de 82 M de parámetros) lee en español con dos voces de
+serie: **Alex** (`em_alex`, hombre) y **Dora** (`ef_dora`, mujer). No se clona
+ninguna. Entona más que Piper, apenas usa memoria de la GPU y tarda poco. Como
+Chatterbox, necesita su propio Python con torch, así que `KokoroBackend`
+(`app/modules/audio/kokoro_backend.py`) lo lanza como un **proceso aparte**
+(`app/modules/audio/workers/kokoro_worker.py`), con la misma capacidad común
+(`external_tts_process.py`): parte el texto en trozos de frases enteras, el
+proceso carga el modelo y la voz, escribe un WAV por trozo y termina (sin tiempo
+límite), y el programa une los WAV y publica `voz.mp3`.
+
+```text
+GENERANDO VOCES...
+Cargando Kokoro (cuda) en su propio proceso…
+  Parte 1 de 2
+  Parte 2 de 2
+Finalizado (13.52 s)
+```
+
+### Opciones (`backend_options`)
+
+| Clave | Para qué sirve | Valor (Alex / Dora) |
+|---|---|---|
+| `runtime.python_path` | Python del entorno de la voz | `models/tts/kokoro/env/Scripts/python.exe` |
+| `runtime.cache_dir` | Carpeta de las cachés del proceso (Hugging Face, torch) | `models/tts/_cache` |
+| `runtime.device` | `cuda` (GPU) o `cpu` | `cuda` |
+| `model.repo_id` | Nombre del modelo en Hugging Face; no se descarga nada, solo lo pide Kokoro al cargar | `hexgrad/Kokoro-82M` |
+| `model.config_path` | Configuración del modelo | `models/tts/kokoro/weights/config.json` |
+| `model.weights_path` | Pesos del modelo | `models/tts/kokoro/weights/kokoro-v1_0.pth` |
+| `voice.path` | Archivo de la voz | `models/tts/kokoro/weights/voices/em_alex.pt` / `…/ef_dora.pt` |
+| `voice.lang_code` | Idioma de Kokoro (`e` = español; vale también su alias `es`) | `e` |
+| `segmentation.max_characters` | Máximo de caracteres de un trozo | 400 |
+| `synthesis.speed` | Velocidad (número mayor que 0; 1 = la del modelo) | 1.0 |
+
+- Las rutas son relativas a la carpeta del proyecto y no pueden salir de ella.
+- La velocidad va en `synthesis.speed`: `prosody.speaking_rate` tiene que ser
+  1.0 y `prosody.volume_gain_db` 0.0, y no se usa `backend_voice_id` (la voz es
+  el archivo de `voice.path`).
+- Si falta algo, la voz no se genera y el error CONFIG dice qué ruta falta, por
+  ejemplo:
+
+  ```text
+  La configuración de la voz «Kokoro Alex» no es válida: no existe «models/tts/kokoro/weights/voices/em_alex.pt» (backend_options.voice.path). Monta el entorno de la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el documento de la voz.
+  ```
+
+- Un `lang_code` que Kokoro no conoce también es un error CONFIG, con la lista
+  de los válidos. Si el proceso falla, el error dice qué pasó; el programa para
+  y no cambia de voz.
+
+### Trozos y pausas
+
+Kokoro lee como mucho 510 fonemas por llamada y, si son más, **corta el resto
+sin avisar**. Por eso el texto se parte en trozos de frases enteras de hasta
+`segmentation.max_characters` caracteres (400, el mismo tamaño con el que Kokoro
+trocea por su cuenta), sin juntar nunca dos párrafos, y el proceso comprueba
+cada trozo: si llega a 510 fonemas, para con un error que pide bajar
+`max_characters` o partir esa frase, en vez de perder palabras.
+
+| Clave | Dónde | Valor |
+|---|---|---|
+| `sentence_pause_seconds` | Entre dos trozos de un mismo párrafo | 0 s |
+| `paragraph_pause_seconds` | Entre párrafos | 0,35 s |
+
+Con 0 s entre trozos, Kokoro suena exactamente como la muestra que se eligió de
+oído en I6: con la misma semilla, el audio de las dos voces es el mismo byte a
+byte (comprobado el 24-11-2026 con el texto de esa muestra).
+
+### Ritmo, tiempo y memoria
+
+Ritmo declarado en su `pacing`: **Alex 14,42 letras/s y 2,87 palabras/s; Dora
+14,40 letras/s y 2,86 palabras/s**, medido el 24-11-2026 con el `VoiceBuilder`
+del programa, sin semilla, con 8 guiones reales de Ollama (los de I2: 4 de 30 s y
+4 de 60 s) y la duración del `voz.mp3` publicado:
+
+| Guion | Palabras | Letras | Alex | Dora |
+|---|---:|---:|---:|---:|
+| Tesla, 30 s | 85 | 405 | 28,88 s | 28,65 s |
+| Neuroplasticidad, 30 s | 82 | 449 | 31,28 s | 31,33 s |
+| Estoicismo, 30 s | 95 | 445 | 30,80 s | 31,00 s |
+| Neuroplasticidad, 30 s (otro) | 67 | 381 | 26,40 s | 26,30 s |
+| Tesla, 60 s | 164 | 825 | 56,90 s | 57,13 s |
+| Neuroplasticidad, 60 s | 139 | 714 | 50,33 s | 50,53 s |
+| Estoicismo, 60 s | 176 | 819 | 56,65 s | 56,88 s |
+| Neuroplasticidad, 60 s (otro) | 167 | 864 | 58,68 s | 58,53 s |
+
+- Estimando cada guion con los otros siete, las letras aciertan con un error
+  medio del 1,1 % (ninguno fuera de ±10 %) y las palabras, del 6 %.
+- Lee algo más deprisa que Piper (Davefx: 13,14 letras/s) y más despacio que
+  Chatterbox (15,71).
+- **Tiempo:** de 12 a 18 s por guion, de 30 o de 60 s: casi todo es arrancar el
+  proceso y cargar el modelo; leer un guion de 30 s le lleva unos 3 s en la GPU.
+- **Memoria de la GPU:** unos 1,3 GB mientras dura el proceso; al terminar
+  queda libre. Con `runtime.device` `cpu` va casi igual de rápido (I6).
+
+### Repetir el mismo audio
+
+Con `seed`, el mismo texto da el mismo audio byte a byte (apartado 6). Sin
+ella, cada ejecución da un audio algo distinto, pero de la misma duración.
+
+---
+
+## 9. Licencias de las voces
 
 | Voz | Programa | Modelo | Notas |
 |---|---|---|---|
 | Carlfm y Davefx | `piper-tts` 1.8.0: GPL-3.0 o posterior | Davefx: CC0; Carlfm: dominio público (fichas de `rhasspy/piper-voices`) | — |
+| Kokoro (Alex y Dora) | `kokoro` 0.9.4 y `misaki` 0.9.4: Apache-2.0; usan espeak-ng (dentro de `espeakng-loader`) y `phonemizer-fork`, GPL-3.0 o posterior, como este proyecto | `hexgrad/Kokoro-82M` (revisión `f3ff357`), con sus voces `em_alex` y `ef_dora`: Apache-2.0 | Permite uso comercial. Última versión del paquete: abril de 2025 |
 | Chatterbox | `chatterbox-tts` 0.1.7: MIT | `ResembleAI/chatterbox` (checkpoint multilingüe v2): MIT | Permite uso comercial. **Proyecto retirado:** desde agosto de 2026 es un archivo de investigación sin mantenimiento ni arreglos. **Marca de agua:** cada audio lleva una marca de agua inaudible (Perth, de Resemble AI) que identifica la voz como generada por IA |
 
 Los modelos y los entornos no se reparten con el proyecto: cada persona los

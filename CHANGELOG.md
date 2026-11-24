@@ -43,7 +43,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   sus pesos van en `models/tts/`, dentro del proyecto; rutas y ajustes en su
   documento de voz; admite la semilla (`seed`). Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual) e
-  [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-y-chatterbox).
+  [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-chatterbox-y-kokoro).
+- Voces Kokoro Alex y Kokoro Dora (`config/voice_configs/kokoro_alex.json` y
+  `kokoro_dora.json`; Kokoro 0.9.4, Apache-2.0): naturales y ligeras, en un
+  proceso aparte como Chatterbox, con su entorno y sus pesos en `models/tts/`;
+  rutas, idioma (`lang_code`), voz y velocidad (`speed`) en su documento de voz;
+  admiten la semilla (`seed`). Ver
+  [VOICEOVER.md §8](docs/VOICEOVER.md#8-kokoro).
 
 ### Cambiado
 

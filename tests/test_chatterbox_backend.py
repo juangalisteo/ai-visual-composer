@@ -1000,7 +1000,7 @@ def test_worker_imports_only_the_standard_library_at_module_level():
 def test_default_registry_registers_chatterbox_without_loading_anything(tmp_path):
     registry = build_default_tts_backend_registry(project_root=tmp_path)
 
-    assert registry.backend_keys == ("piper_onnx", "chatterbox_multilingual")
+    assert registry.backend_keys == ("piper_onnx", "chatterbox_multilingual", "kokoro")
     backend = registry.resolve("chatterbox_multilingual")
     assert isinstance(backend, ChatterboxBackend)
     assert backend._project_root == tmp_path.resolve()
