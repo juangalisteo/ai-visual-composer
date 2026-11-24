@@ -60,6 +60,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - Un valor no válido en el documento de una voz es un error de configuración
   que nombra ese documento (`config/voice_configs/…`), también al abrir el
   menú VOZ (antes, en el menú, era un error inesperado).
+- Las voces que van en su propio proceso (Chatterbox y Kokoro) guardan la
+  caché de CUDA y sus archivos temporales (los de torch también) en carpetas
+  del proyecto declaradas en su documento (`backend_options.runtime`:
+  `cuda_cache_dir`, `models/tts/_cache/cuda`, y `temp_dir`, `tmp/tts`), y no
+  en `%APPDATA%\NVIDIA\ComputeCache` ni en el `%TEMP%` del sistema. Si falta una
+  de las dos claves, la voz no se genera y el error CONFIG dice cuál. Ver
+  [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual).
 - Menú VOZ en este orden: «Chatterbox (natural, GPU)», «Piper Carlfm (rápida,
   CPU)», «Piper Davefx (rápida, CPU)», «Kokoro Alex» y «Kokoro Dora». El orden lo declara cada documento de
   voz (`menu_order`), no el nombre del archivo.

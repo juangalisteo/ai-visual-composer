@@ -401,6 +401,8 @@ models/tts/
                             duros a ella, así que no ocupan dos veces y el próximo
                             entorno de voz reutiliza torch sin descargarlo
   _cache/huggingface/, …    cachés del proceso de la voz (sin descargas)
+  _cache/cuda/              caché de CUDA del proceso de la voz (sus archivos
+                            temporales van a tmp/tts/, también en el proyecto)
   chatterbox/env/           entorno de Chatterbox (Python 3.11.18)
   chatterbox/weights/       pesos del modelo
   kokoro/env/               entorno de Kokoro (Python 3.12.16)

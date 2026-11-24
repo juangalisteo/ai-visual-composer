@@ -19,6 +19,8 @@
     "runtime": {
       "python_path": "models/tts/kokoro/env/Scripts/python.exe",
       "cache_dir": "models/tts/_cache",
+      "cuda_cache_dir": "models/tts/_cache/cuda",
+      "temp_dir": "tmp/tts",
       "device": "cuda"
     },
     "model": {

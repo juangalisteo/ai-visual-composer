@@ -109,7 +109,7 @@ class VideoAssetSelectorTest(
                 selected
             )
 
-    def test_overlay_avoid_repeats_keeps_previous_overlay_alias(
+    def test_overlay_avoid_repeats_records_previous_asset(
         self
     ):
         with tempfile.TemporaryDirectory() as root:
@@ -135,7 +135,7 @@ class VideoAssetSelectorTest(
             )
 
             self.assertEqual(
-                selector.previous_overlay,
+                selector.previous_asset,
                 first
             )
 

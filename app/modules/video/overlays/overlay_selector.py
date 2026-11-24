@@ -36,29 +36,6 @@ class OverlaySelector(
             OverlayCategoryDistributionPolicy()
         )
 
-    @property
-    def previous_overlay(
-        self
-    ):
-        return self.previous_asset
-
-    @previous_overlay.setter
-    def previous_overlay(
-        self,
-        value
-    ):
-        self.previous_asset = value
-
-    def _load_overlays(
-        self,
-        root_directory,
-        folder
-    ):
-        return self._load_assets(
-            root_directory=root_directory,
-            folder=folder
-        )
-
     def _select_folder(
         self,
         folders,
@@ -87,11 +64,3 @@ class OverlaySelector(
         self
     ):
         self.category_distribution_policy.reset()
-
-    def _remove_previous_overlay(
-        self,
-        candidates_by_folder
-    ):
-        return self._remove_previous_asset(
-            candidates_by_folder
-        )
