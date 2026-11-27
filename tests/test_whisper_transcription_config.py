@@ -150,7 +150,7 @@ def test_subtitle_builder_reads_config_whisper_json_without_an_injected_config(
     _write_config(
         tmp_path,
         '{"model": " test_model ", "device": "test_device", '
-        '"language": "test_language"}',
+        '"language": "test_language", "triton_cache_dir": "test_cache/triton"}',
     )
     builder = SubtitleBuilder()
 
