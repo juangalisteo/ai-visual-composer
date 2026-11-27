@@ -275,7 +275,7 @@ cada uno por dentro:
 | `INTRO / OUTRO` | Añade una intro, un outro o ambos al vídeo |
 | `MONTAJE VÍDEOS` | Une varios vídeos en el orden que se elige, con o sin transiciones, y sin subtítulos |
 | `VIDEO + AUDIO \| SRT` | Sustituye el audio del vídeo por uno nuevo y, si hay SRT, lo pinta tal cual |
-| `EXPORTAR SRT ➜  VIDEO` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
+| `EXPORTAR SRT` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
 
 Qué archivo va en cada carpeta de `input/studio/`, cómo se eligen y qué
 pregunta cada menú: [START.md, apartado 7](START.md#7-studio).
@@ -1032,7 +1032,7 @@ AI VISUAL COMPOSER
 │
 └── STUDIO                      material propio (StudioExecutionCoordinator)
       SOLO VIDEO · SRT + VIDEO · INTRO / OUTRO · MONTAJE VÍDEOS
-      VIDEO + AUDIO | SRT · EXPORTAR SRT ➜  VIDEO
+      VIDEO + AUDIO | SRT · EXPORTAR SRT
 
 menús → ApplicationExecutionRequest → run_application() → coordinador
 formatos: vertical (9:16) y horizontal (16:9), declarados en config/formats.json

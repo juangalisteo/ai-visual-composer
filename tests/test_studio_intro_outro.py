@@ -48,7 +48,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             ("INTRO / OUTRO", StudioInputMode.INTRO_OUTRO.value),
             ("MONTAJE VÍDEOS", StudioInputMode.MONTAJE_VIDEOS.value),
             ("VIDEO + AUDIO | SRT", StudioInputMode.VIDEO_AUDIO_SRT.value),
-            ("EXPORTAR SRT ➜  VIDEO", StudioInputMode.EXPORTAR_SRT.value),
+            ("EXPORTAR SRT", StudioInputMode.EXPORTAR_SRT.value),
         )
         for selection, mode in expected:
             answers = MenuAnswers(selection)

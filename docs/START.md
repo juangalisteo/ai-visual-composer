@@ -232,7 +232,7 @@ ENTRADA
 3. INTRO / OUTRO
 4. MONTAJE VÍDEOS
 5. VIDEO + AUDIO | SRT
-6. EXPORTAR SRT ➜  VIDEO
+6. EXPORTAR SRT
 ```
 
 ### Qué archivo va en cada carpeta
@@ -244,8 +244,8 @@ ENTRADA
 | INTRO / OUTRO | `input/studio/intro_outro/` | El vídeo `.mp4` al que se añade la intro, el outro o los dos |
 | MONTAJE VÍDEOS | `input/studio/montaje_videos/` | Dos o más vídeos `.mp4` |
 | VIDEO + AUDIO \| SRT | `input/studio/video_audio_srt/` | Un vídeo `.mp4`, un audio (`.mp3`, `.wav`, `.m4a`, `.aac` o `.flac`) y, si quieres subtítulos, un `.srt` |
-| EXPORTAR SRT ➜  VIDEO, TRANSCRIBIR | `input/studio/exportar_srt/transcribir/` | Un `.mp4` o un `.mp3` |
-| EXPORTAR SRT ➜  VIDEO, CONVERTIR | `input/studio/exportar_srt/convertir/` | Un `.srt` |
+| EXPORTAR SRT, TRANSCRIBIR | `input/studio/exportar_srt/transcribir/` | Un `.mp4` o un `.mp3` |
+| EXPORTAR SRT, CONVERTIR | `input/studio/exportar_srt/convertir/` | Un `.srt` |
 
 - STUDIO busca los archivos **por extensión**, no por nombre. Si hay uno solo
   del tipo que necesita, lo usa sin preguntar; si hay varios, muestra un menú
@@ -335,7 +335,9 @@ menos de `video_audio_srt.audio_tail_margin_seconds` de `config/studio.json`
 (0,1 s), cuenta como igual: no pregunta ni rellena nada. Con subtítulos, pinta
 el SRT **tal cual**, igual que [SRT + VIDEO](#72-srt--video).
 
-### 7.6 EXPORTAR SRT ➜  VIDEO
+<a id="76-exportar-srt---video"></a>
+
+### 7.6 EXPORTAR SRT
 
 No hace ningún vídeo: solo un SRT. El menú MODO ofrece:
 
@@ -397,7 +399,7 @@ La tabla recoge los mensajes más frecuentes:
 | «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-diseño)) y vuelve a lanzar |
 | «No hay archivos MP4 disponibles para INTRO en assets/videos/intro_outro/vertical/intro/.» (o para OUTRO, o en `horizontal/`) | Pon al menos un `.mp4` en esa carpeta o elige otra opción en INTRO / OUTRO |
 | «No existe la carpeta de música: assets\music», «No se encontraron pistas musicales válidas en: assets\music» o «No existe la carpeta de overlays: assets\videos\overlays» | La música y los overlays no vienen con el proyecto: pon los tuyos ([assets/README.md](../assets/README.md)) o elige «Sin música» u OVERLAYS «No» |
-| «No existe la carpeta de entrada STUDIO: input\studio\montaje_videos» (o «… para INTRO / OUTRO: input\studio\intro_outro.», «… VIDEO + AUDIO \| SRT: input\studio\video_audio_srt.», «… EXPORTAR SRT ➜  VIDEO: input\studio\exportar_srt\transcribir») | Crea esa carpeta y pon en ella los archivos del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
+| «No existe la carpeta de entrada STUDIO: input\studio\montaje_videos» (o «… para INTRO / OUTRO: input\studio\intro_outro.», «… VIDEO + AUDIO \| SRT: input\studio\video_audio_srt.», «… EXPORTAR SRT: input\studio\exportar_srt\transcribir») | Crea esa carpeta y pon en ella los archivos del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «No se encontró ningún archivo … en input\studio\…» | Pon el archivo con la extensión correcta en la carpeta del modo ([apartado 7](#qué-archivo-va-en-cada-carpeta)) |
 | «El archivo SRT de STUDIO debe estar codificado en UTF-8», «… está vacío» o «… no contiene cues utilizables» | Guarda el `.srt` en UTF-8 y revisa el formato de sus bloques |
 | «No se pudo sacar el audio de input\studio\exportar_srt\transcribir\… para transcribirlo.» | El `.mp4` no es un vídeo válido o no tiene sonido: usa otro |

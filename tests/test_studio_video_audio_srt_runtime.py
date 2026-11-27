@@ -125,7 +125,7 @@ def test_studio_export_menu_label_changes_without_changing_its_mode_id():
     controller._select_from_list = Mock(return_value=StudioInputMode.EXPORTAR_SRT.value)
 
     assert controller.select_studio_input_mode() == StudioInputMode.EXPORTAR_SRT.value
-    assert "6. EXPORTAR SRT ➜  VIDEO" in messages
+    assert "6. EXPORTAR SRT" in messages
 
 
 @pytest.mark.parametrize("subtitles", (False, True))
