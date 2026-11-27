@@ -261,6 +261,12 @@ def _print_subtitle_export_summary(
             "Estimados: el tiempo de cada bloque del SRT se reparte entre sus "
             "palabras por letras. Para tiempos exactos, TRANSCRIBIR o SOLO VIDEO.",
         )
+    else:
+        # PRUEBA-GS, fallo 18: lines of up to ~80 characters.
+        summary.add_detail(
+            "Frases",
+            "Largas, las de Whisper. Para pintarlo, pásalo antes por CONVERTIR.",
+        )
     summary.add_detail("SRT generado", result.output_path)
     stage_label = (
         "Transcripción"

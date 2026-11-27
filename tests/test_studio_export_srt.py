@@ -838,6 +838,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             details,
         )
         self.assertIn(("SRT generado", result.output_path), details)
+        self.assertFalse(any(name == "Frases" for name, _ in details))
 
     def test_transcribe_summary_does_not_invent_a_profile(self):
         plan = StudioSubtitleExportPlan(
@@ -871,6 +872,14 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             any(name in {"Formato", "Perfil"} for name, _ in details)
         )
         self.assertFalse(any(name == "Tiempos" for name, _ in details))
+        # Whisper's long sentences: convert before painting (A2-J).
+        self.assertIn(
+            (
+                "Frases",
+                "Largas, las de Whisper. Para pintarlo, pásalo antes por CONVERTIR.",
+            ),
+            details,
+        )
 
 
 if __name__ == "__main__":
