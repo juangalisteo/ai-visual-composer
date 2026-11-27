@@ -118,6 +118,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   cortando al final de frase.
 - Los perfiles de IMAGEN y VIDEO piden 50 s de guion por tema (`duration`;
   antes 10, que eran de prueba).
+- El primer prompt del guion por tema pide «unas N palabras; mejor algo más que
+  menos» en vez de «N palabras como máximo; es un límite estricto», que llevaba
+  a guiones cortos ahora que el margen no tiene tope por arriba. Cambia el texto
+  que llega a Ollama (marcador `{palabras}` en `prompts/templates/script.txt`).
 - Todos los textos que se envían a Ollama, Flux y Wan están en `prompts/`:
   las plantillas de cada petición (`templates/`, con `{marcadores}` para los
   datos), los criterios del storyboard (`criteria/`), la identidad visual y

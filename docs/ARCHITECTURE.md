@@ -424,9 +424,11 @@ componente:
   archivos de `prompts/`: el tono (`prompts/tones/<tone>.txt`, según la clave
   `tone` del perfil), la tarea (`prompts/tasks/script.txt`), el formato
   (`prompts/formats/<formato>.txt`) y las reglas de idioma y restricciones
-  (`prompts/rules/`). Incluye además el rango de palabras que corresponde a la
-  duración (`duration`) del perfil; el cálculo está en
-  [VOICEOVER.md](VOICEOVER.md). Lo que se añade al reintentar o al ajustar la
+  (`prompts/rules/`). Incluye además las palabras que corresponden a la
+  duración (`duration`) del perfil, como «unas N palabras; mejor algo más que
+  menos» (marcador `{palabras}`; hasta A1 pedía «N palabras como máximo; es un
+  límite estricto», que empujaba a quedarse corto con un margen sin tope por
+  arriba); el cálculo está en [VOICEOVER.md](VOICEOVER.md). Lo que se añade al reintentar o al ajustar la
   extensión sale de `prompts/templates/script_retry*.txt` y
   `script_length*.txt` ([apartado 19](#19-perfiles-y-configuración)).
 - **La respuesta se valida antes de usarla** (`ScriptOutputValidator`): se
@@ -846,7 +848,7 @@ el código:
 | `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) y movimiento de cada clip: textos de cada nivel, palabras clave que lo eligen y restricciones (`motion.json`, `motion_storyboard_field.txt`; [apartado 17](#17-clips-de-vídeo-i2v)) |
 
 - **Marcadores.** Una plantilla marca con `{nombre}` cada dato que rellena el
-  programa (`{tema}`, `{palabras_max}`, `{escenas}`…). Si a una plantilla le
+  programa (`{tema}`, `{palabras}`, `{escenas}`…). Si a una plantilla le
   falta un marcador o tiene uno que el programa no rellena, la ejecución se
   para con un error de configuración (CONFIG) que nombra el archivo.
 - **Por tono.** Los textos que dependen del tono (criterios del storyboard e
