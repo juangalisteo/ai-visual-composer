@@ -16,6 +16,7 @@ from app.modules.audio.external_tts_process import (
     ExternalTtsProcess,
     join_segment_wavs,
     parse_external_tts_runtime,
+    parse_segment_trim,
     parse_segmentation,
     reject_unknown_options,
     require_options_mapping,
@@ -37,7 +38,9 @@ _BACKEND_KEY = "kokoro"
 _ENGINE_LABEL = "Kokoro"
 _WORKER_PATH = Path(__file__).resolve().parent / "workers" / "kokoro_worker.py"
 _STAGED_AUDIO_NAME = "kokoro_audio.wav"
-_OPTION_FIELDS = frozenset({"runtime", "model", "voice", "segmentation", "synthesis"})
+_OPTION_FIELDS = frozenset(
+    {"runtime", "model", "voice", "segmentation", "segment_trim", "synthesis"}
+)
 _MODEL_FIELDS = frozenset({"repo_id", "config_path", "weights_path"})
 _VOICE_FIELDS = frozenset({"path", "lang_code"})
 _SYNTHESIS_FIELDS = frozenset({"speed"})
@@ -95,6 +98,10 @@ class KokoroBackend:
             raise TtsVoiceConfigurationError(
                 "el texto no tiene ninguna frase que leer."
             )
+        segment_trim = parse_segment_trim(
+            request.voice.backend_options,
+            required=False,
+        )
 
         workspace = request.workspace.path
         segment_paths, sample_rate_hz = self._process.run(
@@ -113,6 +120,7 @@ class KokoroBackend:
             output_path=audio_path,
             workspace=workspace,
             sample_rate_hz=sample_rate_hz,
+            segment_trim=segment_trim,
         )
         return TtsSynthesisResult(
             staged_audio=TtsAudioArtifact(

@@ -340,6 +340,7 @@ Kokoro (apartado 8).
 | `runtime.device` | `cuda` (GPU) o `cpu` | `cuda` |
 | `model.checkpoint_dir` | Carpeta con los pesos (`ve.pt`, `t3_mtl23ls_v2.safetensors`, `s3gen.pt`, `grapheme_mtl_merged_expanded_v1.json`, `conds.pt`) | `models/tts/chatterbox/weights` |
 | `segmentation.max_characters` | Máximo de caracteres de un trozo | 300 |
+| `segment_trim` | Recorte de los bordes de cada trozo antes de unirlos (ver «Trozos y pausas»). Obligatorio: `threshold_db` (nivel en dB, menor que 0), `window_seconds` (más de 0 y hasta 1), `keep_seconds` y `min_sound_seconds` (de 0 a 1) | −40 dB, 0,02 s, 0,1 s y 0,15 s |
 | `synthesis` | Ajustes de Chatterbox, opcionales (números ≥ 0): `exaggeration` (expresividad), `cfg_weight` (cuánto sigue a su voz de referencia; con 0, en I6, se inventó palabras), `temperature`, `repetition_penalty`, `min_p` y `top_p` | `exaggeration` 0,5 y `cfg_weight` 0,5 (los de serie) |
 
 - Las rutas son relativas a la carpeta del proyecto y no pueden salir de ella.
@@ -375,6 +376,23 @@ dentro de las frases y tarda casi el doble.
 |---|---|---|
 | `sentence_pause_seconds` | Entre dos trozos de un mismo párrafo (dentro de un trozo, Chatterbox hace su propia pausa) | 0,2 s |
 | `paragraph_pause_seconds` | Entre párrafos | 0,35 s |
+
+**Bordes de cada trozo (`segment_trim`).** Chatterbox deja al final de algunos
+trozos silencio, ruido bajo (de −39 a −53 dB) y a veces un golpe de unos 70 ms
+tras el silencio: en PRUEBA-GS había 1,06 s y 2,5 s entre trozos en vez de la
+pausa de 0,2 s. Antes de unir los trozos se recorta su principio y su final:
+
+- Se mide el nivel (RMS) en ventanas de `window_seconds` (0,02 s); una ventana
+  es sonido si llega a `threshold_db` (−40 dB).
+- Un sonido en el borde más corto que `min_sound_seconds` (0,15 s), como ese
+  golpe, cuenta como ruido.
+- Se deja `keep_seconds` (0,1 s) antes y después de la voz, para no comerse el
+  principio ni el final de las palabras.
+- Un trozo sin voz se deja entero.
+
+Medido con `input/guion.txt` (3 trozos, A1): los huecos entre trozos pasan de
+1,06 s y unos 2,5 s a 0,40 s y 0,32 s, como las pausas entre frases dentro de un
+trozo (0,28–0,34 s); la voz, de 34,5 a 30,4 s.
 
 ### Ritmo, tiempo y memoria
 
@@ -448,6 +466,7 @@ Finalizado (13.52 s)
 | `voice.path` | Archivo de la voz | `models/tts/kokoro/weights/voices/em_alex.pt` / `…/ef_dora.pt` |
 | `voice.lang_code` | Idioma de Kokoro (`e` = español; vale también su alias `es`) | `e` |
 | `segmentation.max_characters` | Máximo de caracteres de un trozo | 400 |
+| `segment_trim` | Opcional: recorte de los bordes de cada trozo, como en Chatterbox (§7). Las dos voces no lo declaran | — |
 | `synthesis.speed` | Velocidad (número mayor que 0; 1 = la del modelo) | 1.0 |
 
 - Las rutas son relativas a la carpeta del proyecto y no pueden salir de ella.
@@ -482,6 +501,10 @@ cada trozo: si llega a 510 fonemas, para con un error que pide bajar
 Con 0 s entre trozos, Kokoro suena exactamente como la muestra que se eligió de
 oído en I6: con la misma semilla, el audio de las dos voces es el mismo byte a
 byte (comprobado el 24-11-2026 con el texto de esa muestra).
+
+Kokoro deja unos 0,2 s de silencio al principio de cada trozo y 0,3–0,4 s al
+final (medido en A1 con `input/guion.txt`: unos 0,55 s entre trozos), sin ruido
+ni golpes: no necesita `segment_trim` y no lo declara.
 
 ### Ritmo, tiempo y memoria
 

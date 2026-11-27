@@ -66,6 +66,13 @@ def _options(**changes):
         },
         "model": {"checkpoint_dir": CHECKPOINT},
         "segmentation": {"max_characters": 20},
+        # The simulated segments are all quiet: nothing is trimmed.
+        "segment_trim": {
+            "threshold_db": -40.0,
+            "window_seconds": 0.02,
+            "keep_seconds": 0.1,
+            "min_sound_seconds": 0.15,
+        },
         "synthesis": {"exaggeration": 0.5, "cfg_weight": 0.5},
     }
     options.update(changes)
@@ -1153,6 +1160,12 @@ def test_project_voice_document_declares_the_environment_inside_the_project():
     assert options["runtime"]["device"] == "cuda"
     assert options["model"]["checkpoint_dir"] == "models/tts/chatterbox/weights"
     assert options["segmentation"]["max_characters"] == 300
+    assert dict(options["segment_trim"]) == {
+        "threshold_db": -40.0,
+        "window_seconds": 0.02,
+        "keep_seconds": 0.1,
+        "min_sound_seconds": 0.15,
+    }
     assert dict(options["synthesis"]) == {"exaggeration": 0.5, "cfg_weight": 0.5}
 
 

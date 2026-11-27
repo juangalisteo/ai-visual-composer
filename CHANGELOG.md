@@ -188,6 +188,12 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   `output/<proyecto>/` ya existe, el menú PROYECTO pregunta «1. Sobrescribir»
   (se borra solo esa carpeta) o «2. Poner otro nombre»; si el nombre es nuevo,
   no pregunta nada. En todas las rutas (GUION, IMAGEN, VIDEO, DISEÑO y STUDIO).
+- Sin pausas largas entre los trozos de Chatterbox (1–2,5 s, con ruido de
+  fondo): antes de unirlos se recorta el silencio, el ruido bajo y los golpes
+  cortos del principio y del final de cada trozo, según `segment_trim` de su
+  documento de voz (−40 dB, obligatorio en Chatterbox). Con el guion de
+  prueba, los huecos pasan a 0,3–0,4 s. Piper y Kokoro no cambian. Ver
+  [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual).
 
 ### Retirado
 
