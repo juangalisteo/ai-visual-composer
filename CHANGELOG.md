@@ -178,6 +178,12 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   redondeo. Antes, los subtítulos de ese vídeo salían sin tiempos por palabra,
   el storyboard estimaba los cortes y SOLO VIDEO de STUDIO se paraba. Ver
   [ARCHITECTURE.md §14](docs/ARCHITECTURE.md#14-subtítulos).
+- Los overlays y los efectos visuales ya no tiñen de morado el vídeo: los modos
+  de mezcla `screen`, `add`, `lighten` y `overlay` se aplican en RGB y no sobre
+  los planos YUV (que también mezclaban el color). El formato de la mezcla y
+  las opciones de la conversión están en `config/video.json` (`layer_blend`);
+  sin el archivo o una clave, error CONFIG con la ruta. Ver
+  [ARCHITECTURE.md §18](docs/ARCHITECTURE.md#18-composición-del-vídeo-final).
 
 ### Retirado
 

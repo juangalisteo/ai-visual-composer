@@ -7,6 +7,10 @@ from app.shared.config_contract import (
     require_text,
 )
 
+from app.modules.video.layer_blend_settings import (
+    LayerBlendSettings,
+    load_layer_blend_settings,
+)
 from app.modules.video.config.motion_config import MotionConfig
 from app.modules.video.config.transition_config import TransitionConfig
 from app.modules.video.config.overlay_config import OverlayConfig
@@ -69,6 +73,9 @@ class VideoConfig:
     movflags: str
 
     subtitle_cue_policy: dict | None = None
+
+    # How overlays and visual effects are blended (config/video.json).
+    layer_blend: LayerBlendSettings | None = None
 
     @property
     def subtitle_offset(
@@ -355,4 +362,6 @@ class VideoConfigLoader:
                 if render_subtitles and self.subtitle_profile is not None
                 else None
             ),
+
+            layer_blend=load_layer_blend_settings(),
         )

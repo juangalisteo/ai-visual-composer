@@ -8,6 +8,7 @@ from app.modules.video.ffmpeg.graphs.overlay_graph_builder import (
     OverlayGraphBuilder
 )
 from app.modules.video.media.media_loader import MediaLoader
+from app.modules.video.layer_blend_settings import LayerBlendSettings
 
 
 class RecordingOverlayBuilder:
@@ -55,6 +56,11 @@ class OverlaySceneTimingTest(
                     width=640,
                     height=360,
                     fps=24,
+                    pixel_format="yuv420p",
+                    layer_blend=LayerBlendSettings(
+                        pixel_format="gbrp",
+                        scale_flags="accurate_rnd"
+                    ),
                     overlays=SimpleNamespace(
                         enabled=True
                     )

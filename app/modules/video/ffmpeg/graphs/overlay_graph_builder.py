@@ -112,7 +112,9 @@ class OverlayGraphBuilder(
                     output_prefix="ov",
                     width=config.width,
                     height=config.height,
-                    fps=config.fps
+                    fps=config.fps,
+                    layer_blend=config.layer_blend,
+                    output_pixel_format=config.pixel_format
                 )
             )
 

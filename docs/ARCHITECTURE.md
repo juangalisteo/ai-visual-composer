@@ -779,6 +779,16 @@ orden:
   categoría de la escena anterior. El texto de la escena no interviene.
 - **Efectos visuales.** Tienen la misma forma que los overlays, pero se activan
   solo con `visual_effects.enabled` del perfil.
+- **Mezcla de las capas.** El modo `normal` superpone la capa con su
+  transparencia. Los demás (`screen`, `add`, `lighten`, `overlay`) no son
+  lineales: sobre los planos YUV mezclarían también el color y teñirían la
+  imagen (de morado, con los overlays oscuros). Por eso `LayerCompositor` pasa
+  la imagen y la capa a `layer_blend.pixel_format` de `config/video.json`
+  (`gbrp`, RGB) antes de mezclarlas y vuelve después al `video.pixel_format`
+  del perfil, con las opciones de escalado de `layer_blend.scale_flags`
+  (`accurate_rnd+full_chroma_int`: con las de serie, cada ida y vuelta
+  oscurece un poco la imagen). Sin el archivo o una clave, error CONFIG con la
+  ruta.
 - **Validación.** El render se escribe primero en un archivo temporal; después
   `VideoValidator` comprueba que su duración no se aleje de la del audio más de
   `validation.max_duration_difference` del perfil. Solo entonces se publica como
@@ -801,6 +811,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
 | `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
 | `config/voice.json` | Común a todas las voces: `workspace_dir`, la carpeta donde `VoiceBuilder` crea la carpeta de trabajo de cada síntesis (`tmp/voice`, dentro del proyecto e ignorada por Git; nunca el `%TEMP%` del sistema). Obligatoria: si falta o sale de la carpeta del proyecto, error CONFIG que nombra el archivo ([VOICEOVER.md §2](VOICEOVER.md#2-documento-de-voz)) |
+| `config/video.json` | Mezcla de los overlays y efectos visuales: `layer_blend.pixel_format` (`gbrp`) y `layer_blend.scale_flags` ([apartado 18](#18-composición-del-vídeo-final)). Obligatoria: si falta, error CONFIG que nombra el archivo |
 | `config/comfyui.json` | ComfyUI: sus carpetas `input/` y `output/` y si se borra lo que deja el programa una vez copiado al proyecto (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |

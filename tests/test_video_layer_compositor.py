@@ -10,6 +10,13 @@ from app.modules.video.ffmpeg.graphs.overlay_graph_builder import (
 from app.modules.video.ffmpeg.graphs.visual_effect_graph_builder import (
     VisualEffectGraphBuilder
 )
+from app.modules.video.layer_blend_settings import LayerBlendSettings
+
+
+LAYER_BLEND = LayerBlendSettings(
+    pixel_format="gbrp",
+    scale_flags="accurate_rnd"
+)
 
 
 class FakeOverlayBuilder:
@@ -74,6 +81,8 @@ def graph_context(
             width=640,
             height=360,
             fps=24,
+            pixel_format="yuv420p",
+            layer_blend=LAYER_BLEND,
             overlays=SimpleNamespace(
                 enabled=overlays_enabled
             ),
@@ -174,13 +183,66 @@ class LayerCompositorTest(
                 blend_mode="add",
                 opacity=0.75,
                 start_time=1.0,
-                end_time=3.0
+                end_time=3.0,
+                layer_blend=LAYER_BLEND,
+                output_pixel_format="yuv420p"
             ),
-            "[base][fxsrc0]"
+            "[base]scale=flags=accurate_rnd,format=gbrp"
+            "[blend_base_fx0];"
+            "[fxsrc0]scale=flags=accurate_rnd,format=gbrp"
+            "[blend_layer_fx0];"
+            "[blend_base_fx0][blend_layer_fx0]"
             "blend=all_mode=addition:"
             "all_opacity=0.750:"
-            "enable='between(t,1.000,3.000)'"
+            "enable='between(t,1.000,3.000)',"
+            "scale=flags=accurate_rnd,format=yuv420p"
             "[fx0]"
+        )
+
+    def test_non_linear_blend_requires_the_declared_settings(
+        self
+    ):
+        compositor = LayerCompositor()
+
+        for layer_blend, pixel_format in (
+            (None, "yuv420p"),
+            (LAYER_BLEND, None),
+            (LAYER_BLEND, "")
+        ):
+            with self.subTest(
+                layer_blend=layer_blend,
+                pixel_format=pixel_format
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "config/video.json"
+                ):
+                    compositor.compose(
+                        base_stream="[base]",
+                        layer_stream="[ovsrc0]",
+                        output_stream="[ov0]",
+                        blend_mode="screen",
+                        opacity=0.5,
+                        start_time=0.0,
+                        end_time=4.0,
+                        layer_blend=layer_blend,
+                        output_pixel_format=pixel_format
+                    )
+
+    def test_normal_blend_does_not_need_the_settings(
+        self
+    ):
+        self.assertIn(
+            "overlay=0:0:",
+            LayerCompositor().compose(
+                base_stream="[base]",
+                layer_stream="[ovsrc0]",
+                output_stream="[ov0]",
+                blend_mode="normal",
+                opacity=0.5,
+                start_time=0.0,
+                end_time=4.0
+            )
         )
 
     def test_apply_operation_updates_current_stream_and_names(
@@ -205,7 +267,9 @@ class LayerCompositorTest(
                 output_prefix="ov",
                 width=640,
                 height=360,
-                fps=24
+                fps=24,
+                layer_blend=LAYER_BLEND,
+                output_pixel_format="yuv420p"
             )
         )
 
@@ -228,10 +292,15 @@ class LayerCompositorTest(
                 "trim=duration=4.000000,"
                 "setpts=PTS-STARTPTS+0.000000/TB"
                 "[ovsrc0]",
-                "[base][ovsrc0]"
+                "[base]scale=flags=accurate_rnd,format=gbrp"
+                "[blend_base_ov0];"
+                "[ovsrc0]scale=flags=accurate_rnd,format=gbrp"
+                "[blend_layer_ov0];"
+                "[blend_base_ov0][blend_layer_ov0]"
                 "blend=all_mode=screen:"
                 "all_opacity=0.500:"
-                "enable='between(t,0.000,4.000)'"
+                "enable='between(t,0.000,4.000)',"
+                "scale=flags=accurate_rnd,format=yuv420p"
                 "[ov0]"
             ]
         )
@@ -266,10 +335,15 @@ class LayerGraphBuilderTest(
                 "trim=duration=4.000000,"
                 "setpts=PTS-STARTPTS+0.000000/TB"
                 "[ovsrc0]",
-                "[base][ovsrc0]"
+                "[base]scale=flags=accurate_rnd,format=gbrp"
+                "[blend_base_ov0];"
+                "[ovsrc0]scale=flags=accurate_rnd,format=gbrp"
+                "[blend_layer_ov0];"
+                "[blend_base_ov0][blend_layer_ov0]"
                 "blend=all_mode=screen:"
                 "all_opacity=0.500:"
-                "enable='between(t,0.000,4.000)'"
+                "enable='between(t,0.000,4.000)',"
+                "scale=flags=accurate_rnd,format=yuv420p"
                 "[ov0]"
             ]
         )
