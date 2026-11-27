@@ -8,6 +8,7 @@ from app.core.execution_request import StudioExecutionRequest
 from app.core.start import run_application
 from app.managers.font_manager import FontManager
 from app.managers.output_manager import OutputManager
+from app.managers.project_manager import ProjectManager
 from app.modules.studio import (
     StudioMontageError,
     StudioVideoAudioSrtError,
@@ -18,6 +19,8 @@ from app.shared.format_catalog import FormatCatalog
 from app.shared.internal_error_log import write_internal_error_log
 from app.shared.operational_error import OperationalError
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.progress_logger import ProgressLogger
+from app.shared.run_log import RUN_LOG
 
 
 def main():
@@ -44,6 +47,18 @@ def main():
     except Exception as error:
         _present_unexpected_error(error)
         return 1
+    finally:
+        RUN_LOG.stop()
+
+
+def _start_run_log(project_name):
+    """Keep the record of this execution beside its project output."""
+    path = ProjectManager(project_name=project_name).run_log_path()
+    if not RUN_LOG.start(path):
+        ProgressLogger.warning(
+            f"No se pudo crear el registro de la ejecución ({path}); "
+            "la ejecución sigue sin él."
+        )
 
 
 def _run_main():
@@ -60,6 +75,7 @@ def _run_main():
     )
     if request.overwrite_project:
         OutputManager().remove_project(request.project_name)
+    _start_run_log(request.project_name)
 
     studio_start = time.perf_counter()
     try:
@@ -134,6 +150,7 @@ def _present_cancellation(user_message, *, operation):
 def _present_incident(presentation):
     """Write already-resolved presentation content at the terminal boundary."""
     print(presentation.text)
+    RUN_LOG.write(presentation.text)
 
 
 if __name__ == "__main__":

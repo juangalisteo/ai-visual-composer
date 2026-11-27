@@ -52,7 +52,7 @@ class TransitionGraphBuilder(
             )
 
         if image_count == 1:
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Transiciones: ninguna"
             )
 
@@ -76,7 +76,7 @@ class TransitionGraphBuilder(
                 + output_stream
             )
 
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Transiciones: desactivadas"
             )
 
@@ -88,7 +88,7 @@ class TransitionGraphBuilder(
 
         start = time.perf_counter()
 
-        ProgressLogger.start(
+        ProgressLogger.detail_start(
             "PREPARANDO TRANSICIONES"
         )
 
@@ -154,7 +154,7 @@ class TransitionGraphBuilder(
                 output_stream
             )
 
-        ProgressLogger.finish(
+        ProgressLogger.detail_finish(
             "TRANSICIONES PREPARADAS",
             time.perf_counter() - start
         )

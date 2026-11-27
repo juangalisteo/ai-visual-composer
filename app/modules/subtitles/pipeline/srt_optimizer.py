@@ -117,7 +117,7 @@ class SrtOptimizer:
                     0.35
                 )
             )
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Tiempos de subtítulos: "
                 f"{timing.source} | "
                 f"palabras con tiempo: {timing.word_count} | "
@@ -126,7 +126,7 @@ class SrtOptimizer:
             )
 
             if timing.fallback_reason:
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     "Tiempos de subtítulos de reserva: "
                     f"{timing.fallback_reason}"
                 )
@@ -138,14 +138,14 @@ class SrtOptimizer:
             )
 
             if stats is not None and stats.detected:
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     "Micro-cues detectados: "
                     f"{stats.detected} | "
                     "micro-cues fusionados: "
                     f"{stats.merged}"
                 )
         else:
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Tiempos de subtítulos: SRT sin tiempos por palabra"
             )
 

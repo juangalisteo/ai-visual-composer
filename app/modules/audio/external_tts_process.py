@@ -521,7 +521,7 @@ class ExternalTtsProcess:
             str(worker_path),
             str(request_path),
         ]
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Cargando {engine_label} ({runtime.device}) en su propio proceso…"
         )
         try:

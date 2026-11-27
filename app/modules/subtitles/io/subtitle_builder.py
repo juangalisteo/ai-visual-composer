@@ -1,5 +1,6 @@
 from collections import Counter
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,7 +21,10 @@ from app.modules.subtitles.io.whisper_transcription_config import (
 )
 from app.modules.subtitles.policies.timing import whisper_timing_path
 from app.shared.progress_logger import ProgressLogger
-from app.shared.operational_error import create_operational_error
+from app.shared.operational_error import (
+    create_operational_error,
+    summarize_technical_text,
+)
 
 
 class SubtitleBuilder:
@@ -123,8 +127,18 @@ class SubtitleBuilder:
             ]
 
             try:
-                subprocess.run(command, check=True)
+                completed = subprocess.run(
+                    command,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    env=self._whisper_environment(),
+                )
             except subprocess.CalledProcessError as error:
+                self._record_whisper_output(error.output)
                 raise create_operational_error(
                     family="SUBTITLES",
                     user_message="Whisper no pudo generar los subtítulos temporales.",
@@ -137,8 +151,12 @@ class SubtitleBuilder:
                         "model": transcription_config.model,
                         "phase": "transcription",
                         "expected_output": str(temp_output_dir),
+                        "output_summary": summarize_technical_text(
+                            error.output
+                        ),
                     },
                 ) from error
+            self._record_whisper_output(getattr(completed, "stdout", None))
 
             generated_srt = (
                 temp_output_dir
@@ -171,7 +189,7 @@ class SubtitleBuilder:
             )
 
             if discarded:
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     self._discarded_message(
                         discarded
                     )
@@ -238,6 +256,21 @@ class SubtitleBuilder:
         )
 
         return output_path
+
+    @staticmethod
+    def _whisper_environment():
+        """The environment of the Whisper process.
+
+        Its output goes to the record of the run (not to the screen), so it is
+        read through a pipe: UTF-8, so that no character can stop Whisper.
+        """
+        return {**os.environ, "PYTHONIOENCODING": "utf-8"}
+
+    @staticmethod
+    def _record_whisper_output(output):
+        """Whisper's own lines (its segments and notices) go to the record."""
+        if isinstance(output, str) and output.strip():
+            ProgressLogger.detail(output.rstrip())
 
     @staticmethod
     def _record_voice_pauses(timing_path, voice_pauses):

@@ -55,6 +55,10 @@ class ProjectManager:
     def script_path(self):
         return self.scripts_dir() / "guion.txt"
 
+    def run_log_path(self):
+        """Record of the execution (app/shared/run_log.py)."""
+        return self.base_path / "registro.txt"
+
     def audio_path(self):
         return self.audio_dir() / "voz.mp3"
 

@@ -88,6 +88,8 @@ RunController.run()          menús → ApplicationExecutionRequest
    ↓
 (Sobrescribir)               OutputManager().remove_project() borra solo output/<proyecto>/
    ↓
+registro                     abre output/<proyecto>/registro.txt (app/shared/run_log.py)
+   ↓
 run_application(request)     app/core/start.py: elige el coordinador por el tipo de ruta
    ↓
 StandardExecutionCoordinator | StudioExecutionCoordinator | DesignExecutionCoordinator
@@ -370,6 +372,7 @@ se para y lo avisa. Ningún menú vacía `output/` entero.
 
 | Ruta | Contenido |
 |---|---|
+| `registro.txt` | Registro de la ejecución, con la hora de cada línea: todo lo que salió en la terminal y, además, las líneas técnicas que no salen en pantalla (`ProgressLogger.detail`: detalles del grafo de FFmpeg, transiciones, overlays, fundidos, de dónde salen los tiempos de los subtítulos y de las escenas, la salida de Whisper, la carga de la voz…). Lo abre `main.py` cuando ya se sabe el proyecto y lo cierra al acabar, también tras un error (el error queda escrito). Si no se puede crear, avisa y la ejecución sigue sin él |
 | `scripts/guion.txt` | Guion usado |
 | `audio/voz.mp3`, `audio/audio_final.mp3` | Locución y audio mezclado |
 | `subtitles/` | SRT de la ruta estándar (`subtitulos.srt`) o de STUDIO ([apartado 8](#8-studio)) |

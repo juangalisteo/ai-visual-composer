@@ -93,7 +93,7 @@ class SubtitleGraphBuilder(
                 f"{output_stream}"
             )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Subtítulos preparados "
             f"({time.perf_counter() - start:.4f} s)"
         )

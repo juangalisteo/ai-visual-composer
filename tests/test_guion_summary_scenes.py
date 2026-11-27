@@ -116,7 +116,7 @@ def _factory_messages(**build_options):
     ) as audio_resolver, patch(f"{FACTORY}.VideoConfigLoader") as config_loader, patch(
         f"{FACTORY}.MediaLoader"
     ) as media_loader, patch(f"{FACTORY}.TimelineBuilder") as timeline_builder, patch(
-        f"{FACTORY}.ProgressLogger.info",
+        f"{FACTORY}.ProgressLogger.detail",
         side_effect=lambda message, **_: messages.append(message),
     ):
         audio_resolver.return_value.resolve.return_value = Path("audio.mp3")

@@ -1,6 +1,7 @@
 import io
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -10,6 +11,7 @@ from app.managers.pipeline_summary import PipelineSummary
 from app.modules.video.video_validator import VideoValidator
 from app.shared.media_probe import MediaProbe
 from app.shared.progress_logger import ProgressLogger
+from app.shared.run_log import RUN_LOG, RunLog
 from tests.test_menu_helpers import MenuAnswers
 
 
@@ -156,25 +158,33 @@ class TextEncodingQualityTest(unittest.TestCase):
     def test_video_validator_logs_duration_messages_without_mojibake(self):
         stream = io.StringIO()
 
-        with patch.object(
-            MediaProbe,
-            "get_duration",
-            return_value=16.81
-        ), patch.object(
-            sys,
-            "stdout",
-            stream
-        ):
-            output_file = Path(
-                "tests"
-            ) / "__init__.py"
-            VideoValidator().validate(
-                output_path=output_file,
-                expected_duration=16.82,
-                max_duration_difference=0.5
-            )
+        with tempfile.TemporaryDirectory() as directory:
+            # The duration check is a technical line: record only (A2-D).
+            log_path = Path(directory) / "registro.txt"
+            RunLog.start(RUN_LOG, log_path)
+            try:
+                with patch.object(
+                    MediaProbe,
+                    "get_duration",
+                    return_value=16.81
+                ), patch.object(
+                    sys,
+                    "stdout",
+                    stream
+                ):
+                    output_file = Path(
+                        "tests"
+                    ) / "__init__.py"
+                    VideoValidator().validate(
+                        output_path=output_file,
+                        expected_duration=16.82,
+                        max_duration_difference=0.5
+                    )
+            finally:
+                RUN_LOG.stop()
+            output = log_path.read_text(encoding="utf-8")
 
-        output = stream.getvalue()
+        self.assertEqual("", stream.getvalue())
 
         self.assertIn(
             "Duración esperada",

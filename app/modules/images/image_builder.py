@@ -135,7 +135,7 @@ class ImageBuilder:
             )
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Formato de imagen: "
             f"{width}x{height}"
         )

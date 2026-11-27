@@ -140,11 +140,11 @@ class StoryboardBuilder:
             for span in spans
         ]
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Tiempos de las escenas: {timing_source}"
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Escenas: {len(spans)} · "
             f"de {min(durations):.2f} a {max(durations):.2f} s "
             f"(objetivo {scene_seconds.target_min:g}–"

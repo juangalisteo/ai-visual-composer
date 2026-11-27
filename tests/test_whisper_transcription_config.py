@@ -97,7 +97,7 @@ def _run_builder(builder, root):
     output_path = root / "captions.srt"
     audio_path.write_bytes(b"audio")
 
-    def fake_run(command, check):
+    def fake_run(command, check, **_options):
         commands.append(command)
         output_directory = Path(command[command.index("--output_dir") + 1])
         (output_directory / "source.srt").write_text(

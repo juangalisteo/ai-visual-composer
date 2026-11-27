@@ -1,6 +1,7 @@
 import sys
 
 from app.shared.operation_warnings import OperationWarning, OperationWarnings
+from app.shared.run_log import RUN_LOG
 from app.shared.time_formatter import TimeFormatter
 
 
@@ -32,6 +33,7 @@ class ProgressLogger:
         """Print safely and return a warning only if visible text degraded."""
         ProgressLogger._configure_stdout()
         text = str(message)
+        RUN_LOG.write(text)
         stream = sys.stdout
         encoding = getattr(stream, "encoding", None) or "utf-8"
 
@@ -95,6 +97,19 @@ class ProgressLogger:
             warnings=warnings,
             operation=operation,
         )
+
+    @staticmethod
+    def detail(message):
+        """A technical line: only in the record of the run, never on screen."""
+        RUN_LOG.write(message)
+
+    @staticmethod
+    def detail_start(message):
+        ProgressLogger.detail(f"{message}...")
+
+    @staticmethod
+    def detail_finish(message, elapsed):
+        ProgressLogger.detail(f"{message} ({TimeFormatter.format(elapsed)})")
 
     @staticmethod
     def warning(message, warnings=None, operation=None):

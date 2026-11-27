@@ -310,11 +310,12 @@ con el Python de su entorno:
 4. El programa une los WAV con las pausas declaradas y publica `voz.mp3` como
    con Piper.
 
-La terminal muestra la carga y cada trozo:
+La terminal muestra cada trozo; la carga del modelo («Cargando Chatterbox (cuda)
+en su propio proceso…») queda solo en el registro de la ejecución
+(`output/<proyecto>/registro.txt`):
 
 ```text
 GENERANDO VOCES...
-Cargando Chatterbox (cuda) en su propio proceso…
   Parte 1 de 2
   Parte 2 de 2
 Finalizado (1 min 33.26 s)
@@ -445,7 +446,6 @@ límite), y el programa une los WAV y publica `voz.mp3`.
 
 ```text
 GENERANDO VOCES...
-Cargando Kokoro (cuda) en su propio proceso…
   Parte 1 de 2
   Parte 2 de 2
 Finalizado (13.52 s)

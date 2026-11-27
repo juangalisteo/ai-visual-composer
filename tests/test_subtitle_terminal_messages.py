@@ -17,7 +17,7 @@ class SubtitleTerminalMessagesTest(unittest.TestCase):
             output_path = root / "subtitles.srt"
             audio_path.write_bytes(b"audio")
 
-            def write_whisper_artifacts(command, check):
+            def write_whisper_artifacts(command, check, **_options):
                 output_directory = Path(command[command.index("--output_dir") + 1])
                 (output_directory / "source.srt").write_text(
                     "1\n00:00:00,000 --> 00:00:01,000\nTemporal\n",

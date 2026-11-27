@@ -117,7 +117,7 @@ class MotionBuilder:
             - start
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Movimiento escena {image_index + 1}: "
             f"{motion_type} | "
             f"{duration:.2f} s | "

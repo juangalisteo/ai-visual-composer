@@ -363,6 +363,11 @@ Todo se escribe en `output/<proyecto>/`. Lo principal de cada ruta:
 | DISEÑO | Una imagen en `images/` o un clip en `video_clips/` |
 | STUDIO | `video/<proyecto>.mp4` y, si hay subtítulos, los SRT de `subtitles/` ([apartado 7](#dónde-sale-el-resultado)) |
 
+Cada ejecución deja además `registro.txt`: lo que salió en la terminal, con la
+hora, y los detalles técnicos que no salen en pantalla (cómo se montó el vídeo,
+de dónde salen los tiempos de los subtítulos, lo que escribió Whisper…). Si algo
+sale raro, ese archivo dice qué pasó.
+
 Lista completa de carpetas y archivos:
 [ARCHITECTURE.md, apartado 10](ARCHITECTURE.md#10-salida). `output/` está fuera
 de Git: se puede borrar cuando quieras.

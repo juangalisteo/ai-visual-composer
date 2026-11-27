@@ -65,13 +65,13 @@ class FadeGraphBuilder(
                     f"d={fade_duration:.3f}"
                 )
 
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     f"Fade inicial: "
                     f"{fade_duration:.2f} segundos"
                 )
 
             else:
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     "Fade inicial: desactivado"
                 )
 
@@ -88,18 +88,18 @@ class FadeGraphBuilder(
                     f"d={fade_duration:.3f}"
                 )
 
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     f"Fade final: "
                     f"{fade_duration:.2f} segundos"
                 )
 
             else:
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     "Fade final: desactivado"
                 )
 
         else:
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Fade: desactivado"
             )
 
@@ -117,7 +117,7 @@ class FadeGraphBuilder(
             + output_stream
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Grafo de fade preparado "
             f"({time.perf_counter() - start:.4f} s)"
         )

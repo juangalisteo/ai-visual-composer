@@ -107,7 +107,7 @@ class VideoBuilder:
                 )
             )
 
-            ProgressLogger.start(
+            ProgressLogger.detail_start(
                 "PREPARANDO FFMPEG"
             )
 
@@ -119,7 +119,7 @@ class VideoBuilder:
                 components=components
             )
 
-            ProgressLogger.finish(
+            ProgressLogger.detail_finish(
                 "FFMPEG PREPARADO",
                 time.perf_counter() - prepare_start
             )
