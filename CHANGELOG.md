@@ -104,6 +104,11 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   final da a cada imagen la duración de su escena. Sustituye a
   `seconds_per_image` de los perfiles (una imagen cada 20 o 30 s, que cambiaba
   a mitad de frase). Ver [ARCHITECTURE.md §15](docs/ARCHITECTURE.md#15-storyboard).
+- Escenas de unos 6 s: `scene_seconds` pasa de 4 · 6–8 · 10 a `min` 4,
+  `target_min` 5, `target_max` 7 y `max` 8 en los dos formatos; se sigue
+  cortando al final de frase.
+- Los perfiles de IMAGEN y VIDEO piden 50 s de guion por tema (`duration`;
+  antes 10, que eran de prueba).
 - Todos los textos que se envían a Ollama, Flux y Wan están en `prompts/`:
   las plantillas de cada petición (`templates/`, con `{marcadores}` para los
   datos), los criterios del storyboard (`criteria/`), la identidad visual y

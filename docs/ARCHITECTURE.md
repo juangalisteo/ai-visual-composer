@@ -602,6 +602,9 @@ las formas de cortar se elige la que, por este orden: deja menos segundos
 fuera de `min`–`max`; corta menos veces dentro de una frase; y deja las
 escenas más cerca de `target_min`–`target_max`. El texto de cada escena son
 sus frases enteras y su duración queda en `storyboard.json` (`duration`).
+En el proyecto, los dos formatos declaran `min` 4, `target_min` 5,
+`target_max` 7 y `max` 8: escenas de unos 6 s, nunca de más de 8 salvo una
+frase que no se pueda partir.
 
 La descripción visual de cada escena se llama **Visual Truth**: lo que tiene que
 verse, sin instrucciones para ningún backend. Sus campos son
@@ -836,7 +839,7 @@ declara:
 | `component`, `format`, `profile_id` | Identidad: tienen que coincidir con la carpeta |
 | `tone` | Archivo de `prompts/tones/` |
 | `images.seed` | Semilla de las imágenes: la escena N usa `seed` + N ([apartado 16](#16-imágenes)) |
-| `duration` | Duración pedida al guion generado (IMAGEN y VIDEO; GUION no la lleva) |
+| `duration` | Duración pedida al guion generado, en segundos (IMAGEN y VIDEO: 50 en los perfiles del proyecto; GUION no la lleva) |
 | `builders` | Qué etapas puede ejecutar el componente |
 | `video_style` | Tamaño, FPS y las etapas del vídeo final ([apartado 18](#18-composición-del-vídeo-final)) |
 | `validation` | Diferencia de duración que se tolera en el vídeo final |

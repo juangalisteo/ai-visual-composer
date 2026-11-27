@@ -196,11 +196,12 @@ def test_project_catalog_declares_vertical_first_with_its_aspect_ratio():
     assert catalog.image_guidance("vertical") == "vertical 9:16"
     assert catalog.image_guidance("horizontal") == "wide horizontal 16:9"
     for profile_format in ("vertical", "horizontal"):
+        # T0: scenes of about 6 s (owner decision).
         assert catalog.scene_seconds(profile_format) == SceneSeconds(
             min=4.0,
-            target_min=6.0,
-            target_max=8.0,
-            max=10.0,
+            target_min=5.0,
+            target_max=7.0,
+            max=8.0,
         )
     catalog.validate(ProfileResolver())
 

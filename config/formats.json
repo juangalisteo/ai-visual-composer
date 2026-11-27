@@ -7,9 +7,9 @@
       "image_guidance": "vertical 9:16",
       "scene_seconds": {
         "min": 4,
-        "target_min": 6,
-        "target_max": 8,
-        "max": 10
+        "target_min": 5,
+        "target_max": 7,
+        "max": 8
       }
     },
     "horizontal": {
@@ -19,9 +19,9 @@
       "image_guidance": "wide horizontal 16:9",
       "scene_seconds": {
         "min": 4,
-        "target_min": 6,
-        "target_max": 8,
-        "max": 10
+        "target_min": 5,
+        "target_max": 7,
+        "max": 8
       }
     }
   }
