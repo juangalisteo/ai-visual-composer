@@ -86,7 +86,7 @@ main.py                      valida config/formats.json y config/fonts.json ante
    ↓
 RunController.run()          menús → ApplicationExecutionRequest
    ↓
-(ELIMINAR OUTPUT = Sí)       OutputManager().reset() vacía output/
+(Sobrescribir)               OutputManager().remove_project() borra solo output/<proyecto>/
    ↓
 run_application(request)     app/core/start.py: elige el coordinador por el tipo de ruta
    ↓
@@ -106,7 +106,7 @@ devuelve una `ApplicationExecutionRequest` (`app/core/execution_request.py`):
 | Campo | Contenido |
 |---|---|
 | `project_name` | Nombre del proyecto (menú PROYECTO) |
-| `clear_output` | Si se vacía `output/` antes de empezar (menú ELIMINAR OUTPUT) |
+| `overwrite_project` | Si `output/<proyecto>/` ya existía y se eligió «1. Sobrescribir»: se borra esa carpeta (y nada más) antes de empezar |
 | `operational_profile_key` | `OperationalProfileKey` del perfil elegido |
 | `subtitle_profile_key` | `SubtitleProfileKey` elegida, o `None` si la ejecución no lleva subtítulos |
 | `route` | `StandardExecutionRequest`, `StudioExecutionRequest` o `DesignExecutionRequest` |
@@ -248,7 +248,7 @@ no de un guion narrado. Se entra por GUION → DESTINO → Diseño → Imagen o 
 - `DesignExecutionCoordinator` comprueba que la descripción produzca
   **exactamente una escena**, y después una sola imagen o un solo clip.
 - DISEÑO **no** genera voz, música ni subtítulos, y **no** compone un
-  vídeo final: por eso solo pregunta el FORMATO, el PROYECTO y ELIMINAR OUTPUT.
+  vídeo final: por eso solo pregunta el FORMATO y el PROYECTO.
 - Reutiliza la generación de imágenes y de clips de la ruta estándar; no tiene
   una arquitectura de generación propia.
 
@@ -351,9 +351,11 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 ## 10. Salida
 
 Cada ejecución escribe en `output/<proyecto>/`, donde `<proyecto>` es el nombre
-dado en el menú PROYECTO (obligatorio). Si se elige ELIMINAR
-OUTPUT = Sí, antes de empezar se vacía `output/` entero; si algún archivo está
-abierto en otro programa, la ejecución se para y lo avisa.
+dado en el menú PROYECTO (obligatorio). Si esa carpeta ya existe, el menú
+pregunta «1. Sobrescribir» o «2. Poner otro nombre»; con «Sobrescribir», antes de
+empezar se borra solo `output/<proyecto>/` (nunca otra carpeta: un nombre como
+«..» no es válido); si algún archivo está abierto en otro programa, la ejecución
+se para y lo avisa. Ningún menú vacía `output/` entero.
 
 | Ruta | Contenido |
 |---|---|

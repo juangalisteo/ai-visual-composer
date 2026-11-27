@@ -221,8 +221,7 @@ def test_voice_menu_is_the_same_wherever_a_voice_is_chosen(
     controller.select_music_category = Mock(return_value=None)
     controller.select_overlays_mode = Mock(return_value="off")
     controller.select_intro_outro = Mock(return_value=None)
-    controller.ask_project_name = Mock(return_value="Proyecto")
-    controller.ask_clear_output = Mock(return_value=False)
+    controller.ask_project = Mock(return_value=("Proyecto", False))
 
     request = controller.run()
 

@@ -335,7 +335,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
             )
             request = ApplicationExecutionRequest(
                 project_name="montaje",
-                clear_output=False,
+                overwrite_project=False,
                 operational_profile_key=OperationalProfileKey(
                     "studio",
                     "vertical",
@@ -373,7 +373,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
             )
             request = ApplicationExecutionRequest(
                 project_name="montaje",
-                clear_output=False,
+                overwrite_project=False,
                 operational_profile_key=OperationalProfileKey(
                     "studio",
                     "vertical",

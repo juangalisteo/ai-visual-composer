@@ -39,6 +39,8 @@ from app.shared.error_context import (
     ErrorSeverity,
     ExitKind,
 )
+from app.managers.output_manager import project_folder_in_output
+from app.managers.project_manager import ProjectManager
 from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
 from app.shared.profile_identity import (
@@ -259,8 +261,7 @@ class RunController:
                 self.select_intro_outro(profile_key.format)
             )
 
-        project_name = self.ask_project_name()
-        clear_output = self.ask_clear_output()
+        project_name, overwrite_project = self.ask_project()
         if pipeline_mode in {
             "design_image",
             "design_video"
@@ -278,7 +279,7 @@ class RunController:
             )
         return ApplicationExecutionRequest(
             project_name=project_name,
-            clear_output=clear_output,
+            overwrite_project=overwrite_project,
             operational_profile_key=profile_key,
             subtitle_profile_key=profile.get("subtitle_profile_key"),
             route=route,
@@ -515,8 +516,27 @@ class RunController:
             writer=self._print,
         )
 
-    def ask_clear_output(self):
-        return self.common_options.ask_clear_output(
+    def ask_project(self):
+        """Project name and whether its existing folder is overwritten.
+
+        A new name asks nothing more. A name whose folder already exists in
+        output/ asks «1. Sobrescribir · 2. Poner otro nombre»; the second
+        asks the name again.
+        """
+        while True:
+            project_name = self.ask_project_name()
+            project = ProjectManager(project_name=project_name)
+            if not project_folder_in_output(project.base_path):
+                self._print("\nOpción no válida.")
+                continue
+            if not project.base_path.exists():
+                return project_name, False
+            if self.ask_existing_project(project.project_name):
+                return project_name, True
+
+    def ask_existing_project(self, project_name):
+        return self.common_options.ask_existing_project(
+            project_name,
             writer=self._print,
         )
 
@@ -580,11 +600,10 @@ class RunController:
                 subtitle_path=subtitle_path,
             )
             plan = self.select_studio_video_audio_srt_audio_tail(plan)
-            project_name = self.ask_project_name()
-            clear_output = self.ask_clear_output()
+            project_name, overwrite_project = self.ask_project()
             return ApplicationExecutionRequest(
                 project_name=project_name,
-                clear_output=clear_output,
+                overwrite_project=overwrite_project,
                 operational_profile_key=profile_key,
                 subtitle_profile_key=subtitle_profile_key,
                 route=StudioExecutionRequest(
@@ -595,11 +614,10 @@ class RunController:
         if input_mode == StudioInputMode.INTRO_OUTRO.value:
             profile_key, _ = self._select_studio_operational_profile()
             intro_outro_plan = self.select_studio_intro_outro_plan(profile_key)
-            project_name = self.ask_project_name()
-            clear_output = self.ask_clear_output()
+            project_name, overwrite_project = self.ask_project()
             return ApplicationExecutionRequest(
                 project_name=project_name,
-                clear_output=clear_output,
+                overwrite_project=overwrite_project,
                 operational_profile_key=profile_key,
                 subtitle_profile_key=None,
                 route=StudioExecutionRequest(
@@ -615,11 +633,10 @@ class RunController:
             )
             music_path = self.select_studio_music()
             intro_outro_selection = self.select_studio_intro_outro(profile_key)
-            project_name = self.ask_project_name()
-            clear_output = self.ask_clear_output()
+            project_name, overwrite_project = self.ask_project()
             return ApplicationExecutionRequest(
                 project_name=project_name,
-                clear_output=clear_output,
+                overwrite_project=overwrite_project,
                 operational_profile_key=profile_key,
                 subtitle_profile_key=None,
                 route=StudioExecutionRequest(
@@ -638,11 +655,10 @@ class RunController:
                 studio_selection = self._select_studio_profile_selection()
                 profile_key = studio_selection.operational.operational_key
                 subtitle_key = studio_selection.subtitle.subtitle_key
-            project_name = self.ask_project_name()
-            clear_output = self.ask_clear_output()
+            project_name, overwrite_project = self.ask_project()
             return ApplicationExecutionRequest(
                 project_name=project_name,
-                clear_output=clear_output,
+                overwrite_project=overwrite_project,
                 operational_profile_key=profile_key,
                 subtitle_profile_key=subtitle_key,
                 route=StudioExecutionRequest(
@@ -661,12 +677,11 @@ class RunController:
         subtitle_original = studio_selection.subtitle.subtitle_original
         music_path = self.select_studio_music()
         intro_outro_selection = self.select_studio_intro_outro(profile_key)
-        project_name = self.ask_project_name()
-        clear_output = self.ask_clear_output()
+        project_name, overwrite_project = self.ask_project()
 
         return ApplicationExecutionRequest(
             project_name=project_name,
-            clear_output=clear_output,
+            overwrite_project=overwrite_project,
             operational_profile_key=profile_key,
             subtitle_profile_key=subtitle_key,
             route=StudioExecutionRequest(

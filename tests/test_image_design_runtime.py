@@ -134,7 +134,7 @@ class ImageDesignRuntimeTest(unittest.TestCase):
                 )
                 request = ApplicationExecutionRequest(
                     project_name="design start",
-                    clear_output=False,
+                    overwrite_project=False,
                     operational_profile_key=operational_profile_key,
                     subtitle_profile_key=None,
                     route=DesignExecutionRequest(mode="design_image"),

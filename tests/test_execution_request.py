@@ -170,7 +170,7 @@ def test_application_request_preserves_complete_operational_and_subtitle_keys():
     subtitle_key = _subtitle_key()
     request = ApplicationExecutionRequest(
         project_name="Proyecto técnico",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=operational_key,
         subtitle_profile_key=subtitle_key,
         route=_standard_route(),
@@ -185,7 +185,7 @@ def test_application_request_rejects_incoherent_design_identity():
     with pytest.raises(ValueError, match="no corresponde"):
         ApplicationExecutionRequest(
             project_name="Diseño",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=_operational_key(ProfileComponent.VIDEO),
             subtitle_profile_key=None,
             route=DesignExecutionRequest(mode="design_image"),
@@ -196,7 +196,7 @@ def test_application_request_rejects_a_special_route_in_standard_payload():
     with pytest.raises(ValueError, match="no admite el modo design_video"):
         ApplicationExecutionRequest(
             project_name="Incoherente",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=_operational_key(),
             subtitle_profile_key=None,
             route=StandardExecutionRequest(
@@ -214,7 +214,7 @@ def _menu_controller(
     pipeline_mode="full",
     music_category="random",
     project_name="Proyecto",
-    clear_output=False,
+    overwrite_project=False,
 ):
     controller = RunController()
     controller.select_visual_pipeline = Mock(return_value=visual_pipeline)
@@ -224,8 +224,7 @@ def _menu_controller(
     controller.select_music_category = Mock(return_value=music_category)
     controller.select_overlays_mode = Mock(return_value="off")
     controller.select_intro_outro = Mock(return_value=None)
-    controller.ask_project_name = Mock(return_value=project_name)
-    controller.ask_clear_output = Mock(return_value=clear_output)
+    controller.ask_project = Mock(return_value=(project_name, False))
     return controller
 
 
@@ -239,7 +238,7 @@ def test_run_builds_the_standard_request_without_rebuilding_typed_keys():
             "display_name": "No participa",
         },
         project_name="Puente técnico",
-        clear_output=True,
+        overwrite_project=True,
     )
 
     request = controller.run()
@@ -278,7 +277,7 @@ def test_run_transports_the_selected_operational_key_without_texts():
 def test_request_keeps_a_standard_route_without_operational_identity():
     request = ApplicationExecutionRequest(
         project_name="Compatibilidad",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=None,
         subtitle_profile_key=None,
         route=StandardExecutionRequest(
@@ -313,8 +312,7 @@ def test_run_studio_keeps_the_typed_plan_and_transports_paths_as_path():
     )
     controller.select_studio_video_audio_srt_plan = Mock(return_value=plan)
     controller.select_studio_video_audio_srt_audio_tail = Mock(return_value=plan)
-    controller.ask_project_name = Mock(return_value="Studio")
-    controller.ask_clear_output = Mock(return_value=False)
+    controller.ask_project = Mock(return_value=("Studio", False))
 
     request = controller._run_studio()
 
@@ -381,7 +379,7 @@ def test_request_rejects_subtitle_string_and_carries_a_single_studio_plan():
     with pytest.raises(TypeError, match="SubtitleProfileKey"):
         ApplicationExecutionRequest(
             project_name="Proyecto",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=_operational_key(),
             subtitle_profile_key="word_by_word",
             route=_standard_route(),

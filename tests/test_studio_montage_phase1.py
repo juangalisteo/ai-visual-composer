@@ -315,15 +315,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
                 controller,
                 "select_studio_intro_outro",
                 return_value=None,
-            ), patch.object(
-                controller,
-                "ask_project_name",
-                return_value="montaje",
-            ), patch.object(
-                controller,
-                "ask_clear_output",
-                return_value=False,
-            ):
+            ), patch.object(controller, "ask_project", return_value=("montaje", False)):
                 request = controller._run_studio()
 
         self.assertIs(plan, request.route.plan)
@@ -344,7 +336,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             )
             request = ApplicationExecutionRequest(
                 project_name="demo",
-                clear_output=False,
+                overwrite_project=False,
                 operational_profile_key=self.profile_key,
                 subtitle_profile_key=None,
                 route=StudioExecutionRequest(
@@ -366,7 +358,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
         projects.assert_called_once_with(project_name="demo")
         self.assertIs(plan, StudioExecutionCoordinator.prepare_montage(plan))
 
-    def test_main_transports_montage_with_reset_and_montage_summary(self):
+    def test_main_transports_montage_with_overwrite_and_montage_summary(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self._write_clips(root, ("A.mp4", "B.mp4"))
@@ -378,7 +370,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
             )
             controller_request = ApplicationExecutionRequest(
                 project_name="montaje",
-                clear_output=True,
+                overwrite_project=True,
                 operational_profile_key=self.profile_key,
                 subtitle_profile_key=None,
                 route=StudioExecutionRequest(
@@ -391,8 +383,8 @@ class StudioMontagePhase1Test(unittest.TestCase):
             with patch.dict(os.environ, {}, clear=True), patch(
                 "main.RunController"
             ) as controller, patch("main.run_application", return_value=object()) as start, patch(
-                "main.OutputManager.reset"
-            ) as reset, patch(
+                "main.OutputManager.remove_project"
+            ) as remove_project, patch(
                 "app.cli.studio_summary._print_render_summary"
             ) as summary, patch(
                 "app.cli.studio_summary._print_montage_summary"
@@ -402,7 +394,7 @@ class StudioMontagePhase1Test(unittest.TestCase):
 
         self.assertEqual(0, result)
         self.assertIs(plan, start.call_args.kwargs["request"].route.plan)
-        reset.assert_called_once_with()
+        remove_project.assert_called_once_with("montaje")
         summary.assert_not_called()
         montage_summary.assert_called_once()
 

@@ -184,9 +184,16 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   las opciones de la conversión están en `config/video.json` (`layer_blend`);
   sin el archivo o una clave, error CONFIG con la ruta. Ver
   [ARCHITECTURE.md §18](docs/ARCHITECTURE.md#18-composición-del-vídeo-final).
+- Un proyecto que ya existe no se sobrescribe sin avisar: si
+  `output/<proyecto>/` ya existe, el menú PROYECTO pregunta «1. Sobrescribir»
+  (se borra solo esa carpeta) o «2. Poner otro nombre»; si el nombre es nuevo,
+  no pregunta nada. En todas las rutas (GUION, IMAGEN, VIDEO, DISEÑO y STUDIO).
 
 ### Retirado
 
+- El menú ELIMINAR OUTPUT, que con «1» borraba **toda** la carpeta `output/`
+  (todos los proyectos) sin pedir confirmación. Los proyectos viejos se borran
+  a mano.
 - Las variables de entorno `MC_*` (identidad operacional, configuración de
   voz y overlays) y el modo «Solo guion».
 - `validation/` y `AGENT_AI/` dejan de versionarse en Git (la evidencia de

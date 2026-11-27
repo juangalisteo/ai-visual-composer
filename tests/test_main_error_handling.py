@@ -34,10 +34,10 @@ from app.shared.profile_identity import OperationalProfileKey
 
 class MainErrorHandlingTest(unittest.TestCase):
 
-    def design_request(self, project_name="error test", clear_output=False):
+    def design_request(self, project_name="error test", overwrite_project=False):
         return ApplicationExecutionRequest(
             project_name=project_name,
-            clear_output=clear_output,
+            overwrite_project=overwrite_project,
             operational_profile_key=OperationalProfileKey(
                 "video",
                 "vertical",
@@ -50,7 +50,7 @@ class MainErrorHandlingTest(unittest.TestCase):
     def studio_request(self, input_mode, project_name="error test"):
         return ApplicationExecutionRequest(
             project_name=project_name,
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 "studio",
                 "vertical",
@@ -733,7 +733,7 @@ class MainErrorHandlingTest(unittest.TestCase):
     def test_output_reset_blocked_error_stops_pipeline_cleanly(self):
         request = self.design_request(
             project_name="blocked output",
-            clear_output=True,
+            overwrite_project=True,
         )
 
         with patch.dict(os.environ, {}, clear=True), patch(
@@ -744,16 +744,14 @@ class MainErrorHandlingTest(unittest.TestCase):
             "builtins.print"
         ) as print_mock, tempfile.TemporaryDirectory() as directory:
             controller_mock.return_value.run.return_value = request
-            manager = OutputManager()
-            manager.output_path = Path(directory) / "output"
-            manager.output_path.mkdir()
-            locked = manager.output_path / "locked.mp4"
+            manager = OutputManager(Path(directory) / "output")
+            (manager.output_path / "blocked output").mkdir(parents=True)
+            locked = manager.output_path / "blocked output" / "locked.mp4"
             locked.write_bytes(b"video")
             output_manager.return_value = manager
 
-            with patch.object(
-                Path,
-                "unlink",
+            with patch(
+                "app.managers.output_manager.shutil.rmtree",
                 side_effect=PermissionError(13, "in use", str(locked), 32),
             ):
                 result = main.main()
@@ -762,9 +760,9 @@ class MainErrorHandlingTest(unittest.TestCase):
         run_application_mock.assert_not_called()
         print_mock.assert_called_once_with(
             "ERROR\n"
-            "No se puede eliminar OUTPUT porque uno de sus archivos "
-            "está siendo utilizado por otro programa.\n"
-            "Operación: Eliminar OUTPUT\n"
+            "No se puede sobrescribir el proyecto «blocked output» porque uno "
+            "de sus archivos está siendo utilizado por otro programa.\n"
+            "Operación: Sobrescribir el proyecto\n"
             f"Recurso: {locked}\n"
             "Acción recomendada: Cierra el archivo y vuelve a intentarlo."
         )
@@ -772,7 +770,7 @@ class MainErrorHandlingTest(unittest.TestCase):
     def test_output_reset_normal_path_continues_to_runtime(self):
         request = self.design_request(
             project_name="reset output",
-            clear_output=True,
+            overwrite_project=True,
         )
 
         with patch.dict(os.environ, {}, clear=True), patch(
@@ -785,7 +783,9 @@ class MainErrorHandlingTest(unittest.TestCase):
             result = main.main()
 
         self.assertEqual(0, result)
-        output_manager.return_value.reset.assert_called_once_with()
+        output_manager.return_value.remove_project.assert_called_once_with(
+            "reset output"
+        )
         run_application_mock.assert_called_once()
         self.assertEqual(
             "design_video",

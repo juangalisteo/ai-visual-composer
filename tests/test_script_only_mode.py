@@ -147,7 +147,7 @@ def _standard_request(
 ):
     return ApplicationExecutionRequest(
         project_name=project_name,
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=FakeConfigManager.script_operational_key,
         subtitle_profile_key=subtitle_profile_key,
         route=StandardExecutionRequest(
@@ -443,7 +443,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     run_controller.return_value.run.return_value = (
                         ApplicationExecutionRequest(
                             project_name="guion component",
-                            clear_output=True,
+                            overwrite_project=True,
                             operational_profile_key=None,
                             subtitle_profile_key=(
                                 FakeConfigManager.subtitle_profile_key
@@ -607,7 +607,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     run_controller.return_value.run.return_value = (
                         ApplicationExecutionRequest(
                             project_name="guion video",
-                            clear_output=False,
+                            overwrite_project=False,
                             operational_profile_key=(
                                 FakeConfigManager.script_operational_key
                             ),

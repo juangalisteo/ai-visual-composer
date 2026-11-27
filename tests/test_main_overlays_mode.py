@@ -19,7 +19,7 @@ class MainOverlaysModeTest(
     ):
         controller_request = ApplicationExecutionRequest(
             project_name="project",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 "imagen",
                 "horizontal",

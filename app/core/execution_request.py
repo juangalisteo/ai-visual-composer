@@ -162,7 +162,7 @@ class ApplicationExecutionRequest:
     """Immutable application request carrying identities and a single route."""
 
     project_name: str
-    clear_output: bool
+    overwrite_project: bool
     operational_profile_key: OperationalProfileKey | None
     subtitle_profile_key: SubtitleProfileKey | None
     route: ExecutionRoute
@@ -173,8 +173,8 @@ class ApplicationExecutionRequest:
             "project_name",
             _require_non_empty_text(self.project_name, "project_name"),
         )
-        if not isinstance(self.clear_output, bool):
-            raise TypeError("clear_output debe ser booleano.")
+        if not isinstance(self.overwrite_project, bool):
+            raise TypeError("overwrite_project debe ser booleano.")
         if (
             self.operational_profile_key is not None
             and not isinstance(self.operational_profile_key, OperationalProfileKey)

@@ -80,7 +80,7 @@ def _standard_request(*, pipeline_mode="audio", visual_pipeline="image", **kwarg
     )
     return ApplicationExecutionRequest(
         project_name="typed bridge",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(component),
         subtitle_profile_key=None,
         route=route,
@@ -215,7 +215,7 @@ def test_typed_standard_uses_the_request_project_for_subtitle_artifacts():
     telemetry = _telemetry()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(ProfileComponent.IMAGEN),
         subtitle_profile_key=subtitle_key,
         route=StandardExecutionRequest(
@@ -272,7 +272,7 @@ def _storyboard_build_options(pipeline_mode):
     telemetry = _telemetry()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(ProfileComponent.IMAGEN),
         subtitle_profile_key=_subtitle_key(),
         route=StandardExecutionRequest(
@@ -425,7 +425,7 @@ def test_typed_standard_voice_requires_voice_config_id():
     telemetry = _telemetry()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(ProfileComponent.IMAGEN),
         subtitle_profile_key=None,
         route=StandardExecutionRequest(
@@ -499,7 +499,7 @@ def test_typed_design_image_dispatches_only_to_design_image():
     project = _project()
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(ProfileComponent.IMAGEN),
         subtitle_profile_key=None,
         route=DesignExecutionRequest(mode="design_image"),
@@ -522,7 +522,7 @@ def test_typed_design_video_transports_the_existing_operational_key():
     operational_profile_key = _profile_key(ProfileComponent.VIDEO)
     request = ApplicationExecutionRequest(
         project_name="typed bridge",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=operational_profile_key,
         subtitle_profile_key=None,
         route=DesignExecutionRequest(mode="design_video"),
@@ -548,7 +548,7 @@ def test_typed_studio_standard_preserves_paths_and_subtitle_key():
     subtitle_profile_key = _subtitle_key()
     request = ApplicationExecutionRequest(
         project_name="typed studio",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(ProfileComponent.STUDIO),
         subtitle_profile_key=subtitle_profile_key,
         route=StudioExecutionRequest(
@@ -588,7 +588,7 @@ def test_typed_studio_plan_is_delegated_without_reconstruction():
     subtitle_profile_key = _subtitle_key()
     request = ApplicationExecutionRequest(
         project_name="typed studio",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=_profile_key(ProfileComponent.STUDIO),
         subtitle_profile_key=subtitle_profile_key,
         route=StudioExecutionRequest(

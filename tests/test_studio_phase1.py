@@ -581,12 +581,8 @@ class StudioPhase1Test(unittest.TestCase):
             return_value=None,
         ), patch.object(
             controller,
-            "ask_project_name",
-            return_value="studio project",
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=True,
+            "ask_project",
+            return_value=("studio project", True),
         ):
             request = controller.run()
 
@@ -613,7 +609,7 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertNotIn("studio_light_leaks_enabled", vars(request.route))
         self.assertIsNone(request.route.music_path)
         self.assertEqual("studio project", request.project_name)
-        self.assertTrue(request.clear_output)
+        self.assertTrue(request.overwrite_project)
         self.assertNotIn("overlays_mode", vars(request))
         self.assertNotIn("overlays_mode", vars(request.route))
         self.assertIsNone(request.route.intro_outro_plan)
@@ -639,7 +635,7 @@ class StudioPhase1Test(unittest.TestCase):
     def test_main_transports_studio_identity_without_resetting_output(self):
         controller_request = ApplicationExecutionRequest(
             project_name="studio transport",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=self.profile_key,
             subtitle_profile_key=None,
             route=StudioExecutionRequest(
@@ -672,10 +668,10 @@ class StudioPhase1Test(unittest.TestCase):
         self.assertEqual({"request"}, set(start.call_args.kwargs))
         output_manager.assert_not_called()
 
-    def test_main_resets_output_for_studio_when_selected(self):
+    def test_main_overwrites_the_studio_project_when_selected(self):
         controller_request = ApplicationExecutionRequest(
             project_name="studio project",
-            clear_output=True,
+            overwrite_project=True,
             operational_profile_key=self.profile_key,
             subtitle_profile_key=None,
             route=StudioExecutionRequest(
@@ -690,7 +686,9 @@ class StudioPhase1Test(unittest.TestCase):
         ) as output_manager:
             controller.return_value.run.return_value = controller_request
             self.assertEqual(0, main.main())
-        output_manager.return_value.reset.assert_called_once_with()
+        output_manager.return_value.remove_project.assert_called_once_with(
+            "studio project"
+        )
 
     def test_phase_one_preparation_uses_external_input_without_rendering(self):
         with tempfile.TemporaryDirectory() as directory:

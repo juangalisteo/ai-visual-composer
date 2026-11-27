@@ -142,7 +142,7 @@ class OperationalErrorAdaptersTest(unittest.TestCase):
 
             request = ApplicationExecutionRequest(
                 project_name="adapter error",
-                clear_output=False,
+                overwrite_project=False,
                 operational_profile_key=OperationalProfileKey(
                     "video",
                     "vertical",

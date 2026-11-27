@@ -118,10 +118,11 @@ Tres preguntas salen en casi todas las rutas:
   [ARCHITECTURE.md, apartado 4](ARCHITECTURE.md#4-formatos).
 - **PROYECTO** («Nombre:»): obligatorio. Es el nombre de la carpeta
   `output/<proyecto>/` y del vídeo final. Los caracteres `< > : " / \ | ? *` se
-  quitan del nombre.
-- **ELIMINAR OUTPUT** («1. Sí», «2. No»): con «Sí», antes de empezar se borra
-  **toda** la carpeta `output/`, con todos los proyectos, no solo el de este
-  nombre.
+  quitan del nombre. Si la carpeta `output/<proyecto>/` ya existe, pregunta
+  «El proyecto «X» ya existe.» con «1. Sobrescribir» (se borra solo esa carpeta
+  antes de empezar) y «2. Poner otro nombre» (vuelve a pedir el nombre). Si el
+  nombre es nuevo, no pregunta nada más. Ningún menú borra los demás proyectos:
+  los proyectos viejos se borran a mano.
 
 ---
 
@@ -163,7 +164,7 @@ DESTINO
 corresponden al modo elegido no salen):
 
 ```text
-MODO → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → VOZ → MÚSICA → OVERLAYS → INTRO / OUTRO → PROYECTO → ELIMINAR OUTPUT
+MODO → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → VOZ → MÚSICA → OVERLAYS → INTRO / OUTRO → PROYECTO
 ```
 
 ### Modos
@@ -205,7 +206,7 @@ Genera **una sola** imagen o **un solo** clip a partir de una descripción
 visual escrita por ti. No hace voz, música, subtítulos ni vídeo final.
 
 ```text
-Guion → DESTINO: Diseño → DISEÑO: Imagen o Video → FORMATO → PROYECTO → ELIMINAR OUTPUT
+Guion → DESTINO: Diseño → DISEÑO: Imagen o Video → FORMATO → PROYECTO
 ```
 
 | Destino | Archivo | Resultado |
@@ -265,7 +266,7 @@ ENTRADA
 ### 7.1 SOLO VIDEO
 
 ```text
-ENTRADA → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → VIDEO (si hay varios) → MÚSICA → INTRO / OUTRO → PROYECTO → ELIMINAR OUTPUT
+ENTRADA → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → VIDEO (si hay varios) → MÚSICA → INTRO / OUTRO → PROYECTO
 ```
 
 Whisper transcribe el audio del vídeo y el texto se corta en líneas según el
@@ -276,7 +277,7 @@ original. INTRO / OUTRO funciona como en el [apartado 5](#qué-pregunta-cada-men
 ### 7.2 SRT + VIDEO
 
 ```text
-ENTRADA → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → VIDEO y SRT (si hay varios) → MÚSICA → INTRO / OUTRO → PROYECTO → ELIMINAR OUTPUT
+ENTRADA → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → VIDEO y SRT (si hay varios) → MÚSICA → INTRO / OUTRO → PROYECTO
 ```
 
 Pinta tu SRT **tal cual**: mismo texto, mismas líneas y mismos tiempos. No es
@@ -298,7 +299,7 @@ escribió mal una palabra:
 ### 7.3 INTRO / OUTRO
 
 ```text
-ENTRADA → FORMATO → VIDEO (si hay varios) → INTRO / OUTRO → SELECCIONAR INTRO / SELECCIONAR OUTRO → PROYECTO → ELIMINAR OUTPUT
+ENTRADA → FORMATO → VIDEO (si hay varios) → INTRO / OUTRO → SELECCIONAR INTRO / SELECCIONAR OUTRO → PROYECTO
 ```
 
 El vídeo va directamente en `input/studio/intro_outro/`, sin subcarpetas. El
@@ -310,7 +311,7 @@ según el FORMATO elegido, cada uno con sus carpetas `intro/` y `outro/`.
 ### 7.4 MONTAJE VÍDEOS
 
 ```text
-ENTRADA → FORMATO → VÍDEOS ENCONTRADOS → Introduce el orden de montaje: → TRANSICIONES → MÚSICA → INTRO / OUTRO → PROYECTO → ELIMINAR OUTPUT
+ENTRADA → FORMATO → VÍDEOS ENCONTRADOS → Introduce el orden de montaje: → TRANSICIONES → MÚSICA → INTRO / OUTRO → PROYECTO
 ```
 
 VÍDEOS ENCONTRADOS numera los `.mp4` de la carpeta (`[1] nombre.mp4`,
@@ -322,7 +323,7 @@ un fundido corto o uno detrás de otro. El montaje no lleva subtítulos.
 ### 7.5 VIDEO + AUDIO | SRT
 
 ```text
-ENTRADA → FORMATO → VIDEO y AUDIO (si hay varios) → SUBTÍTULOS (1. Sí / 2. No) → con «Sí»: SRT y FAMILIA → PERFIL → AUDIO MÁS CORTO QUE EL VÍDEO (solo si lo es) → PROYECTO → ELIMINAR OUTPUT
+ENTRADA → FORMATO → VIDEO y AUDIO (si hay varios) → SUBTÍTULOS (1. Sí / 2. No) → con «Sí»: SRT y FAMILIA → PERFIL → AUDIO MÁS CORTO QUE EL VÍDEO (solo si lo es) → PROYECTO
 ```
 
 Cambia el audio del vídeo por el nuevo. Manda la duración del **vídeo**. Si el
@@ -336,8 +337,8 @@ No hace ningún vídeo: solo un SRT. El menú MODO ofrece:
 
 | Modo | Menús | Qué hace | Resultado |
 |---|---|---|---|
-| TRANSCRIBIR | MEDIA (si hay varios) → PROYECTO → ELIMINAR OUTPUT | Whisper transcribe el `.mp4` o el `.mp3` | `output/<proyecto>/subtitles/<proyecto>.srt` |
-| CONVERTIR | SRT (si hay varios) → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → PROYECTO → ELIMINAR OUTPUT | Corta tu SRT en líneas según el perfil elegido | `output/<proyecto>/subtitles/<proyecto>_<modo>.srt` |
+| TRANSCRIBIR | MEDIA (si hay varios) → PROYECTO | Whisper transcribe el `.mp4` o el `.mp3` | `output/<proyecto>/subtitles/<proyecto>.srt` |
+| CONVERTIR | SRT (si hay varios) → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → PROYECTO | Corta tu SRT en líneas según el perfil elegido | `output/<proyecto>/subtitles/<proyecto>_<modo>.srt` |
 
 ---
 
@@ -378,7 +379,7 @@ La tabla recoge los mensajes más frecuentes:
 |---|---|
 | «No se pudo completar la solicitud a Ollama.» | Arranca Ollama y comprueba que el modelo esté descargado ([INSTALL.md](INSTALL.md)) |
 | «ComfyUI no pudo generar la imagen solicitada.» o «… el clip de video solicitado.» | Comprueba que ComfyUI esté abierto en `http://127.0.0.1:8188` |
-| «No se puede eliminar OUTPUT porque uno de sus archivos está siendo utilizado por otro programa.» | Cierra el programa que tiene abierto ese archivo (reproductor, editor de vídeo…) y vuelve a lanzar |
+| «No se puede sobrescribir el proyecto «X» porque uno de sus archivos está siendo utilizado por otro programa.» | Cierra el programa que tiene abierto ese archivo (reproductor, editor de vídeo…) y vuelve a lanzar |
 | «El archivo input/guion.txt está vacío.» o «No existe input/guion.txt.» (lo mismo con `input/tema.txt`) | Escribe el guion en `input/guion.txt` (Guion) o el tema en `input/tema.txt` (Imagen y Video) y vuelve a lanzar |
 | «El diseño visual manual está vacío: input/guion_imagen.txt.», «El diseño visual de vídeo está vacío: input/guion_video.txt.» o «No existe el diseño visual …» | Escribe el diseño en ese archivo ([apartado 6](#6-diseño)) y vuelve a lanzar |
 | «No hay archivos MP4 disponibles para INTRO en assets/videos/intro_outro/vertical/intro/.» (o para OUTRO, o en `horizontal/`) | Pon al menos un `.mp4` en esa carpeta o elige otra opción en INTRO / OUTRO |

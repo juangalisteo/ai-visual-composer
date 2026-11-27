@@ -58,8 +58,8 @@ def _run_main():
         if isinstance(request.route, StudioExecutionRequest)
         else None
     )
-    if request.clear_output:
-        OutputManager().reset()
+    if request.overwrite_project:
+        OutputManager().remove_project(request.project_name)
 
     studio_start = time.perf_counter()
     try:

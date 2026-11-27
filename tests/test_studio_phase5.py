@@ -123,11 +123,7 @@ class StudioPhase5Test(unittest.TestCase):
             controller, "select_studio_music", return_value=None
         ), patch.object(
             controller, "select_studio_intro_outro", return_value=None
-        ), patch.object(
-            controller, "ask_project_name", return_value="studio project"
-        ), patch.object(
-            controller, "ask_clear_output", return_value=False
-        ):
+        ), patch.object(controller, "ask_project", return_value=("studio project", False)):
             request = controller.run()
 
         self.assertIsNone(request.route.intro_outro_plan)
@@ -204,7 +200,7 @@ class StudioPhase5Test(unittest.TestCase):
         plan = IntroOutroPlan(intro=intro)
         controller_request = ApplicationExecutionRequest(
             project_name="studio intro outro",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 "studio", "vertical", "studio_vertical"
             ),

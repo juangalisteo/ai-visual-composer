@@ -566,15 +566,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_intro_outro",
             return_value=None
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="script image project"
-        ) as project_mock, patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ) as clear_mock:
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("script image project", False)) as project_mock:
             request = controller.run()
 
         self.assertEqual(
@@ -600,7 +592,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "script"
         )
         project_mock.assert_called_once()
-        clear_mock.assert_called_once()
         self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
@@ -656,15 +647,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_intro_outro",
             return_value=None
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="project"
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ):
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("project", False)):
             request = controller.run()
 
         self.assertEqual(
@@ -744,15 +727,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_intro_outro",
             return_value=None
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="script video project"
-        ) as project_mock, patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ) as clear_mock:
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("script video project", False)) as project_mock:
             request = controller.run()
 
         self.assertEqual(
@@ -780,7 +755,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             "script"
         )
         project_mock.assert_called_once()
-        clear_mock.assert_called_once()
         self.assertIs(subtitle_key, request.subtitle_profile_key)
         voice_mock.assert_called_once()
         music_mock.assert_called_once()
@@ -838,15 +812,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_intro_outro",
             return_value=None
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="video runtime"
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ):
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("video runtime", False)):
             request = controller.run()
 
         mode_mock.assert_called_once()
@@ -925,15 +891,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ) as overlays_mock, patch.object(
             controller,
             "select_intro_outro"
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="design image"
-        ) as project_mock, patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ) as clear_mock:
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("design image", False)) as project_mock:
             request = controller.run()
 
         design_target_mock.assert_called_once()
@@ -946,7 +904,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         overlays_mock.assert_not_called()
         intro_outro_mock.assert_not_called()
         project_mock.assert_called_once()
-        clear_mock.assert_called_once()
         self.assertEqual(
             DesignExecutionRequest(mode="design_image"),
             request.route
@@ -1014,15 +971,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ) as overlays_mock, patch.object(
             controller,
             "select_intro_outro"
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="design video"
-        ) as project_mock, patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ) as clear_mock:
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("design video", False)) as project_mock:
             request = controller.run()
 
         design_target_mock.assert_called_once()
@@ -1035,7 +984,6 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         overlays_mock.assert_not_called()
         intro_outro_mock.assert_not_called()
         project_mock.assert_called_once()
-        clear_mock.assert_called_once()
         self.assertEqual(
             DesignExecutionRequest(mode="design_video"),
             request.route
@@ -1093,15 +1041,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
         ) as overlays_mock, patch.object(
             controller,
             "select_intro_outro"
-        ) as intro_outro_mock, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="audio project"
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ):
+        ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("audio project", False)):
             request = controller.run()
 
         voice_mock.assert_called_once()
@@ -1237,15 +1177,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                     controller,
                     "select_intro_outro",
                     return_value=None
-                ) as intro_outro_mock, patch.object(
-                    controller,
-                    "ask_project_name",
-                    return_value="project"
-                ), patch.object(
-                    controller,
-                    "ask_clear_output",
-                    return_value=False
-                ):
+                ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("project", False)):
                     request = controller.run()
 
                 self.assertIs(subtitle_key, request.subtitle_profile_key)
@@ -1311,15 +1243,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
             controller,
             "select_intro_outro",
             return_value=None,
-        ), patch.object(
-            controller,
-            "ask_project_name",
-            return_value="project",
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False,
-        ):
+        ), patch.object(controller, "ask_project", return_value=("project", False)):
             request = controller.run()
 
         self.assertNotIn("subtitle_config", vars(request))
@@ -1423,15 +1347,7 @@ class RunControllerVisualPipelineTest(unittest.TestCase):
                 ) as overlays_mock, patch.object(
                     controller,
                     "select_intro_outro"
-                ) as intro_outro_mock, patch.object(
-                    controller,
-                    "ask_project_name",
-                    return_value="project"
-                ), patch.object(
-                    controller,
-                    "ask_clear_output",
-                    return_value=False
-                ):
+                ) as intro_outro_mock, patch.object(controller, "ask_project", return_value=("project", False)):
                     request = controller.run()
 
                 overlays_mock.assert_not_called()

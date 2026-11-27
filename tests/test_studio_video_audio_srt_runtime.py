@@ -83,7 +83,7 @@ def _standard_subtitle_key(style):
 def _summary_request(subtitle_profile_key, input_mode=StudioInputMode.SRT_VIDEO, plan=None):
     return ApplicationExecutionRequest(
         project_name="video-audio-srt",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=OperationalProfileKey(
             "studio",
             "horizontal",
@@ -156,8 +156,7 @@ def test_video_audio_srt_menu_uses_operational_format_and_never_asks_for_music(
     controller.select_studio_video_audio_srt_plan = Mock(return_value=plan)
     controller.select_studio_video_audio_srt_audio_tail = Mock(return_value=plan)
     controller.select_studio_music = Mock()
-    controller.ask_project_name = Mock(return_value="project")
-    controller.ask_clear_output = Mock(return_value=False)
+    controller.ask_project = Mock(return_value=("project", False))
 
     request = controller._run_studio()
 
