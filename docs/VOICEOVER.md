@@ -109,6 +109,14 @@ Añadir una voz de Piper es copiar su modelo y su `.onnx.json` en una carpeta de
 `models/audio/piper/` y escribir su documento en `config/voice_configs/`:
 aparece en el menú VOZ sin tocar Python.
 
+**Carpeta de trabajo (todas las voces).** Cada síntesis trabaja en una carpeta
+privada que `VoiceBuilder` crea dentro de `workspace_dir` de `config/voice.json`
+(`tmp/voice` en el proyecto; Git la ignora) y borra al terminar; nada va al
+`%TEMP%` del sistema. La ruta es relativa a la carpeta del proyecto y tiene que
+quedar dentro. Si el archivo o la clave faltan, o la ruta sale del proyecto, la
+voz no se genera y el error CONFIG nombra `config/voice.json`
+(`app/modules/audio/voice_settings.py`).
+
 ---
 
 ## 3. Cuánto dura un guion

@@ -17,6 +17,7 @@ from app.modules.audio.tts_contracts import (
     TtsVoiceConfigurationError,
 )
 from app.modules.audio.tts_backend_runtime import build_default_tts_backend_registry
+from app.modules.audio.voice_settings import voice_workspace_dir
 from app.modules.audio.voice_timing_adapter import VoiceTimingAdapter
 from app.shared.config_manager import ConfigManager
 from app.shared.operational_error import OperationalError, create_operational_error
@@ -114,12 +115,22 @@ class VoiceBuilder:
         return output_path
 
     def _create_workspace(self) -> Path:
-        if self._workspace_parent is not None:
-            self._workspace_parent.mkdir(parents=True, exist_ok=True)
+        """New private folder for one synthesis, never in the system TEMP.
+
+        Its parent is ``workspace_parent`` when given and, otherwise, the
+        ``workspace_dir`` declared in ``config/voice.json`` (inside the
+        project; a missing or invalid key is a CONFIG error).
+        """
+        parent = (
+            self._workspace_parent
+            if self._workspace_parent is not None
+            else voice_workspace_dir()
+        )
+        parent.mkdir(parents=True, exist_ok=True)
         return Path(
             tempfile.mkdtemp(
                 prefix="ai_visual_composer_tts_",
-                dir=self._workspace_parent,
+                dir=parent,
             )
         )
 

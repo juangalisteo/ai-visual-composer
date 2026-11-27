@@ -67,6 +67,11 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   en `%APPDATA%\NVIDIA\ComputeCache` ni en el `%TEMP%` del sistema. Si falta una
   de las dos claves, la voz no se genera y el error CONFIG dice cuál. Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual).
+- La carpeta de trabajo de cada síntesis de voz (todas las voces, Piper
+  incluido) se crea dentro del proyecto, en `workspace_dir` de
+  `config/voice.json` (`tmp/voice`), y no en el `%TEMP%` del sistema. Sin el
+  archivo o la clave, error CONFIG. Ver
+  [VOICEOVER.md §2](docs/VOICEOVER.md#2-documento-de-voz).
 - Menú VOZ en este orden: «Chatterbox (natural, GPU)», «Piper Carlfm (rápida,
   CPU)», «Piper Davefx (rápida, CPU)», «Kokoro Alex» y «Kokoro Dora». El orden lo declara cada documento de
   voz (`menu_order`), no el nombre del archivo.

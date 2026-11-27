@@ -450,7 +450,8 @@ config/voice_configs/<voz>.json    documento de la voz (backend_key, modelo, idi
 TtsBackendRegistry                 elige el backend por su backend_key exacto
         ↓
 backend de la voz                  PiperBackend, ChatterboxBackend o KokoroBackend:
-                                   sintetiza un WAV en una carpeta temporal
+                                   sintetiza un WAV en la carpeta de trabajo
+                                   (workspace_dir de config/voice.json: tmp/voice)
         ↓
 VoiceBuilder                       lo publica como audio/voz.mp3
         ↓
@@ -799,6 +800,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
 | `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
+| `config/voice.json` | Común a todas las voces: `workspace_dir`, la carpeta donde `VoiceBuilder` crea la carpeta de trabajo de cada síntesis (`tmp/voice`, dentro del proyecto e ignorada por Git; nunca el `%TEMP%` del sistema). Obligatoria: si falta o sale de la carpeta del proyecto, error CONFIG que nombra el archivo ([VOICEOVER.md §2](VOICEOVER.md#2-documento-de-voz)) |
 | `config/comfyui.json` | ComfyUI: sus carpetas `input/` y `output/` y si se borra lo que deja el programa una vez copiado al proyecto (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
