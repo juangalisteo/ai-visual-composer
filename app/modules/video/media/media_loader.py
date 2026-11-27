@@ -389,6 +389,14 @@ class MediaLoader:
                 clip_value
             )
 
+            if item.get("kept") is False:
+                raise FileNotFoundError(
+                    "El clip de vídeo de la escena "
+                    f"{scene_number} se borró tras el render del vídeo "
+                    "final (\"kept\": false en el manifiesto). Vuelve a "
+                    "generar los clips."
+                )
+
             if not clip_path.exists():
                 raise FileNotFoundError(
                     "No existe el clip de vídeo "

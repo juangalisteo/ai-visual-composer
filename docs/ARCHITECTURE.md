@@ -758,6 +758,13 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
 - **Progreso.** Mientras Wan genera un clip, la terminal escribe
   «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
   «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.
+- **Manifiesto.** `video_clips_manifest.json` guarda, por escena, el clip y cómo
+  se generó (prompts, semilla, fotogramas…) con `"kept": true`. Tras montar el
+  vídeo final, los `.mkv` (FFV1, sin pérdida y pesados) se borran y su entrada
+  pasa a `"kept": false`: el manifiesto sigue diciendo qué se generó, pero no
+  apunta a un clip que ya no existe. Montar otra vez desde ese manifiesto da un
+  error claro («… se borró tras el render del vídeo final…»). DISEÑO → Video no
+  borra su clip.
 - **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
   los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
   clips son intermedios: se borran cuando el vídeo final se ha publicado bien.

@@ -1163,6 +1163,7 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             1,
             manifest[0]["scene"]
         )
+        self.assertIs(True, manifest[0]["kept"])
         self.assertTrue(
             manifest[0]["output_clip"].endswith(
                 "scene_001.mp4"
@@ -1324,6 +1325,24 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             self.assertTrue(external_lossless.exists())
             self.assertTrue(manifest_path.exists())
             self.assertTrue(final_output.exists())
+            # Only the deleted clip is marked (A2-I); nothing else changes.
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                [
+                    {"scene": 1, "output_clip": str(owned_lossless), "kept": False},
+                    {"scene": 2, "output_clip": str(h264_clip)},
+                    {"scene": 3, "output_clip": str(external_lossless)},
+                ],
+                manifest,
+            )
+            self.assertEqual([], list(clips_dir.glob("*.tmp")))
+            # A second lease finds nothing left to delete.
+            self.assertEqual(
+                (),
+                clip_batch.I2VArtifactLease.from_manifest(
+                    manifest_path
+                ).owned_lossless_paths,
+            )
 
     def test_i2v_artifact_lease_preserves_lossless_clip_without_confirmed_public_render(
         self,
@@ -1414,6 +1433,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
             self.assertTrue(output_path.exists())
             self.assertTrue(owned_lossless.exists())
             self.assertTrue(manifest_path.exists())
+            # The clip is still there: it is not marked as deleted.
+            self.assertEqual(
+                [{"scene": 1, "output_clip": str(owned_lossless)}],
+                json.loads(manifest_path.read_text(encoding="utf-8")),
+            )
 
     def test_direct_i2v_generation_does_not_consume_lossless_clip_lease(self):
         class LosslessBuilder(FakeVideoComponentBuilder):
