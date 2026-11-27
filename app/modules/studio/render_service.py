@@ -103,6 +103,33 @@ class StudioOutputValidator:
             max_duration_difference=profile.max_duration_difference,
         )
         info = self.probe.inspect(output_path)
+        mismatches = self.contract_mismatches(info, profile)
+        if mismatches:
+            raise RuntimeError(
+                "El output STUDIO incumple el contrato: "
+                + ", ".join(mismatches)
+                + "."
+            )
+
+        self.runner.run([
+            "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(Path(output_path)),
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0",
+            "-f",
+            "null",
+            "-",
+        ])
+        return generated_duration
+
+    @staticmethod
+    def contract_mismatches(info, profile):
+        """What of the profile's output contract ``info`` does not meet."""
         expected_codec = {
             "libx264": "h264",
             "libx265": "hevc",
@@ -129,28 +156,7 @@ class StudioOutputValidator:
             mismatches.append("sample rate de audio")
         if info.audio_channels != profile.audio_channels:
             mismatches.append("canales de audio")
-        if mismatches:
-            raise RuntimeError(
-                "El output STUDIO incumple el contrato: "
-                + ", ".join(mismatches)
-                + "."
-            )
-
-        self.runner.run([
-            "ffmpeg",
-            "-v",
-            "error",
-            "-i",
-            str(Path(output_path)),
-            "-map",
-            "0:v:0",
-            "-map",
-            "0:a:0",
-            "-f",
-            "null",
-            "-",
-        ])
-        return generated_duration
+        return mismatches
 
 
 class StudioRenderService:
@@ -250,21 +256,38 @@ class StudioRenderService:
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         self._remove_temporary(temporary_path)
+        # Nothing to paint or mix and the video already has the output
+        # format (a montage, or a video for INTRO / OUTRO): copy its streams
+        # instead of encoding it again (PRUEBA-GS, fallo 8).
+        copy_source = (
+            not subtitles_enabled
+            and music_path is None
+            and self.source_meets_output(source_info, profile)
+        )
         ProgressLogger.start(
-            "RENDERIZANDO STUDIO"
+            "COPIANDO EL VÍDEO SIN VOLVER A CODIFICARLO (ya tiene el formato de salida)"
+            if copy_source
+            else "RENDERIZANDO STUDIO"
         )
         render_start = time.perf_counter()
         try:
-            command = self.build_command(
-                video_path=video_path,
-                subtitle_path=subtitle_path,
-                output_path=temporary_path,
-                source_info=source_info,
-                profile=profile,
-                subtitle_style=subtitle_style,
-                subtitle_backend=subtitle_backend,
-                music_path=music_path,
-            )
+            if copy_source:
+                command = self.build_copy_command(
+                    video_path=video_path,
+                    output_path=temporary_path,
+                    profile=profile,
+                )
+            else:
+                command = self.build_command(
+                    video_path=video_path,
+                    subtitle_path=subtitle_path,
+                    output_path=temporary_path,
+                    source_info=source_info,
+                    profile=profile,
+                    subtitle_style=subtitle_style,
+                    subtitle_backend=subtitle_backend,
+                    music_path=music_path,
+                )
             self.runner.run(command)
             generated_duration = self.output_validator.validate(
                 output_path=temporary_path,
@@ -280,7 +303,7 @@ class StudioRenderService:
                 self._remove_temporary(temporary_subtitle_path)
         render_duration = time.perf_counter() - render_start
         ProgressLogger.finish(
-            "RENDER STUDIO COMPLETADO",
+            "COPIA COMPLETADA" if copy_source else "RENDER STUDIO COMPLETADO",
             render_duration,
         )
 
@@ -346,6 +369,37 @@ class StudioRenderService:
             render_duration=render_duration,
             intro_outro_duration=intro_outro_duration,
         )
+
+    @staticmethod
+    def source_meets_output(source_info, profile):
+        """True when the source already meets the output contract.
+
+        The same checks as the output validator, plus square pixels: the
+        render would add ``setsar=1``.
+        """
+        return (
+            not StudioOutputValidator.contract_mismatches(source_info, profile)
+            and source_info.sample_aspect_ratio in (None, "1:1")
+        )
+
+    @staticmethod
+    def build_copy_command(video_path, output_path, profile):
+        """Copy the first video and audio streams without encoding them."""
+        return [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(Path(video_path)),
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0",
+            "-c",
+            "copy",
+            "-movflags",
+            profile.movflags,
+            str(Path(output_path)),
+        ]
 
     def build_command(
         self,

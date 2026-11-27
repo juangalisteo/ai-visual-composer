@@ -309,7 +309,14 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
   escala el vídeo al tamaño del perfil conservando su proporción (`scale` +
   `pad`, con bandas si no coincide), con el FPS, el códec y el audio del perfil.
   El audio original se queda a su volumen; la música, si se elige, se mezcla con
-  el volumen y el limitador de `studio.music`.
+  el volumen y el limitador de `studio.music`. Si no hay subtítulos ni música y
+  el vídeo ya cumple el formato de salida del perfil (las mismas comprobaciones
+  que `StudioOutputValidator`, más píxeles cuadrados), **no se vuelve a
+  codificar**: se copian su pista de vídeo y su primera de audio (`-c copy`, con
+  los `movflags` del perfil) y la copia pasa la misma validación. Le pasa al
+  montaje de MONTAJE VÍDEOS sin música y a INTRO / OUTRO con un vídeo que ya
+  tiene el formato (antes, el vídeo entero se codificaba otra vez sin cambiar
+  nada).
 - **INTRO / OUTRO:** los recursos salen de
   `assets/videos/intro_outro/<formato>/intro/` y `…/<formato>/outro/` (carpeta
   local, fuera de Git). Solo se normalizan los que no son compatibles; después se

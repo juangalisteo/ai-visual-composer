@@ -202,6 +202,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   bloque entre sus palabras por letras, no a partes iguales, en «Palabra única»
   y en la ventana deslizante; el resumen de CONVERTIR dice que los tiempos son
   estimados. Ver [SUBTITLES.md §4](docs/SUBTITLES.md).
+- MONTAJE VÍDEOS e INTRO / OUTRO ya no codifican dos veces: si no hay
+  subtítulos ni música y el vídeo ya tiene el formato de salida del perfil, se
+  copia sin volver a codificarlo (más rápido y sin otra pérdida de calidad). Ver
+  [ARCHITECTURE.md §8](docs/ARCHITECTURE.md#8-studio).
 
 ### Retirado
 
