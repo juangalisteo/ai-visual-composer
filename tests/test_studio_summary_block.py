@@ -91,7 +91,7 @@ def test_video_audio_summary_names_the_project_once_and_has_times(tmp_path):
     assert "Duración audio nuevo" in printed
     assert "Duración audio original" not in printed
     times = printed.split("-" * 40)[1]
-    assert "Render STUDIO.............. 4.25 s" in times
+    assert "Render STUDIO.............. 4,25 s" in times
     assert "Perfil de subtítulos....... Perfil De Prueba" in printed
 
 
@@ -113,7 +113,7 @@ def test_srt_video_summary_names_the_chosen_subtitle_profile_not_original():
     assert "ORIGINAL" not in printed
     assert "Perfil de subtítulos....... Perfil De Prueba" in printed
     assert "Video fuente" in printed and "SRT fuente" in printed
-    assert "Duración final............. 12.00 s" in printed
+    assert "Duración final............. 12,00 s" in printed
 
 
 def test_same_base_and_generated_srt_is_one_line():

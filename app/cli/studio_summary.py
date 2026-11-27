@@ -20,6 +20,7 @@ from app.modules.studio import StudioInputMode, StudioSubtitleExportMode
 from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
 from app.shared.profile_resolver import ProfileResolver
+from app.shared.screen_number import screen_decimal
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
@@ -64,7 +65,7 @@ def _declared_profile_name(profile_key):
 
 
 def _seconds(value):
-    return f"{float(value):.2f} s"
+    return f"{screen_decimal(value, 2)} s"
 
 
 def _new_summary(request):
@@ -323,7 +324,7 @@ def _audio_tail_label(mode, shortfall_seconds):
         return "Vídeo cortado donde acaba el audio"
     if mode == "none":
         return (
-            f"Sin cambios (el audio dura {shortfall_seconds:.3f} s menos, "
+            f"Sin cambios (el audio dura {screen_decimal(shortfall_seconds, 3)} s menos, "
             "dentro del margen)"
         )
     return "Audio + silencio final"

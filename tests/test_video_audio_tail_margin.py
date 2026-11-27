@@ -210,7 +210,7 @@ def test_render_with_silence_still_pads_a_shorter_audio():
 @pytest.mark.parametrize(
     ("mode", "label"),
     (
-        ("none", "Sin cambios (el audio dura 0.006 s menos, dentro del margen)"),
+        ("none", "Sin cambios (el audio dura 0,006 s menos, dentro del margen)"),
         ("music", "Audio + música final"),
         ("silence", "Audio + silencio final"),
     ),

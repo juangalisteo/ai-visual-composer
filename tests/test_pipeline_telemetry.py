@@ -168,7 +168,7 @@ class PipelineTelemetryTest(unittest.TestCase):
         rendered = summary.render()
 
         self.assertIn("Segundos por imagen", rendered)
-        self.assertIn("11.33", rendered)
+        self.assertIn("11,33", rendered)
         self.assertIn("Duración", rendered)
         self.assertIn("Imágenes", rendered)
 

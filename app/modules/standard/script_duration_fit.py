@@ -17,6 +17,7 @@ from pathlib import Path
 from app.modules.script.models import InvalidScriptOutputError
 from app.shared.operation_warnings import OperationWarning
 from app.shared.progress_logger import ProgressLogger
+from app.shared.screen_number import screen_decimal
 
 
 _OPERATION = "Ajustar la duración del guion"
@@ -210,7 +211,7 @@ def _candidate_path(path: Path) -> Path:
 
 
 def _seconds(value) -> str:
-    return f"{float(value):.1f}".replace(".", ",")
+    return screen_decimal(value, 1)
 
 
 def _percent(seconds, target_seconds) -> str:

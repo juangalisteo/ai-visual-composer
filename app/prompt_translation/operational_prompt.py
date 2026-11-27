@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from app.prompt_translation.models import PromptBudgetPolicy
 from app.shared.prompt_metrics import estimate_conservative_tokens
+from app.shared.screen_number import screen_decimal
 
 
 def prompt_fingerprint(
@@ -101,7 +102,7 @@ class OperationalPromptBudgetExceededError(ValueError):
         percent = (
             "n/a"
             if self.operational_expansion_percent is None
-            else f"{self.operational_expansion_percent:.1f}%"
+            else f"{screen_decimal(self.operational_expansion_percent, 1)} %"
         )
         super().__init__(
             f"{self.code}: el prompt operativo final de FLUX "

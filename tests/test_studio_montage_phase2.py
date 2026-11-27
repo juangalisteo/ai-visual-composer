@@ -356,7 +356,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
         self.assertIn("Normalización clips", rendered)
         self.assertIn("Normalizados", rendered)
         self.assertIn("Montaje de videos", rendered)
-        self.assertIn("1.25 s", rendered)
+        self.assertIn("1,25 s", rendered)
 
     def test_montage_summary_omits_normalization_for_fast_path(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -392,7 +392,7 @@ class StudioMontagePhase2Test(unittest.TestCase):
         self.assertIn("Preparación clips", rendered)
         self.assertNotIn("Normalización clips", rendered)
         self.assertIn("Montaje de videos", rendered)
-        self.assertIn("9.00 s", rendered)
+        self.assertIn("9,00 s", rendered)
 
 
 @unittest.skipUnless(

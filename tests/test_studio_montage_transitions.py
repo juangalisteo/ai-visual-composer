@@ -241,7 +241,7 @@ class StudioMontageTransitionsContractTest(unittest.TestCase):
                 validator=Mock(),
             )
 
-            with self.assertRaisesRegex(StudioMontageError, "0.30 s"):
+            with self.assertRaisesRegex(StudioMontageError, "0,30 s"):
                 service.compose(plan, root / "output.mp4", profile)
 
         runner.run.assert_not_called()

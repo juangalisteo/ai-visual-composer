@@ -20,6 +20,7 @@ from app.providers.ollama_provider import (
 from app.providers.ollama_settings import ollama_call_settings
 from app.shared.progress_logger import ProgressLogger
 from app.shared.prompt_library import PromptLibrary
+from app.shared.screen_number import screen_decimal
 
 
 # Section of config/ai.json with the script's model, think and options.
@@ -518,7 +519,7 @@ def _distance(length, script) -> float:
 
 def _seconds(value) -> str:
     """Seconds for the terminal and prompts, with a decimal comma."""
-    return f"{float(value):.1f}".replace(".", ",")
+    return screen_decimal(value, 1)
 
 
 def _prompt_id(

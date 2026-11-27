@@ -318,7 +318,7 @@ en su propio proceso…») queda solo en el registro de la ejecución
 GENERANDO VOCES...
   Parte 1 de 2
   Parte 2 de 2
-Finalizado (1 min 33.26 s)
+Finalizado (1 min 33,26 s)
 ```
 
 El proceso no descarga nada (Hugging Face sin conexión) y guarda sus cachés en
@@ -448,7 +448,7 @@ límite), y el programa une los WAV y publica `voz.mp3`.
 GENERANDO VOCES...
   Parte 1 de 2
   Parte 2 de 2
-Finalizado (13.52 s)
+Finalizado (13,52 s)
 ```
 
 ### Opciones (`backend_options`)

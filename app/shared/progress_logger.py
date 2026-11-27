@@ -109,7 +109,9 @@ class ProgressLogger:
 
     @staticmethod
     def detail_finish(message, elapsed):
-        ProgressLogger.detail(f"{message} ({TimeFormatter.format(elapsed)})")
+        ProgressLogger.detail(
+            f"{message} ({TimeFormatter.format(elapsed, screen=False)})"
+        )
 
     @staticmethod
     def warning(message, warnings=None, operation=None):

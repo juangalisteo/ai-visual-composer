@@ -386,6 +386,12 @@ La ruta estándar crea siempre las seis carpetas (`scripts/`, `audio/`,
 `video_clips/` solo aparece cuando se generan clips. `output/` está fuera de
 Git: es espacio de trabajo y se puede borrar o regenerar.
 
+Los números decimales que ve el usuario (la terminal, los resúmenes, los avisos
+y los errores) llevan coma: «5,50 s». Todos pasan por una única función,
+`screen_decimal` (`app/shared/screen_number.py`; `TimeFormatter` la usa para
+los tiempos). Los archivos (JSON, SRT, ASS, manifiestos, las líneas técnicas de
+`registro.txt`) y los comandos de FFmpeg siguen con punto.
+
 ---
 
 ## 11. Identidad y perfiles

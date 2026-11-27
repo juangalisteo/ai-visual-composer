@@ -3,6 +3,7 @@ from collections import OrderedDict
 from app.cli.error_presenter import ErrorPresenter
 from app.shared.operation_warnings import OperationWarning, OperationWarnings
 from app.shared.progress_logger import ProgressLogger
+from app.shared.screen_number import screen_decimal
 from app.shared.time_formatter import TimeFormatter
 
 
@@ -314,7 +315,7 @@ class PipelineSummary:
 
     def _format_scene_durations(self):
         return " · ".join(
-            f"{duration:.2f}" for duration in self.scene_durations
+            screen_decimal(duration, 2) for duration in self.scene_durations
         ) + " s"
 
     def _format_seconds_per_image(self):
@@ -328,5 +329,5 @@ class PipelineSummary:
             return "No disponible"
 
         return (
-            f"{self.media_duration / self.scene_count:.2f}"
+            screen_decimal(self.media_duration / self.scene_count, 2)
         )

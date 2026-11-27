@@ -50,7 +50,7 @@ def _summary(still_images):
 def test_clips_summary_has_scenes_with_each_duration_and_no_images():
     rendered = _summary(still_images=False)
     assert "Escenas.................... 3" in rendered
-    assert "Duración de cada escena.... 5.29 · 5.73 · 7.00 s" in rendered
+    assert "Duración de cada escena.... 5,29 · 5,73 · 7,00 s" in rendered
     assert "Imágenes" not in rendered
     assert "Segundos por imagen" not in rendered
     assert "por imagen" not in rendered
@@ -59,7 +59,7 @@ def test_clips_summary_has_scenes_with_each_duration_and_no_images():
 def test_still_images_summary_is_unchanged():
     rendered = _summary(still_images=True)
     assert "Imágenes................... 3" in rendered
-    assert "Segundos por imagen........ 6.00" in rendered
+    assert "Segundos por imagen........ 6,00" in rendered
     assert "Duración de cada escena" not in rendered
 
 

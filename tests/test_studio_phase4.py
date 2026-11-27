@@ -299,7 +299,7 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertIn("Preparación subtítulos", stages)
         self.assertIn("Render STUDIO", stages)
         self.assertIn("Intro / Outro", stages)
-        self.assertIn("Tiempo total............... 5.00 s", printed)
+        self.assertIn("Tiempo total............... 5,00 s", printed)
         self.assertLess(
             stages.index("Preparación subtítulos"),
             stages.index("Render STUDIO"),
@@ -338,7 +338,7 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertIn("Render STUDIO", stages)
         self.assertNotIn("Intro / Outro", stages)
         self.assertIn("Intro / Outro.............. No", printed)
-        self.assertIn("Tiempo total............... 2.50 s", printed)
+        self.assertIn("Tiempo total............... 2,50 s", printed)
 
     def test_studio_summary_does_not_invent_stages_without_recorded_durations(self):
         result = SimpleNamespace(
@@ -362,7 +362,7 @@ class StudioPhase4Test(unittest.TestCase):
             if call.args
         )
         self.assertEqual("", _stage_block(printed).strip())
-        self.assertIn("Tiempo total............... 2.50 s", printed)
+        self.assertIn("Tiempo total............... 2,50 s", printed)
 
     def test_studio_summary_shows_intro_outro_only_for_executed_selection(self):
         intro_selection = IntroOutroSelection(Path("intro.mp4"), "intro")
