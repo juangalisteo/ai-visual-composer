@@ -1,3 +1,4 @@
+from dataclasses import replace
 import hashlib
 import time
 
@@ -81,6 +82,18 @@ class ScriptBuilder:
         *,
         length=None,
     ):
+        return self.build_result(
+            prompt,
+            length=length,
+        ).script
+
+    def build_result(
+        self,
+        prompt,
+        *,
+        length=None,
+    ) -> ScriptGenerationResult:
+        """``generate_result`` with the terminal progress of ``build``."""
         ProgressLogger.start(
             "GENERANDO GUION"
         )
@@ -102,7 +115,7 @@ class ScriptBuilder:
             elapsed
         )
 
-        return result.script
+        return result
 
     def generate_result(
         self,
@@ -115,7 +128,8 @@ class ScriptBuilder:
         ``length`` is the ``ScriptLengthBudget`` the prompt was written with,
         passed as data; ``None`` means free text without a length check.
         When every attempt is well formed but out of range, the closest one
-        is returned instead of failing.
+        is returned instead of failing. A length correction is asked at most
+        once; ``metadata.length_corrected`` says whether it was asked.
         """
         prompt = str(
             prompt
@@ -135,11 +149,16 @@ class ScriptBuilder:
         last_report = None
         previous_script = ""
         closest = None
+        length_corrected = False
 
         for attempt in range(
             1,
             self.max_attempts + 1
         ):
+            if attempt > 1 and _asks_length_correction(
+                last_report, length, previous_script
+            ):
+                length_corrected = True
             response = self.provider.generate(
                 _attempt_prompt(
                     prompt,
@@ -167,6 +186,7 @@ class ScriptBuilder:
                     prompt_id=prompt_id,
                     parser_id=validator.parser_id,
                     length=length,
+                    length_corrected=length_corrected,
                 )
                 report = _validate_length(
                     report=report,
@@ -191,7 +211,13 @@ class ScriptBuilder:
             last_report = report
 
         if closest is not None:
-            return closest
+            return replace(
+                closest,
+                metadata=replace(
+                    closest.metadata,
+                    length_corrected=length_corrected,
+                ),
+            )
 
         raise self._invalid_output(
             report=last_report,
@@ -297,6 +323,7 @@ class ScriptBuilder:
         prompt_id,
         parser_id,
         length,
+        length_corrected=False,
     ) -> ScriptGenerationResult:
         actual_words = count_script_words(
             script
@@ -316,13 +343,14 @@ class ScriptBuilder:
                     length.min_words if length else 0
                 ),
                 recommended_max_words=(
-                    length.max_words if length else 0
+                    (length.max_words or 0) if length else 0
                 ),
                 actual_words=actual_words,
                 deviation_percentage=_deviation_percentage(
                     actual_words=actual_words,
                     target_words=target_words,
                 ),
+                length_corrected=length_corrected,
             ),
         )
 
@@ -350,11 +378,7 @@ def _attempt_prompt(
     previous_reason = _previous_reason(
         previous_report
     )
-    if (
-        previous_reason in _LENGTH_REASONS
-        and length is not None
-        and previous_script
-    ):
+    if _asks_length_correction(previous_report, length, previous_script):
         return _length_correction_prompt(
             prompt,
             length=length,
@@ -366,7 +390,6 @@ def _attempt_prompt(
         length_instruction = "\n" + prompts.render(
             RETRY_LENGTH_TEMPLATE,
             palabras_min=length.min_words,
-            palabras_max=length.max_words,
         )
     return (
         f"{prompt}\n\n"
@@ -375,6 +398,15 @@ def _attempt_prompt(
             motivo=previous_reason,
         )
         + length_instruction
+    )
+
+
+def _asks_length_correction(previous_report, length, previous_script) -> bool:
+    """True when the next attempt is the correction of a script's length."""
+    return (
+        _previous_reason(previous_report) in _LENGTH_REASONS
+        and length is not None
+        and bool(previous_script)
     )
 
 
@@ -475,13 +507,12 @@ def _validate_length(*, report, script, length):
 
 
 def _distance(length, script) -> float:
-    """How far ``script`` is estimated to be from the requested duration."""
-    return abs(
-        length.deviation(
-            length.estimate_seconds(
-                script
-            )
-        )
+    """Seconds ``script`` is estimated to lie outside the accepted margin."""
+    return length.margin.shortfall(
+        length.estimate_seconds(
+            script
+        ),
+        length.duration_seconds,
     )
 
 

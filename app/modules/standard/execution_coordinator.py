@@ -7,6 +7,7 @@ from app.core.pipeline_telemetry import (
     PipelineTelemetry,
     PipelineTelemetryArtifacts,
 )
+from app.core.script_length import script_duration_margin
 from app.managers.pipeline_summary import PipelineSummary
 from app.modules.audio.audio_mixer import AudioMixer
 from app.modules.audio.music_selector import MusicSelector
@@ -239,6 +240,9 @@ class StandardExecutionCoordinator:
                     voice_pauses=voice_pauses,
                     stage_times=stage_times,
                     warnings=summary.warnings,
+                    adjustment_allowed=not _length_already_corrected(
+                        prepared_script
+                    ),
                 )
                 script_text = fit.script_text
                 voice_pauses = fit.voice_pauses
@@ -475,6 +479,7 @@ class StandardExecutionCoordinator:
         voice_pauses,
         stage_times,
         warnings,
+        adjustment_allowed,
     ):
         """Measure a topic script's voice and ask once for an adjusted script."""
 
@@ -506,6 +511,7 @@ class StandardExecutionCoordinator:
             measure_seconds=MediaProbe.get_duration,
             adjust_script=adjust_script,
             synthesize_voice=synthesize_voice,
+            margin=script_duration_margin(script_options["ai_config"]),
             warnings=warnings,
         ).fit(
             script_text=script_text,
@@ -513,7 +519,14 @@ class StandardExecutionCoordinator:
             script_path=script_options["output_script_path"],
             voice_path=voice_path,
             voice_pauses=voice_pauses,
+            adjustment_allowed=adjustment_allowed,
         )
+
+
+def _length_already_corrected(prepared_script):
+    """True when Ollama already fixed the script's length before the voice."""
+    metadata = getattr(prepared_script, "metadata", None)
+    return bool(getattr(metadata, "length_corrected", False))
 
 
 def _voice_pauses(voice_builder):

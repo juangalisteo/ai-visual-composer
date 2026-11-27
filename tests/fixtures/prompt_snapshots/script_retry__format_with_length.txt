@@ -366,4 +366,4 @@ SALIDA OBLIGATORIA:
 CORRECCIÓN:
 - La respuesta anterior incumple el formato requerido. Motivo: markdown_detected.
 - Devuelve únicamente el guion final válido, sin encabezados, sin comentarios, sin markdown, sin JSON y sin metadatos.
-- Debe contener entre 70 y 86 palabras para respetar la duración solicitada.
+- Debe contener al menos 70 palabras para respetar la duración solicitada.

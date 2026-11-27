@@ -369,11 +369,16 @@ class OllamaConfiguredCallsTest(unittest.TestCase):
 
 
 def _length_budget():
-    from app.core.script_length import ScriptLengthBudget, SpeechPacing
+    from app.core.script_length import (
+        DurationMargin,
+        ScriptLengthBudget,
+        SpeechPacing,
+    )
 
     return ScriptLengthBudget.for_duration(
         30,
         SpeechPacing(letters_per_second=13.0, words_per_second=2.5),
+        DurationMargin(below=0.10, above=None),
     )
 
 

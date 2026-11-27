@@ -2,7 +2,7 @@
     "component": "video",
     "profile_id": "video_vertical",
     "format": "vertical",
-    "duration": 10,
+    "duration": 50,
     "tone": "modo_conciencia",
 
     "images": {

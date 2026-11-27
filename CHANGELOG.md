@@ -67,6 +67,11 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   en `%APPDATA%\NVIDIA\ComputeCache` ni en el `%TEMP%` del sistema. Si falta una
   de las dos claves, la voz no se genera y el error CONFIG dice cuál. Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual).
+- La carpeta de trabajo de cada síntesis de voz (todas las voces, Piper
+  incluido) se crea dentro del proyecto, en `workspace_dir` de
+  `config/voice.json` (`tmp/voice`), y no en el `%TEMP%` del sistema. Sin el
+  archivo o la clave, error CONFIG. Ver
+  [VOICEOVER.md §2](docs/VOICEOVER.md#2-documento-de-voz).
 - Menú VOZ en este orden: «Chatterbox (natural, GPU)», «Piper Carlfm (rápida,
   CPU)», «Piper Davefx (rápida, CPU)», «Kokoro Alex» y «Kokoro Dora». El orden lo declara cada documento de
   voz (`menu_order`), no el nombre del archivo.
@@ -91,12 +96,24 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - El guion por tema se pide a Ollama sin razonamiento previo (`think: false`
   en `config/ai.json`): sale unas 4 veces más rápido y más cerca de la
   duración pedida.
+- Guion por tema: solo se ajusta si queda corto. El margen está en
+  `config/ai.json` (`script.duration_margin`: `below` 0.10, hasta un 10 % menos
+  de lo pedido, y `above` null, sin tope por arriba); antes era un ±10 % fijo en
+  el código. Se pide a Ollama una sola corrección de extensión (antes de la voz
+  o, si no hizo falta, tras medirla); si sigue corto, se queda el mejor de los
+  dos guiones y la terminal lo avisa en una línea, sin parar. Sin la clave, error
+  CONFIG. Ver [ARCHITECTURE.md §12](docs/ARCHITECTURE.md#12-guion).
 - Las escenas del storyboard terminan siempre al final de una frase, con los
   tiempos de la voz (Whisper), y duran lo que digan sus frases dentro de los
   límites `scene_seconds` de cada formato en `config/formats.json`; el vídeo
   final da a cada imagen la duración de su escena. Sustituye a
   `seconds_per_image` de los perfiles (una imagen cada 20 o 30 s, que cambiaba
   a mitad de frase). Ver [ARCHITECTURE.md §15](docs/ARCHITECTURE.md#15-storyboard).
+- Escenas de unos 6 s: `scene_seconds` pasa de 4 · 6–8 · 10 a `min` 4,
+  `target_min` 5, `target_max` 7 y `max` 8 en los dos formatos; se sigue
+  cortando al final de frase.
+- Los perfiles de IMAGEN y VIDEO piden 50 s de guion por tema (`duration`;
+  antes 10, que eran de prueba).
 - Todos los textos que se envían a Ollama, Flux y Wan están en `prompts/`:
   las plantillas de cada petición (`templates/`, con `{marcadores}` para los
   datos), los criterios del storyboard (`criteria/`), la identidad visual y

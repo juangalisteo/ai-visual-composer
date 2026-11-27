@@ -380,6 +380,12 @@ def _script_pacing():
     return SpeechPacing(letters_per_second=14.2, words_per_second=2.6)
 
 
+def _script_margin():
+    from app.core.script_length import DurationMargin
+
+    return DurationMargin(below=0.10, above=None)
+
+
 def _script_prompts():
     from app.core.prompt_engine import PromptEngine
 
@@ -395,6 +401,7 @@ def _script_prompts():
                         "duration": duration,
                     },
                     _script_pacing(),
+                    _script_margin(),
                 )
                 snapshots[
                     f"script__{tone}__{profile_format}__{duration}s"
@@ -414,6 +421,7 @@ def _script_retry_prompts():
         SCRIPT_TOPIC,
         {"tone": "modo_conciencia", "format": "vertical", "duration": 30},
         _script_pacing(),
+        _script_margin(),
     )
 
     def report(reason):

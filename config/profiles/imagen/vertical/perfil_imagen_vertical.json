@@ -2,7 +2,7 @@
     "component": "imagen",
     "profile_id": "imagen_vertical",
     "format": "vertical",
-    "duration": 10,
+    "duration": 50,
     "tone": "modo_conciencia",
 
     "images": {

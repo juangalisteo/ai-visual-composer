@@ -726,7 +726,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 def get_ai_config(
                     self
                 ):
-                    return {}
+                    return {
+                        "script": {
+                            "duration_margin": {"below": 0.10, "above": None},
+                        },
+                    }
 
                 def get_tts_voice_configuration(self):
                     return _test_voice_configuration()
@@ -873,7 +877,11 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                 profile_resolver = ProfileResolver()
 
                 def get_ai_config(self):
-                    return {}
+                    return {
+                        "script": {
+                            "duration_margin": {"below": 0.10, "above": None},
+                        },
+                    }
 
                 def get_tts_voice_configuration(self):
                     return _test_voice_configuration()

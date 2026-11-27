@@ -73,7 +73,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "width": 1080,
             "height": 1920,
             "fps": 30,
-            "scene_seconds": SceneSeconds(4.0, 6.0, 8.0, 10.0),
+            "scene_seconds": SceneSeconds(4.0, 5.0, 7.0, 8.0),
             "codec": "libx264",
             "preset": "slow",
             "crf": 16,
@@ -87,7 +87,7 @@ class RequiredProfileContractsTest(unittest.TestCase):
             "width": 1920,
             "height": 1080,
             "fps": 30,
-            "scene_seconds": SceneSeconds(4.0, 6.0, 8.0, 10.0),
+            "scene_seconds": SceneSeconds(4.0, 5.0, 7.0, 8.0),
             "codec": "libx264",
             "preset": "slow",
             "crf": 16,
@@ -101,6 +101,20 @@ class RequiredProfileContractsTest(unittest.TestCase):
     def setUp(self):
         self.profile_resolver = ProfileResolver()
         self.subtitle_resolver = SubtitleProfileResolver()
+
+    def test_topic_profiles_ask_for_fifty_seconds_and_guion_has_no_duration(self):
+        # T0 (owner decision): 50 s by default; the old 10 s were tests.
+        for component in self.RUNTIME_COMPONENTS:
+            for profile_format in self.EXPECTED:
+                with self.subTest(
+                    component=component.value,
+                    profile_format=profile_format,
+                ):
+                    _, profile = self._profile(component, profile_format)
+                    if component is ProfileComponent.GUION:
+                        self.assertNotIn("duration", profile)
+                    else:
+                        self.assertEqual(50, profile["duration"])
 
     def test_official_profiles_preserve_effective_configuration(self):
         for component in self.RUNTIME_COMPONENTS:

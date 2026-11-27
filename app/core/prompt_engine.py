@@ -1,4 +1,5 @@
 from app.core.script_length import (
+    DurationMargin,
     ScriptLengthBudget,
     ScriptRequest,
     SpeechPacing,
@@ -34,10 +35,12 @@ class PromptEngine:
         topic: str,
         profile: dict,
         pacing: SpeechPacing,
+        margin: DurationMargin,
     ) -> ScriptRequest:
         """Prompt of a topic script and its length budget, as data.
 
-        ``pacing`` is the reading rate declared by the selected voice.
+        ``pacing`` is the reading rate declared by the selected voice and
+        ``margin`` the accepted deviation declared in ``config/ai.json``.
         """
         topic = str(topic).strip()
 
@@ -53,6 +56,7 @@ class PromptEngine:
         length = ScriptLengthBudget.for_duration(
             duration,
             pacing,
+            margin,
         )
 
         tone_text = self.read_prompt_file(

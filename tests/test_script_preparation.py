@@ -3,12 +3,15 @@ import unittest
 from pathlib import Path
 
 from app.core.script_length import (
+    DurationMargin,
     ScriptLengthBudget,
     ScriptRequest,
     SpeechPacing,
 )
 from app.modules.script import (
     PreparedScript,
+    ScriptGenerationMetadata,
+    ScriptGenerationResult,
     ScriptOperation,
     ScriptPreparationService,
 )
@@ -23,13 +26,16 @@ class FakePromptEngine:
     ):
         self.calls = []
         self.pacings = []
+        self.margins = []
 
     def build_script_request(
         self,
         topic,
         profile,
         pacing,
+        margin,
     ):
+        self.margins.append(margin)
         self.calls.append(
             (
                 topic,
@@ -53,8 +59,9 @@ TEST_LENGTH = ScriptLengthBudget(
     duration_seconds=10,
     target_words=25,
     min_words=22,
-    max_words=28,
+    max_words=None,
     pacing=TEST_PACING,
+    margin=DurationMargin(below=0.10, above=None),
 )
 
 
@@ -68,7 +75,7 @@ class FakeScriptBuilder:
     ):
         self.ai_config = ai_config
 
-    def build(
+    def build_result(
         self,
         prompt,
         *,
@@ -80,8 +87,11 @@ class FakeScriptBuilder:
         self.lengths.append(
             length
         )
-        return (
-            "Guion generado estable para el pipeline actual."
+        script = "Guion generado estable para el pipeline actual."
+        return ScriptGenerationResult(
+            script=script,
+            word_count=7,
+            metadata=ScriptGenerationMetadata(length_corrected=True),
         )
 
 
@@ -192,7 +202,8 @@ class ScriptPreparationServiceTest(
                     "script": True
                 },
                 ai_config={
-                    "model": "test-model"
+                    "model": "test-model",
+                    "script": {"duration_margin": {"below": 0.1, "above": None}},
                 },
                 profile={
                     "duration": 10
@@ -211,6 +222,11 @@ class ScriptPreparationServiceTest(
                 [TEST_PACING],
                 prompt_engine.pacings,
             )
+            self.assertEqual(
+                [DurationMargin(below=0.1, above=None)],
+                prompt_engine.margins,
+            )
+            self.assertTrue(prepared_script.metadata.length_corrected)
             self.assertEqual(
                 "Guion generado estable para el pipeline actual.",
                 prepared_script.text
@@ -243,6 +259,40 @@ class ScriptPreparationServiceTest(
                 )
             )
 
+    def test_generated_script_without_duration_margin_is_a_config_error(self):
+        for ai_config in (
+            {"model": "test-model"},
+            {"model": "test-model", "script": {"think": False}},
+            {"model": "test-model", "script": {"duration_margin": None}},
+        ):
+            with self.subTest(ai_config=ai_config), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                input_topic = root / "tema.txt"
+                input_topic.write_text("conciencia", encoding="utf-8")
+                FakeScriptBuilder.prompts = []
+
+                with self.assertRaises(OperationalError) as raised:
+                    ScriptPreparationService(
+                        prompt_engine=FakePromptEngine(),
+                        script_builder_factory=FakeScriptBuilder,
+                    ).prepare(
+                        builders={"script": True},
+                        ai_config=ai_config,
+                        profile={"duration": 10},
+                        input_script_path=root / "missing.txt",
+                        input_topic_path=input_topic,
+                        output_script_path=root / "guion.txt",
+                        voice_pacing=TEST_PACING,
+                    )
+
+                context = raised.exception.context
+                self.assertEqual(context.family, "CONFIG")
+                self.assertEqual(context.resource, "config/ai.json")
+                self.assertIn("config/ai.json", context.user_message)
+                self.assertIn("script.duration_margin", context.user_message)
+                self.assertEqual(FakeScriptBuilder.prompts, [])
+                self.assertFalse((root / "guion.txt").exists())
+
     def test_generated_source_ignores_existing_manual_script(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(
@@ -272,7 +322,8 @@ class ScriptPreparationServiceTest(
                     "script": True
                 },
                 ai_config={
-                    "model": "test-model"
+                    "model": "test-model",
+                    "script": {"duration_margin": {"below": 0.1, "above": None}},
                 },
                 profile={
                     "duration": 10

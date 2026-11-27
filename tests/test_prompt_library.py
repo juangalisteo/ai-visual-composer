@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
-from app.core.script_length import SpeechPacing
+from app.core.script_length import DurationMargin, SpeechPacing
 from app.modules.images.prompt_system import ImagePromptSystem, ImagePromptTexts
 from app.modules.script.script_builder import ScriptBuilder
 from app.modules.video_component import MotionIntent, VideoPromptTranslator
@@ -261,6 +261,7 @@ class PromptFilesInUseTest(unittest.TestCase):
                 "Tema de prueba",
                 {"tone": "modo_conciencia", "format": "vertical", "duration": 30},
                 SpeechPacing(letters_per_second=14.0, words_per_second=2.6),
+                DurationMargin(below=0.10, above=None),
             )
 
         self.assertIn(

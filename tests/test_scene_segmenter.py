@@ -196,3 +196,58 @@ def test_without_words_or_audio_there_are_no_scenes():
 
     with pytest.raises(ValueError, match="audio"):
         segment_scenes(_sentences(("Hola.", 0.0, 1.0)), 0.0, SECONDS)
+
+
+def _project_seconds(profile_format):
+    from pathlib import Path
+
+    from app.shared.format_catalog import FormatCatalog
+
+    return FormatCatalog(
+        Path(__file__).resolve().parents[1] / "config" / "formats.json"
+    ).scene_seconds(profile_format)
+
+
+@pytest.mark.parametrize("profile_format", ("vertical", "horizontal"))
+def test_project_scenes_last_about_six_seconds_and_never_more_than_eight(
+    profile_format,
+):
+    # T0 (owner decision): 4 · 5–7 · 8 in both formats. A 50 s script of
+    # sentences of 2.2–3.4 s with 0.4 s pauses.
+    seconds = _project_seconds(profile_format)
+    lengths = (2.6, 3.4, 2.2, 3.0, 2.8, 3.2, 2.4, 3.4, 2.2, 3.0, 2.6, 3.2,
+               2.8, 2.4, 3.0, 2.6)
+    sentences = []
+    start = 0.0
+    for number, length in enumerate(lengths, start=1):
+        sentences.append((f"Frase {number} con palabras.", start, start + length))
+        start += length + 0.4
+    audio = start
+
+    scenes = segment_scenes(_sentences(*sentences), audio, seconds)
+
+    assert (seconds.min, seconds.target_min, seconds.target_max, seconds.max) == (
+        4.0,
+        5.0,
+        7.0,
+        8.0,
+    )
+    assert all(scene.text.endswith(".") for scene in scenes)
+    assert all(4.0 <= scene.duration <= 8.0 for scene in scenes)
+    assert all(5.0 <= scene.duration <= 7.0 for scene in scenes[:-1])
+    assert 5.5 <= audio / len(scenes) <= 6.5
+
+
+def test_project_scenes_cut_a_nine_second_sentence_after_its_comma():
+    # With the old 10 s maximum this sentence was a single scene.
+    words = _sentences(
+        ("uno dos tres cuatro, cinco seis siete ocho nueve.", 0.0, 9.0),
+    )
+
+    scenes = segment_scenes(words, 9.0, _project_seconds("vertical"))
+
+    assert [scene.text for scene in scenes] == [
+        "uno dos tres cuatro,",
+        "cinco seis siete ocho nueve.",
+    ]
+    assert all(scene.duration <= 8.0 for scene in scenes)

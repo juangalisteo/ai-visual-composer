@@ -14,6 +14,9 @@ class ScriptGenerationMetadata:
     recommended_max_words: int = 0
     actual_words: int = 0
     deviation_percentage: float = 0.0
+    # True when Ollama was already asked once to fix the length (before the
+    # voice): the single length adjustment of a topic script is spent.
+    length_corrected: bool = False
 
 
 @dataclass(frozen=True)
