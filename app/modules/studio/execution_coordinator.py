@@ -433,6 +433,8 @@ class StudioExecutionCoordinator:
                 subtitle_path=render_subtitle_path,
             )
 
+        # It says what it is doing, like the other modes (PRUEBA-GS, fallo 14).
+        ProgressLogger.start("RENDERIZANDO STUDIO")
         render_start = time.perf_counter()
         output_path, duration, command = (
             service
@@ -444,6 +446,7 @@ class StudioExecutionCoordinator:
             subtitle_profile=subtitle_profile,
         )
         render_duration = time.perf_counter() - render_start
+        ProgressLogger.finish("RENDER STUDIO COMPLETADO", render_duration)
         return type(
             "StudioVideoAudioSrtResult",
             (),
