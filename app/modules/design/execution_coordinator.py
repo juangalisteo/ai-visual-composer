@@ -230,7 +230,7 @@ class DesignExecutionCoordinator:
             summary=summary,
             stage_times={
                 "Imágenes": images_elapsed,
-                "Video I2V": video_elapsed,
+                "Clips de vídeo": video_elapsed,
             },
             pipeline_start=pipeline_start,
             artifacts=self._telemetry_artifacts(

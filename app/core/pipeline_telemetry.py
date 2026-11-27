@@ -35,15 +35,16 @@ class PipelineTelemetryArtifacts:
 class PipelineTelemetry:
     """Measure stages and complete summaries without directing a pipeline."""
 
+    # The order in which a GUION run executes its stages.
     STAGE_ORDER = (
-        "Script",
+        "Guion",
+        "Voz",
+        "Audio",
+        "Subtítulos",
         "Storyboard",
         "Imágenes",
-        "Video I2V",
-        "Voces",
-        "Subtítulos",
-        "Audio",
-        "Vídeo",
+        "Clips de vídeo",
+        "Vídeo final",
     )
 
     def __init__(
@@ -124,6 +125,9 @@ class PipelineTelemetry:
                 metric_name="escenas",
             )
         )
+        summary.set_scene_durations(
+            self._scene_durations(artifacts.storyboard_path)
+        )
         summary.set_image_count(
             self._count_json_items(
                 artifacts.images_manifest_path,
@@ -185,6 +189,27 @@ class PipelineTelemetry:
         return len(
             data
         )
+
+    @staticmethod
+    def _scene_durations(storyboard_path):
+        """The ``duration`` of every storyboard scene, or () if any is missing.
+
+        A storyboard that cannot be read was already reported by the scene
+        count; here it only leaves the durations out.
+        """
+        try:
+            data = json.loads(Path(storyboard_path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return ()
+        if not isinstance(data, list):
+            return ()
+        durations = []
+        for scene in data:
+            duration = scene.get("duration") if isinstance(scene, dict) else None
+            if isinstance(duration, bool) or not isinstance(duration, (int, float)):
+                return ()
+            durations.append(float(duration))
+        return tuple(durations)
 
     def _resolve_media_duration(
         self,

@@ -16,6 +16,7 @@ class PipelineSummary:
         project_name,
         include_visual_metrics=True,
         include_media_duration=None,
+        still_images=True,
     ):
         self.project_name = str(
             project_name
@@ -28,9 +29,13 @@ class PipelineSummary:
             if include_media_duration is None
             else bool(include_media_duration)
         )
+        # False for a video made of I2V clips: it has scenes (each with its
+        # own duration), not still images shown for some seconds each.
+        self.still_images = bool(still_images)
 
         self.scene_count = 0
         self.image_count = 0
+        self.scene_durations = ()
         self.media_duration = None
 
         self.details = OrderedDict()
@@ -56,6 +61,12 @@ class PipelineSummary:
             None
             if image_count is None
             else int(image_count)
+        )
+
+    def set_scene_durations(self, durations):
+        self.scene_durations = tuple(
+            max(0.0, float(duration))
+            for duration in (durations or ())
         )
 
     def set_media_duration(
@@ -130,7 +141,11 @@ class PipelineSummary:
                     self.scene_count
                 )
             )
-            if self.image_count is not None and self.image_count > 0:
+            if (
+                self.still_images
+                and self.image_count is not None
+                and self.image_count > 0
+            ):
                 lines.append(
                     self._metric_line(
                         "Imágenes",
@@ -146,7 +161,15 @@ class PipelineSummary:
                 )
             )
 
-        if self.include_visual_metrics:
+        if self.include_visual_metrics and not self.still_images:
+            if self.scene_durations:
+                lines.append(
+                    self._metric_line(
+                        "Duración de cada escena",
+                        self._format_scene_durations(),
+                    )
+                )
+        elif self.include_visual_metrics:
             seconds_per_image = self._format_seconds_per_image()
             if seconds_per_image is not None:
                 lines.append(
@@ -288,6 +311,11 @@ class PipelineSummary:
             f"{minutes:02}:"
             f"{seconds:02}"
         )
+
+    def _format_scene_durations(self):
+        return " · ".join(
+            f"{duration:.2f}" for duration in self.scene_durations
+        ) + " s"
 
     def _format_seconds_per_image(self):
         if self.scene_count == 0:

@@ -112,8 +112,11 @@ class VideoBuildContextFactory:
             f"Audio: {media.audio_path.name}"
         )
 
+        made_of_clips = media_manifest_type == "video_clips"
         ProgressLogger.info(
-            f"Imágenes: {image_count}"
+            f"Escenas: {image_count}"
+            if made_of_clips
+            else f"Imágenes: {image_count}"
         )
 
         timeline_options = {
@@ -150,14 +153,24 @@ class VideoBuildContextFactory:
             "scene_durations",
             ()
         )
-        ProgressLogger.info(
-            f"Duración por imagen: "
-            f"de {min(timed_scenes):.2f} a {max(timed_scenes):.2f} "
-            "segundos (storyboard)"
-            if timed_scenes
-            else f"Duración por imagen: "
-            f"{timeline.image_duration:.2f} segundos"
-        )
+        if made_of_clips:
+            scene_message = "Duración de cada escena: " + (
+                " · ".join(f"{duration:.2f}" for duration in timed_scenes)
+                if timed_scenes
+                else f"{timeline.image_duration:.2f}"
+            ) + " segundos"
+        elif timed_scenes:
+            scene_message = (
+                f"Duración por imagen: "
+                f"de {min(timed_scenes):.2f} a {max(timed_scenes):.2f} "
+                "segundos (storyboard)"
+            )
+        else:
+            scene_message = (
+                f"Duración por imagen: "
+                f"{timeline.image_duration:.2f} segundos"
+            )
+        ProgressLogger.info(scene_message)
 
         ProgressLogger.info(
             f"Duración de transición: "

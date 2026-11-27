@@ -21,6 +21,7 @@ from app.shared.profile_identity import (
 )
 from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_identity import SubtitleProfileKey
+from app.managers.pipeline_summary import PipelineSummary
 from app.modules.standard import StandardExecutionCoordinator
 from app.modules.video_component import (
     BackendVideoPrompt,
@@ -823,23 +824,29 @@ class VideoComponentRuntimeIntegrationTest(unittest.TestCase):
                     final_video
                 )
 
-                result = start.run_application(
-                    request=_video_request(
-                        pipeline_mode="full",
-                        operational_profile_key=OperationalProfileKey(
-                            ProfileComponent.VIDEO,
-                            "vertical",
-                            "video_vertical",
+                with patch(
+                    "app.modules.standard.execution_coordinator.PipelineSummary",
+                    wraps=PipelineSummary,
+                ) as summary_class:
+                    result = start.run_application(
+                        request=_video_request(
+                            pipeline_mode="full",
+                            operational_profile_key=OperationalProfileKey(
+                                ProfileComponent.VIDEO,
+                                "vertical",
+                                "video_vertical",
+                            ),
+                            subtitle_profile_key=subtitle_key,
+                            intro_outro_plan=intro_outro_selection,
                         ),
-                        subtitle_profile_key=subtitle_key,
-                        intro_outro_plan=intro_outro_selection,
-                    ),
-                )
+                    )
 
         self.assertEqual(
             final_video,
             result
         )
+        # A video made of clips has scenes, not still images (A2-C).
+        self.assertIs(False, summary_class.call_args.kwargs["still_images"])
         self.assertEqual(
             [subtitle_key],
             requested_subtitle_keys,
