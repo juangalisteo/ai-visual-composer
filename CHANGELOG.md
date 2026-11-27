@@ -194,6 +194,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   documento de voz (−40 dB, obligatorio en Chatterbox). Con el guion de
   prueba, los huecos pasan a 0,3–0,4 s. Piper y Kokoro no cambian. Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual).
+- VIDEO + AUDIO | SRT ya no pregunta «AUDIO MÁS CORTO QUE EL VÍDEO» ni rellena
+  el final por unos milisegundos: si el audio es más corto por menos de
+  `video_audio_srt.audio_tail_margin_seconds` de `config/studio.json` (0,1 s),
+  cuenta como igual. Sin el archivo o la clave, error CONFIG con la ruta.
 
 ### Retirado
 

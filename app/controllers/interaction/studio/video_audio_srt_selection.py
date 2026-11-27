@@ -8,6 +8,7 @@ from app.modules.studio import (
     StudioVideoAudioSrtInputError,
     to_studio_operational_error,
 )
+from app.modules.studio.studio_settings import video_audio_tail_margin
 
 
 _MODE = StudioInputMode.VIDEO_AUDIO_SRT
@@ -32,11 +33,14 @@ class StudioVideoAudioSrtSelection:
         resource_selection,
         media_probe,
         music_selector,
+        audio_tail_margin=None,
     ):
         self._input_service = input_service
         self._resource_selection = resource_selection
         self._media_probe = media_probe
         self._music_selector = music_selector
+        # Seconds under which a shorter audio counts as equal (config/studio.json).
+        self._audio_tail_margin = audio_tail_margin or video_audio_tail_margin
 
     def select_inputs(self, writer=None, selector=None):
         try:
@@ -102,6 +106,15 @@ class StudioVideoAudioSrtSelection:
         if audio_duration >= video_duration:
             return replace(
                 plan,
+                video_duration=video_duration,
+                audio_duration=audio_duration,
+            )
+        # Rounded to microseconds (ffprobe's precision): 10.0 - 9.9 is 0.1.
+        if round(video_duration - audio_duration, 6) < self._audio_tail_margin():
+            # Within the margin: nothing to ask and nothing to add.
+            return replace(
+                plan,
+                audio_tail_mode="none",
                 video_duration=video_duration,
                 audio_duration=audio_duration,
             )

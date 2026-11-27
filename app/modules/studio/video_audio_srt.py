@@ -240,7 +240,7 @@ class StudioVideoAudioSrtService:
                 "level=false:latency=true[tail_music]",
                 "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]",
             ])
-        elif audio_duration < video_duration:
+        elif audio_duration < video_duration and plan.audio_tail_mode != "none":
             filters.append(
                 f"[1:a:0]aresample={profile.audio_sample_rate},apad,"
                 f"atrim=duration={video_duration:.6f},asetpts=PTS-STARTPTS[aout]"
@@ -291,11 +291,11 @@ class StudioVideoAudioSrtService:
     def _validated_music_path(plan, audio_duration, video_duration):
         if audio_duration >= video_duration:
             return None
-        if plan.audio_tail_mode not in {"silence", "music"}:
+        if plan.audio_tail_mode not in {"silence", "music", "none"}:
             raise ValueError(
                 f"El tratamiento final de audio {_MODE_LABEL} no es válido."
             )
-        if plan.audio_tail_mode == "silence":
+        if plan.audio_tail_mode in {"silence", "none"}:
             return None
         if plan.music_path is None:
             raise ValueError(

@@ -324,7 +324,9 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 - **VIDEO + AUDIO | SRT:** manda la duración del **vídeo**. El audio original
   desaparece y suena el nuevo; si el audio nuevo es más corto que el vídeo, el
   menú AUDIO MÁS CORTO QUE EL VÍDEO ofrece rellenar el final con silencio o con
-  música.
+  música. Por debajo de `video_audio_srt.audio_tail_margin_seconds` de
+  `config/studio.json` (0,1 s) no pregunta ni rellena (el plan lleva
+  `audio_tail_mode` `none`).
 - **EXPORTAR SRT:** TRANSCRIBIR guarda `<proyecto>.srt`; CONVERTIR guarda
   `<proyecto>_<modo>.srt`. El SRT de partida no se modifica.
 
@@ -814,6 +816,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
 | `config/voice.json` | Común a todas las voces: `workspace_dir`, la carpeta donde `VoiceBuilder` crea la carpeta de trabajo de cada síntesis (`tmp/voice`, dentro del proyecto e ignorada por Git; nunca el `%TEMP%` del sistema). Obligatoria: si falta o sale de la carpeta del proyecto, error CONFIG que nombra el archivo ([VOICEOVER.md §2](VOICEOVER.md#2-documento-de-voz)) |
 | `config/video.json` | Mezcla de los overlays y efectos visuales: `layer_blend.pixel_format` (`gbrp`) y `layer_blend.scale_flags` ([apartado 18](#18-composición-del-vídeo-final)). Obligatoria: si falta, error CONFIG que nombra el archivo |
+| `config/studio.json` | STUDIO, común a los dos formatos: `video_audio_srt.audio_tail_margin_seconds` (0,1 s), diferencia por debajo de la cual el audio de VIDEO + AUDIO \| SRT cuenta como igual al vídeo ([apartado 8](#8-studio)). Obligatoria: si falta, error CONFIG que nombra el archivo |
 | `config/comfyui.json` | ComfyUI: sus carpetas `input/` y `output/` y si se borra lo que deja el programa una vez copiado al proyecto (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
