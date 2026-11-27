@@ -433,6 +433,7 @@ class StudioExecutionCoordinator:
                 subtitle_path=render_subtitle_path,
             )
 
+        render_start = time.perf_counter()
         output_path, duration, command = (
             service
             or StudioVideoAudioSrtService()
@@ -442,12 +443,14 @@ class StudioExecutionCoordinator:
             profile,
             subtitle_profile=subtitle_profile,
         )
+        render_duration = time.perf_counter() - render_start
         return type(
             "StudioVideoAudioSrtResult",
             (),
             {
                 "output_path": output_path,
                 "generated_duration": duration,
+                "render_duration": render_duration,
                 "command": command,
                 "base_subtitle_path": base_subtitle_path,
                 "generated_subtitle_path": render_subtitle_path,

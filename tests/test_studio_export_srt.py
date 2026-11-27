@@ -866,9 +866,9 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             studio_summary.print_studio_summary(request, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
-        self.assertNotIn(("Perfil / formato", ""), details)
+        self.assertNotIn(("Formato", ""), details)
         self.assertFalse(
-            any(name == "Perfil / formato" for name, _ in details)
+            any(name in {"Formato", "Perfil"} for name, _ in details)
         )
         self.assertFalse(any(name == "Tiempos" for name, _ in details))
 

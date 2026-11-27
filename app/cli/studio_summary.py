@@ -1,4 +1,17 @@
-"""Terminal summaries of the STUDIO routes, read from the typed request."""
+"""Terminal summaries of the STUDIO routes, read from the typed request.
+
+Every mode prints the same block, in the same order, and leaves out only the
+lines that do not apply to it:
+
+1. ``Formato`` (and ``Perfil``, only if the operational profile declares a
+   ``display_name``: a technical ID is never shown) and ``Entrada``.
+2. The inputs of the mode (``Video fuente``, ``Audio nuevo``, ``SRT fuente``,
+   ``Clips``, ``Fuente``…).
+3. ``Subtítulos`` and the chosen subtitle profile by its name, ``Música`` and
+   ``Intro / Outro`` where the mode offers them.
+4. The durations, the output files and ``Estado final``.
+5. The block of times, always.
+"""
 
 from pathlib import Path
 
@@ -6,6 +19,7 @@ from app.managers.pipeline_summary import PipelineSummary
 from app.modules.studio import StudioInputMode, StudioSubtitleExportMode
 from app.shared.format_catalog import FormatCatalog
 from app.shared.operational_error import OperationalError
+from app.shared.profile_resolver import ProfileResolver
 from app.shared.subtitle_profile_resolver import SubtitleProfileResolver
 
 
@@ -37,158 +51,189 @@ def _format_label(profile_format):
     return FormatCatalog().label(profile_format)
 
 
+def _declared_profile_name(profile_key):
+    """The ``display_name`` of the operational profile, or None if absent."""
+    try:
+        document = ProfileResolver().load_operational(profile_key)
+    except (FileNotFoundError, OperationalError, TypeError, ValueError):
+        return None
+    name = document.get("display_name") if isinstance(document, dict) else None
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    return None
+
+
+def _seconds(value):
+    return f"{float(value):.2f} s"
+
+
+def _new_summary(request):
+    return PipelineSummary(request.project_name, include_visual_metrics=False)
+
+
+def _add_profile_lines(summary, request):
+    """``Formato`` (and ``Perfil`` if declared) and ``Entrada``."""
+    profile_key = request.operational_profile_key
+    if profile_key is not None:
+        summary.add_detail("Formato", _format_label(profile_key.format))
+        profile_name = _declared_profile_name(profile_key)
+        if profile_name is not None:
+            summary.add_detail("Perfil", profile_name)
+    summary.add_detail("Entrada", request.route.input_mode.label)
+
+
+def _add_subtitle_lines(summary, request, enabled):
+    summary.add_detail("Subtítulos", "Sí" if enabled else "No")
+    if enabled:
+        summary.add_detail(
+            "Perfil de subtítulos",
+            _subtitle_display_name(request),
+        )
+
+
+def _add_output_lines(summary, result, *, base_subtitle_path=None):
+    generated_subtitle_path = getattr(result, "generated_subtitle_path", None)
+    has_base = isinstance(base_subtitle_path, (str, Path))
+    has_generated = isinstance(generated_subtitle_path, (str, Path))
+    if (
+        has_base
+        and has_generated
+        and Path(base_subtitle_path) == Path(generated_subtitle_path)
+    ):
+        summary.add_detail("SRT", base_subtitle_path)
+    else:
+        if has_base:
+            summary.add_detail("SRT base", base_subtitle_path)
+        if has_generated:
+            summary.add_detail("SRT generado", generated_subtitle_path)
+    summary.add_detail("Video final", result.output_path)
+
+
+def _add_final_lines(summary, request, result, elapsed_seconds, stages):
+    """``Estado final``, the block of times and the summary itself."""
+    summary.add_detail(
+        "Estado final",
+        f"{request.route.input_mode.label} COMPLETADO",
+    )
+    summary.set_media_duration(getattr(result, "generated_duration", None))
+    for label, source, attribute in stages:
+        duration = _recorded_stage_duration(source, attribute)
+        if duration is not None:
+            summary.add_stage(label, duration)
+    summary.set_total_time(elapsed_seconds)
+    summary.print()
+
+
+def _add_final_duration(summary, result):
+    final_duration = _recorded_stage_duration(result, "generated_duration")
+    if final_duration is not None:
+        summary.add_detail("Duración final", _seconds(final_duration))
+
+
 def _print_render_summary(request, result, elapsed_seconds):
     """Summary of SRT + VIDEO, SOLO VIDEO and VIDEO + AUDIO | SRT."""
     route = request.route
-    profile_key = request.operational_profile_key
-    summary = PipelineSummary(
-        request.project_name,
-        include_visual_metrics=False,
-    )
-    plan = route.intro_outro_plan
-    generated_subtitle_path = getattr(
-        result,
-        "generated_subtitle_path",
-        None,
-    )
-    base_subtitle_path = getattr(
-        result,
-        "base_subtitle_path",
-        None,
-    )
-
-    summary.add_detail(
-        "Perfil / formato",
-        (
-            f"{profile_key.profile_id} / "
-            f"{_format_label(profile_key.format)}"
-        ),
-    )
-    summary.add_detail("Entrada", route.input_mode.label)
+    summary = _new_summary(request)
+    _add_profile_lines(summary, request)
     if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT:
-        video_audio_plan = route.plan
-        subtitles_enabled = request.subtitle_profile_key is not None
-        summary.add_detail("Proyecto", request.project_name)
-        summary.add_detail("Video fuente", video_audio_plan.video_path)
-        summary.add_detail("Audio nuevo", video_audio_plan.audio_path)
-        summary.add_detail("Subtítulos", "Sí" if subtitles_enabled else "No")
-        if subtitles_enabled:
-            summary.add_detail(
-                "Perfil de subtítulos",
-                _subtitle_display_name(request),
-            )
-        video_duration = getattr(video_audio_plan, "video_duration", None)
-        audio_duration = getattr(video_audio_plan, "audio_duration", None)
-        final_duration = getattr(result, "generated_duration", None)
-        if video_duration is not None:
-            summary.add_detail("Duración vídeo", f"{video_duration:.3f} s")
-        if audio_duration is not None:
-            summary.add_detail(
-                "Duración audio original",
-                f"{audio_duration:.3f} s",
-            )
-        if final_duration is not None:
-            summary.add_detail("Duración final", f"{final_duration:.3f} s")
-        if (
-            video_duration is not None
-            and audio_duration is not None
-            and audio_duration > video_duration
-        ):
-            summary.add_detail("Tratamiento audio", "Recortado al vídeo")
-        elif audio_duration is not None and video_duration is not None and audio_duration < video_duration:
-            summary.add_detail(
-                "Tratamiento audio",
-                _audio_tail_label(
-                    video_audio_plan.audio_tail_mode,
-                    video_duration - audio_duration,
-                ),
-            )
+        _add_video_audio_lines(summary, request, result)
     else:
-        summary.add_detail(
-            "Estilo de subtítulos",
-            (
-                "ORIGINAL"
-                if route.subtitle_original
-                else _subtitle_display_name(request)
-            ),
+        if route.video_path is not None:
+            summary.add_detail("Video fuente", route.video_path)
+        if route.subtitle_path is not None:
+            summary.add_detail("SRT fuente", route.subtitle_path)
+        _add_subtitle_lines(
+            summary,
+            request,
+            request.subtitle_profile_key is not None,
         )
         summary.add_detail(
             "Música",
             "Sí" if route.music_path is not None else "No",
         )
         summary.add_detail(
-            "Intro",
-            "Sí" if plan is not None and plan.intro is not None else "No",
+            "Intro / Outro",
+            _intro_outro_label(route.intro_outro_plan),
         )
-        summary.add_detail(
-            "Outro",
-            "Sí" if plan is not None and plan.outro is not None else "No",
-        )
-    if isinstance(base_subtitle_path, (str, Path)):
-        summary.add_detail("SRT base", base_subtitle_path)
-    if isinstance(generated_subtitle_path, (str, Path)):
-        summary.add_detail("SRT generado", generated_subtitle_path)
-    summary.add_detail("Video final", result.output_path)
-    summary.add_detail(
-        "Estado final",
+        _add_final_duration(summary, result)
+    _add_output_lines(
+        summary,
+        result,
+        base_subtitle_path=getattr(result, "base_subtitle_path", None),
+    )
+    _add_final_lines(
+        summary,
+        request,
+        result,
+        elapsed_seconds,
         (
-            f"{route.input_mode.label} COMPLETADO"
-            if route.input_mode is StudioInputMode.VIDEO_AUDIO_SRT
-            else "STUDIO COMPLETADO"
+            ("Preparación subtítulos", result, "subtitle_preparation_duration"),
+            ("Render STUDIO", result, "render_duration"),
+            ("Intro / Outro", result, "intro_outro_duration"),
         ),
     )
-    summary.set_media_duration(
-        getattr(result, "generated_duration", None)
+
+
+def _add_video_audio_lines(summary, request, result):
+    """Inputs, subtitles and durations of VIDEO + AUDIO | SRT."""
+    plan = request.route.plan
+    summary.add_detail("Video fuente", plan.video_path)
+    summary.add_detail("Audio nuevo", plan.audio_path)
+    if plan.subtitle_path is not None:
+        summary.add_detail("SRT fuente", plan.subtitle_path)
+    _add_subtitle_lines(
+        summary,
+        request,
+        request.subtitle_profile_key is not None,
     )
-    subtitle_preparation_duration = _recorded_stage_duration(
-        result,
-        "subtitle_preparation_duration",
-    )
-    render_duration = _recorded_stage_duration(
-        result,
-        "render_duration",
-    )
-    intro_outro_duration = _recorded_stage_duration(
-        result,
-        "intro_outro_duration",
-    )
-    if subtitle_preparation_duration is not None:
-        summary.add_stage(
-            "Preparación subtítulos",
-            subtitle_preparation_duration,
+    video_duration = getattr(plan, "video_duration", None)
+    audio_duration = getattr(plan, "audio_duration", None)
+    if video_duration is not None:
+        summary.add_detail("Duración vídeo", _seconds(video_duration))
+    if audio_duration is not None:
+        summary.add_detail("Duración audio nuevo", _seconds(audio_duration))
+    _add_final_duration(summary, result)
+    if (
+        video_duration is not None
+        and audio_duration is not None
+        and audio_duration > video_duration
+    ):
+        summary.add_detail("Tratamiento audio", "Recortado al vídeo")
+    elif (
+        video_duration is not None
+        and audio_duration is not None
+        and audio_duration < video_duration
+    ):
+        summary.add_detail(
+            "Tratamiento audio",
+            _audio_tail_label(
+                plan.audio_tail_mode,
+                video_duration - audio_duration,
+            ),
         )
-    if render_duration is not None:
-        summary.add_stage("Render STUDIO", render_duration)
-    if intro_outro_duration is not None:
-        summary.add_stage("Intro / Outro", intro_outro_duration)
-    summary.set_total_time(elapsed_seconds)
-    summary.print()
 
 
 def _print_intro_outro_summary(request, result, elapsed_seconds):
-    profile_key = request.operational_profile_key
-    summary = PipelineSummary(request.project_name, include_visual_metrics=False)
+    summary = _new_summary(request)
     plan = request.route.plan
-    summary.add_detail(
-        "Perfil / formato",
-        f"{profile_key.profile_id} / {_format_label(profile_key.format)}",
-    )
-    summary.add_detail("Entrada", request.route.input_mode.label)
+    _add_profile_lines(summary, request)
     summary.add_detail("Video fuente", plan.source_path)
-    summary.add_detail("Intro", "Sí" if plan.intro_outro_plan.intro else "No")
-    summary.add_detail("Outro", "Sí" if plan.intro_outro_plan.outro else "No")
-    summary.add_detail("Video final", result.output_path)
     summary.add_detail(
-        "Estado final",
-        f"{request.route.input_mode.label} COMPLETADO",
+        "Intro / Outro",
+        _intro_outro_label(plan.intro_outro_plan),
     )
-    summary.set_media_duration(result.generated_duration)
-    for label, attribute in (("Preparación video", "render_duration"), ("Intro / Outro", "intro_outro_duration")):
-        duration = _recorded_stage_duration(result, attribute)
-        if duration is not None:
-            summary.add_stage(label, duration)
-    summary.set_total_time(elapsed_seconds)
-    summary.print()
+    _add_final_duration(summary, result)
+    _add_output_lines(summary, result)
+    _add_final_lines(
+        summary,
+        request,
+        result,
+        elapsed_seconds,
+        (
+            ("Preparación video", result, "render_duration"),
+            ("Intro / Outro", result, "intro_outro_duration"),
+        ),
+    )
 
 
 def _print_subtitle_export_summary(
@@ -196,22 +241,13 @@ def _print_subtitle_export_summary(
     result,
     elapsed_seconds,
 ):
-    summary = PipelineSummary(
-        request.project_name,
-        include_visual_metrics=False,
-    )
+    summary = _new_summary(request)
     plan = request.route.plan
     mode_labels = {
         StudioSubtitleExportMode.TRANSCRIBIR: "TRANSCRIBIR",
         StudioSubtitleExportMode.CONVERTIR: "CONVERTIR",
     }
-    profile_key = request.operational_profile_key
-    if profile_key is not None:
-        summary.add_detail(
-            "Perfil / formato",
-            f"{profile_key.profile_id} / {_format_label(profile_key.format)}",
-        )
-    summary.add_detail("Entrada", request.route.input_mode.label)
+    _add_profile_lines(summary, request)
     summary.add_detail("Modo", mode_labels[plan.mode])
     summary.add_detail("Fuente", plan.source_path)
     if plan.mode is StudioSubtitleExportMode.CONVERTIR:
@@ -225,40 +261,27 @@ def _print_subtitle_export_summary(
             "palabras por letras. Para tiempos exactos, TRANSCRIBIR o SOLO VIDEO.",
         )
     summary.add_detail("SRT generado", result.output_path)
+    stage_label = (
+        "Transcripción"
+        if plan.mode is StudioSubtitleExportMode.TRANSCRIBIR
+        else "Conversión SRT"
+    )
     summary.add_detail(
         "Estado final",
         f"{request.route.input_mode.label} COMPLETADO",
     )
-    summary.add_stage(
-        (
-            "Transcripción"
-            if plan.mode is StudioSubtitleExportMode.TRANSCRIBIR
-            else "Conversión SRT"
-        ),
-        result.operation_duration,
-    )
+    summary.add_stage(stage_label, result.operation_duration)
     summary.set_total_time(elapsed_seconds)
     summary.print()
 
 
 def _print_montage_summary(request, result, elapsed_seconds):
     route = request.route
-    profile_key = request.operational_profile_key
     plan = route.plan
     montage_result = getattr(result, "montage_result", result)
     render_result = getattr(result, "render_result", None)
-    summary = PipelineSummary(
-        request.project_name,
-        include_visual_metrics=False,
-    )
-    summary.add_detail(
-        "Perfil / formato",
-        (
-            f"{profile_key.profile_id} / "
-            f"{_format_label(profile_key.format)}"
-        ),
-    )
-    summary.add_detail("Entrada", route.input_mode.label)
+    summary = _new_summary(request)
+    _add_profile_lines(summary, request)
     summary.add_detail("Clips", montage_result.clip_count)
     if montage_result.normalized_clip_count:
         summary.add_detail("Normalizados", montage_result.normalized_clip_count)
@@ -275,32 +298,21 @@ def _print_montage_summary(request, result, elapsed_seconds):
             "Intro / Outro",
             _intro_outro_label(route.intro_outro_plan),
         )
-    summary.add_detail("Video final", result.output_path)
-    summary.add_detail("Estado final", "STUDIO COMPLETADO")
-    summary.set_media_duration(result.generated_duration)
-    summary.add_stage("Preparación clips", montage_result.preparation_duration)
-    normalization_duration = _recorded_stage_duration(
-        montage_result,
-        "normalization_duration",
+    _add_final_duration(summary, result)
+    _add_output_lines(summary, result)
+    _add_final_lines(
+        summary,
+        request,
+        result,
+        elapsed_seconds,
+        (
+            ("Preparación clips", montage_result, "preparation_duration"),
+            ("Normalización clips", montage_result, "normalization_duration"),
+            ("Montaje de videos", montage_result, "montage_duration"),
+            ("Render STUDIO", render_result, "render_duration"),
+            ("Intro / Outro", render_result, "intro_outro_duration"),
+        ),
     )
-    if normalization_duration is not None:
-        summary.add_stage("Normalización clips", normalization_duration)
-    summary.add_stage("Montaje de videos", montage_result.montage_duration)
-    if render_result is not None:
-        render_duration = _recorded_stage_duration(
-            render_result,
-            "render_duration",
-        )
-        intro_outro_duration = _recorded_stage_duration(
-            render_result,
-            "intro_outro_duration",
-        )
-        if render_duration is not None:
-            summary.add_stage("Render STUDIO", render_duration)
-        if intro_outro_duration is not None:
-            summary.add_stage("Intro / Outro", intro_outro_duration)
-    summary.set_total_time(elapsed_seconds)
-    summary.print()
 
 
 def _audio_tail_label(mode, shortfall_seconds):
@@ -318,7 +330,7 @@ def _audio_tail_label(mode, shortfall_seconds):
 
 
 def _intro_outro_label(plan):
-    if plan is None:
+    if plan is None or (plan.intro is None and plan.outro is None):
         return "No"
     if plan.intro is not None and plan.outro is not None:
         return "Intro + Outro"

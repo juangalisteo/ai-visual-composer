@@ -743,15 +743,18 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
         studio_summary.print_studio_summary(request, result, 1.0)
 
     details = [call.args for call in summary.add_detail.call_args_list]
-    assert ("Proyecto", "video-audio-srt") in details
-    assert ("Perfil / formato", "studio_horizontal / Horizontal 16:9") in details
+    assert [name for name, _ in details].count("Proyecto") == 0
+    assert ("Formato", "Horizontal 16:9") in details
     assert ("Video fuente", plan.video_path) in details
     assert ("Audio nuevo", plan.audio_path) in details
+    assert ("SRT fuente", plan.subtitle_path) in details
     assert ("Subtítulos", "Sí") in details
     assert ("Perfil de subtítulos", "Línea única") in details
-    assert ("Duración vídeo", "12.345 s") in details
-    assert ("Duración audio original", "18.000 s") in details
-    assert ("Duración final", "12.345 s") in details
+    assert ("Duración vídeo", "12.35 s") in details
+    assert ("Duración audio nuevo", "18.00 s") in details
+    assert ("Duración final", "12.35 s") in details
     assert ("Tratamiento audio", "Recortado al vídeo") in details
+    assert ("SRT", result.base_subtitle_path) in details
+    assert not any(name in {"SRT base", "SRT generado"} for name, _ in details)
     assert ("Video final", result.output_path) in details
     assert ("Estado final", "VIDEO + AUDIO | SRT COMPLETADO") in details
