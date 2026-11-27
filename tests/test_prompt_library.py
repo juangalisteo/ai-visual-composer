@@ -253,7 +253,7 @@ class PromptFilesInUseTest(unittest.TestCase):
         template = (self.root / "templates/script.txt").read_text(encoding="utf-8")
         self._write(
             "templates/script.txt",
-            template.replace("{palabras_max}", "70"),
+            template.replace("{palabras}", "70"),
         )
 
         with self.assertRaises(OperationalError) as context:
@@ -265,7 +265,7 @@ class PromptFilesInUseTest(unittest.TestCase):
             )
 
         self.assertIn(
-            "le falta el marcador {palabras_max}",
+            "le falta el marcador {palabras}",
             context.exception.context.user_message,
         )
 

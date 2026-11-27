@@ -118,11 +118,13 @@ def test_rolling_window_untimed_cues_do_not_overlap_and_keep_starts_and_texts():
         "2\n00:00:01,000 --> 00:00:01,400\ncinco seis siete ocho",
     ]))
 
+    # Without times per word, each block is shared by letters (A1):
+    # uno 3 · dos 3 · tres 4 · cuatro 6 of 16 letters in 0.8 s.
     assert cues == [
-        ("00:00:00,000", "00:00:00,200", "uno dos tres"),
-        ("00:00:00,200", "00:00:00,800", "dos tres cuatro"),
-        ("00:00:01,000", "00:00:01,100", "cinco seis siete"),
-        ("00:00:01,100", "00:00:01,400", "seis siete ocho"),
+        ("00:00:00,000", "00:00:00,150", "uno dos tres"),
+        ("00:00:00,150", "00:00:00,800", "dos tres cuatro"),
+        ("00:00:01,000", "00:00:01,111", "cinco seis siete"),
+        ("00:00:01,111", "00:00:01,400", "seis siete ocho"),
     ]
     _assert_no_overlap(cues)
 
@@ -150,9 +152,9 @@ def test_rolling_window_preserves_fallback_timing():
     assert model.optimize([
         "1\n00:00:00,000 --> 00:00:00,600\nuno dos tres cuatro cinco"
     ]) == [
-        "1\n00:00:00,000 --> 00:00:00,120\nuno dos tres",
-        "2\n00:00:00,120 --> 00:00:00,240\ndos tres cuatro",
-        "3\n00:00:00,240 --> 00:00:00,600\ntres cuatro cinco",
+        "1\n00:00:00,000 --> 00:00:00,086\nuno dos tres",
+        "2\n00:00:00,086 --> 00:00:00,171\ndos tres cuatro",
+        "3\n00:00:00,171 --> 00:00:00,600\ntres cuatro cinco",
     ]
 
 
@@ -293,8 +295,9 @@ def test_rolling_window_untimed_trims_the_end_of_a_window_that_does_not_fit():
         "extraordinariamente profundas",
         "profundas hoy",
     ]
-    assert cues[0][:2] == ("00:00:00,000", "00:00:00,400")
-    assert cues[-1][:2] == ("00:00:02,000", "00:00:02,800")
+    # Shared by letters: «la» 2 of 70 letters, «profundas» from 2.340 s.
+    assert cues[0][:2] == ("00:00:00,000", "00:00:00,077")
+    assert cues[-1][:2] == ("00:00:02,340", "00:00:02,800")
     _assert_trimmed_windows(cues, 29)
 
 

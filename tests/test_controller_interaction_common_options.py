@@ -133,18 +133,35 @@ def test_project_name_trims_retries_and_keeps_the_cancel_callback():
     assert calls == ["cancel"]
 
 
-def test_clear_output_retries_and_returns_a_real_bool():
-    answers = iter(("x", "2"))
+@pytest.mark.parametrize(("answer", "overwrite"), (("1", True), ("2", False)))
+def test_existing_project_retries_and_returns_a_real_bool(answer, overwrite):
+    answers = iter(("x", "", answer))
     messages = []
     options = CommonOptions(
         Terminal(reader=lambda prompt: next(answers), writer=messages.append),
         lambda: pytest.fail("No debe cancelar"),
     )
 
-    assert options.ask_clear_output() is False
+    assert options.ask_existing_project("demo") is overwrite
     assert messages == [
-        "\nELIMINAR OUTPUT\n",
-        "1. Sí",
-        "2. No",
+        "\nEl proyecto «demo» ya existe.\n",
+        "1. Sobrescribir",
+        "2. Poner otro nombre",
+        "\nOpción no válida.",
         "\nOpción no válida.",
     ]
+
+
+def test_existing_project_cancels_with_zero():
+    calls = []
+
+    def cancel():
+        calls.append("cancel")
+        raise RuntimeError("cancelled")
+
+    with pytest.raises(RuntimeError, match="cancelled"):
+        CommonOptions(
+            Terminal(reader=lambda prompt: "0", writer=lambda message: None),
+            cancel,
+        ).ask_existing_project("demo")
+    assert calls == ["cancel"]

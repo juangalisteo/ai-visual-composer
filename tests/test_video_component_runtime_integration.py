@@ -51,7 +51,7 @@ def _video_request(
 ):
     return ApplicationExecutionRequest(
         project_name="video runtime",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=operational_profile_key,
         subtitle_profile_key=subtitle_profile_key,
         route=StandardExecutionRequest(

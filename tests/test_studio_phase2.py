@@ -156,7 +156,7 @@ class StudioPhase2Test(unittest.TestCase):
     def test_runtime_studio_bypasses_all_audiovisual_builders(self):
         request = ApplicationExecutionRequest(
             project_name="demo",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=self.profile_key,
             subtitle_profile_key=self.subtitle_profile.key,
             route=StudioExecutionRequest(input_mode=StudioInputMode.SRT_VIDEO),

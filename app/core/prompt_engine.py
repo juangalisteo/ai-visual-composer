@@ -88,7 +88,7 @@ class PromptEngine:
             SCRIPT_TEMPLATE,
             tema=topic,
             duracion=duration,
-            palabras_max=length.target_words,
+            palabras=length.target_words,
             tono=tone_text,
             tarea=task_text,
             formato=format_text,

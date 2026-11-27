@@ -29,6 +29,12 @@
     "segmentation": {
       "max_characters": 300
     },
+    "segment_trim": {
+      "threshold_db": -40.0,
+      "window_seconds": 0.02,
+      "keep_seconds": 0.1,
+      "min_sound_seconds": 0.15
+    },
     "synthesis": {
       "exaggeration": 0.5,
       "cfg_weight": 0.5

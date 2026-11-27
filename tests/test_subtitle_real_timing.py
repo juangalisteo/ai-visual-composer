@@ -179,7 +179,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
             for block in blocks
         ])
 
-    def test_word_by_word_preserves_legacy_distribution_without_timing(self):
+    def test_word_by_word_shares_the_block_by_letters_without_timing(self):
         model = self._word_by_word_model(
             fps=30
         )
@@ -191,9 +191,10 @@ class SubtitleRealTimingTest(unittest.TestCase):
             ]
         )
 
+        # Hola 4 and mundo 5 of 9 letters in 2 s (A1).
         self.assertEqual(len(blocks), 2)
-        self.assertIn("00:00:00,000 --> 00:00:01,000", blocks[0])
-        self.assertIn("00:00:01,000 --> 00:00:02,000", blocks[1])
+        self.assertIn("00:00:00,000 --> 00:00:00,889", blocks[0])
+        self.assertIn("00:00:00,889 --> 00:00:02,000", blocks[1])
 
     def test_single_line_uses_real_word_timing_and_preserves_gap(self):
         model = SingleLineModel(
@@ -586,9 +587,10 @@ class SubtitleRealTimingTest(unittest.TestCase):
             ]
         )
 
+        # y 1 and la 2 of 3 letters in 2 s (A1).
         self.assertEqual(len(blocks), 2)
-        self.assertIn("00:00:00,000 --> 00:00:01,000", blocks[0])
-        self.assertIn("00:00:01,000 --> 00:00:02,000", blocks[1])
+        self.assertIn("00:00:00,000 --> 00:00:00,667", blocks[0])
+        self.assertIn("00:00:00,667 --> 00:00:02,000", blocks[1])
 
     def test_micro_cues_can_be_disabled_by_configuration(self):
         model = self._word_by_word_model(

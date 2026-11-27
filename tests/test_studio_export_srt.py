@@ -474,9 +474,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             controller, "select_studio_subtitle_export_plan", return_value=plan,
         ), patch.object(controller, "select_studio_music") as music, patch.object(
             controller, "select_studio_intro_outro",
-        ) as intro_outro, patch.object(controller, "ask_project_name", return_value="demo"), patch.object(
-            controller, "ask_clear_output", return_value=False,
-        ):
+        ) as intro_outro, patch.object(controller, "ask_project", return_value=("demo", False)):
             request = controller._run_studio()
 
         self.assertIs(StudioInputMode.EXPORTAR_SRT, request.route.input_mode)
@@ -533,15 +531,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                     controller,
                     "select_studio_subtitle_export_plan",
                     return_value=plan,
-                ), patch.object(
-                    controller,
-                    "ask_project_name",
-                    return_value="demo",
-                ), patch.object(
-                    controller,
-                    "ask_clear_output",
-                    return_value=False,
-                ):
+                ), patch.object(controller, "ask_project", return_value=("demo", False)):
                     request = controller._run_studio()
 
                 self.assertEqual(descriptor.key, request.subtitle_profile_key)
@@ -602,15 +592,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 controller,
                 "select_studio_subtitle_export_plan",
                 return_value=plan,
-            ), patch.object(
-                controller,
-                "ask_project_name",
-                return_value="demo",
-            ), patch.object(
-                controller,
-                "ask_clear_output",
-                return_value=False,
-            ):
+            ), patch.object(controller, "ask_project", return_value=("demo", False)):
                 request = controller._run_studio()
 
         self.assertEqual(descriptor.key, request.subtitle_profile_key)
@@ -634,15 +616,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
             controller,
             "select_studio_subtitle_export_plan",
             return_value=plan,
-        ), patch.object(controller, "select_profile") as profile, patch.object(
-            controller,
-            "ask_project_name",
-            return_value="demo",
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False,
-        ):
+        ), patch.object(controller, "select_profile") as profile, patch.object(controller, "ask_project", return_value=("demo", False)):
             request = controller._run_studio()
 
         profile.assert_not_called()
@@ -754,7 +728,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         )
         request = ApplicationExecutionRequest(
             project_name="demo",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=None,
             subtitle_profile_key=None,
             route=StudioExecutionRequest(
@@ -788,7 +762,7 @@ class StudioSubtitleExportStartTest(unittest.TestCase):
         )
         controller_request = ApplicationExecutionRequest(
             project_name="demo",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=None,
             subtitle_profile_key=None,
             route=StudioExecutionRequest(
@@ -830,7 +804,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         )
         request = ApplicationExecutionRequest(
             project_name="demo",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 "studio",
                 "vertical",
@@ -855,6 +829,14 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         self.assertIn(("Entrada", "EXPORTAR SRT ➜  VIDEO"), details)
         self.assertIn(("Modo", "CONVERTIR"), details)
         self.assertIn(("Perfil de subtítulos", "Palabra por palabra"), details)
+        self.assertIn(
+            (
+                "Tiempos",
+                "Estimados: el tiempo de cada bloque del SRT se reparte entre sus "
+                "palabras por letras. Para tiempos exactos, TRANSCRIBIR o SOLO VIDEO.",
+            ),
+            details,
+        )
         self.assertIn(("SRT generado", result.output_path), details)
 
     def test_transcribe_summary_does_not_invent_a_profile(self):
@@ -871,7 +853,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         )
         request = ApplicationExecutionRequest(
             project_name="demo",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=None,
             subtitle_profile_key=None,
             route=StudioExecutionRequest(
@@ -888,6 +870,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         self.assertFalse(
             any(name == "Perfil / formato" for name, _ in details)
         )
+        self.assertFalse(any(name == "Tiempos" for name, _ in details))
 
 
 if __name__ == "__main__":

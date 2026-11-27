@@ -12,6 +12,15 @@ runtime, splitting the text into segments with their pauses, running the
 process and joining the segment WAVs with the declared silences. A backend
 only adds its worker script and its own options.
 
+A voice may declare ``backend_options.segment_trim``: before the join, the
+quiet start and end of every segment (silence and low noise under
+``threshold_db``, measured as RMS in windows of ``window_seconds``) is cut,
+keeping ``keep_seconds`` of margin around the speech, so the silence between
+two segments is the declared pause and not what the engine left at their
+edges (PRUEBA-GS: 1-2.5 s between Chatterbox segments). A burst at an edge
+shorter than ``min_sound_seconds`` (Chatterbox ends some segments with a
+~70 ms click after the silence) counts as noise too.
+
 Worker protocol (version 1):
 
 * command: ``<python> -I -X utf8 <worker.py> <request.json>``;
@@ -27,12 +36,14 @@ Worker protocol (version 1):
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from array import array
 import json
 import math
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import wave
 
 from app.modules.audio.tts_contracts import (
@@ -59,6 +70,10 @@ _RUNTIME_FIELDS = frozenset(
     {"python_path", "cache_dir", "cuda_cache_dir", "temp_dir", "device"}
 )
 _SEGMENTATION_FIELDS = frozenset({"max_characters"})
+_SEGMENT_TRIM_FIELDS = frozenset(
+    {"threshold_db", "window_seconds", "keep_seconds", "min_sound_seconds"}
+)
+_SAMPLE_FULL_SCALE = 32768.0
 _DEVICES = ("cuda", "cpu")
 _RESULT_ERROR_KINDS = {
     "resource_unavailable": TtsBackendErrorKind.RESOURCE_UNAVAILABLE,
@@ -80,6 +95,16 @@ class SpeechSegment:
 
     text: str
     pause_after_seconds: float
+
+
+@dataclass(frozen=True)
+class SegmentTrim:
+    """Quiet edges cut from every segment before the join (declared)."""
+
+    threshold_db: float
+    window_seconds: float
+    keep_seconds: float
+    min_sound_seconds: float
 
 
 @dataclass(frozen=True)
@@ -236,6 +261,132 @@ def parse_segmentation(options: Mapping[str, object]) -> int:
             f"entero mayor que 0; se recibió {value!r}."
         )
     return value
+
+
+def parse_segment_trim(
+    options: Mapping[str, object],
+    *,
+    required: bool,
+) -> SegmentTrim | None:
+    """Read ``backend_options.segment_trim``.
+
+    A backend that needs it passes ``required=True`` and its absence is a
+    configuration error; otherwise an absent block means no trimming (None).
+
+    ``threshold_db`` is a level in dBFS below 0 (RMS of each window);
+    ``window_seconds`` is greater than 0 and at most 1; ``keep_seconds`` and
+    ``min_sound_seconds`` are from 0 to 1.
+    """
+    if "segment_trim" not in options and not required:
+        return None
+    trim = require_options_mapping(options, "segment_trim", "backend_options")
+    reject_unknown_options(trim, _SEGMENT_TRIM_FIELDS, "backend_options.segment_trim")
+    missing = sorted(_SEGMENT_TRIM_FIELDS - set(trim))
+    if missing:
+        raise TtsVoiceConfigurationError(
+            "backend_options.segment_trim debe declarar "
+            f"{', '.join(missing)}."
+        )
+    threshold_db = _require_finite_number(
+        trim["threshold_db"], "backend_options.segment_trim.threshold_db"
+    )
+    if not threshold_db < 0:
+        raise TtsVoiceConfigurationError(
+            "backend_options.segment_trim.threshold_db debe ser un nivel en dB "
+            f"menor que 0, como -40; se recibió {trim['threshold_db']!r}."
+        )
+    window_seconds = require_non_negative_number(
+        trim["window_seconds"], "backend_options.segment_trim.window_seconds"
+    )
+    if not 0 < window_seconds <= 1:
+        raise TtsVoiceConfigurationError(
+            "backend_options.segment_trim.window_seconds debe ser mayor que 0 y "
+            f"como mucho 1; se recibió {trim['window_seconds']!r}."
+        )
+    keep_seconds = require_non_negative_number(
+        trim["keep_seconds"], "backend_options.segment_trim.keep_seconds"
+    )
+    min_sound_seconds = require_non_negative_number(
+        trim["min_sound_seconds"], "backend_options.segment_trim.min_sound_seconds"
+    )
+    for name, value in (
+        ("keep_seconds", keep_seconds),
+        ("min_sound_seconds", min_sound_seconds),
+    ):
+        if value > 1:
+            raise TtsVoiceConfigurationError(
+                f"backend_options.segment_trim.{name} debe estar entre 0 y 1; "
+                f"se recibió {trim[name]!r}."
+            )
+    return SegmentTrim(
+        threshold_db=threshold_db,
+        window_seconds=window_seconds,
+        keep_seconds=keep_seconds,
+        min_sound_seconds=min_sound_seconds,
+    )
+
+
+def trim_quiet_edges(
+    frames: bytes,
+    sample_rate_hz: int,
+    trim: SegmentTrim,
+) -> bytes:
+    """Cut the quiet start and end of 16-bit mono ``frames``.
+
+    A window is sound when its RMS reaches the threshold. Runs of sound at
+    either edge shorter than ``min_sound_seconds`` count as noise; the speech
+    goes from the first to the last remaining run, and ``keep_seconds``
+    before and after it are kept. A segment with no such run is returned
+    whole: nothing is lost.
+    """
+    samples = array("h")
+    samples.frombytes(frames)
+    if sys.byteorder != "little":
+        samples.byteswap()
+    total = len(samples)
+    window = max(1, round(trim.window_seconds * sample_rate_hz))
+    threshold = _SAMPLE_FULL_SCALE * 10 ** (trim.threshold_db / 20)
+    runs = _sound_runs(samples, window, threshold)
+    min_sound = trim.min_sound_seconds * sample_rate_hz
+    while runs and runs[0][1] - runs[0][0] < min_sound:
+        runs.pop(0)
+    while runs and runs[-1][1] - runs[-1][0] < min_sound:
+        runs.pop()
+    if not runs:
+        return frames
+    keep = round(trim.keep_seconds * sample_rate_hz)
+    begin = max(0, runs[0][0] - keep)
+    end = min(total, runs[-1][1] + keep)
+    return frames[begin * 2:end * 2]
+
+
+def _sound_runs(samples: array, window: int, threshold: float) -> list[tuple[int, int]]:
+    """(start, end) sample positions of consecutive windows over ``threshold``."""
+    runs = []
+    total = len(samples)
+    for start in range(0, total, window):
+        piece = samples[start:start + window]
+        rms = math.sqrt(sum(value * value for value in piece) / len(piece))
+        if rms < threshold:
+            continue
+        end = min(total, start + window)
+        if runs and runs[-1][1] == start:
+            runs[-1] = (runs[-1][0], end)
+        else:
+            runs.append((start, end))
+    return runs
+
+
+def _require_finite_number(value: object, label: str) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+    ):
+        raise TtsVoiceConfigurationError(
+            f"{label} debe ser un número; se recibió {value!r}."
+        )
+    return float(value)
 
 
 def split_speech_segments(
@@ -513,9 +664,11 @@ def join_segment_wavs(
     output_path: Path,
     workspace: Path,
     sample_rate_hz: int,
+    segment_trim: SegmentTrim | None = None,
 ) -> tuple[TtsPause, ...]:
     """Join 16-bit mono segment WAVs with each segment's pause after it.
 
+    With ``segment_trim``, the quiet edges of each segment are cut first.
     Returns where each written silence starts and ends, in seconds.
     """
     if len(segment_paths) != len(segments) or not segments:
@@ -533,6 +686,8 @@ def join_segment_wavs(
             output.setframerate(sample_rate_hz)
             for path, segment in zip(segment_paths, segments):
                 frames = _read_segment_frames(path, workspace_root, sample_rate_hz)
+                if segment_trim is not None:
+                    frames = trim_quiet_edges(frames, sample_rate_hz, segment_trim)
                 output.writeframes(frames)
                 written_frames += len(frames) // 2
                 pause_frames = round(segment.pause_after_seconds * sample_rate_hz)

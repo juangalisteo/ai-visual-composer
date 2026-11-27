@@ -1,0 +1,5 @@
+{
+    "video_audio_srt": {
+        "audio_tail_margin_seconds": 0.1
+    }
+}

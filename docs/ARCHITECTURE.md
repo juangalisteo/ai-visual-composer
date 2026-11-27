@@ -86,7 +86,7 @@ main.py                      valida config/formats.json y config/fonts.json ante
    ↓
 RunController.run()          menús → ApplicationExecutionRequest
    ↓
-(ELIMINAR OUTPUT = Sí)       OutputManager().reset() vacía output/
+(Sobrescribir)               OutputManager().remove_project() borra solo output/<proyecto>/
    ↓
 run_application(request)     app/core/start.py: elige el coordinador por el tipo de ruta
    ↓
@@ -106,7 +106,7 @@ devuelve una `ApplicationExecutionRequest` (`app/core/execution_request.py`):
 | Campo | Contenido |
 |---|---|
 | `project_name` | Nombre del proyecto (menú PROYECTO) |
-| `clear_output` | Si se vacía `output/` antes de empezar (menú ELIMINAR OUTPUT) |
+| `overwrite_project` | Si `output/<proyecto>/` ya existía y se eligió «1. Sobrescribir»: se borra esa carpeta (y nada más) antes de empezar |
 | `operational_profile_key` | `OperationalProfileKey` del perfil elegido |
 | `subtitle_profile_key` | `SubtitleProfileKey` elegida, o `None` si la ejecución no lleva subtítulos |
 | `route` | `StandardExecutionRequest`, `StudioExecutionRequest` o `DesignExecutionRequest` |
@@ -248,7 +248,7 @@ no de un guion narrado. Se entra por GUION → DESTINO → Diseño → Imagen o 
 - `DesignExecutionCoordinator` comprueba que la descripción produzca
   **exactamente una escena**, y después una sola imagen o un solo clip.
 - DISEÑO **no** genera voz, música ni subtítulos, y **no** compone un
-  vídeo final: por eso solo pregunta el FORMATO, el PROYECTO y ELIMINAR OUTPUT.
+  vídeo final: por eso solo pregunta el FORMATO y el PROYECTO.
 - Reutiliza la generación de imágenes y de clips de la ruta estándar; no tiene
   una arquitectura de generación propia.
 
@@ -309,7 +309,14 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
   escala el vídeo al tamaño del perfil conservando su proporción (`scale` +
   `pad`, con bandas si no coincide), con el FPS, el códec y el audio del perfil.
   El audio original se queda a su volumen; la música, si se elige, se mezcla con
-  el volumen y el limitador de `studio.music`.
+  el volumen y el limitador de `studio.music`. Si no hay subtítulos ni música y
+  el vídeo ya cumple el formato de salida del perfil (las mismas comprobaciones
+  que `StudioOutputValidator`, más píxeles cuadrados), **no se vuelve a
+  codificar**: se copian su pista de vídeo y su primera de audio (`-c copy`, con
+  los `movflags` del perfil) y la copia pasa la misma validación. Le pasa al
+  montaje de MONTAJE VÍDEOS sin música y a INTRO / OUTRO con un vídeo que ya
+  tiene el formato (antes, el vídeo entero se codificaba otra vez sin cambiar
+  nada).
 - **INTRO / OUTRO:** los recursos salen de
   `assets/videos/intro_outro/<formato>/intro/` y `…/<formato>/outro/` (carpeta
   local, fuera de Git). Solo se normalizan los que no son compatibles; después se
@@ -324,7 +331,11 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 - **VIDEO + AUDIO | SRT:** manda la duración del **vídeo**. El audio original
   desaparece y suena el nuevo; si el audio nuevo es más corto que el vídeo, el
   menú AUDIO MÁS CORTO QUE EL VÍDEO ofrece rellenar el final con silencio o con
-  música.
+  música, o cortar el vídeo donde acaba el audio (`audio_tail_mode`
+  `cut_video`: vídeo, audio, `-t` y validación usan la duración del audio). Por
+  debajo de `video_audio_srt.audio_tail_margin_seconds` de
+  `config/studio.json` (0,1 s) no pregunta ni rellena (el plan lleva
+  `audio_tail_mode` `none`).
 - **EXPORTAR SRT:** TRANSCRIBIR guarda `<proyecto>.srt`; CONVERTIR guarda
   `<proyecto>_<modo>.srt`. El SRT de partida no se modifica.
 
@@ -351,9 +362,11 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 ## 10. Salida
 
 Cada ejecución escribe en `output/<proyecto>/`, donde `<proyecto>` es el nombre
-dado en el menú PROYECTO (obligatorio). Si se elige ELIMINAR
-OUTPUT = Sí, antes de empezar se vacía `output/` entero; si algún archivo está
-abierto en otro programa, la ejecución se para y lo avisa.
+dado en el menú PROYECTO (obligatorio). Si esa carpeta ya existe, el menú
+pregunta «1. Sobrescribir» o «2. Poner otro nombre»; con «Sobrescribir», antes de
+empezar se borra solo `output/<proyecto>/` (nunca otra carpeta: un nombre como
+«..» no es válido); si algún archivo está abierto en otro programa, la ejecución
+se para y lo avisa. Ningún menú vacía `output/` entero.
 
 | Ruta | Contenido |
 |---|---|
@@ -411,9 +424,11 @@ componente:
   archivos de `prompts/`: el tono (`prompts/tones/<tone>.txt`, según la clave
   `tone` del perfil), la tarea (`prompts/tasks/script.txt`), el formato
   (`prompts/formats/<formato>.txt`) y las reglas de idioma y restricciones
-  (`prompts/rules/`). Incluye además el rango de palabras que corresponde a la
-  duración (`duration`) del perfil; el cálculo está en
-  [VOICEOVER.md](VOICEOVER.md). Lo que se añade al reintentar o al ajustar la
+  (`prompts/rules/`). Incluye además las palabras que corresponden a la
+  duración (`duration`) del perfil, como «unas N palabras; mejor algo más que
+  menos» (marcador `{palabras}`; hasta A1 pedía «N palabras como máximo; es un
+  límite estricto», que empujaba a quedarse corto con un margen sin tope por
+  arriba); el cálculo está en [VOICEOVER.md](VOICEOVER.md). Lo que se añade al reintentar o al ajustar la
   extensión sale de `prompts/templates/script_retry*.txt` y
   `script_length*.txt` ([apartado 19](#19-perfiles-y-configuración)).
 - **La respuesta se valida antes de usarla** (`ScriptOutputValidator`): se
@@ -779,6 +794,16 @@ orden:
   categoría de la escena anterior. El texto de la escena no interviene.
 - **Efectos visuales.** Tienen la misma forma que los overlays, pero se activan
   solo con `visual_effects.enabled` del perfil.
+- **Mezcla de las capas.** El modo `normal` superpone la capa con su
+  transparencia. Los demás (`screen`, `add`, `lighten`, `overlay`) no son
+  lineales: sobre los planos YUV mezclarían también el color y teñirían la
+  imagen (de morado, con los overlays oscuros). Por eso `LayerCompositor` pasa
+  la imagen y la capa a `layer_blend.pixel_format` de `config/video.json`
+  (`gbrp`, RGB) antes de mezclarlas y vuelve después al `video.pixel_format`
+  del perfil, con las opciones de escalado de `layer_blend.scale_flags`
+  (`accurate_rnd+full_chroma_int`: con las de serie, cada ida y vuelta
+  oscurece un poco la imagen). Sin el archivo o una clave, error CONFIG con la
+  ruta.
 - **Validación.** El render se escribe primero en un archivo temporal; después
   `VideoValidator` comprueba que su duración no se aleje de la del audio más de
   `validation.max_duration_difference` del perfil. Solo entonces se publica como
@@ -801,6 +826,8 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
 | `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
 | `config/voice.json` | Común a todas las voces: `workspace_dir`, la carpeta donde `VoiceBuilder` crea la carpeta de trabajo de cada síntesis (`tmp/voice`, dentro del proyecto e ignorada por Git; nunca el `%TEMP%` del sistema). Obligatoria: si falta o sale de la carpeta del proyecto, error CONFIG que nombra el archivo ([VOICEOVER.md §2](VOICEOVER.md#2-documento-de-voz)) |
+| `config/video.json` | Mezcla de los overlays y efectos visuales: `layer_blend.pixel_format` (`gbrp`) y `layer_blend.scale_flags` ([apartado 18](#18-composición-del-vídeo-final)). Obligatoria: si falta, error CONFIG que nombra el archivo |
+| `config/studio.json` | STUDIO, común a los dos formatos: `video_audio_srt.audio_tail_margin_seconds` (0,1 s), diferencia por debajo de la cual el audio de VIDEO + AUDIO \| SRT cuenta como igual al vídeo ([apartado 8](#8-studio)). Obligatoria: si falta, error CONFIG que nombra el archivo |
 | `config/comfyui.json` | ComfyUI: sus carpetas `input/` y `output/` y si se borra lo que deja el programa una vez copiado al proyecto (ver abajo) |
 | `config/voice_configs/*.json` | Una voz por documento ([apartado 13](#13-voz-y-música)) |
 | `config/comfyui_flux_workflow_api.json`, `config/comfyui_wan22_ti2v_i2v_workflow_api.json` | Workflows de ComfyUI para imágenes (Flux) y clips (Wan) |
@@ -821,7 +848,7 @@ el código:
 | `video/` | Prompt y negativo de Wan (`wan.txt`, `wan_negative.txt`) y movimiento de cada clip: textos de cada nivel, palabras clave que lo eligen y restricciones (`motion.json`, `motion_storyboard_field.txt`; [apartado 17](#17-clips-de-vídeo-i2v)) |
 
 - **Marcadores.** Una plantilla marca con `{nombre}` cada dato que rellena el
-  programa (`{tema}`, `{palabras_max}`, `{escenas}`…). Si a una plantilla le
+  programa (`{tema}`, `{palabras}`, `{escenas}`…). Si a una plantilla le
   falta un marcador o tiene uno que el programa no rellena, la ejecución se
   para con un error de configuración (CONFIG) que nombra el archivo.
 - **Por tono.** Los textos que dependen del tono (criterios del storyboard e

@@ -906,15 +906,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
             controller,
             "select_music_category",
             return_value=None
-        ), patch.object(
-            controller,
-            "ask_project_name",
-            return_value="profile identity"
-        ), patch.object(
-            controller,
-            "ask_clear_output",
-            return_value=False
-        ):
+        ), patch.object(controller, "ask_project", return_value=("profile identity", False)):
             request = controller.run()
 
         self.assertEqual(
@@ -935,7 +927,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
     def test_main_transports_only_structured_profile_identity(self):
         controller_request = ApplicationExecutionRequest(
             project_name="profile identity",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 ProfileComponent.VIDEO,
                 "vertical",
@@ -991,7 +983,7 @@ class ProfileIdentityResolverTest(unittest.TestCase):
         )
         controller_request = ApplicationExecutionRequest(
             project_name="design identity",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 ProfileComponent.IMAGEN,
                 "vertical",

@@ -98,10 +98,9 @@ def _print_render_summary(request, result, elapsed_seconds):
         elif audio_duration is not None and video_duration is not None and audio_duration < video_duration:
             summary.add_detail(
                 "Tratamiento audio",
-                (
-                    "Audio + música final"
-                    if video_audio_plan.audio_tail_mode == "music"
-                    else "Audio + silencio final"
+                _audio_tail_label(
+                    video_audio_plan.audio_tail_mode,
+                    video_duration - audio_duration,
                 ),
             )
     else:
@@ -220,6 +219,11 @@ def _print_subtitle_export_summary(
             "Perfil de subtítulos",
             _subtitle_display_name(request),
         )
+        summary.add_detail(
+            "Tiempos",
+            "Estimados: el tiempo de cada bloque del SRT se reparte entre sus "
+            "palabras por letras. Para tiempos exactos, TRANSCRIBIR o SOLO VIDEO.",
+        )
     summary.add_detail("SRT generado", result.output_path)
     summary.add_detail(
         "Estado final",
@@ -297,6 +301,20 @@ def _print_montage_summary(request, result, elapsed_seconds):
             summary.add_stage("Intro / Outro", intro_outro_duration)
     summary.set_total_time(elapsed_seconds)
     summary.print()
+
+
+def _audio_tail_label(mode, shortfall_seconds):
+    """How VIDEO + AUDIO | SRT treated a new audio shorter than the video."""
+    if mode == "music":
+        return "Audio + música final"
+    if mode == "cut_video":
+        return "Vídeo cortado donde acaba el audio"
+    if mode == "none":
+        return (
+            f"Sin cambios (el audio dura {shortfall_seconds:.3f} s menos, "
+            "dentro del margen)"
+        )
+    return "Audio + silencio final"
 
 
 def _intro_outro_label(plan):

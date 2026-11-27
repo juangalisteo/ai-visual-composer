@@ -44,6 +44,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   documento de voz; admite la semilla (`seed`). Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual) e
   [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-chatterbox-y-kokoro).
+- VIDEO + AUDIO | SRT: nueva opción «3. CORTAR EL VÍDEO DONDE ACABA EL AUDIO»
+  en el menú AUDIO MÁS CORTO QUE EL VÍDEO, además de rellenar con silencio o
+  con música: el vídeo dura lo que el audio. Ver
+  [START.md, VIDEO + AUDIO | SRT](docs/START.md#75-video--audio--srt).
 - Voces Kokoro Alex y Kokoro Dora (`config/voice_configs/kokoro_alex.json` y
   `kokoro_dora.json`; Kokoro 0.9.4, Apache-2.0): naturales y ligeras, en un
   proceso aparte como Chatterbox, con su entorno y sus pesos en `models/tts/`;
@@ -114,6 +118,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   cortando al final de frase.
 - Los perfiles de IMAGEN y VIDEO piden 50 s de guion por tema (`duration`;
   antes 10, que eran de prueba).
+- El primer prompt del guion por tema pide «unas N palabras; mejor algo más que
+  menos» en vez de «N palabras como máximo; es un límite estricto», que llevaba
+  a guiones cortos ahora que el margen no tiene tope por arriba. Cambia el texto
+  que llega a Ollama (marcador `{palabras}` en `prompts/templates/script.txt`).
 - Todos los textos que se envían a Ollama, Flux y Wan están en `prompts/`:
   las plantillas de cada petición (`templates/`, con `{marcadores}` para los
   datos), los criterios del storyboard (`criteria/`), la identidad visual y
@@ -178,9 +186,40 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   redondeo. Antes, los subtítulos de ese vídeo salían sin tiempos por palabra,
   el storyboard estimaba los cortes y SOLO VIDEO de STUDIO se paraba. Ver
   [ARCHITECTURE.md §14](docs/ARCHITECTURE.md#14-subtítulos).
+- Los overlays y los efectos visuales ya no tiñen de morado el vídeo: los modos
+  de mezcla `screen`, `add`, `lighten` y `overlay` se aplican en RGB y no sobre
+  los planos YUV (que también mezclaban el color). El formato de la mezcla y
+  las opciones de la conversión están en `config/video.json` (`layer_blend`);
+  sin el archivo o una clave, error CONFIG con la ruta. Ver
+  [ARCHITECTURE.md §18](docs/ARCHITECTURE.md#18-composición-del-vídeo-final).
+- Un proyecto que ya existe no se sobrescribe sin avisar: si
+  `output/<proyecto>/` ya existe, el menú PROYECTO pregunta «1. Sobrescribir»
+  (se borra solo esa carpeta) o «2. Poner otro nombre»; si el nombre es nuevo,
+  no pregunta nada. En todas las rutas (GUION, IMAGEN, VIDEO, DISEÑO y STUDIO).
+- Sin pausas largas entre los trozos de Chatterbox (1–2,5 s, con ruido de
+  fondo): antes de unirlos se recorta el silencio, el ruido bajo y los golpes
+  cortos del principio y del final de cada trozo, según `segment_trim` de su
+  documento de voz (−40 dB, obligatorio en Chatterbox). Con el guion de
+  prueba, los huecos pasan a 0,3–0,4 s. Piper y Kokoro no cambian. Ver
+  [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual).
+- VIDEO + AUDIO | SRT ya no pregunta «AUDIO MÁS CORTO QUE EL VÍDEO» ni rellena
+  el final por unos milisegundos: si el audio es más corto por menos de
+  `video_audio_srt.audio_tail_margin_seconds` de `config/studio.json` (0,1 s),
+  cuenta como igual. Sin el archivo o la clave, error CONFIG con la ruta.
+- CONVERTIR (y cualquier SRT sin tiempos por palabra) reparte el tiempo de cada
+  bloque entre sus palabras por letras, no a partes iguales, en «Palabra única»
+  y en la ventana deslizante; el resumen de CONVERTIR dice que los tiempos son
+  estimados. Ver [SUBTITLES.md §4](docs/SUBTITLES.md).
+- MONTAJE VÍDEOS e INTRO / OUTRO ya no codifican dos veces: si no hay
+  subtítulos ni música y el vídeo ya tiene el formato de salida del perfil, se
+  copia sin volver a codificarlo (más rápido y sin otra pérdida de calidad). Ver
+  [ARCHITECTURE.md §8](docs/ARCHITECTURE.md#8-studio).
 
 ### Retirado
 
+- El menú ELIMINAR OUTPUT, que con «1» borraba **toda** la carpeta `output/`
+  (todos los proyectos) sin pedir confirmación. Los proyectos viejos se borran
+  a mano.
 - Las variables de entorno `MC_*` (identidad operacional, configuración de
   voz y overlays) y el modo «Solo guion».
 - `validation/` y `AGENT_AI/` dejan de versionarse en Git (la evidencia de

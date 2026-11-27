@@ -192,6 +192,12 @@ class StudioVideoAudioSrtService:
         if audio_duration <= 0:
             raise StudioVideoAudioSrtError("La duración del audio nuevo debe ser positiva.")
         music_path = self._validated_music_path(plan, audio_duration, video_duration)
+        # «Cortar el vídeo donde acaba el audio»: the audio sets the length.
+        cut_video = (
+            audio_duration < video_duration
+            and plan.audio_tail_mode == "cut_video"
+        )
+        output_duration = audio_duration if cut_video else video_duration
         output_path = Path(output_path)
         if output_path.exists():
             raise FileExistsError(
@@ -208,7 +214,7 @@ class StudioVideoAudioSrtService:
             f"[0:v:0]scale={profile.width}:{profile.height}:"
             f"force_original_aspect_ratio=decrease,pad={profile.width}:"
             f"{profile.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={profile.fps},"
-            f"format={profile.pixel_format},trim=duration={video_duration:.6f},"
+            f"format={profile.pixel_format},trim=duration={output_duration:.6f},"
             "setpts=PTS-STARTPTS[studio_base]"
         ]
         if prepared_subtitle is None:
@@ -240,7 +246,7 @@ class StudioVideoAudioSrtService:
                 "level=false:latency=true[tail_music]",
                 "[new_audio][tail_music]concat=n=2:v=0:a=1[aout]",
             ])
-        elif audio_duration < video_duration:
+        elif audio_duration < video_duration and plan.audio_tail_mode in {"silence", "music"}:
             filters.append(
                 f"[1:a:0]aresample={profile.audio_sample_rate},apad,"
                 f"atrim=duration={video_duration:.6f},asetpts=PTS-STARTPTS[aout]"
@@ -248,14 +254,14 @@ class StudioVideoAudioSrtService:
         else:
             filters.append(
                 f"[1:a:0]aresample={profile.audio_sample_rate},"
-                f"atrim=duration={video_duration:.6f},asetpts=PTS-STARTPTS[aout]"
+                f"atrim=duration={output_duration:.6f},asetpts=PTS-STARTPTS[aout]"
             )
-        command.extend(["-filter_complex", ";".join(filters), "-map", "[vout]", "-map", "[aout]", "-t", f"{video_duration:.6f}", "-c:v", profile.codec, "-preset", profile.preset, "-crf", str(profile.crf), "-pix_fmt", profile.pixel_format, "-c:a", profile.audio_codec, "-b:a", profile.audio_bitrate, "-ar", str(profile.audio_sample_rate), "-ac", str(profile.audio_channels), "-movflags", profile.movflags, str(temporary)])
+        command.extend(["-filter_complex", ";".join(filters), "-map", "[vout]", "-map", "[aout]", "-t", f"{output_duration:.6f}", "-c:v", profile.codec, "-preset", profile.preset, "-crf", str(profile.crf), "-pix_fmt", profile.pixel_format, "-c:a", profile.audio_codec, "-b:a", profile.audio_bitrate, "-ar", str(profile.audio_sample_rate), "-ac", str(profile.audio_channels), "-movflags", profile.movflags, str(temporary)])
         try:
             self.runner.run(command)
             duration = self.validator.validate(
                 temporary,
-                video_duration,
+                output_duration,
                 profile,
             )
             temporary.replace(output_path)
@@ -291,11 +297,11 @@ class StudioVideoAudioSrtService:
     def _validated_music_path(plan, audio_duration, video_duration):
         if audio_duration >= video_duration:
             return None
-        if plan.audio_tail_mode not in {"silence", "music"}:
+        if plan.audio_tail_mode not in {"silence", "music", "none", "cut_video"}:
             raise ValueError(
                 f"El tratamiento final de audio {_MODE_LABEL} no es válido."
             )
-        if plan.audio_tail_mode == "silence":
+        if plan.audio_tail_mode in {"silence", "none", "cut_video"}:
             return None
         if plan.music_path is None:
             raise ValueError(

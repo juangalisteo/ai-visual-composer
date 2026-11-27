@@ -103,8 +103,7 @@ def test_studio_coordinator_transports_contract_to_final_options_without_state()
     )
     controller.select_studio_music = Mock(return_value=None)
     controller.select_studio_intro_outro = Mock(return_value=None)
-    controller.ask_project_name = Mock(return_value="studio")
-    controller.ask_clear_output = Mock(return_value=False)
+    controller.ask_project = Mock(return_value=("studio", False))
 
     request = controller.run()
 
@@ -135,8 +134,7 @@ def test_studio_request_carries_explicit_profile_keys():
     )
     controller.select_studio_music = Mock(return_value=None)
     controller.select_studio_intro_outro = Mock(return_value=None)
-    controller.ask_project_name = Mock(return_value="studio")
-    controller.ask_clear_output = Mock(return_value=False)
+    controller.ask_project = Mock(return_value=("studio", False))
 
     request = controller._run_studio()
 
@@ -231,8 +229,7 @@ def _standard_run_controller(*, visual_pipeline, pipeline_mode):
     controller.select_music_category = Mock(return_value=None)
     controller.select_overlays_mode = Mock(return_value="off")
     controller.select_intro_outro = Mock(return_value=None)
-    controller.ask_project_name = Mock(return_value="test project")
-    controller.ask_clear_output = Mock(return_value=False)
+    controller.ask_project = Mock(return_value=("test project", False))
     return controller, subtitle_selection
 
 

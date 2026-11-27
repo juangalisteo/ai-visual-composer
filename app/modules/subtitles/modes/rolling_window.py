@@ -1,6 +1,7 @@
 import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
+from app.modules.subtitles.modes.letter_timing import distribute_by_letters
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
 from app.modules.subtitles.policies.timing import (
     stretch_zero_duration_cues,
@@ -179,16 +180,8 @@ class RollingWindowModel(BaseSubtitleModel):
 
     @staticmethod
     def _distribute_word_ranges(start_ms, end_ms, words):
-        if not words:
-            return ()
-        duration = end_ms - start_ms
-        return tuple(
-            (
-                start_ms + round(duration * index / len(words)),
-                start_ms + round(duration * (index + 1) / len(words)),
-            )
-            for index in range(len(words))
-        )
+        # No time per word: the block's time is shared by letters (estimate).
+        return distribute_by_letters(start_ms, end_ms, words)
 
     @staticmethod
     def _time_to_ms(time_text):

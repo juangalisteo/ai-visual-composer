@@ -539,11 +539,7 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             controller, "select_studio_music", return_value=None,
         ), patch.object(
             controller, "select_studio_intro_outro", return_value=None,
-        ), patch.object(
-            controller, "ask_project_name", return_value="studio",
-        ), patch.object(
-            controller, "ask_clear_output", return_value=False,
-        ):
+        ), patch.object(controller, "ask_project", return_value=("studio", False)):
             request = controller._run_studio()
 
         self.assertEqual(["input", "subtitle", "files"], order)

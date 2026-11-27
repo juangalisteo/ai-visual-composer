@@ -120,8 +120,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
             controller.select_studio_montage_plan = Mock(return_value=plan)
             controller.select_studio_music = Mock(return_value=Path("music.mp3"))
             controller.select_studio_intro_outro = Mock(return_value=intro_outro)
-            controller.ask_project_name = Mock(return_value="demo")
-            controller.ask_clear_output = Mock(return_value=False)
+            controller.ask_project = Mock(return_value=("demo", False))
 
             request = controller._run_studio()
 
@@ -154,7 +153,7 @@ class StudioMontagePhase4Test(unittest.TestCase):
             )
             result = StudioMontageRenderResult(montage, rendered)
             request = ApplicationExecutionRequest(
-                project_name="demo", clear_output=False,
+                project_name="demo", overwrite_project=False,
                 operational_profile_key=OperationalProfileKey(
                     "studio", "vertical", "studio_vertical"
                 ),

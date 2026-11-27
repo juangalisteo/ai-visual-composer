@@ -98,10 +98,11 @@ class CommonOptions:
                 return name
             self._write("\nOpción no válida.", writer)
 
-    def ask_clear_output(self, writer=None):
-        self._write("\nELIMINAR OUTPUT\n", writer)
-        self._write("1. Sí", writer)
-        self._write("2. No", writer)
+    def ask_existing_project(self, project_name, writer=None):
+        """True to overwrite the existing project, False to choose another name."""
+        self._write(f"\nEl proyecto «{project_name}» ya existe.\n", writer)
+        self._write("1. Sobrescribir", writer)
+        self._write("2. Poner otro nombre", writer)
         while True:
             option = self._terminal.read("\n> ").strip()
             if option == "0":

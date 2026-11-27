@@ -15,6 +15,7 @@ from app.modules.audio.external_tts_process import (
     ExternalTtsProcess,
     join_segment_wavs,
     parse_external_tts_runtime,
+    parse_segment_trim,
     parse_segmentation,
     reject_unknown_options,
     require_non_negative_number,
@@ -45,7 +46,9 @@ _CHECKPOINT_FILES = (
     "grapheme_mtl_merged_expanded_v1.json",
     "conds.pt",
 )
-_OPTION_FIELDS = frozenset({"runtime", "model", "segmentation", "synthesis"})
+_OPTION_FIELDS = frozenset(
+    {"runtime", "model", "segmentation", "segment_trim", "synthesis"}
+)
 _MODEL_FIELDS = frozenset({"checkpoint_dir"})
 # Optional arguments of ChatterboxMultilingualTTS.generate.
 _SYNTHESIS_FIELDS = frozenset(
@@ -65,8 +68,10 @@ class ChatterboxBackend:
 
     Consecutive sentences are read in one ``generate`` call up to the
     declared ``segmentation.max_characters`` (one call reads at most ~40 s);
-    the parent joins the segments with the declared pauses. A voice that declares
-    ``seed`` gets the same audio for the same text in every run.
+    the parent cuts the quiet edges of each segment (``segment_trim``,
+    required: Chatterbox leaves up to 2.5 s of noise there) and joins them
+    with the declared pauses. A voice that declares ``seed`` gets the same
+    audio for the same text in every run.
     """
 
     backend_key = _BACKEND_KEY
@@ -112,6 +117,10 @@ class ChatterboxBackend:
             raise TtsVoiceConfigurationError(
                 "el texto no tiene ninguna frase que leer."
             )
+        segment_trim = parse_segment_trim(
+            request.voice.backend_options,
+            required=True,
+        )
 
         workspace = request.workspace.path
         segment_paths, sample_rate_hz = self._process.run(
@@ -130,6 +139,7 @@ class ChatterboxBackend:
             output_path=audio_path,
             workspace=workspace,
             sample_rate_hz=sample_rate_hz,
+            segment_trim=segment_trim,
         )
         return TtsSynthesisResult(
             staged_audio=TtsAudioArtifact(

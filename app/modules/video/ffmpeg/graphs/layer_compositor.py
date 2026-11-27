@@ -31,7 +31,9 @@ class LayerCompositor:
         blend_mode,
         opacity,
         start_time,
-        end_time
+        end_time,
+        layer_blend=None,
+        output_pixel_format=None
     ):
         enable = (
             f"between(t,{start_time:.3f},"
@@ -76,13 +78,39 @@ class LayerCompositor:
                 f"{blend_mode}"
             )
 
+        if layer_blend is None or not output_pixel_format:
+            raise ValueError(
+                f"El modo de mezcla {blend_mode} necesita "
+                "layer_blend (config/video.json) y el "
+                "pixel_format del perfil."
+            )
+
+        # Non-linear modes are mixed in RGB: on YUV planes they also
+        # mix the colour planes and tint the picture (PRUEBA-GS).
+        to_blend = (
+            f"scale=flags={layer_blend.scale_flags},"
+            f"format={layer_blend.pixel_format}"
+        )
+        blend_base = output_stream.replace(
+            "[",
+            "[blend_base_"
+        )
+        blend_layer = output_stream.replace(
+            "[",
+            "[blend_layer_"
+        )
+
         return (
-            f"{base_stream}"
-            f"{layer_stream}"
+            f"{base_stream}{to_blend}{blend_base};"
+            f"{layer_stream}{to_blend}{blend_layer};"
+            f"{blend_base}"
+            f"{blend_layer}"
             "blend="
             f"all_mode={ffmpeg_mode}:"
             f"all_opacity={opacity:.3f}:"
-            f"enable='{enable}'"
+            f"enable='{enable}',"
+            f"scale=flags={layer_blend.scale_flags},"
+            f"format={output_pixel_format}"
             f"{output_stream}"
         )
 
@@ -97,7 +125,9 @@ class LayerCompositor:
         output_prefix,
         width,
         height,
-        fps
+        fps,
+        layer_blend=None,
+        output_pixel_format=None
     ):
         prepared_stream = (
             f"[{source_prefix}{operation_index}]"
@@ -130,7 +160,9 @@ class LayerCompositor:
                 blend_mode=operation["blend_mode"],
                 opacity=operation["opacity"],
                 start_time=operation["start_time"],
-                end_time=operation["end_time"]
+                end_time=operation["end_time"],
+                layer_blend=layer_blend,
+                output_pixel_format=output_pixel_format
             )
         )
 

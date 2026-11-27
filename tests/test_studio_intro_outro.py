@@ -138,8 +138,7 @@ class StudioIntroOutroTest(unittest.TestCase):
                 side_effect=lambda key: selection_order.append("intro_outro")
                 or plan,
             )
-            controller.ask_project_name = Mock(return_value="demo")
-            controller.ask_clear_output = Mock(return_value=False)
+            controller.ask_project = Mock(return_value=("demo", False))
             messages = []
             controller._print = messages.append
 
@@ -252,7 +251,7 @@ class StudioIntroOutroTest(unittest.TestCase):
             plan = StudioIntroOutroPlan(source, IntroOutroPlan(intro=IntroOutroSelection(source, "intro")))
             request = ApplicationExecutionRequest(
                 project_name="demo",
-                clear_output=False,
+                overwrite_project=False,
                 operational_profile_key=OperationalProfileKey(
                     "studio", "vertical", "studio_vertical"
                 ),

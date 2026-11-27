@@ -1,0 +1,6 @@
+{
+    "layer_blend": {
+        "pixel_format": "gbrp",
+        "scale_flags": "accurate_rnd+full_chroma_int"
+    }
+}

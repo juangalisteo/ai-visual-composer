@@ -46,7 +46,7 @@ def _summary_request(
 ):
     return ApplicationExecutionRequest(
         project_name="demo",
-        clear_output=False,
+        overwrite_project=False,
         operational_profile_key=OperationalProfileKey(
             "studio",
             profile_format,
@@ -180,7 +180,7 @@ class StudioPhase4Test(unittest.TestCase):
         final_output = Path("output/studio/video/studio.mp4")
         controller_request = ApplicationExecutionRequest(
             project_name="studio music",
-            clear_output=False,
+            overwrite_project=False,
             operational_profile_key=OperationalProfileKey(
                 "studio", "vertical", "studio_vertical"
             ),
