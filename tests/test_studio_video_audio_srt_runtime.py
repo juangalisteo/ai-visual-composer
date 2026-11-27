@@ -620,10 +620,12 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
         )
         assert result.base_subtitle_path.is_file()
         assert result.generated_subtitle_path.is_file()
-        assert result.generated_subtitle_path == result.base_subtitle_path
-        assert result.base_subtitle_path.read_text(encoding="utf-8") == (
-            "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
-        )
+        assert result.generated_subtitle_path.name == "final_pintado.srt"
+        assert result.generated_subtitle_path != result.base_subtitle_path
+        for path in (result.base_subtitle_path, result.generated_subtitle_path):
+            assert path.read_text(encoding="utf-8") == (
+                "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
+            )
         render_plan = renderer.render.call_args.args[0]
         assert render_plan.subtitle_path == result.generated_subtitle_path
         assert renderer.render.call_args.kwargs["subtitle_profile"] == subtitle_profile

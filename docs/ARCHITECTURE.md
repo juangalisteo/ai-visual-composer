@@ -298,7 +298,7 @@ Archivos de subtítulos que quedan en `output/<proyecto>/subtitles/`:
 |---|---|
 | `<proyecto>.srt` | Siempre que hay subtítulos: copia del SRT de partida (el de Whisper en SOLO VIDEO, el del usuario en SRT + VIDEO) |
 | `<proyecto>_<modo>.srt` | SOLO VIDEO: el SRT adaptado al modo de cue del perfil (`<modo>` es su `cue_policy.mode`, p. ej. `single_line`); **es el que se pinta** |
-| `<proyecto>_original.srt` | SRT + VIDEO y VIDEO + AUDIO \| SRT, solo si el perfil cambia el texto a mayúsculas; si no, se pinta `<proyecto>.srt` |
+| `<proyecto>_pintado.srt` | SRT + VIDEO y VIDEO + AUDIO \| SRT, siempre: el SRT tal cual, con las mayúsculas o minúsculas del perfil (`text_case`); **es el que se pinta** |
 
 Para corregir un vídeo de SOLO VIDEO se corrige `<proyecto>_<modo>.srt` (el que
 se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.

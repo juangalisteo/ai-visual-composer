@@ -347,7 +347,7 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 )
 
             base_path = root / "subtitles" / "final.srt"
-            derived_path = root / "subtitles" / "final_original.srt"
+            derived_path = root / "subtitles" / "final_pintado.srt"
             rendered_plan = service.render.call_args.args[0]
             self.assertEqual(base_path, result.base_subtitle_path)
             self.assertEqual(derived_path, result.generated_subtitle_path)

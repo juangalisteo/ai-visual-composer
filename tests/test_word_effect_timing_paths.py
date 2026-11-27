@@ -752,16 +752,17 @@ def test_srt_video_saved_srt_files_are_unchanged(tmp_path, effect, family):
     assert (subtitles / "demo.srt").read_bytes() == (
         tmp_path / "input.srt"
     ).read_bytes()
-    original = subtitles / "demo_original.srt"
+    painted = subtitles / "demo_pintado.srt"
     if profile.cue_policy.get("text_case") == "original":
-        assert not original.exists()
+        # Same text, but always its own file (A2-B).
+        assert painted.read_text(encoding="utf-8") == srt
     else:
         # Upper case is the only change, as before; times and lines stay.
-        assert original.read_text(encoding="utf-8") == srt.upper()
-    assert sorted(path.name for path in subtitles.iterdir()) == sorted(
-        ["demo.srt"]
-        + (["demo_original.srt"] if original.exists() else [])
-    )
+        assert painted.read_text(encoding="utf-8") == srt.upper()
+    assert sorted(path.name for path in subtitles.iterdir()) == [
+        "demo.srt",
+        "demo_pintado.srt",
+    ]
 
 
 def test_srt_video_profile_without_word_effect_renders_as_before(tmp_path):
@@ -772,7 +773,7 @@ def test_srt_video_profile_without_word_effect_renders_as_before(tmp_path):
     assert runner.ass == []
     (graph,) = runner.graphs
     assert "subtitles=" in graph
-    assert "demo.srt" in graph
+    assert "demo_pintado.srt" in graph
     assert (subtitles / "demo.srt").read_text(encoding="utf-8") == SRT
 
 
