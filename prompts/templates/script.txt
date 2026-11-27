@@ -4,7 +4,7 @@ TEMA:
 DURACIÓN:
 - Duración objetivo: {duracion} segundos.
 - Extensión: unas {palabras} palabras; mejor algo más que menos.
-- Ese límite es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
+- Esa extensión es el presupuesto temporal que se usará para voz, subtítulos, storyboard e imágenes.
 - Prioriza claridad, coherencia, desarrollo natural y completitud dentro de ese presupuesto.
 
 IDENTIDAD Y TONO:
