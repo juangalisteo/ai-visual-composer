@@ -44,6 +44,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   documento de voz; admite la semilla (`seed`). Ver
   [VOICEOVER.md §7](docs/VOICEOVER.md#7-chatterbox-multilingual) e
   [INSTALL.md §10](docs/INSTALL.md#10-voz-piper-onnx-chatterbox-y-kokoro).
+- VIDEO + AUDIO | SRT: nueva opción «3. CORTAR EL VÍDEO DONDE ACABA EL AUDIO»
+  en el menú AUDIO MÁS CORTO QUE EL VÍDEO, además de rellenar con silencio o
+  con música: el vídeo dura lo que el audio. Ver
+  [START.md, VIDEO + AUDIO | SRT](docs/START.md#75-video--audio--srt).
 - Voces Kokoro Alex y Kokoro Dora (`config/voice_configs/kokoro_alex.json` y
   `kokoro_dora.json`; Kokoro 0.9.4, Apache-2.0): naturales y ligeras, en un
   proceso aparte como Chatterbox, con su entorno y sus pesos en `models/tts/`;

@@ -331,7 +331,9 @@ se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
 - **VIDEO + AUDIO | SRT:** manda la duración del **vídeo**. El audio original
   desaparece y suena el nuevo; si el audio nuevo es más corto que el vídeo, el
   menú AUDIO MÁS CORTO QUE EL VÍDEO ofrece rellenar el final con silencio o con
-  música. Por debajo de `video_audio_srt.audio_tail_margin_seconds` de
+  música, o cortar el vídeo donde acaba el audio (`audio_tail_mode`
+  `cut_video`: vídeo, audio, `-t` y validación usan la duración del audio). Por
+  debajo de `video_audio_srt.audio_tail_margin_seconds` de
   `config/studio.json` (0,1 s) no pregunta ni rellena (el plan lleva
   `audio_tail_mode` `none`).
 - **EXPORTAR SRT:** TRANSCRIBIR guarda `<proyecto>.srt`; CONVERTIR guarda

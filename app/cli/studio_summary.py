@@ -307,6 +307,8 @@ def _audio_tail_label(mode, shortfall_seconds):
     """How VIDEO + AUDIO | SRT treated a new audio shorter than the video."""
     if mode == "music":
         return "Audio + música final"
+    if mode == "cut_video":
+        return "Vídeo cortado donde acaba el audio"
     if mode == "none":
         return (
             f"Sin cambios (el audio dura {shortfall_seconds:.3f} s menos, "

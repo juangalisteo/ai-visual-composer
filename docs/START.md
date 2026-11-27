@@ -328,7 +328,9 @@ ENTRADA → FORMATO → VIDEO y AUDIO (si hay varios) → SUBTÍTULOS (1. Sí / 
 
 Cambia el audio del vídeo por el nuevo. Manda la duración del **vídeo**. Si el
 audio nuevo es más corto, el menú AUDIO MÁS CORTO QUE EL VÍDEO ofrece rellenar
-el final con «1. SIN MÚSICA» (silencio) o «2. CON MÚSICA». Si es más corto por
+el final con «1. SIN MÚSICA» (silencio) o «2. CON MÚSICA», o «3. CORTAR EL
+VÍDEO DONDE ACABA EL AUDIO» (el vídeo dura lo que el audio; los subtítulos que
+caigan después no salen). Si es más corto por
 menos de `video_audio_srt.audio_tail_margin_seconds` de `config/studio.json`
 (0,1 s), cuenta como igual: no pregunta ni rellena nada. Con subtítulos, pinta
 el SRT **tal cual**, igual que [SRT + VIDEO](#72-srt--video).

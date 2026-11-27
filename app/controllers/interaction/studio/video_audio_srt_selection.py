@@ -124,7 +124,8 @@ class StudioVideoAudioSrtSelection:
         )
         (writer or (lambda message: None))("1. SIN MÚSICA")
         (writer or (lambda message: None))("2. CON MÚSICA")
-        mode = selector(("silence", "music"))
+        (writer or (lambda message: None))("3. CORTAR EL VÍDEO DONDE ACABA EL AUDIO")
+        mode = selector(("silence", "music", "cut_video"))
         music_path = (
             self._music_selector.select("random")
             if mode == "music"
