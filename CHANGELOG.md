@@ -198,6 +198,10 @@ Aquí se registran los cambios importantes de AI Visual Composer.
   el final por unos milisegundos: si el audio es más corto por menos de
   `video_audio_srt.audio_tail_margin_seconds` de `config/studio.json` (0,1 s),
   cuenta como igual. Sin el archivo o la clave, error CONFIG con la ruta.
+- CONVERTIR (y cualquier SRT sin tiempos por palabra) reparte el tiempo de cada
+  bloque entre sus palabras por letras, no a partes iguales, en «Palabra única»
+  y en la ventana deslizante; el resumen de CONVERTIR dice que los tiempos son
+  estimados. Ver [SUBTITLES.md §4](docs/SUBTITLES.md).
 
 ### Retirado
 

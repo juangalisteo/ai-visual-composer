@@ -221,8 +221,13 @@ texto en pantalla, y las palabras son siempre las del guion, con sus
 mayúsculas y signos, aunque Whisper oiga otra cosa
 ([ARCHITECTURE.md, apartado 14](ARCHITECTURE.md#14-subtítulos)). Si no los hay (EXPORTAR SRT ➜  VIDEO →
 CONVERTIR, o la ruta estándar cuando Whisper no da tiempos por palabra), cada
-línea del SRT se corta en trozos y su tiempo se reparte entre ellos. Una
-palabra de duración 0 se alarga hasta que empieza la línea siguiente, como
+línea del SRT se corta en trozos y su tiempo se reparte entre ellos. En
+«Palabra única» (`word_by_word`) y en la ventana deslizante (`rolling_window`)
+se reparte entre las palabras **por letras** (letras y números; cada palabra
+cuenta al menos 1): una palabra larga dura más que una corta. Son tiempos
+**estimados**; los exactos salen de Whisper (TRANSCRIBIR o SOLO VIDEO). Antes
+de A1 se repartía a partes iguales (en PRUEBA-GS, hasta 1,1 s de desfase con la
+voz). Una palabra de duración 0 se alarga hasta que empieza la línea siguiente, como
 mucho `significant_gap_threshold` segundos; las líneas nunca se solapan.
 
 ---

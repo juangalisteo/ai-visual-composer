@@ -219,6 +219,11 @@ def _print_subtitle_export_summary(
             "Perfil de subtítulos",
             _subtitle_display_name(request),
         )
+        summary.add_detail(
+            "Tiempos",
+            "Estimados: el tiempo de cada bloque del SRT se reparte entre sus "
+            "palabras por letras. Para tiempos exactos, TRANSCRIBIR o SOLO VIDEO.",
+        )
     summary.add_detail("SRT generado", result.output_path)
     summary.add_detail(
         "Estado final",

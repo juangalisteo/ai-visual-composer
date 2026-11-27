@@ -1,6 +1,7 @@
 import re
 
 from app.modules.subtitles.modes.base import BaseSubtitleModel
+from app.modules.subtitles.modes.letter_timing import distribute_by_letters
 from app.modules.subtitles.policies.micro_cues import MicroCuePolicy
 from app.modules.subtitles.policies.punctuation import PunctuationPolicy
 from app.shared.config_contract import (
@@ -181,48 +182,8 @@ class WordByWordModel(BaseSubtitleModel):
 
 
     def _distribute_time(self, start_ms, end_ms, words):
-        duration_ms = end_ms - start_ms
-
-        if len(words) == 1:
-            return [(start_ms, end_ms)]
-
-        min_ms = int(self.min_duration * 1000)
-        max_ms = int(self.max_duration * 1000)
-
-        base_duration = int(duration_ms / len(words))
-
-        base_duration = max(min_ms, base_duration)
-        base_duration = min(max_ms, base_duration)
-
-        durations = [base_duration for _ in words]
-
-        total_duration = sum(durations)
-
-        if total_duration != duration_ms:
-            factor = duration_ms / total_duration
-            durations = [int(d * factor) for d in durations]
-
-        diff = duration_ms - sum(durations)
-
-        if durations:
-            durations[-1] += diff
-
-        ranges = []
-        current_start = start_ms
-
-        for duration in durations:
-            current_end = current_start + duration
-
-            if current_end > end_ms:
-                current_end = end_ms
-
-            ranges.append((current_start, current_end))
-            current_start = current_end
-
-        if ranges:
-            ranges[-1] = (ranges[-1][0], end_ms)
-
-        return ranges
+        # No time per word: the block's time is shared by letters (estimate).
+        return list(distribute_by_letters(start_ms, end_ms, words))
 
     def _parse_block(self, block):
         lines = block.strip().splitlines()

@@ -829,6 +829,14 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         self.assertIn(("Entrada", "EXPORTAR SRT ➜  VIDEO"), details)
         self.assertIn(("Modo", "CONVERTIR"), details)
         self.assertIn(("Perfil de subtítulos", "Palabra por palabra"), details)
+        self.assertIn(
+            (
+                "Tiempos",
+                "Estimados: el tiempo de cada bloque del SRT se reparte entre sus "
+                "palabras por letras. Para tiempos exactos, TRANSCRIBIR o SOLO VIDEO.",
+            ),
+            details,
+        )
         self.assertIn(("SRT generado", result.output_path), details)
 
     def test_transcribe_summary_does_not_invent_a_profile(self):
@@ -862,6 +870,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
         self.assertFalse(
             any(name == "Perfil / formato" for name, _ in details)
         )
+        self.assertFalse(any(name == "Tiempos" for name, _ in details))
 
 
 if __name__ == "__main__":

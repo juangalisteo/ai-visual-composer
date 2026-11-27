@@ -342,6 +342,10 @@ No hace ningún vídeo: solo un SRT. El menú MODO ofrece:
 | TRANSCRIBIR | MEDIA (si hay varios) → PROYECTO | Whisper transcribe el `.mp4` o el `.mp3` | `output/<proyecto>/subtitles/<proyecto>.srt` |
 | CONVERTIR | SRT (si hay varios) → FORMATO → SUBTÍTULOS (FAMILIA → PERFIL) → PROYECTO | Corta tu SRT en líneas según el perfil elegido | `output/<proyecto>/subtitles/<proyecto>_<modo>.srt` |
 
+CONVERTIR no tiene la voz: si el perfil parte cada bloque en palabras, reparte
+su tiempo por letras y los tiempos son **estimados** (el resumen lo dice). Para
+tiempos exactos, usa TRANSCRIBIR o SOLO VIDEO.
+
 ---
 
 ## 8. Dónde sale el resultado
