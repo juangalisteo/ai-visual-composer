@@ -13,7 +13,11 @@ from app.core.execution_request import (
     ApplicationExecutionRequest,
     StandardExecutionRequest,
 )
-from app.modules.script import PreparedScript, ScriptAdjustment
+from app.modules.script import (
+    PreparedScript,
+    ScriptAdjustment,
+    ScriptGenerationMetadata,
+)
 from app.modules.video.intro_outro import (
     IntroOutroPlan,
     IntroOutroSelection,
@@ -77,7 +81,10 @@ class FakeConfigManager:
         self
     ):
         return {
-            "model": "test-model"
+            "model": "test-model",
+            "script": {
+                "duration_margin": {"below": 0.10, "above": None},
+            },
         }
 
     def get_profile_config(
@@ -1076,7 +1083,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
             )
         return srt_optimizer
 
-    def test_generated_script_whose_voice_is_too_long_is_adjusted_once(self):
+    def test_generated_script_whose_voice_is_too_short_is_adjusted_once(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             previous_cwd = Path.cwd()
             try:
@@ -1086,7 +1093,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
 
                 srt_optimizer = self._run_standard_route_with_measured_voice(
                     script_source="generated",
-                    durations={"voz.mp3": 13.0, "voz_ajuste.mp3": 10.4},
+                    durations={"voz.mp3": 7.0, "voz_ajuste.mp3": 9.6},
                 )
 
                 calls = [
@@ -1098,7 +1105,7 @@ class ScriptOnlyModeTest(unittest.TestCase):
                 self.assertEqual(
                     ScriptAdjustment(
                         previous_script=AdjustingScriptOperation.FIRST,
-                        measured_seconds=13.0,
+                        measured_seconds=7.0,
                     ),
                     calls[1]["adjustment"],
                 )
@@ -1131,6 +1138,57 @@ class ScriptOnlyModeTest(unittest.TestCase):
                     srt_optimizer.return_value.optimize.call_args.kwargs[
                         "canonical_content"
                     ],
+                )
+            finally:
+                os.chdir(previous_cwd)
+
+    def test_generated_script_whose_voice_is_long_is_kept_without_adjusting(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            previous_cwd = Path.cwd()
+            try:
+                os.chdir(temp_dir)
+                Path("input").mkdir()
+                Path("input/tema.txt").write_text("conciencia", encoding="utf-8")
+
+                self._run_standard_route_with_measured_voice(
+                    script_source="generated",
+                    durations={"voz.mp3": 30.0},
+                )
+
+                self.assertEqual(1, len(AdjustingScriptOperation.instances))
+                self.assertEqual(
+                    [(AdjustingScriptOperation.FIRST, "voz.mp3")],
+                    WritingVoiceBuilder.received,
+                )
+            finally:
+                os.chdir(previous_cwd)
+
+    def test_length_corrected_before_the_voice_is_not_adjusted_again(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            previous_cwd = Path.cwd()
+            try:
+                os.chdir(temp_dir)
+                Path("input").mkdir()
+                Path("input/tema.txt").write_text("conciencia", encoding="utf-8")
+                AdjustingScriptOperation.length_corrected = True
+                try:
+                    self._run_standard_route_with_measured_voice(
+                        script_source="generated",
+                        durations={"voz.mp3": 7.0, "voz_ajuste.mp3": 9.6},
+                    )
+                finally:
+                    AdjustingScriptOperation.length_corrected = False
+
+                self.assertEqual(1, len(AdjustingScriptOperation.instances))
+                self.assertEqual(
+                    [(AdjustingScriptOperation.FIRST, "voz.mp3")],
+                    WritingVoiceBuilder.received,
+                )
+                self.assertEqual(
+                    AdjustingScriptOperation.FIRST,
+                    Path("output/measured voice/scripts/guion.txt").read_text(
+                        encoding="utf-8"
+                    ),
                 )
             finally:
                 os.chdir(previous_cwd)
@@ -1181,6 +1239,8 @@ class AdjustingScriptOperation:
     ADJUSTED = "Guion generado ajustado."
     MANUAL = "Guion manual."
     instances = []
+    # What the first generated script says about the length correction.
+    length_corrected = False
 
     def __init__(self):
         self.calls = []
@@ -1202,6 +1262,13 @@ class AdjustingScriptOperation:
             source=source,
             path=output_script_path,
             word_count=3,
+            metadata=(
+                ScriptGenerationMetadata(
+                    length_corrected=self.length_corrected,
+                )
+                if source == "generated" and "adjustment" not in kwargs
+                else None
+            ),
         )
 
 

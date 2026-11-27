@@ -418,10 +418,27 @@ componente:
   `script_length*.txt` ([apartado 19](#19-perfiles-y-configuración)).
 - **La respuesta se valida antes de usarla** (`ScriptOutputValidator`): se
   rechaza si trae Markdown, bloques de código, JSON, XML, encabezados del
-  modelo, recuentos de palabras o comentarios, o si se sale del rango de
-  palabras. En ese caso `ScriptBuilder` repite la petición una vez, indicando el
-  motivo; si la segunda respuesta tampoco vale, la ejecución se para con
-  `InvalidScriptOutputError`. El guion nunca se recorta.
+  modelo, recuentos de palabras o comentarios. En ese caso `ScriptBuilder`
+  repite la petición una vez, indicando el motivo; si la segunda respuesta
+  tampoco vale, la ejecución se para con `InvalidScriptOutputError`. El guion
+  nunca se recorta.
+- **Duración (solo guion por tema).** El margen es `script.duration_margin` de
+  `config/ai.json` ([apartado 19](#19-perfiles-y-configuración)); en el
+  proyecto, la voz puede durar hasta un 10 % menos de lo pedido y, por arriba,
+  sin tope (45 s o más para 50 s). **Se pide a Ollama una sola corrección de
+  extensión**, en uno de estos dos momentos:
+  1. Antes de la voz, con la duración estimada por letras (el `pacing` de la
+     voz): si el guion se queda corto, se pide uno más largo y se queda el que
+     más se acerca al margen.
+  2. Si no hizo falta, después de la voz (`ScriptDurationFit`,
+     `app/modules/standard/script_duration_fit.py`): se mide el `voz.mp3`; si
+     dura menos del margen, se pide el guion reescrito más largo, se genera su
+     voz y se queda el mejor de los dos (el que menos se sale del margen; si
+     el ajuste sale mal formado, el primero).
+
+  Si el guion final sigue corto, la terminal lo dice en una línea
+  (ADVERTENCIA, también en AVISOS del resumen) y la ejecución sigue. Un guion
+  escrito a mano (GUION) nunca se mide ni se ajusta.
 
 ---
 
@@ -839,7 +856,7 @@ por defecto:
 |---|---|
 | `model` | Modelo de Ollama del storyboard, de DISEÑO y del guion si `script` no declara otro. Tiene que estar instalado (`ollama list`) |
 | `keep_alive` | Cuánto tiempo deja Ollama el modelo cargado después de responder: segundos o una duración como `"5m"`. Con `0` lo descarga en cuanto responde y deja la GPU libre para Whisper y ComfyUI; a cambio, cada llamada lo vuelve a cargar (unos 10 s con `qwen3:14b`) |
-| `script` | Guion por tema: `model` y `think` (`true`, `false` o `null`; con `null` no se envía y decide el modelo: `qwen3` razona antes de escribir) |
+| `script` | Guion por tema: `model`, `think` (`true`, `false` o `null`; con `null` no se envía y decide el modelo: `qwen3` razona antes de escribir) y `duration_margin`, el margen aceptado para su duración: `below` (cuánto más corta puede salir la voz: `0.10`, un 10 %) y `above` (cuánto más larga; `null`, sin tope). **Obligatorio** con guion por tema (lo lee `script_duration_margin`, `app/core/script_length.py`): si falta o no vale, error CONFIG que nombra `config/ai.json` y la clave, antes de llamar a Ollama ([apartado 12](#12-guion)) |
 | `storyboard` | Storyboard e interpretación de DISEÑO: `model`, `think` (sin declarar, `false`) y `options`, las opciones de Ollama tal cual. `num_ctx` es el contexto en tokens: con 8192 caben unas 25 escenas |
 
 **Whisper** (`config/whisper.json`, lo lee

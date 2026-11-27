@@ -91,6 +91,13 @@ Aquí se registran los cambios importantes de AI Visual Composer.
 - El guion por tema se pide a Ollama sin razonamiento previo (`think: false`
   en `config/ai.json`): sale unas 4 veces más rápido y más cerca de la
   duración pedida.
+- Guion por tema: solo se ajusta si queda corto. El margen está en
+  `config/ai.json` (`script.duration_margin`: `below` 0.10, hasta un 10 % menos
+  de lo pedido, y `above` null, sin tope por arriba); antes era un ±10 % fijo en
+  el código. Se pide a Ollama una sola corrección de extensión (antes de la voz
+  o, si no hizo falta, tras medirla); si sigue corto, se queda el mejor de los
+  dos guiones y la terminal lo avisa en una línea, sin parar. Sin la clave, error
+  CONFIG. Ver [ARCHITECTURE.md §12](docs/ARCHITECTURE.md#12-guion).
 - Las escenas del storyboard terminan siempre al final de una frase, con los
   tiempos de la voz (Whisper), y duran lo que digan sus frases dentro de los
   límites `scene_seconds` de cada formato en `config/formats.json`; el vídeo

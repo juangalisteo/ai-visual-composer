@@ -114,24 +114,27 @@ aparece en el menú VOZ sin tocar Python.
 ## 3. Cuánto dura un guion
 
 - **Guion generado (IMAGEN y VIDEO).** El prompt pide a Ollama un número de
-  palabras según la duración (`duration`, en segundos) del perfil operacional
-  (`PromptEngine`, `app/core/prompt_engine.py`):
+  palabras según la duración (`duration`, en segundos) del perfil operacional y
+  el ritmo (`pacing`) de la voz elegida (`PromptEngine`,
+  `app/core/prompt_engine.py`). El margen aceptado es
+  `script.duration_margin` de `config/ai.json` (`below` 0.10 y `above` null en
+  el proyecto: hasta un 10 % más corto y, por arriba, sin tope):
 
   ```text
-  palabras objetivo = parte entera de (duration × 2,6)
-  mínimo            = parte entera de (objetivo × 0,9)   (al menos 1)
-  máximo            = parte entera de (objetivo × 1,1)
+  palabras objetivo = redondeo de (duration × words_per_second)
+  mínimo            = redondeo de (objetivo × (1 − below))   (al menos 1)
+  máximo            = sin máximo con above null; si no, objetivo × (1 + above)
   ```
 
-  | `duration` | Objetivo | Rango aceptado |
-  |---|---|---|
-  | 10 s | 26 palabras | 23–28 |
-  | 30 s | 78 palabras | 70–85 |
-  | 60 s | 156 palabras | 140–171 |
+  | `duration` | Voz (palabras/s) | Objetivo | Mínimo | Voz aceptada |
+  |---|---|---|---|---|
+  | 50 s | Chatterbox (3,17) | 158 palabras | 142 | 45 s o más |
+  | 50 s | Piper Davefx (2,53) | 126 palabras | 113 | 45 s o más |
 
   Las palabras se cuentan con `count_script_words`
   (`app/modules/script/validator.py`): cada secuencia de letras o cifras es una
-  palabra. Qué pasa si la respuesta se sale del rango:
+  palabra. La duración se comprueba con letras/s antes de la voz y con la voz
+  real después, con una sola corrección de Ollama en total:
   [ARCHITECTURE.md, apartado 12](ARCHITECTURE.md#12-guion).
 - **Guion escrito a mano (GUION, `input/guion.txt`).** No hay rango: la voz lee
   el texto tal cual y la duración del vídeo la marca la voz.

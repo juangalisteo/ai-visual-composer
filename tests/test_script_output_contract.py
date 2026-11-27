@@ -3,7 +3,11 @@ import unittest
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
-from app.core.script_length import ScriptLengthBudget, SpeechPacing
+from app.core.script_length import (
+    DurationMargin,
+    ScriptLengthBudget,
+    SpeechPacing,
+)
 from app.modules.script import (
     InvalidScriptOutputError,
     ScriptAdjustment,
@@ -20,6 +24,14 @@ from app.modules.script.validator import count_script_words
 # words agree, so a test can reason in words: 26 words last 10 s.
 TEST_PACING = SpeechPacing(letters_per_second=18.2, words_per_second=2.6)
 SHORT_WORD_PACING = SpeechPacing(letters_per_second=17.5, words_per_second=2.5)
+# The margin of config/ai.json (T0): up to 10 % shorter, no upper limit.
+TEST_MARGIN = DurationMargin(below=0.10, above=None)
+# A symmetric ±10 % margin, to check that an upper limit still works as data.
+SYMMETRIC_MARGIN = DurationMargin(below=0.10, above=0.10)
+TEST_AI_CONFIG = {
+    "model": "test-model",
+    "script": {"duration_margin": {"below": 0.10, "above": None}},
+}
 
 
 class FakeProvider:
@@ -169,7 +181,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             "model_comment_not_allowed",
         )
 
-    def test_builder_retries_when_response_exceeds_duration_budget(self):
+    def test_builder_accepts_a_long_script_without_a_length_retry(self):
         provider = FakeProvider(
             (
                 _words(80),
@@ -190,16 +202,30 @@ class ScriptOutputContractTest(unittest.TestCase):
 
         self.assertEqual(
             len(provider.prompts),
-            2,
-        )
-        self.assertEqual(
-            result.word_count,
-            26,
+            1,
         )
         self.assertEqual(
             result.script,
-            _words(26),
+            _words(80),
         )
+        self.assertFalse(result.metadata.length_corrected)
+
+    def test_builder_retries_a_long_script_when_the_margin_has_an_upper_limit(self):
+        provider = FakeProvider((_words(80), _words(26)))
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request(margin=SYMMETRIC_MARGIN).length,
+        )
+
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertEqual(result.script, _words(26))
+        self.assertIn("palabras como máximo", provider.prompts[1])
+        self.assertTrue(result.metadata.length_corrected)
 
     def test_builder_retries_when_response_is_shorter_than_duration_budget(self):
         provider = FakeProvider(
@@ -228,6 +254,7 @@ class ScriptOutputContractTest(unittest.TestCase):
             result.script,
             _words(26),
         )
+        self.assertTrue(result.metadata.length_corrected)
 
     def test_builder_retries_once_for_structural_error(self):
         provider = FakeProvider(
@@ -261,9 +288,10 @@ class ScriptOutputContractTest(unittest.TestCase):
             provider.prompts[1],
         )
         self.assertIn(
-            "debe contener entre",
+            "debe contener al menos 23 palabras",
             provider.prompts[1].lower(),
         )
+        self.assertFalse(result.metadata.length_corrected)
         self.assertNotIn(
             "Objetivo exacto",
             provider.prompts[1],
@@ -344,6 +372,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 min_words=9,
                 max_words=11,
                 pacing=SHORT_WORD_PACING,
+                margin=SYMMETRIC_MARGIN,
             ),
         )
 
@@ -382,7 +411,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 request.length.max_words,
                 request.length.target_words,
             ),
-            (23, 29, 26),
+            (23, None, 26),
         )
         # I2: a strict cap at the target, measured with Ollama (think=False:
         # 2/6 → 4/6 scripts within ±10 %); the range stays as data.
@@ -436,8 +465,8 @@ class ScriptOutputContractTest(unittest.TestCase):
     def test_closest_script_is_kept_when_every_attempt_is_out_of_range(self):
         provider = FakeProvider(
             (
-                _words(80),
-                _words(40),
+                _words(5),
+                _words(15),
             )
         )
 
@@ -451,14 +480,69 @@ class ScriptOutputContractTest(unittest.TestCase):
         )
 
         self.assertEqual(len(provider.prompts), 2)
-        self.assertEqual(result.script, _words(40))
+        self.assertEqual(result.script, _words(15))
         self.assertEqual(result.metadata.attempt, 2)
+        self.assertTrue(result.metadata.length_corrected)
+
+    def test_first_script_kept_as_closest_still_spends_the_length_correction(self):
+        provider = FakeProvider((_words(15), _words(5)))
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request().length,
+        )
+
+        self.assertEqual(result.script, _words(15))
+        self.assertEqual(result.metadata.attempt, 1)
+        self.assertTrue(result.metadata.length_corrected)
+
+    def test_closeness_is_measured_outside_the_margin(self):
+        # 15 words fall 3.2 s short; 80 words are far from 10 s but within a
+        # margin without upper limit, so they are the closest.
+        provider = FakeProvider((_words(15), _words(80)))
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            _real_request().prompt,
+            length=_real_request().length,
+        )
+
+        self.assertEqual(result.script, _words(80))
+
+    def test_closest_is_the_one_that_lies_less_outside_the_margin(self):
+        # Margin 5–10 s: 34 words sound 13.1 s (3.1 s over the top, 3.1 s
+        # from the target) and 8 words 3.1 s (1.9 s under the bottom, 6.9 s
+        # from the target). The one less outside the margin is kept.
+        provider = FakeProvider((_words(34), _words(8)))
+
+        result = ScriptBuilder(
+            {"model": "test-model"},
+            provider=provider,
+            max_attempts=2,
+        ).generate_result(
+            "TEMA:\nconciencia",
+            length=ScriptLengthBudget.for_duration(
+                10,
+                TEST_PACING,
+                DurationMargin(below=0.5, above=0.0),
+            ),
+        )
+
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertEqual(result.script, _words(8))
 
     def test_length_retry_keeps_the_real_prompt_and_shows_the_previous_script(self):
         request = _real_request()
         provider = FakeProvider(
             (
-                _words(80),
+                _words(10),
                 _words(26),
             )
         )
@@ -475,10 +559,10 @@ class ScriptOutputContractTest(unittest.TestCase):
         retry = provider.prompts[1]
         self.assertTrue(retry.startswith(request.prompt))
         self.assertIn("IDENTIDAD Y TONO", retry)
-        self.assertIn(f"GUION ANTERIOR:\n{_words(80)}\n\n", retry)
-        self.assertIn("el guion anterior (80 palabras) duraría unos 30,8", retry)
+        self.assertIn(f"GUION ANTERIOR:\n{_words(10)}\n\n", retry)
+        self.assertIn("el guion anterior (10 palabras) duraría unos 3,8", retry)
         self.assertIn(
-            f"Reescríbelo con {request.length.target_words} palabras como máximo",
+            f"Reescríbelo con {request.length.target_words} palabras como mínimo",
             retry,
         )
         self.assertLess(
@@ -491,10 +575,11 @@ class ScriptOutputContractTest(unittest.TestCase):
         length = ScriptLengthBudget.for_duration(
             10,
             SpeechPacing(letters_per_second=13.0, words_per_second=2.6),
+            TEST_MARGIN,
         )
-        short_words = " ".join(["calma"] * 26)
+        short_words = " ".join(["sol"] * 26)
         long_words = " ".join(["consciencia"] * 26)
-        provider = FakeProvider((long_words, short_words))
+        provider = FakeProvider((short_words, long_words))
 
         result = ScriptBuilder(
             {"model": "test-model"},
@@ -505,11 +590,11 @@ class ScriptOutputContractTest(unittest.TestCase):
             length=length,
         )
 
-        self.assertTrue(length.min_words <= 26 <= length.max_words)
+        self.assertTrue(length.min_words <= 26)
         self.assertEqual(len(provider.prompts), 2)
-        self.assertEqual(result.script, short_words)
-        self.assertIn("duraría unos 22,0 segundos", provider.prompts[1])
-        self.assertIn("con 12 palabras como máximo", provider.prompts[1])
+        self.assertEqual(result.script, long_words)
+        self.assertIn("duraría unos 6,0 segundos", provider.prompts[1])
+        self.assertIn("con 43 palabras como mínimo", provider.prompts[1])
 
     def test_prompt_engine_sizes_the_script_with_the_voice_pacing(self):
         profile = {
@@ -521,11 +606,13 @@ class ScriptOutputContractTest(unittest.TestCase):
             "conciencia",
             profile,
             SpeechPacing(letters_per_second=13.14, words_per_second=2.53),
+            TEST_MARGIN,
         )
         faster = PromptEngine().build_script_request(
             "conciencia",
             profile,
             SpeechPacing(letters_per_second=13.69, words_per_second=2.64),
+            TEST_MARGIN,
         )
 
         self.assertEqual(slower.length.target_words, 76)
@@ -539,6 +626,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 "conciencia",
                 {"tone": "modo_conciencia", "format": "vertical", "duration": 30},
                 None,
+                TEST_MARGIN,
             )
 
     def test_length_range_comes_from_data_and_is_never_read_from_the_prompt_text(self):
@@ -573,6 +661,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 min_words=9,
                 max_words=11,
                 pacing=SHORT_WORD_PACING,
+                margin=SYMMETRIC_MARGIN,
             ),
         )
 
@@ -605,9 +694,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 builders={
                     "script": True
                 },
-                ai_config={
-                    "model": "test-model"
-                },
+                ai_config=TEST_AI_CONFIG,
                 profile={
                     "tone": "modo_conciencia",
                     "format": "horizontal",
@@ -629,6 +716,38 @@ class ScriptOutputContractTest(unittest.TestCase):
                 ),
                 long_script,
             )
+
+    def test_generated_prepared_script_says_whether_the_length_was_corrected(self):
+        for responses, corrected in (
+            ((_words(26),), False),
+            ((_words(5), _words(26)), True),
+        ):
+            with self.subTest(corrected=corrected), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                input_topic = root / "tema.txt"
+                input_topic.write_text("conciencia", encoding="utf-8")
+
+                prepared = ScriptPreparationService(
+                    script_builder_factory=lambda ai_config: ScriptBuilder(
+                        ai_config,
+                        provider=FakeProvider(responses),
+                    ),
+                ).prepare(
+                    builders={"script": True},
+                    ai_config=TEST_AI_CONFIG,
+                    profile={
+                        "tone": "modo_conciencia",
+                        "format": "horizontal",
+                        "duration": 10,
+                    },
+                    input_script_path=root / "missing_manual.txt",
+                    input_topic_path=input_topic,
+                    output_script_path=root / "guion.txt",
+                    voice_pacing=TEST_PACING,
+                )
+
+                self.assertEqual(prepared.text, _words(26))
+                self.assertEqual(prepared.metadata.length_corrected, corrected)
 
     def test_adjust_asks_once_with_the_measured_duration_and_the_previous_script(self):
         request = _real_request()
@@ -738,7 +857,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                 ),
             ).prepare(
                 builders={"script": True},
-                ai_config={"model": "test-model"},
+                ai_config=TEST_AI_CONFIG,
                 profile={
                     "tone": "modo_conciencia",
                     "format": "horizontal",
@@ -790,9 +909,7 @@ class ScriptOutputContractTest(unittest.TestCase):
                     builders={
                         "script": True
                     },
-                    ai_config={
-                        "model": "test-model"
-                    },
+                    ai_config=TEST_AI_CONFIG,
                     profile={
                         "tone": "modo_conciencia",
                         "format": "horizontal",
@@ -844,6 +961,7 @@ def _words(
 
 def _real_request(
     duration=10,
+    margin=TEST_MARGIN,
 ):
     """Prompt and budget exactly as PromptEngine builds them for a topic script."""
     return PromptEngine().build_script_request(
@@ -854,6 +972,7 @@ def _real_request(
             "duration": duration,
         },
         TEST_PACING,
+        margin,
     )
 
 

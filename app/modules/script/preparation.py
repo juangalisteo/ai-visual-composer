@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.core.prompt_engine import PromptEngine
+from app.core.script_length import script_duration_margin
 from app.modules.script.models import PreparedScript
 from app.modules.script.script_builder import ScriptBuilder
 from app.modules.script.validator import count_script_words
@@ -224,17 +225,21 @@ class ScriptPreparationService:
                 topic,
                 profile,
                 voice_pacing,
+                script_duration_margin(ai_config),
             )
         )
 
         script_builder = self.script_builder_factory(
             ai_config
         )
+        metadata = None
         if adjustment is None:
-            script = script_builder.build(
+            result = script_builder.build_result(
                 request.prompt,
                 length=request.length,
             )
+            script = result.script
+            metadata = result.metadata
         else:
             script = script_builder.adjust(
                 request.prompt,
@@ -247,7 +252,8 @@ class ScriptPreparationService:
         return self._build_prepared_script(
             text=script,
             source="generated",
-            path=output_script_path
+            path=output_script_path,
+            metadata=metadata,
         )
 
     def _prepare_existing(
@@ -295,7 +301,8 @@ class ScriptPreparationService:
         *,
         text,
         source,
-        path
+        path,
+        metadata=None,
     ) -> PreparedScript:
         script = str(
             text
@@ -309,7 +316,8 @@ class ScriptPreparationService:
             ),
             word_count=count_script_words(
                 script
-            )
+            ),
+            metadata=metadata,
         )
 
     def _persist(

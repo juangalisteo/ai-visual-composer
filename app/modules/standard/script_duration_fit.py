@@ -1,18 +1,19 @@
 """Fit a topic script to its requested duration with the real voice.
 
-After the voice is generated, its duration is measured. When it is off by
-more than ±10 % (owner decision P1, phase I), Ollama is asked once for an
-adjusted script and the voice is generated again. The closer of the two is
-kept; if it is still off, the terminal says so. There is no loop and no
-timeout (``AGENTS.md`` §8). Only scripts generated from a topic go through
-here, never a script written by the user.
+After the voice is generated, its duration is measured. When it falls
+outside the margin declared in ``config/ai.json`` (``script.duration_margin``;
+owner decision T0: up to 10 % shorter, no upper limit), Ollama is asked once
+for an adjusted script and the voice is generated again. Of the two
+well-formed scripts, the one closer to the margin is kept; if it is still
+outside, the terminal says so in one line and the run goes on. There is no
+loop and no timeout (``AGENTS.md`` §8). Only scripts generated from a topic go
+through here, never a script written by the user.
 """
 
 from dataclasses import dataclass
 import os
 from pathlib import Path
 
-from app.core.script_length import duration_fits
 from app.modules.script.models import InvalidScriptOutputError
 from app.shared.operation_warnings import OperationWarning
 from app.shared.progress_logger import ProgressLogger
@@ -41,6 +42,7 @@ class ScriptDurationFit:
     - ``adjust_script(previous_script, measured_seconds, output_path) -> str``:
       one request for the rewritten script, written at ``output_path``.
     - ``synthesize_voice(text, output_path) -> (path, pauses)``.
+    - ``margin``: the ``DurationMargin`` declared in configuration.
     """
 
     def __init__(
@@ -49,8 +51,10 @@ class ScriptDurationFit:
         measure_seconds,
         adjust_script,
         synthesize_voice,
+        margin,
         warnings=None,
     ):
+        self._margin = margin
         self._measure_seconds = measure_seconds
         self._adjust_script = adjust_script
         self._synthesize_voice = synthesize_voice
@@ -64,7 +68,14 @@ class ScriptDurationFit:
         script_path,
         voice_path,
         voice_pauses,
+        adjustment_allowed=True,
     ) -> DurationFitResult:
+        """Keep the voice or adjust once.
+
+        ``adjustment_allowed`` is False when Ollama was already asked to fix
+        the length before the voice: the single attempt is spent, so a voice
+        outside the margin is only reported.
+        """
         target_seconds = float(target_seconds)
         script_path = Path(script_path)
         voice_path = Path(voice_path)
@@ -73,7 +84,14 @@ class ScriptDurationFit:
             voice_pauses=tuple(voice_pauses),
             voice_seconds=float(self._measure_seconds(voice_path)),
         )
-        if duration_fits(first.voice_seconds, target_seconds):
+        if self._margin.fits(first.voice_seconds, target_seconds):
+            return first
+        if not adjustment_allowed:
+            self._warn(
+                f"{self._outside_margin(first.voice_seconds, target_seconds)} "
+                "Ya se pidió a Ollama una corrección de extensión antes de "
+                "la voz: se sigue con este guion."
+            )
             return first
 
         ProgressLogger.info(
@@ -99,14 +117,20 @@ class ScriptDurationFit:
             for leftover in (candidate_script_path, candidate_voice_path):
                 leftover.unlink(missing_ok=True)
 
-        if not duration_fits(chosen.voice_seconds, target_seconds):
+        if not self._margin.fits(chosen.voice_seconds, target_seconds):
             self._warn(
-                f"La voz final dura {_seconds(chosen.voice_seconds)} s y se "
-                f"pidieron {_seconds(target_seconds)} s "
-                f"({_percent(chosen.voice_seconds, target_seconds)}), fuera "
-                "del margen de ±10 %. Se usa el guion que más se acerca."
+                f"{self._outside_margin(chosen.voice_seconds, target_seconds)} "
+                "Se usa el guion que más se acerca."
             )
         return chosen
+
+    def _outside_margin(self, seconds, target_seconds) -> str:
+        return (
+            f"La voz final dura {_seconds(seconds)} s y se pidieron "
+            f"{_seconds(target_seconds)} s "
+            f"({_percent(seconds, target_seconds)}), fuera del margen "
+            f"({self._margin.describe()})."
+        )
 
     def _try_adjustment(
         self,
@@ -136,9 +160,9 @@ class ScriptDurationFit:
             candidate_voice_path,
         )
         adjusted_seconds = float(self._measure_seconds(adjusted_voice_path))
-        if abs(adjusted_seconds - target_seconds) >= abs(
-            first.voice_seconds - target_seconds
-        ):
+        if self._margin.shortfall(
+            adjusted_seconds, target_seconds
+        ) >= self._margin.shortfall(first.voice_seconds, target_seconds):
             ProgressLogger.info(
                 "Se mantiene el primer guion: con el ajustado la voz dura "
                 f"{_seconds(adjusted_seconds)} s."
