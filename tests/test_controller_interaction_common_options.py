@@ -52,8 +52,8 @@ def test_current_voice_catalog_lists_chatterbox_carlfm_davefx_alex_and_dora_in_t
         "Chatterbox (natural, GPU)",
         "Piper Carlfm (rápida, CPU)",
         "Piper Davefx (rápida, CPU)",
-        "Kokoro Alex",
-        "Kokoro Dora",
+        "Kokoro Alex (rápida, GPU)",
+        "Kokoro Dora (rápida, GPU)",
     )
     options = CommonOptions(terminal, lambda: pytest.fail("No debe cancelar"))
 
@@ -67,8 +67,8 @@ def test_current_voice_catalog_lists_chatterbox_carlfm_davefx_alex_and_dora_in_t
         "1. Chatterbox (natural, GPU)",
         "2. Piper Carlfm (rápida, CPU)",
         "3. Piper Davefx (rápida, CPU)",
-        "4. Kokoro Alex",
-        "5. Kokoro Dora",
+        "4. Kokoro Alex (rápida, GPU)",
+        "5. Kokoro Dora (rápida, GPU)",
     ] * 5
     assert "Miro" not in terminal.messages
 

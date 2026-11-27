@@ -42,8 +42,8 @@ CURRENT_MENU = [
     "1. Chatterbox (natural, GPU)",
     "2. Piper Carlfm (rápida, CPU)",
     "3. Piper Davefx (rápida, CPU)",
-    "4. Kokoro Alex",
-    "5. Kokoro Dora",
+    "4. Kokoro Alex (rápida, GPU)",
+    "5. Kokoro Dora (rápida, GPU)",
 ]
 
 

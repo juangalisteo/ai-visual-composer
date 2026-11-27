@@ -23,8 +23,8 @@ Otros documentos:
 | `config/voice_configs/chatterbox_multilingual.json` | Chatterbox (natural, GPU) | Chatterbox Multilingual, su voz de serie: `models/tts/chatterbox/weights/` (apartado 7) | `es-ES` |
 | `config/voice_configs/piper_carlfm.json` | Piper Carlfm (rápida, CPU) | `models/audio/piper/es_ES_carlfm/es_ES-carlfm-x_low.onnx` | `es-ES` |
 | `config/voice_configs/piper_davefx.json` | Piper Davefx (rápida, CPU) | `models/audio/piper/es_ES_davefx/es_ES-davefx-medium.onnx` | `es-ES` |
-| `config/voice_configs/kokoro_alex.json` | Kokoro Alex | Kokoro 82M, voz `em_alex` (hombre): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
-| `config/voice_configs/kokoro_dora.json` | Kokoro Dora | Kokoro 82M, voz `ef_dora` (mujer): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
+| `config/voice_configs/kokoro_alex.json` | Kokoro Alex (rápida, GPU) | Kokoro 82M, voz `em_alex` (hombre): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
+| `config/voice_configs/kokoro_dora.json` | Kokoro Dora (rápida, GPU) | Kokoro 82M, voz `ef_dora` (mujer): `models/tts/kokoro/weights/` (apartado 8) | `es-ES` |
 
 - El menú VOZ lista los documentos de `config/voice_configs/` por el
   `menu_order` que declara cada uno (Chatterbox 1, Carlfm 2, Davefx 3, Alex 4,
@@ -37,8 +37,8 @@ Otros documentos:
   1. Chatterbox (natural, GPU)
   2. Piper Carlfm (rápida, CPU)
   3. Piper Davefx (rápida, CPU)
-  4. Kokoro Alex
-  5. Kokoro Dora
+  4. Kokoro Alex (rápida, GPU)
+  5. Kokoro Dora (rápida, GPU)
   ```
 
 - Si una ejecución no trae una voz elegida, `ConfigManager` usa
@@ -477,7 +477,7 @@ Finalizado (13,52 s)
   ejemplo:
 
   ```text
-  La configuración de la voz «Kokoro Alex» no es válida: no existe «models/tts/kokoro/weights/voices/em_alex.pt» (backend_options.voice.path). Monta el entorno de la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el documento de la voz.
+  La configuración de la voz «Kokoro Alex (rápida, GPU)» no es válida: no existe «models/tts/kokoro/weights/voices/em_alex.pt» (backend_options.voice.path). Monta el entorno de la voz (docs/INSTALL.md, apartado 10) o corrige la ruta en el documento de la voz.
   ```
 
 - Un `lang_code` que Kokoro no conoce también es un error CONFIG, con la lista

@@ -470,7 +470,7 @@ como enlace).
 
 ### Kokoro (opcional)
 
-Las voces «Kokoro Alex» y «Kokoro Dora» del menú VOZ usan Kokoro 0.9.4
+Las voces «Kokoro Alex (rápida, GPU)» y «Kokoro Dora (rápida, GPU)» del menú VOZ usan Kokoro 0.9.4
 (hexgrad, licencia Apache-2.0). Como Chatterbox, necesita su propio Python
 (3.12) con torch: no se instala en el entorno del proyecto. Si eliges una de
 sus voces sin montarlo, el programa para con un error CONFIG que nombra la ruta
