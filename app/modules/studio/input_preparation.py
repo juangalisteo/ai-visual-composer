@@ -24,7 +24,7 @@ STUDIO_INPUT_MODE_LABELS = {
     StudioInputMode.INTRO_OUTRO: "INTRO / OUTRO",
     StudioInputMode.MONTAJE_VIDEOS: "MONTAJE VÍDEOS",
     StudioInputMode.VIDEO_AUDIO_SRT: "VIDEO + AUDIO | SRT",
-    StudioInputMode.EXPORTAR_SRT: "EXPORTAR SRT ➜  VIDEO",
+    StudioInputMode.EXPORTAR_SRT: "EXPORTAR SRT",
 }
 
 

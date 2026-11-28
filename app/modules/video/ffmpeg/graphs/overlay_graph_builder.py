@@ -45,7 +45,7 @@ class OverlayGraphBuilder(
             )
 
         if not config.overlays.enabled:
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Overlays: desactivados"
             )
 
@@ -74,7 +74,7 @@ class OverlayGraphBuilder(
                 )
             )
 
-        ProgressLogger.start(
+        ProgressLogger.detail_start(
             "PREPARANDO OVERLAYS"
         )
 
@@ -122,13 +122,13 @@ class OverlayGraphBuilder(
                 prepared_stream
             )
 
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 f"Overlay: {operation['name']} | "
                 f"{operation['start_time']:.2f}-"
                 f"{operation['end_time']:.2f} s"
             )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Overlays aplicados: {len(operations)}"
         )
 

@@ -125,7 +125,7 @@ def test_studio_export_menu_label_changes_without_changing_its_mode_id():
     controller._select_from_list = Mock(return_value=StudioInputMode.EXPORTAR_SRT.value)
 
     assert controller.select_studio_input_mode() == StudioInputMode.EXPORTAR_SRT.value
-    assert "6. EXPORTAR SRT ➜  VIDEO" in messages
+    assert "6. EXPORTAR SRT" in messages
 
 
 @pytest.mark.parametrize("subtitles", (False, True))
@@ -620,10 +620,12 @@ def test_human_srt_is_preserved_without_whisper_or_transformers(style):
         )
         assert result.base_subtitle_path.is_file()
         assert result.generated_subtitle_path.is_file()
-        assert result.generated_subtitle_path == result.base_subtitle_path
-        assert result.base_subtitle_path.read_text(encoding="utf-8") == (
-            "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
-        )
+        assert result.generated_subtitle_path.name == "final_pintado.srt"
+        assert result.generated_subtitle_path != result.base_subtitle_path
+        for path in (result.base_subtitle_path, result.generated_subtitle_path):
+            assert path.read_text(encoding="utf-8") == (
+                "1\n00:00:00,000 --> 00:00:01,500\nTexto humano intacto.\n"
+            )
         render_plan = renderer.render.call_args.args[0]
         assert render_plan.subtitle_path == result.generated_subtitle_path
         assert renderer.render.call_args.kwargs["subtitle_profile"] == subtitle_profile
@@ -743,15 +745,18 @@ def test_video_audio_srt_summary_identifies_all_required_inputs_and_durations():
         studio_summary.print_studio_summary(request, result, 1.0)
 
     details = [call.args for call in summary.add_detail.call_args_list]
-    assert ("Proyecto", "video-audio-srt") in details
-    assert ("Perfil / formato", "studio_horizontal / Horizontal 16:9") in details
+    assert [name for name, _ in details].count("Proyecto") == 0
+    assert ("Formato", "Horizontal 16:9") in details
     assert ("Video fuente", plan.video_path) in details
     assert ("Audio nuevo", plan.audio_path) in details
+    assert ("SRT fuente", plan.subtitle_path) in details
     assert ("Subtítulos", "Sí") in details
     assert ("Perfil de subtítulos", "Línea única") in details
-    assert ("Duración vídeo", "12.345 s") in details
-    assert ("Duración audio original", "18.000 s") in details
-    assert ("Duración final", "12.345 s") in details
+    assert ("Duración vídeo", "12,35 s") in details
+    assert ("Duración audio nuevo", "18,00 s") in details
+    assert ("Duración final", "12,35 s") in details
     assert ("Tratamiento audio", "Recortado al vídeo") in details
+    assert ("SRT", result.base_subtitle_path) in details
+    assert not any(name in {"SRT base", "SRT generado"} for name, _ in details)
     assert ("Video final", result.output_path) in details
     assert ("Estado final", "VIDEO + AUDIO | SRT COMPLETADO") in details

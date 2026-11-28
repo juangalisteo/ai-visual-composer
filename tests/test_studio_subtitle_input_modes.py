@@ -335,9 +335,11 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 )
 
             base = root / "demo" / "subtitles" / "demo.srt"
+            painted = root / "demo" / "subtitles" / "demo_pintado.srt"
             self.assertEqual(source_bytes, human_srt.read_bytes())
             self.assertEqual(source, base.read_text(encoding="utf-8"))
-            self.assertEqual(base, renderer.render.call_args.kwargs["subtitle_path"])
+            self.assertEqual(painted, renderer.render.call_args.kwargs["subtitle_path"])
+            self.assertTrue(painted.is_file())
             transformer.assert_not_called()
 
     def test_design_original_applies_declared_case_and_preserves_srt_structure(self):
@@ -394,7 +396,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                 rendered,
             )
             self.assertIn("segundo cue humano", rendered)
-            self.assertNotEqual(base, rendered_path)
+            self.assertEqual(
+                root / "demo" / "subtitles" / "demo_pintado.srt",
+                rendered_path,
+            )
             transformer.assert_not_called()
 
     def test_design_original_with_text_case_original_uses_the_persisted_base(self):
@@ -407,7 +412,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
             root = Path(directory)
             base = root / "demo" / "subtitles" / "demo.srt"
             base.parent.mkdir(parents=True)
-            base.write_text(source, encoding="utf-8")
+            # Mixed line ends: no text rewrite can give these bytes back.
+            base.write_bytes(
+                source.replace("\n", "\r\n", 1).encode("utf-8")
+            )
             design_profile = ConfigManager().get_subtitle_profile_by_key(
                 self._design_subtitle_key(),
             )
@@ -430,8 +438,15 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                     original=True,
                 )
 
-            self.assertEqual(base, rendered_path)
-            self.assertEqual(source, rendered_path.read_text(encoding="utf-8"))
+            # Same text as the base, but always its own file (A2-B), and the
+            # very same bytes: line ends included.
+            self.assertEqual(
+                root / "demo" / "subtitles" / "demo_pintado.srt",
+                rendered_path,
+            )
+            self.assertEqual(base.read_bytes(), rendered_path.read_bytes())
+            self.assertEqual(source, base.read_text(encoding="utf-8"))
+            self.assertEqual([], list(base.parent.glob("*.tmp")))
             transformer.assert_not_called()
 
     def test_video_rejects_original_before_whisper_or_render(self):
@@ -503,8 +518,13 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                     )
 
                 base = root / "demo" / "subtitles" / "demo.srt"
+                painted = root / "demo" / "subtitles" / "demo_pintado.srt"
                 self.assertEqual(source, base.read_text(encoding="utf-8"))
-                self.assertEqual(base, renderer.render.call_args.kwargs["subtitle_path"])
+                self.assertEqual(
+                    painted,
+                    renderer.render.call_args.kwargs["subtitle_path"],
+                )
+                self.assertEqual(source, painted.read_text(encoding="utf-8"))
                 transformer.assert_not_called()
 
     def test_menu_selects_subtitles_before_video(self):
@@ -679,7 +699,10 @@ class StudioSubtitleInputModesTest(unittest.TestCase):
                         original=True,
                     )
 
-                self.assertEqual(base, rendered_path)
+                self.assertEqual(
+                    root / "demo" / "subtitles" / "demo_pintado.srt",
+                    rendered_path,
+                )
                 self.assertEqual(source, base.read_text(encoding="utf-8"))
                 self.assertEqual(
                     source,

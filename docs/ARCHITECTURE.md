@@ -88,6 +88,8 @@ RunController.run()          menús → ApplicationExecutionRequest
    ↓
 (Sobrescribir)               OutputManager().remove_project() borra solo output/<proyecto>/
    ↓
+registro                     abre output/<proyecto>/registro.txt (app/shared/run_log.py)
+   ↓
 run_application(request)     app/core/start.py: elige el coordinador por el tipo de ruta
    ↓
 StandardExecutionCoordinator | StudioExecutionCoordinator | DesignExecutionCoordinator
@@ -273,7 +275,7 @@ cada uno por dentro:
 | `INTRO / OUTRO` | Añade una intro, un outro o ambos al vídeo |
 | `MONTAJE VÍDEOS` | Une varios vídeos en el orden que se elige, con o sin transiciones, y sin subtítulos |
 | `VIDEO + AUDIO \| SRT` | Sustituye el audio del vídeo por uno nuevo y, si hay SRT, lo pinta tal cual |
-| `EXPORTAR SRT ➜  VIDEO` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
+| `EXPORTAR SRT` | No genera vídeo: TRANSCRIBIR saca un SRT de un MP4 o MP3 con Whisper; CONVERTIR adapta un SRT al perfil de subtítulos elegido |
 
 Qué archivo va en cada carpeta de `input/studio/`, cómo se eligen y qué
 pregunta cada menú: [START.md, apartado 7](START.md#7-studio).
@@ -298,7 +300,7 @@ Archivos de subtítulos que quedan en `output/<proyecto>/subtitles/`:
 |---|---|
 | `<proyecto>.srt` | Siempre que hay subtítulos: copia del SRT de partida (el de Whisper en SOLO VIDEO, el del usuario en SRT + VIDEO) |
 | `<proyecto>_<modo>.srt` | SOLO VIDEO: el SRT adaptado al modo de cue del perfil (`<modo>` es su `cue_policy.mode`, p. ej. `single_line`); **es el que se pinta** |
-| `<proyecto>_original.srt` | SRT + VIDEO y VIDEO + AUDIO \| SRT, solo si el perfil cambia el texto a mayúsculas; si no, se pinta `<proyecto>.srt` |
+| `<proyecto>_pintado.srt` | SRT + VIDEO y VIDEO + AUDIO \| SRT, siempre: el SRT tal cual, con las mayúsculas o minúsculas del perfil (`text_case`); **es el que se pinta** |
 
 Para corregir un vídeo de SOLO VIDEO se corrige `<proyecto>_<modo>.srt` (el que
 se pintó), no `<proyecto>.srt`, y se pinta con SRT + VIDEO.
@@ -370,6 +372,7 @@ se para y lo avisa. Ningún menú vacía `output/` entero.
 
 | Ruta | Contenido |
 |---|---|
+| `registro.txt` | Registro de la ejecución, con la hora de cada línea: todo lo que salió en la terminal y, además, las líneas técnicas que no salen en pantalla (`ProgressLogger.detail`: detalles del grafo de FFmpeg, transiciones, overlays, fundidos, de dónde salen los tiempos de los subtítulos y de las escenas, la salida de Whisper, la carga de la voz…). Lo abre `main.py` cuando ya se sabe el proyecto y lo cierra al acabar, también tras un error (el error queda escrito). Si no se puede crear, avisa y la ejecución sigue sin él |
 | `scripts/guion.txt` | Guion usado |
 | `audio/voz.mp3`, `audio/audio_final.mp3` | Locución y audio mezclado |
 | `subtitles/` | SRT de la ruta estándar (`subtitulos.srt`) o de STUDIO ([apartado 8](#8-studio)) |
@@ -382,6 +385,12 @@ La ruta estándar crea siempre las seis carpetas (`scripts/`, `audio/`,
 `subtitles/`, `storyboard/`, `images/` y `video/`); cada etapa llena la suya.
 `video_clips/` solo aparece cuando se generan clips. `output/` está fuera de
 Git: es espacio de trabajo y se puede borrar o regenerar.
+
+Los números decimales que ve el usuario (la terminal, los resúmenes, los avisos
+y los errores) llevan coma: «5,50 s». Todos pasan por una única función,
+`screen_decimal` (`app/shared/screen_number.py`; `TimeFormatter` la usa para
+los tiempos). Los archivos (JSON, SRT, ASS, manifiestos, las líneas técnicas de
+`registro.txt`) y los comandos de FFmpeg siguen con punto.
 
 ---
 
@@ -476,7 +485,7 @@ AudioMixer                         mezcla la voz con la música → audio/audio_
 - **Voces.** El menú VOZ lista los documentos de `config/voice_configs/` en el
   orden que declara su `menu_order` y con su `display_name` («Chatterbox
   (natural, GPU)», «Piper Carlfm (rápida, CPU)», «Piper Davefx (rápida, CPU)»,
-  «Kokoro Alex», «Kokoro Dora»).
+  «Kokoro Alex (rápida, GPU)», «Kokoro Dora (rápida, GPU)»).
   Qué declara cada documento y cómo se añade una voz:
   [VOICEOVER.md](VOICEOVER.md#2-documento-de-voz).
 - **Backend.** `TtsBackendRegistry` (`app/modules/audio/`) solo resuelve claves
@@ -749,6 +758,13 @@ video_clips/scene_NNN.mkv + video_clips/video_clips_manifest.json
 - **Progreso.** Mientras Wan genera un clip, la terminal escribe
   «Clip 2/3 · 1 min 30 s» cada `progress_interval_seconds` (30 s) y, al acabar,
   «Clip 2/3 listo · …». Solo informa: no cambia la espera ni los tiempos de Wan.
+- **Manifiesto.** `video_clips_manifest.json` guarda, por escena, el clip y cómo
+  se generó (prompts, semilla, fotogramas…) con `"kept": true`. Tras montar el
+  vídeo final, los `.mkv` (FFV1, sin pérdida y pesados) se borran y su entrada
+  pasa a `"kept": false`: el manifiesto sigue diciendo qué se generó, pero no
+  apunta a un clip que ya no existe. Montar otra vez desde ese manifiesto da un
+  error claro («… se borró tras el render del vídeo final…»). DISEÑO → Video no
+  borra su clip.
 - **Salida sin pérdida.** Con `delivery.intermediate_output` = `lossless_ffv1`,
   los fotogramas que devuelve ComfyUI se guardan como un clip FFV1 (`.mkv`). Esos
   clips son intermedios: se borran cuando el vídeo final se ha publicado bien.
@@ -824,7 +840,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
-| `config/whisper.json` | Whisper: modelo, dispositivo, idioma y tolerancia del redondeo de los tiempos por palabra (ver abajo) |
+| `config/whisper.json` | Whisper: modelo, dispositivo, idioma, tolerancia del redondeo de los tiempos por palabra y carpeta de la caché de Triton (ver abajo) |
 | `config/voice.json` | Común a todas las voces: `workspace_dir`, la carpeta donde `VoiceBuilder` crea la carpeta de trabajo de cada síntesis (`tmp/voice`, dentro del proyecto e ignorada por Git; nunca el `%TEMP%` del sistema). Obligatoria: si falta o sale de la carpeta del proyecto, error CONFIG que nombra el archivo ([VOICEOVER.md §2](VOICEOVER.md#2-documento-de-voz)) |
 | `config/video.json` | Mezcla de los overlays y efectos visuales: `layer_blend.pixel_format` (`gbrp`) y `layer_blend.scale_flags` ([apartado 18](#18-composición-del-vídeo-final)). Obligatoria: si falta, error CONFIG que nombra el archivo |
 | `config/studio.json` | STUDIO, común a los dos formatos: `video_audio_srt.audio_tail_margin_seconds` (0,1 s), diferencia por debajo de la cual el audio de VIDEO + AUDIO \| SRT cuenta como igual al vídeo ([apartado 8](#8-studio)). Obligatoria: si falta, error CONFIG que nombra el archivo |
@@ -902,6 +918,7 @@ configuración (CONFIG) que nombra el archivo y la clave:
 | `device` | Dónde se ejecuta: `cuda` (la GPU) o `cpu` |
 | `language` | Idioma que transcribe (`Spanish`): el de la voz o el del vídeo de STUDIO |
 | `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
+| `triton_cache_dir` | Carpeta, relativa y dentro del proyecto, donde Whisper guarda los kernels que Triton compila para los tiempos por palabra (`models/whisper/_cache/triton`, que Git ignora). Se le pasa al proceso de Whisper como `TRITON_CACHE_DIR`; sin ella, Triton los dejaría en la carpeta de usuario (`~/.triton/cache`). Triton la crea la primera vez. Una ruta absoluta o que salga del proyecto es un error CONFIG |
 
 **ComfyUI** (`config/comfyui.json`, lo lee `app/shared/comfyui_files.py` la
 primera vez que se genera una imagen o un clip). Todas las claves son
@@ -1023,7 +1040,7 @@ AI VISUAL COMPOSER
 │
 └── STUDIO                      material propio (StudioExecutionCoordinator)
       SOLO VIDEO · SRT + VIDEO · INTRO / OUTRO · MONTAJE VÍDEOS
-      VIDEO + AUDIO | SRT · EXPORTAR SRT ➜  VIDEO
+      VIDEO + AUDIO | SRT · EXPORTAR SRT
 
 menús → ApplicationExecutionRequest → run_application() → coordinador
 formatos: vertical (9:16) y horizontal (16:9), declarados en config/formats.json

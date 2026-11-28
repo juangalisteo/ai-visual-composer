@@ -470,7 +470,7 @@ como enlace).
 
 ### Kokoro (opcional)
 
-Las voces «Kokoro Alex» y «Kokoro Dora» del menú VOZ usan Kokoro 0.9.4
+Las voces «Kokoro Alex (rápida, GPU)» y «Kokoro Dora (rápida, GPU)» del menú VOZ usan Kokoro 0.9.4
 (hexgrad, licencia Apache-2.0). Como Chatterbox, necesita su propio Python
 (3.12) con torch: no se instala en el entorno del proyecto. Si eliges una de
 sus voces sin montarlo, el programa para con un error CONFIG que nombra la ruta
@@ -566,6 +566,12 @@ Versión de Triton importada: 3.7.1
 En este entorno validado, instalar `triton-windows` quitó los avisos de
 Whisper sobre el fallo al lanzar el kernel de Triton y su fallback a las
 implementaciones más lentas de mediana y DTW.
+
+Triton compila esos kernels la primera vez y los guarda en una caché. El
+programa le da a Whisper la carpeta `models/whisper/_cache/triton`, dentro del
+proyecto (clave `triton_cache_dir` de `config/whisper.json`), para que no
+escriba en la carpeta de usuario (`~/.triton/cache`). Si ya tienes esa carpeta
+de usuario de ejecuciones anteriores, el programa no la usa: puedes borrarla.
 
 No fue necesaria una instalación completa del CUDA Toolkit porque PyTorch ya
 traía un runtime de CUDA funcional en este entorno.

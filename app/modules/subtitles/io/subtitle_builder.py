@@ -1,5 +1,6 @@
 from collections import Counter
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,13 +15,17 @@ from app.modules.subtitles.io.whisper_segment_filter import (
 )
 from app.modules.subtitles.io.whisper_settings import (
     whisper_transcription_config,
+    whisper_triton_cache_dir,
 )
 from app.modules.subtitles.io.whisper_transcription_config import (
     WhisperTranscriptionConfig,
 )
 from app.modules.subtitles.policies.timing import whisper_timing_path
 from app.shared.progress_logger import ProgressLogger
-from app.shared.operational_error import create_operational_error
+from app.shared.operational_error import (
+    create_operational_error,
+    summarize_technical_text,
+)
 
 
 class SubtitleBuilder:
@@ -34,9 +39,11 @@ class SubtitleBuilder:
         self,
         transcription_config: WhisperTranscriptionConfig | None = None,
         segment_filter: WhisperRepetitionFilter | None = None,
+        triton_cache_dir: Path | None = None,
     ):
-        # Without one, it is read from config/whisper.json when first needed.
+        # Without them, they are read from config/whisper.json when needed.
         self._transcription_config = transcription_config
+        self._triton_cache_dir = triton_cache_dir
         self.segment_filter = (
             segment_filter
             if segment_filter is not None
@@ -123,8 +130,18 @@ class SubtitleBuilder:
             ]
 
             try:
-                subprocess.run(command, check=True)
+                completed = subprocess.run(
+                    command,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    env=self._whisper_environment(),
+                )
             except subprocess.CalledProcessError as error:
+                self._record_whisper_output(error.output)
                 raise create_operational_error(
                     family="SUBTITLES",
                     user_message="Whisper no pudo generar los subtítulos temporales.",
@@ -137,8 +154,12 @@ class SubtitleBuilder:
                         "model": transcription_config.model,
                         "phase": "transcription",
                         "expected_output": str(temp_output_dir),
+                        "output_summary": summarize_technical_text(
+                            error.output
+                        ),
                     },
                 ) from error
+            self._record_whisper_output(getattr(completed, "stdout", None))
 
             generated_srt = (
                 temp_output_dir
@@ -171,7 +192,7 @@ class SubtitleBuilder:
             )
 
             if discarded:
-                ProgressLogger.info(
+                ProgressLogger.detail(
                     self._discarded_message(
                         discarded
                     )
@@ -238,6 +259,32 @@ class SubtitleBuilder:
         )
 
         return output_path
+
+    def _whisper_environment(self):
+        """The environment of the Whisper process.
+
+        - ``TRITON_CACHE_DIR``: the folder of ``config/whisper.json``
+          (``triton_cache_dir``), inside the project; without it Triton keeps
+          its kernels in the user folder (~/.triton/cache). Triton creates it.
+        - ``PYTHONIOENCODING``: its output goes to the record of the run (not
+          to the screen) through a pipe; UTF-8, so no character stops Whisper.
+        """
+        triton_cache_dir = (
+            self._triton_cache_dir
+            if self._triton_cache_dir is not None
+            else whisper_triton_cache_dir()
+        )
+        return {
+            **os.environ,
+            "TRITON_CACHE_DIR": str(triton_cache_dir),
+            "PYTHONIOENCODING": "utf-8",
+        }
+
+    @staticmethod
+    def _record_whisper_output(output):
+        """Whisper's own lines (its segments and notices) go to the record."""
+        if isinstance(output, str) and output.strip():
+            ProgressLogger.detail(output.rstrip())
 
     @staticmethod
     def _record_voice_pauses(timing_path, voice_pauses):

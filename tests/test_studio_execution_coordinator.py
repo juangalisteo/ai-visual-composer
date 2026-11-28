@@ -347,13 +347,15 @@ class StudioExecutionCoordinatorTest(unittest.TestCase):
                 )
 
             base_path = root / "subtitles" / "final.srt"
-            derived_path = root / "subtitles" / "final_original.srt"
+            derived_path = root / "subtitles" / "final_pintado.srt"
             rendered_plan = service.render.call_args.args[0]
             self.assertEqual(base_path, result.base_subtitle_path)
             self.assertEqual(derived_path, result.generated_subtitle_path)
             self.assertEqual(derived_path, rendered_plan.subtitle_path)
             self.assertEqual(output_path, result.output_path)
             self.assertEqual(2.5, result.generated_duration)
+            self.assertIsInstance(result.render_duration, float)
+            self.assertGreaterEqual(result.render_duration, 0.0)
             self.assertEqual("Texto humano", source_subtitle_path.read_text(encoding="utf-8").splitlines()[2])
             self.assertEqual("TEXTO HUMANO", derived_path.read_text(encoding="utf-8").splitlines()[2])
             project.setup.assert_called_once_with()

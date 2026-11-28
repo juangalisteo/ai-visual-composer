@@ -998,12 +998,16 @@ def test_process_reports_only_well_formed_progress_lines(tmp_path):
     assert progress == [(2, 4)]
 
 
-def test_process_announces_the_model_load(tmp_path, capsys):
+def test_process_announces_the_model_load_only_in_the_record(
+    tmp_path, capsys, run_log_text
+):
     root = _project(tmp_path)
 
     _backend(root, FakeWorker()).synthesize(_request(root))
 
-    assert "Cargando Chatterbox (cuda) en su propio proceso…" in capsys.readouterr().out
+    # A technical line: in the record of the run, not on screen (A2-D).
+    assert "Cargando Chatterbox (cuda) en su propio proceso…" in run_log_text()
+    assert "Cargando" not in capsys.readouterr().out
 
 
 def test_default_progress_prints_spanish_parts(capsys):

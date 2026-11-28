@@ -379,7 +379,7 @@ class DesignExecutionCoordinatorTest(unittest.TestCase):
         self.assertFalse(project.setup.called)
         self.assertEqual(2, len(telemetry.measurements))
         self.assertEqual(
-            {"Imágenes": 1.25, "Video I2V": 1.25},
+            {"Imágenes": 1.25, "Clips de vídeo": 1.25},
             telemetry.completion["stage_times"],
         )
         self.assertEqual(20.0, telemetry.completion["pipeline_start"])

@@ -55,17 +55,17 @@ class VideoValidator:
             - generated_duration
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Duración esperada: "
             f"{expected_duration:.2f} segundos"
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Duración generada: "
             f"{generated_duration:.2f} segundos"
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Diferencia de duración: "
             f"{duration_difference:.2f} segundos"
         )

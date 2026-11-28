@@ -80,15 +80,15 @@ class PipelineTelemetryTest(unittest.TestCase):
             telemetry.complete(
                 summary=summary,
                 stage_times={
-                    "Voces": 2.0,
-                    "Script": 1.0,
+                    "Voz": 2.0,
+                    "Guion": 1.0,
                     "Etapa desconocida": 4.0,
                 },
                 pipeline_start=1.0,
             )
 
         self.assertEqual(
-            ("Script", "Voces"),
+            ("Guion", "Voz"),
             tuple(summary.stage_times),
         )
         self.assertEqual(10.0, summary.total_time())
@@ -148,14 +148,14 @@ class PipelineTelemetryTest(unittest.TestCase):
         with patch.object(summary, "print") as print_summary:
             telemetry.complete(
                 summary=summary,
-                stage_times={"Video I2V": 3.0},
+                stage_times={"Clips de vídeo": 3.0},
                 pipeline_start=1.0,
             )
 
         self.assertEqual(0, summary.scene_count)
         self.assertEqual(0, summary.image_count)
         self.assertEqual(4.0, summary.media_duration)
-        self.assertEqual(("Video I2V",), tuple(summary.stage_times))
+        self.assertEqual(("Clips de vídeo",), tuple(summary.stage_times))
         self.assertEqual(6.0, summary.total_time())
         print_summary.assert_called_once_with()
 
@@ -168,7 +168,7 @@ class PipelineTelemetryTest(unittest.TestCase):
         rendered = summary.render()
 
         self.assertIn("Segundos por imagen", rendered)
-        self.assertIn("11.33", rendered)
+        self.assertIn("11,33", rendered)
         self.assertIn("Duración", rendered)
         self.assertIn("Imágenes", rendered)
 

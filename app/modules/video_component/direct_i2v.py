@@ -177,7 +177,7 @@ def run_direct_i2v(
     pipeline_telemetry.complete(
         summary=summary,
         stage_times={
-            "Video I2V": video_elapsed,
+            "Clips de vídeo": video_elapsed,
         },
         pipeline_start=pipeline_start,
     )

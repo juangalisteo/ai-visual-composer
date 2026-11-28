@@ -26,7 +26,7 @@ from app.modules.subtitles.policies.timing import (
 
 
 RUN = "app.modules.subtitles.io.subtitle_builder.subprocess.run"
-INFO = "app.modules.subtitles.io.subtitle_builder.ProgressLogger.info"
+INFO = "app.modules.subtitles.io.subtitle_builder.ProgressLogger.detail"
 PHRASE = "En el precio a pagar en un ajuste de cuentas."
 
 
@@ -182,7 +182,7 @@ def _srt_cues(content):
 
 
 def _fake_whisper(segments, written, *, srt=None, newline="\r\n"):
-    def run(command, check):
+    def run(command, check, **_options):
         output_dir = Path(command[command.index("--output_dir") + 1])
         stem = Path(command[3]).stem
         written["srt"] = (

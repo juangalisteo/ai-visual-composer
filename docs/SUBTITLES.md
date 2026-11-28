@@ -219,7 +219,7 @@ modo agrupa las palabras con ellos. En GUION, IMAGEN y VIDEO esos tiempos
 llegan ya fuera de las pausas que escribió la voz, así que en ellas no queda
 texto en pantalla, y las palabras son siempre las del guion, con sus
 mayúsculas y signos, aunque Whisper oiga otra cosa
-([ARCHITECTURE.md, apartado 14](ARCHITECTURE.md#14-subtítulos)). Si no los hay (EXPORTAR SRT ➜  VIDEO →
+([ARCHITECTURE.md, apartado 14](ARCHITECTURE.md#14-subtítulos)). Si no los hay (EXPORTAR SRT →
 CONVERTIR, o la ruta estándar cuando Whisper no da tiempos por palabra), cada
 línea del SRT se corta en trozos y su tiempo se reparte entre ellos. En
 «Palabra única» (`word_by_word`) y en la ventana deslizante (`rolling_window`)

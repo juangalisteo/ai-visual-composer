@@ -33,7 +33,7 @@ class MotionGraphBuilder(
     ):
         start = time.perf_counter()
 
-        ProgressLogger.start(
+        ProgressLogger.detail_start(
             "PREPARANDO MOVIMIENTOS"
         )
 
@@ -123,7 +123,7 @@ class MotionGraphBuilder(
                 f"[{stream_name}]"
             )
 
-        ProgressLogger.finish(
+        ProgressLogger.detail_finish(
             "MOVIMIENTOS PREPARADOS",
             time.perf_counter() - start
         )
@@ -151,7 +151,7 @@ class MotionGraphBuilder(
         stream_name
     ):
         if media_type == "video":
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 f"Clip escena {index + 1}: "
                 f"{duration:.2f} s"
             )

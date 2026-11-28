@@ -82,7 +82,7 @@ class TransitionBuilder:
             - start
         )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Transición {from_scene}→{to_scene}: "
             f"{transition_type} | "
             f"{duration:.2f} s | "

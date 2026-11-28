@@ -461,7 +461,7 @@ def test_voice_builder_reports_a_missing_voice_file_as_config(tmp_path):
     context = error.value.context
     assert context.family == "CONFIG"
     assert context.user_message == (
-        "La configuración de la voz «Kokoro Alex» no es válida: "
+        "La configuración de la voz «Kokoro Alex (rápida, GPU)» no es válida: "
         f"no existe «{VOICE_FILE}» (backend_options.voice.path). {SETUP_HINT}"
     )
     assert worker.calls == []
@@ -881,8 +881,8 @@ def test_default_registry_resolves_kokoro_without_loading_anything(tmp_path):
 @pytest.mark.parametrize(
     ("stem", "voice_file", "display_name", "pacing"),
     (
-        ("kokoro_alex", "em_alex.pt", "Kokoro Alex", (14.42, 2.87)),
-        ("kokoro_dora", "ef_dora.pt", "Kokoro Dora", (14.40, 2.86)),
+        ("kokoro_alex", "em_alex.pt", "Kokoro Alex (rápida, GPU)", (14.42, 2.87)),
+        ("kokoro_dora", "ef_dora.pt", "Kokoro Dora (rápida, GPU)", (14.40, 2.86)),
     ),
 )
 def test_project_voice_documents_declare_everything_inside_the_project(

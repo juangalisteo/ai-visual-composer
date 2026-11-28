@@ -158,6 +158,8 @@ class StandardExecutionCoordinator:
                 "voice",
                 False
             ),
+            # A video made of I2V clips has scenes, not still images.
+            still_images=visual_pipeline != "video",
         )
         telemetry_artifacts = _pipeline_telemetry_artifacts(
             project
@@ -190,7 +192,7 @@ class StandardExecutionCoordinator:
             **script_options,
         )
 
-        stage_times["Script"] = (
+        stage_times["Guion"] = (
             script_elapsed
         )
         script_text = prepared_script.text
@@ -219,7 +221,7 @@ class StandardExecutionCoordinator:
                 output_path=project.audio_path(),
             )
 
-            stage_times["Voces"] = (
+            stage_times["Voz"] = (
                 voice_elapsed
             )
             voice_pauses = _voice_pauses(
@@ -408,7 +410,7 @@ class StandardExecutionCoordinator:
                     )
                 )
 
-                stage_times["Video I2V"] = (
+                stage_times["Clips de vídeo"] = (
                     video_i2v_elapsed
                 )
 
@@ -430,7 +432,7 @@ class StandardExecutionCoordinator:
                     )
                 )
 
-                stage_times["Vídeo"] = (
+                stage_times["Vídeo final"] = (
                     video_elapsed
                 )
 
@@ -453,7 +455,7 @@ class StandardExecutionCoordinator:
                     )
                 )
 
-                stage_times["Vídeo"] = (
+                stage_times["Vídeo final"] = (
                     video_elapsed
                 )
 
@@ -495,7 +497,7 @@ class StandardExecutionCoordinator:
                     ),
                 },
             )
-            stage_times["Script"] += elapsed
+            stage_times["Guion"] += elapsed
             return adjusted.text
 
         def synthesize_voice(text, output_path):
@@ -504,7 +506,7 @@ class StandardExecutionCoordinator:
                 text,
                 output_path=output_path,
             )
-            stage_times["Voces"] += elapsed
+            stage_times["Voz"] += elapsed
             return path, _voice_pauses(voice_builder)
 
         return ScriptDurationFit(

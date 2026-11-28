@@ -97,7 +97,7 @@ def _run_builder(builder, root):
     output_path = root / "captions.srt"
     audio_path.write_bytes(b"audio")
 
-    def fake_run(command, check):
+    def fake_run(command, check, **_options):
         commands.append(command)
         output_directory = Path(command[command.index("--output_dir") + 1])
         (output_directory / "source.srt").write_text(
@@ -150,7 +150,7 @@ def test_subtitle_builder_reads_config_whisper_json_without_an_injected_config(
     _write_config(
         tmp_path,
         '{"model": " test_model ", "device": "test_device", '
-        '"language": "test_language"}',
+        '"language": "test_language", "triton_cache_dir": "test_cache/triton"}',
     )
     builder = SubtitleBuilder()
 

@@ -425,7 +425,7 @@ class StudioSubtitleExportControllerTest(unittest.TestCase):
                 "3. INTRO / OUTRO",
                 "4. MONTAJE VÍDEOS",
                 "5. VIDEO + AUDIO | SRT",
-                "6. EXPORTAR SRT ➜  VIDEO",
+                "6. EXPORTAR SRT",
             ],
             messages,
         )
@@ -826,7 +826,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             studio_summary.print_studio_summary(request, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
-        self.assertIn(("Entrada", "EXPORTAR SRT ➜  VIDEO"), details)
+        self.assertIn(("Entrada", "EXPORTAR SRT"), details)
         self.assertIn(("Modo", "CONVERTIR"), details)
         self.assertIn(("Perfil de subtítulos", "Palabra por palabra"), details)
         self.assertIn(
@@ -838,6 +838,7 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             details,
         )
         self.assertIn(("SRT generado", result.output_path), details)
+        self.assertFalse(any(name == "Frases" for name, _ in details))
 
     def test_transcribe_summary_does_not_invent_a_profile(self):
         plan = StudioSubtitleExportPlan(
@@ -866,11 +867,19 @@ class StudioSubtitleExportSummaryTest(unittest.TestCase):
             studio_summary.print_studio_summary(request, result, 2.0)
 
         details = [call.args for call in summary.add_detail.call_args_list]
-        self.assertNotIn(("Perfil / formato", ""), details)
+        self.assertNotIn(("Formato", ""), details)
         self.assertFalse(
-            any(name == "Perfil / formato" for name, _ in details)
+            any(name in {"Formato", "Perfil"} for name, _ in details)
         )
         self.assertFalse(any(name == "Tiempos" for name, _ in details))
+        # Whisper's long sentences: convert before painting (A2-J).
+        self.assertIn(
+            (
+                "Frases",
+                "Largas, las de Whisper. Para pintarlo, pásalo antes por CONVERTIR.",
+            ),
+            details,
+        )
 
 
 if __name__ == "__main__":

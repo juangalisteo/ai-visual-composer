@@ -52,7 +52,7 @@ def test_navigation_keeps_pipeline_mode_condition_and_technical_values():
 
 
 def test_navigation_keeps_studio_menu_order_and_return_types():
-    terminal = MenuAnswers("EXPORTAR SRT ➜  VIDEO", "CONVERTIR", "Sí")
+    terminal = MenuAnswers("EXPORTAR SRT", "CONVERTIR", "Sí")
     navigation = Navigation(terminal, lambda: pytest.fail("No debe cancelar"))
 
     assert navigation.select_studio_input_mode() == (
@@ -69,7 +69,7 @@ def test_navigation_keeps_studio_menu_order_and_return_types():
         "3. INTRO / OUTRO",
         "4. MONTAJE VÍDEOS",
         "5. VIDEO + AUDIO | SRT",
-        "6. EXPORTAR SRT ➜  VIDEO",
+        "6. EXPORTAR SRT",
         "\nMODO\n",
         "1. TRANSCRIBIR",
         "2. CONVERTIR",

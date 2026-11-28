@@ -45,6 +45,8 @@ class I2VArtifactLease:
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
+            if entry.get("kept") is False:
+                continue
             output_clip = entry.get("output_clip")
             if not output_clip:
                 continue
@@ -73,6 +75,7 @@ class I2VArtifactLease:
 
         manifest_directory = self.manifest_path.parent.resolve()
         failures = []
+        removed = []
         for owned_path in self.owned_lossless_paths:
             if (
                 owned_path.suffix.lower() != ".mkv"
@@ -87,8 +90,34 @@ class I2VArtifactLease:
                     "No se pudo limpiar el FFV1 WAN poseido tras el render: "
                     f"{owned_path} ({error})"
                 )
+                continue
+            removed.append(owned_path)
 
+        if removed:
+            self._mark_removed_clips(removed)
         return tuple(failures)
+
+    def _mark_removed_clips(self, removed_paths):
+        """Keep every clip in the manifest; a deleted one says ``"kept": false``.
+
+        The manifest stays the record of what WAN generated (prompts, seed,
+        frames…), but it no longer points to a ``.mkv`` as if it existed
+        (PRUEBA-GS, fallo 17). If it cannot be rewritten, the final video is
+        fine: it only warns.
+        """
+        removed = {Path(path).resolve() for path in removed_paths}
+        try:
+            entries = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+            for entry in entries:
+                output_clip = entry.get("output_clip") if isinstance(entry, dict) else None
+                if output_clip and Path(output_clip).resolve() in removed:
+                    entry["kept"] = False
+            _write_json_atomically(self.manifest_path, entries)
+        except (OSError, ValueError, TypeError, AttributeError) as error:
+            ProgressLogger.warning(
+                f"No se pudo marcar en «{self.manifest_path}» los clips "
+                f"borrados tras el render ({error}). El vídeo final está bien."
+            )
 
 
 def generate_video_clips(
@@ -235,14 +264,20 @@ def _publish_video_clips_manifest_atomically(
         Path(output_dir)
         / "video_clips_manifest.json"
     )
-    temporary_path = manifest_path.with_name(
-        f".{manifest_path.name}.{secrets.token_hex(16)}.tmp"
+    _write_json_atomically(manifest_path, clip_entries)
+    return manifest_path
+
+
+def _write_json_atomically(path, data):
+    path = Path(path)
+    temporary_path = path.with_name(
+        f".{path.name}.{secrets.token_hex(16)}.tmp"
     )
 
     try:
         temporary_path.write_text(
             json.dumps(
-                clip_entries,
+                data,
                 ensure_ascii=False,
                 indent=4,
             ),
@@ -250,7 +285,7 @@ def _publish_video_clips_manifest_atomically(
         )
         os.replace(
             temporary_path,
-            manifest_path,
+            path,
         )
     except Exception:
         try:
@@ -258,8 +293,6 @@ def _publish_video_clips_manifest_atomically(
         except OSError:
             pass
         raise
-
-    return manifest_path
 
 
 def build_public_video(
@@ -359,6 +392,8 @@ def _build_video_clip_manifest_entry(
         "output_clip": str(
             result.output_clip
         ),
+        # False once the final video is rendered and the clip is deleted.
+        "kept": True,
         "positive_prompt": result.positive_prompt,
         "negative_prompt": result.negative_prompt,
         "motion_summary": result.motion_summary,

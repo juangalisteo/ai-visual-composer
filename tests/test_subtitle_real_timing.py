@@ -284,7 +284,7 @@ class SubtitleRealTimingTest(unittest.TestCase):
             audio_path.write_bytes(b"audio")
             calls = []
 
-            def fake_run(command, check):
+            def fake_run(command, check, **_options):
                 calls.append(command)
                 output_dir = Path(command[-1])
                 output_dir.mkdir(parents=True, exist_ok=True)
@@ -883,7 +883,7 @@ class VoicePauseFittingTest(unittest.TestCase):
             {"segments": [{"words": [{"word": " Hola", "start": 0.0, "end": 0.5}]}]}
         )
 
-        def fake_run(command, check):
+        def fake_run(command, check, **_options):
             output_dir = Path(command[-1])
             (output_dir / "voz.srt").write_text(
                 "1\n00:00:00,000 --> 00:00:00,500\nHola\n",

@@ -433,6 +433,9 @@ class StudioExecutionCoordinator:
                 subtitle_path=render_subtitle_path,
             )
 
+        # It says what it is doing, like the other modes (PRUEBA-GS, fallo 14).
+        ProgressLogger.start("RENDERIZANDO STUDIO")
+        render_start = time.perf_counter()
         output_path, duration, command = (
             service
             or StudioVideoAudioSrtService()
@@ -442,12 +445,15 @@ class StudioExecutionCoordinator:
             profile,
             subtitle_profile=subtitle_profile,
         )
+        render_duration = time.perf_counter() - render_start
+        ProgressLogger.finish("RENDER STUDIO COMPLETADO", render_duration)
         return type(
             "StudioVideoAudioSrtResult",
             (),
             {
                 "output_path": output_path,
                 "generated_duration": duration,
+                "render_duration": render_duration,
                 "command": command,
                 "base_subtitle_path": base_subtitle_path,
                 "generated_subtitle_path": render_subtitle_path,
@@ -640,23 +646,32 @@ class StudioExecutionCoordinator:
         timing=None,
         original=False,
     ):
-        """Publish the derived SRT used exclusively by the renderer."""
+        """Publish the derived SRT used exclusively by the renderer.
+
+        With ``original`` (SRT + VIDEO and VIDEO + AUDIO | SRT) the SRT is
+        painted as it is, only with the text case of the profile, and it is
+        always written as ``<proyecto>_pintado.srt``, also when the profile
+        does not change the text: the documentation names one file. Then it
+        is a byte copy of the SRT (its line ends included), so what is painted
+        is exactly the SRT as it was (AGENTS.md §8).
+        """
         if original:
             content = Path(base_subtitle_path).read_text(encoding="utf-8")
             text_case = TextCasePolicy.from_cue_policy(
                 subtitle_profile.cue_policy
             )
             rendered = text_case.apply_srt_cues(content)
-            if rendered == content:
-                return Path(base_subtitle_path)
             target_path = (
                 Path(output_path).parent.parent
                 / "subtitles"
-                / f"{Path(output_path).stem}_original.srt"
+                / f"{Path(output_path).stem}_pintado.srt"
             )
             target_path.parent.mkdir(parents=True, exist_ok=True)
             temporary_path = target_path.with_suffix(".srt.tmp")
-            temporary_path.write_text(rendered, encoding="utf-8")
+            if rendered == content:
+                shutil.copyfile(base_subtitle_path, temporary_path)
+            else:
+                temporary_path.write_text(rendered, encoding="utf-8")
             temporary_path.replace(target_path)
             return target_path
 

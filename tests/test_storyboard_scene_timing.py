@@ -115,7 +115,7 @@ def _build(tmp_path, audio_duration, **build_options):
         "app.modules.storyboard.storyboard_builder.StoryboardAIBuilder",
         _FakeStoryboardAI,
     ), patch(
-        "app.modules.storyboard.storyboard_builder.ProgressLogger.info",
+        "app.modules.storyboard.storyboard_builder.ProgressLogger.detail",
     ) as info:
         StoryboardBuilder(
             config_manager=config,

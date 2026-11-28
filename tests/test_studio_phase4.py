@@ -206,7 +206,7 @@ class StudioPhase4Test(unittest.TestCase):
             for call in print_mock.call_args_list
             if call.args
         )
-        self.assertIn("STUDIO COMPLETADO", printed)
+        self.assertIn("SRT + VIDEO COMPLETADO", printed)
         self.assertIn("Video final", printed)
         self.assertIn(str(final_output), printed)
         start.assert_called_once()
@@ -255,7 +255,8 @@ class StudioPhase4Test(unittest.TestCase):
             if call.args
         )
         self.assertIn("Proyecto", printed)
-        self.assertIn("studio_vertical / Vertical", printed)
+        self.assertIn("Formato.................... Vertical 9:16", printed)
+        self.assertNotIn("studio_vertical", printed)
         self.assertIn("Entrada", printed)
         self.assertIn("VIDEO", printed)
         self.assertIn("Palabra por palabra", printed)
@@ -264,7 +265,7 @@ class StudioPhase4Test(unittest.TestCase):
         self.assertIn(str(generated_srt), printed)
         self.assertIn("Video final", printed)
         self.assertIn(str(output_path), printed)
-        self.assertIn("STUDIO COMPLETADO", printed)
+        self.assertIn("SOLO VIDEO COMPLETADO", printed)
 
     def test_studio_video_summary_separates_real_stages_from_global_total(self):
         result = SimpleNamespace(
@@ -294,17 +295,18 @@ class StudioPhase4Test(unittest.TestCase):
             for call in print_mock.call_args_list
             if call.args
         )
-        self.assertIn("Preparación subtítulos", printed)
-        self.assertIn("Render STUDIO", printed)
-        self.assertIn("Intro / Outro", printed)
-        self.assertIn("Tiempo total............... 5.00 s", printed)
+        stages = _stage_block(printed)
+        self.assertIn("Preparación subtítulos", stages)
+        self.assertIn("Render STUDIO", stages)
+        self.assertIn("Intro / Outro", stages)
+        self.assertIn("Tiempo total............... 5,00 s", printed)
         self.assertLess(
-            printed.index("Preparación subtítulos"),
-            printed.index("Render STUDIO"),
+            stages.index("Preparación subtítulos"),
+            stages.index("Render STUDIO"),
         )
         self.assertLess(
-            printed.index("Render STUDIO"),
-            printed.index("Intro / Outro"),
+            stages.index("Render STUDIO"),
+            stages.index("Intro / Outro"),
         )
 
     def test_studio_srt_video_summary_omits_external_subtitle_stage(self):
@@ -331,10 +333,12 @@ class StudioPhase4Test(unittest.TestCase):
             for call in print_mock.call_args_list
             if call.args
         )
-        self.assertNotIn("Preparación subtítulos", printed)
-        self.assertIn("Render STUDIO", printed)
-        self.assertNotIn("Intro / Outro", printed)
-        self.assertIn("Tiempo total............... 2.50 s", printed)
+        stages = _stage_block(printed)
+        self.assertNotIn("Preparación subtítulos", stages)
+        self.assertIn("Render STUDIO", stages)
+        self.assertNotIn("Intro / Outro", stages)
+        self.assertIn("Intro / Outro.............. No", printed)
+        self.assertIn("Tiempo total............... 2,50 s", printed)
 
     def test_studio_summary_does_not_invent_stages_without_recorded_durations(self):
         result = SimpleNamespace(
@@ -357,10 +361,8 @@ class StudioPhase4Test(unittest.TestCase):
             for call in print_mock.call_args_list
             if call.args
         )
-        self.assertNotIn("Preparación subtítulos", printed)
-        self.assertNotIn("Render STUDIO", printed)
-        self.assertNotIn("Intro / Outro", printed)
-        self.assertIn("Tiempo total............... 2.50 s", printed)
+        self.assertEqual("", _stage_block(printed).strip())
+        self.assertIn("Tiempo total............... 2,50 s", printed)
 
     def test_studio_summary_shows_intro_outro_only_for_executed_selection(self):
         intro_selection = IntroOutroSelection(Path("intro.mp4"), "intro")
@@ -745,3 +747,8 @@ class StudioPhase4RealFFmpegTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _stage_block(printed):
+    """The lines between the two dashed rules: the block of times."""
+    return printed.split("-" * 40)[1]

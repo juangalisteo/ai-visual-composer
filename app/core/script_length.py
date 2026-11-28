@@ -10,6 +10,7 @@ import math
 from typing import Mapping
 
 from app.shared.operational_error import create_operational_error
+from app.shared.screen_number import screen_decimal
 
 
 # Where the margin is declared: config/ai.json, section of the topic script.
@@ -109,7 +110,7 @@ def _fraction(value, name: str) -> float:
 
 
 def _percent_text(fraction: float) -> str:
-    return f"{fraction * 100:g}".replace(".", ",")
+    return screen_decimal(fraction * 100)
 
 
 def _margin_error(message):

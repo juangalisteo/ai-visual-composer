@@ -55,12 +55,12 @@ class FilterBuilder:
             visual_effect_builder=visual_effect_builder
         ).run()
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             f"Duración esperada del montaje: "
             f"{graph.context.timeline.audio_duration:.2f} segundos"
         )
 
-        ProgressLogger.finish(
+        ProgressLogger.detail_finish(
             "FILTRO FFMPEG CONSTRUIDO",
             time.perf_counter() - total_start
         )

@@ -51,7 +51,7 @@ class VisualEffectGraphBuilder(
         if (
             not config.visual_effects.enabled
         ):
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 "Efectos visuales: desactivados"
             )
 
@@ -80,7 +80,7 @@ class VisualEffectGraphBuilder(
                 )
             )
 
-        ProgressLogger.start(
+        ProgressLogger.detail_start(
             "PREPARANDO EFECTOS VISUALES"
         )
 
@@ -128,13 +128,13 @@ class VisualEffectGraphBuilder(
                 prepared_stream
             )
 
-            ProgressLogger.info(
+            ProgressLogger.detail(
                 f"Efecto visual: {operation['name']} | "
                 f"{operation['start_time']:.2f}-"
                 f"{operation['end_time']:.2f} s"
             )
 
-        ProgressLogger.info(
+        ProgressLogger.detail(
             "Efectos visuales aplicados: "
             f"{len(operations)}"
         )

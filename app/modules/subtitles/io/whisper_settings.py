@@ -11,12 +11,18 @@
   words up to this many seconds is that rounding, and the later word starts
   where the earlier one ends; a larger overlap is real and the whole
   transcription is rejected (see ``WhisperTimingParser``).
+- ``triton_cache_dir``: folder, relative to the project and inside it, where
+  Whisper keeps the GPU kernels that Triton compiles for the word times. It is
+  given to the Whisper process as ``TRITON_CACHE_DIR``; without it, Triton
+  writes them in the user folder (``~/.triton/cache``). It should be a folder
+  Git ignores (``models/`` in the project).
 
 Every key is required: the code never invents a value.
 """
 
 import json
 import math
+import os
 from pathlib import Path
 
 from app.modules.subtitles.io.whisper_transcription_config import (
@@ -75,6 +81,32 @@ def whisper_word_overlap_tolerance(path=WHISPER_SETTINGS_PATH) -> float:
             key=key,
         )
     return float(value)
+
+
+def whisper_triton_cache_dir(path=WHISPER_SETTINGS_PATH, project_root=None) -> Path:
+    """Absolute folder for Triton's cache, declared relative to the project."""
+    path = Path(path)
+    key = "triton_cache_dir"
+    value = _require_key(_load(path), key, path)
+    declared = Path(value.strip()) if isinstance(value, str) else None
+    root = Path(os.path.abspath(project_root or Path.cwd()))
+    if declared is None or not value.strip() or declared.anchor:
+        raise _triton_folder_error(path, key)
+    candidate = Path(os.path.normpath(root / declared))
+    if candidate == root or not candidate.is_relative_to(root):
+        raise _triton_folder_error(path, key)
+    return candidate
+
+
+def _triton_folder_error(path, key):
+    return _config_error(
+        f"En «{_display(path)}», «{key}» debe ser una carpeta relativa, "
+        "dentro de la carpeta del proyecto.",
+        f"Escriba en «{key}» una carpeta del proyecto que Git ignore, por "
+        "ejemplo models/whisper/_cache/triton.",
+        path,
+        key=key,
+    )
 
 
 def _load(path):

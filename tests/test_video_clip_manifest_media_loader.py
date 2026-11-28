@@ -172,6 +172,36 @@ class VideoClipManifestMediaLoaderTest(unittest.TestCase):
                     media_manifest_type="video_clips"
                 )
 
+    def test_clip_deleted_after_the_render_fails_clearly(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            audio_path, subtitle_path, output_path = self._base_files(root)
+            kept_clip = root / "scene_001.mkv"
+            kept_clip.write_bytes(b"ffv1")
+            manifest_path = root / "video_clips_manifest.json"
+            for kept, error in ((False, "se borró tras el render"), (True, None)):
+                manifest_path.write_text(
+                    json.dumps(
+                        [{"scene": 1, "output_clip": str(kept_clip), "kept": kept}]
+                    ),
+                    encoding="utf-8",
+                )
+                options = {
+                    "audio_path": audio_path,
+                    "subtitle_path": subtitle_path,
+                    "images_manifest_path": manifest_path,
+                    "output_path": output_path,
+                    "media_manifest_type": "video_clips",
+                }
+                with self.subTest(kept=kept):
+                    if error is None:
+                        media = MediaLoader().load(**options)
+                        self.assertEqual((kept_clip,), tuple(media.image_paths))
+                    else:
+                        # Even if a file with that name is there again.
+                        with self.assertRaisesRegex(FileNotFoundError, error):
+                            MediaLoader().load(**options)
+
     def test_duplicate_scene_fails_clearly(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(

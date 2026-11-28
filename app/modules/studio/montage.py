@@ -23,6 +23,7 @@ from app.shared.operational_error import (
     create_operational_error,
     summarize_technical_text,
 )
+from app.shared.screen_number import screen_decimal
 
 
 _MODE_LABEL = StudioInputMode.MONTAJE_VIDEOS.label
@@ -713,7 +714,7 @@ class StudioMontageService:
             if duration is None or duration <= transition_duration:
                 raise StudioMontageError(
                     "El clip no tiene duración suficiente para una "
-                    f"transición de {transition_duration:.2f} s: "
+                    f"transición de {screen_decimal(transition_duration, 2)} s: "
                     f"{clip.original_name}."
                 )
 
