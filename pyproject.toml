@@ -4,6 +4,7 @@
 testpaths = ["tests"]
 markers = [
     "real_run_log: el test usa el registro real de la ejecución (output/<proyecto>/registro.txt)",
+    "real_whisper_cuda_cache: el test usa la carpeta de la caché de CUDA de Whisper que declara config/whisper.json",
 ]
 
 [tool.ruff]
