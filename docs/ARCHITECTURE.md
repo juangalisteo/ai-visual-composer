@@ -840,7 +840,7 @@ Todo lo que cambia entre ejecuciones está en `config/` y `prompts/`:
 | `config/formats.json` | Los formatos ([apartado 4](#4-formatos)) |
 | `config/fonts.json` | Las fuentes de los subtítulos: por cada una, su archivo en `assets/fonts/`, sus alias y, si la tiene, su reserva (otra fuente del catálogo, un solo nivel) |
 | `config/ai.json` | Ollama: modelo, cuánto tiempo queda cargado y, por tarea (guion y storyboard), modelo, razonamiento y opciones (ver abajo) |
-| `config/whisper.json` | Whisper: modelo, dispositivo, idioma, tolerancia del redondeo de los tiempos por palabra y carpeta de la caché de Triton (ver abajo) |
+| `config/whisper.json` | Whisper: modelo, dispositivo, idioma, tolerancia del redondeo de los tiempos por palabra y carpetas de las cachés de Triton y de CUDA (ver abajo) |
 | `config/voice.json` | Común a todas las voces: `workspace_dir`, la carpeta donde `VoiceBuilder` crea la carpeta de trabajo de cada síntesis (`tmp/voice`, dentro del proyecto e ignorada por Git; nunca el `%TEMP%` del sistema). Obligatoria: si falta o sale de la carpeta del proyecto, error CONFIG que nombra el archivo ([VOICEOVER.md §2](VOICEOVER.md#2-documento-de-voz)) |
 | `config/video.json` | Mezcla de los overlays y efectos visuales: `layer_blend.pixel_format` (`gbrp`) y `layer_blend.scale_flags` ([apartado 18](#18-composición-del-vídeo-final)). Obligatoria: si falta, error CONFIG que nombra el archivo |
 | `config/studio.json` | STUDIO, común a los dos formatos: `video_audio_srt.audio_tail_margin_seconds` (0,1 s), diferencia por debajo de la cual el audio de VIDEO + AUDIO \| SRT cuenta como igual al vídeo ([apartado 8](#8-studio)). Obligatoria: si falta, error CONFIG que nombra el archivo |
@@ -919,6 +919,7 @@ configuración (CONFIG) que nombra el archivo y la clave:
 | `language` | Idioma que transcribe (`Spanish`): el de la voz o el del vídeo de STUDIO |
 | `word_overlap_tolerance_seconds` | Solape máximo entre dos palabras seguidas que se toma como redondeo de Whisper (`0.001` = 1 ms; con `0`, cualquier solape descarta la transcripción). Ver [apartado 14](#14-subtítulos) |
 | `triton_cache_dir` | Carpeta, relativa y dentro del proyecto, donde Whisper guarda los kernels que Triton compila para los tiempos por palabra (`models/whisper/_cache/triton`, que Git ignora). Se le pasa al proceso de Whisper como `TRITON_CACHE_DIR`; sin ella, Triton los dejaría en la carpeta de usuario (`~/.triton/cache`). Triton la crea la primera vez. Una ruta absoluta o que salga del proyecto es un error CONFIG |
+| `cuda_cache_dir` | Carpeta, relativa y dentro del proyecto, donde CUDA guarda los kernels que compila para la GPU mientras trabaja Whisper (`models/whisper/_cache/cuda`, que Git ignora). Se le pasa al proceso de Whisper como `CUDA_CACHE_PATH`, que CUDA lee al arrancar en ese proceso; sin ella, CUDA los dejaría en `%APPDATA%\NVIDIA\ComputeCache`. CUDA no la crea: la crea `SubtitleBuilder` antes de lanzar Whisper (si no puede, error FILESYSTEM). Una ruta absoluta o que salga del proyecto es un error CONFIG |
 
 **ComfyUI** (`config/comfyui.json`, lo lee `app/shared/comfyui_files.py` la
 primera vez que se genera una imagen o un clip). Todas las claves son

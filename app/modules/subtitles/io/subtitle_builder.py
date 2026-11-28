@@ -14,6 +14,7 @@ from app.modules.subtitles.io.whisper_segment_filter import (
     WhisperRepetitionFilter,
 )
 from app.modules.subtitles.io.whisper_settings import (
+    whisper_cuda_cache_dir,
     whisper_transcription_config,
     whisper_triton_cache_dir,
 )
@@ -40,10 +41,12 @@ class SubtitleBuilder:
         transcription_config: WhisperTranscriptionConfig | None = None,
         segment_filter: WhisperRepetitionFilter | None = None,
         triton_cache_dir: Path | None = None,
+        cuda_cache_dir: Path | None = None,
     ):
         # Without them, they are read from config/whisper.json when needed.
         self._transcription_config = transcription_config
         self._triton_cache_dir = triton_cache_dir
+        self._cuda_cache_dir = cuda_cache_dir
         self.segment_filter = (
             segment_filter
             if segment_filter is not None
@@ -112,6 +115,8 @@ class SubtitleBuilder:
                 resource=str(audio_path),
             ) from error
 
+        whisper_environment = self._whisper_environment()
+
         with tempfile.TemporaryDirectory(
             dir=output_path.parent
         ) as temp_dir:
@@ -138,7 +143,7 @@ class SubtitleBuilder:
                     text=True,
                     encoding="utf-8",
                     errors="replace",
-                    env=self._whisper_environment(),
+                    env=whisper_environment,
                 )
             except subprocess.CalledProcessError as error:
                 self._record_whisper_output(error.output)
@@ -266,6 +271,12 @@ class SubtitleBuilder:
         - ``TRITON_CACHE_DIR``: the folder of ``config/whisper.json``
           (``triton_cache_dir``), inside the project; without it Triton keeps
           its kernels in the user folder (~/.triton/cache). Triton creates it.
+        - ``CUDA_CACHE_PATH``: the folder of ``config/whisper.json``
+          (``cuda_cache_dir``), inside the project; without it CUDA keeps its
+          kernels in %APPDATA%\\NVIDIA\\ComputeCache. CUDA reads it when it
+          starts in the Whisper process, which this environment creates. CUDA
+          does not create the folder (it just keeps no cache), so it is
+          created here.
         - ``PYTHONIOENCODING``: its output goes to the record of the run (not
           to the screen) through a pipe; UTF-8, so no character stops Whisper.
         """
@@ -274,9 +285,30 @@ class SubtitleBuilder:
             if self._triton_cache_dir is not None
             else whisper_triton_cache_dir()
         )
+        cuda_cache_dir = (
+            self._cuda_cache_dir
+            if self._cuda_cache_dir is not None
+            else whisper_cuda_cache_dir()
+        )
+        try:
+            cuda_cache_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise create_operational_error(
+                family="FILESYSTEM",
+                user_message=(
+                    "No se pudo crear la carpeta de la caché de CUDA de Whisper."
+                ),
+                recommended_action=(
+                    "Comprueba los permisos de la carpeta o cambia "
+                    "«cuda_cache_dir» en config/whisper.json."
+                ),
+                operation="Preparar transcripción con Whisper",
+                resource=str(cuda_cache_dir),
+            ) from error
         return {
             **os.environ,
             "TRITON_CACHE_DIR": str(triton_cache_dir),
+            "CUDA_CACHE_PATH": str(cuda_cache_dir),
             "PYTHONIOENCODING": "utf-8",
         }
 

@@ -16,6 +16,11 @@
   given to the Whisper process as ``TRITON_CACHE_DIR``; without it, Triton
   writes them in the user folder (``~/.triton/cache``). It should be a folder
   Git ignores (``models/`` in the project).
+- ``cuda_cache_dir``: folder, relative to the project and inside it, where
+  CUDA keeps the kernels it compiles for the GPU while Whisper runs. It is
+  given to the Whisper process as ``CUDA_CACHE_PATH``; without it, CUDA writes
+  them in ``%APPDATA%\\NVIDIA\\ComputeCache``. Like ``triton_cache_dir``, a
+  folder Git ignores.
 
 Every key is required: the code never invents a value.
 """
@@ -85,25 +90,36 @@ def whisper_word_overlap_tolerance(path=WHISPER_SETTINGS_PATH) -> float:
 
 def whisper_triton_cache_dir(path=WHISPER_SETTINGS_PATH, project_root=None) -> Path:
     """Absolute folder for Triton's cache, declared relative to the project."""
-    path = Path(path)
-    key = "triton_cache_dir"
+    return _project_folder(
+        Path(path), "triton_cache_dir", "models/whisper/_cache/triton", project_root
+    )
+
+
+def whisper_cuda_cache_dir(path=WHISPER_SETTINGS_PATH, project_root=None) -> Path:
+    """Absolute folder for CUDA's kernel cache, declared relative to the project."""
+    return _project_folder(
+        Path(path), "cuda_cache_dir", "models/whisper/_cache/cuda", project_root
+    )
+
+
+def _project_folder(path, key, example, project_root):
     value = _require_key(_load(path), key, path)
     declared = Path(value.strip()) if isinstance(value, str) else None
     root = Path(os.path.abspath(project_root or Path.cwd()))
     if declared is None or not value.strip() or declared.anchor:
-        raise _triton_folder_error(path, key)
+        raise _project_folder_error(path, key, example)
     candidate = Path(os.path.normpath(root / declared))
     if candidate == root or not candidate.is_relative_to(root):
-        raise _triton_folder_error(path, key)
+        raise _project_folder_error(path, key, example)
     return candidate
 
 
-def _triton_folder_error(path, key):
+def _project_folder_error(path, key, example):
     return _config_error(
         f"En «{_display(path)}», «{key}» debe ser una carpeta relativa, "
         "dentro de la carpeta del proyecto.",
         f"Escriba en «{key}» una carpeta del proyecto que Git ignore, por "
-        "ejemplo models/whisper/_cache/triton.",
+        f"ejemplo {example}.",
         path,
         key=key,
     )

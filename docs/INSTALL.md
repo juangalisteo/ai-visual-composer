@@ -573,6 +573,13 @@ proyecto (clave `triton_cache_dir` de `config/whisper.json`), para que no
 escriba en la carpeta de usuario (`~/.triton/cache`). Si ya tienes esa carpeta
 de usuario de ejecuciones anteriores, el programa no la usa: puedes borrarla.
 
+Mientras Whisper trabaja en la GPU, CUDA también compila algún kernel y lo
+guarda en su propia caché. El programa le da la carpeta
+`models/whisper/_cache/cuda` (clave `cuda_cache_dir` de `config/whisper.json`)
+y la crea antes de lanzar Whisper, porque CUDA no la crea; sin ella, CUDA la
+guardaría en `%APPDATA%\NVIDIA\ComputeCache`. Esa carpeta de `%APPDATA%` la
+comparten otros programas que usan la GPU, así que no conviene borrarla.
+
 No fue necesaria una instalación completa del CUDA Toolkit porque PyTorch ya
 traía un runtime de CUDA funcional en este entorno.
 

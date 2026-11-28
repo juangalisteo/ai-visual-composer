@@ -3,5 +3,6 @@
     "device": "cuda",
     "language": "Spanish",
     "word_overlap_tolerance_seconds": 0.001,
-    "triton_cache_dir": "models/whisper/_cache/triton"
+    "triton_cache_dir": "models/whisper/_cache/triton",
+    "cuda_cache_dir": "models/whisper/_cache/cuda"
 }
